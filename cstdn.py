@@ -67,7 +67,7 @@ c.run()
 
 # Relax at other fixed volumes
 new_volumes = []
-volume_scale = [6, 4, 2, -2, -4, -6]
+volume_scale = [6, 4, 2, -2, -4, -6] #percent change in volume
 struct = structure.Structure.from_file("CONTCAR.3static")
 volume = struct.volume
 
