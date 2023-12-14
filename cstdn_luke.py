@@ -1,5 +1,3 @@
-# Testing
-
 import os
 import shutil
 
@@ -8,6 +6,36 @@ from custodian.vasp.handlers import VaspErrorHandler
 from custodian.vasp.jobs import VaspJob
 from pymatgen.core import structure
 from pymatgen.io.vasp.outputs import Outcar, Vasprun
+
+# Function to extract the last occurrence of volume from OUTCAR files
+def extract_volume(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        for line in reversed(lines):
+            if 'volume' in line:
+                volume = float(line.split()[-1])
+                break  # Stop searching after finding the last occurrence
+    return volume
+
+# Function to extract the last occurrence of pressure from OUTCAR files
+def extract_pressure(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        for line in reversed(lines):
+            if 'pressure' in line:
+                pressure = float(line.split()[3])
+                break  # Stop searching after finding the last occurrence
+    return pressure
+
+# Function to extract energy from OSZICAR files
+def extract_energy(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        for line in reversed(lines):
+            if 'F=' in line:
+                energy = float(line.split()[4])
+                break  # Stop searching after finding the last occurrence
+    return energy
 
 def three_step_relaxation(path, vasp_cmd, handlers): #path should contain necessary vasp config files
     step1 = VaspJob(
@@ -83,9 +111,11 @@ def wavecar_prop_series(path, volumes, vasp_cmd, handlers): #path should contain
 
 
 
-subset = list(VaspErrorHandler.error_msgs.keys())
-subset.remove("algo_tet")
 
-handlers = [VaspErrorHandler(errors_subset_to_catch = subset)]
-vasp_cmd = ["srun", "vasp_std"]
+if __name__ == "__main__":
+    subset = list(VaspErrorHandler.error_msgs.keys())
+    subset.remove("algo_tet")
+
+    handlers = [VaspErrorHandler(errors_subset_to_catch = subset)]
+    vasp_cmd = ["srun", "vasp_std"]
 
