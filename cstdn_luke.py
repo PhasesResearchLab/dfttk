@@ -37,12 +37,15 @@ def extract_energy(file_path):
                 break  # Stop searching after finding the last occurrence
     return energy
 
-def three_step_relaxation(path, vasp_cmd, handlers): #path should contain necessary vasp config files
+def three_step_relaxation(path, vasp_cmd, handlers, backup=True): #path should contain necessary vasp config files
+    orginal_dir = os.getcwd()
+    os.chdir(path)
     step1 = VaspJob(
     vasp_cmd = vasp_cmd,
     copy_magmom = True,
     final = False,
-    suffix = '.1relax'
+    suffix = '.1relax',
+    backup = backup,
             )
     
     step2 = VaspJob(
@@ -50,6 +53,7 @@ def three_step_relaxation(path, vasp_cmd, handlers): #path should contain necess
     copy_magmom = True,
     final = False,
     suffix = '.2relax',
+    backup = backup,
     settings_override = [
         {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}}
         ]
@@ -60,6 +64,7 @@ def three_step_relaxation(path, vasp_cmd, handlers): #path should contain necess
     copy_magmom = True,
     final = True,
     suffix = '.3static',
+    backup = backup,
     settings_override = [
         {"dict": "INCAR", "action": {"_set": {
             "IBRION": -1,
@@ -73,12 +78,13 @@ def three_step_relaxation(path, vasp_cmd, handlers): #path should contain necess
     jobs = [step1, step2, step3]
     c = Custodian(handlers, jobs, max_errors = 3)
     c.run()
+    os.chdir(orginal_dir)
 
 def wavecar_prop_series(path, volumes, vasp_cmd, handlers): #path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
     for i, vol in enumerate(volumes):
         #create vol folder
         vol_folder_name = 'vol_' + str(i)
-        vol_folder_path = os.join(path, vol_folder_name)
+        vol_folder_path = os.path.join(path, vol_folder_name)
         os.makedirs(vol_folder_path)
 
         if i == 0: #copy from path
@@ -87,7 +93,7 @@ def wavecar_prop_series(path, volumes, vasp_cmd, handlers): #path should contain
                 if os.path.isfile(os.path.join(path, file_name)):
                     shutil.copy2(os.path.join(path, file_name), os.path.join(vol_folder_path, file_name))
         else: #copy from previous folder
-            previous_vol_folder_path = os.join(path, 'vol_' + str(i-1))
+            previous_vol_folder_path = os.path.join(path, 'vol_' + str(i-1))
             source_name_dest_name = [('CONTCAR.3static', 'POSCAR'),
                                 ('INCAR.2relax', 'INCAR'),
                                 ('KPOINTS.1relax', 'KPOINTS'),
@@ -107,7 +113,7 @@ def wavecar_prop_series(path, volumes, vasp_cmd, handlers): #path should contain
         struct.to_file(poscar, "POSCAR")
         
         #run vasp
-        three_step_relaxation(vol_folder_path, vasp_cmd, handlers)
+        three_step_relaxation(vol_folder_path, vasp_cmd, handlers, backup=False)
 
 
 
