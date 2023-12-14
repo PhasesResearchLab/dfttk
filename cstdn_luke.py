@@ -37,6 +37,35 @@ def extract_energy(file_path):
                 break  # Stop searching after finding the last occurrence
     return energy
 
+def get_mag_data(outcar_path='OUTCAR'):
+    if not os.path.isfile(outcar_path):
+        print(f"Warning: File {outcar_path} does not exist. Skipping.")
+        return None
+    with open(outcar_path, 'r') as file:
+        data = []
+        step = 0
+        found_mag_data = False
+        data_start = False
+        lines = file.readlines()
+        for line in lines:
+            if 'magnetization (x)' in line:
+                found_mag_data = True
+                step += 1
+            elif found_mag_data and not data_start and '----' in line:
+                data_start = True
+            elif data_start and '----' not in line:
+                ion = int(line.split()[0])
+                s = float(line.split()[1])
+                p = float(line.split()[2])
+                d = float(line.split()[3])
+                tot = float(line.split()[4])
+                data.append((step, ion, s, p, d, tot))
+            elif data_start and '----' in line:
+                data_start = False
+                found_mag_data = False
+        df = pd.DataFrame(data, columns=['step', '# of ion', 's', 'p', 'd', 'tot'])
+        return df
+
 def three_step_relaxation(path, vasp_cmd, handlers, backup=True): #path should contain necessary vasp config files
     orginal_dir = os.getcwd()
     os.chdir(path)
