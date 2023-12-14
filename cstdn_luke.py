@@ -37,7 +37,7 @@ def extract_energy(file_path):
                 break  # Stop searching after finding the last occurrence
     return energy
 
-def get_mag_data(outcar_path='OUTCAR'):
+def extract_mag_data(outcar_path='OUTCAR'):
     if not os.path.isfile(outcar_path):
         print(f"Warning: File {outcar_path} does not exist. Skipping.")
         return None
@@ -65,6 +65,13 @@ def get_mag_data(outcar_path='OUTCAR'):
                 found_mag_data = False
         df = pd.DataFrame(data, columns=['step', '# of ion', 's', 'p', 'd', 'tot'])
         return df
+
+#returns only the 'tot' magnetization of the last step for each specified ion
+def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
+    all_mag_data = get_mag_data(outcar_path)
+    simple = all_mag_data[all_mag_data['step'] == all_mag_data['step'].max()]['tot']
+    simple.reset_index(drop=True, inplace=True)
+    return simple
 
 def three_step_relaxation(path, vasp_cmd, handlers, backup=True): #path should contain necessary vasp config files
     orginal_dir = os.getcwd()
