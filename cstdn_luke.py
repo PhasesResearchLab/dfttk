@@ -46,7 +46,7 @@ def three_step_relaxation(path, vasp_cmd, handlers): #path should contain necess
     c = Custodian(handlers, jobs, max_errors = 3)
     c.run()
 
-def wavecar_prop_series(path, volumes): #path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
+def wavecar_prop_series(path, volumes, vasp_cmd, handlers): #path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
     for i, vol in enumerate(volumes):
         #create vol folder
         vol_folder_name = 'vol_' + str(i)
@@ -70,8 +70,7 @@ def wavecar_prop_series(path, volumes): #path should contain starting POSCAR, PO
                 file_source = os.path.join(previous_vol_folder_path, file_name[0])
                 file_dest = os.path.join(vol_folder_path, file_name[1])
                 if os.path.isfile(file_source):
-                    shutil.copy2(file_source, file_dest)
-                
+                    shutil.copy2(file_source, file_dest)  
 
         #change the volume of the POSCAR
         poscar = os.path.join(vol_folder_path, 'POSCAR')
@@ -79,6 +78,9 @@ def wavecar_prop_series(path, volumes): #path should contain starting POSCAR, PO
         struct.scale_lattice(vol)
         struct.to_file(poscar, "POSCAR")
         
+        #run vasp
+        three_step_relaxation(vol_folder_path, vasp_cmd, handlers)
+
 
 
 subset = list(VaspErrorHandler.error_msgs.keys())
