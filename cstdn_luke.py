@@ -92,7 +92,7 @@ def wavecar_prop_series(path, volumes, vasp_cmd, handlers): #path should contain
             for file_name in files_to_copy:
                 if os.path.isfile(os.path.join(path, file_name)):
                     shutil.copy2(os.path.join(path, file_name), os.path.join(vol_folder_path, file_name))
-        else: #copy from previous folder
+        else: #copy from previous folder and delete WAVECARs, CHGCARs, CHGs, PROCARs from previous volume folder
             previous_vol_folder_path = os.path.join(path, 'vol_' + str(i-1))
             source_name_dest_name = [('CONTCAR.3static', 'POSCAR'),
                                 ('INCAR.2relax', 'INCAR'),
@@ -104,7 +104,22 @@ def wavecar_prop_series(path, volumes, vasp_cmd, handlers): #path should contain
                 file_source = os.path.join(previous_vol_folder_path, file_name[0])
                 file_dest = os.path.join(vol_folder_path, file_name[1])
                 if os.path.isfile(file_source):
-                    shutil.copy2(file_source, file_dest)  
+                    shutil.copy2(file_source, file_dest)
+            #after copying, it is safe to delete the WAVECARS, CHGCARS, CHG and PROCARS from the previous volume folder to save space
+            files_to_delete = ['WAVECAR.1relax', 'WAVECAR.2relax', 'WAVECAR.3static',
+                            'CHGCAR.1relax', 'CHGCAR.2relax', 'CHGCAR.3static',
+                            'CHG.1relax','CHG.2relax', 'CHG.3static',
+                            'PROCAR.1relax','PROCAR.2relax', 'PROCAR.3static']
+            paths_to_deltete = []
+            for file_name in files_to_delete:
+                file_path = os.path.join(previous_vol_folder_path, file_name)
+                paths_to_deltete.append(file_path)
+
+            for file_path in paths_to_deltete:
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                        else:
+                            print(f"The file {file_path} does not exist.")
 
         #change the volume of the POSCAR
         poscar = os.path.join(vol_folder_path, 'POSCAR')
@@ -113,6 +128,7 @@ def wavecar_prop_series(path, volumes, vasp_cmd, handlers): #path should contain
         struct.to_file(poscar, "POSCAR")
         
         #run vasp
+        print('running three step relaxation for volume ' + str(vol))
         three_step_relaxation(vol_folder_path, vasp_cmd, handlers, backup=False)
 
 
@@ -125,4 +141,4 @@ if __name__ == "__main__":
     handlers = [VaspErrorHandler(errors_subset_to_catch = subset)]
     vasp_cmd = ["srun", "vasp_std"]
 
-    wavecar_prop_series(os.getcwd(), [360, 350, 340, 330, 320, 310, 300, 290, 280, 270, 260], vasp_cmd, handlers)
+    wavecar_prop_series(os.getcwd(), [50, 40, 30], vasp_cmd, handlers)
