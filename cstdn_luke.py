@@ -119,3 +119,4 @@ if __name__ == "__main__":
     handlers = [VaspErrorHandler(errors_subset_to_catch = subset)]
     vasp_cmd = ["srun", "vasp_std"]
 
+    wavecar_prop_series(os.getcwd(), [360, 350, 340, 330, 320, 310, 300, 290, 280, 270, 260], vasp_cmd, handlers)
