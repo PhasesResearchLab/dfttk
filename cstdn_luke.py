@@ -69,9 +69,10 @@ def extract_mag_data(outcar_path='OUTCAR'):
 #returns only the 'tot' magnetization of the last step for each specified ion
 def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
     all_mag_data = get_mag_data(outcar_path)
-    simple = all_mag_data[all_mag_data['step'] == all_mag_data['step'].max()]['tot']
-    simple.reset_index(drop=True, inplace=True)
-    return simple
+    last_step_data = all_mag_data[all_mag_data['step'] == all_mag_data['step'].max()]
+    simple_data = last_step_data[last_step_data['# of ion'].isin(ion_list)][['# of ion', 'tot']]
+    simple_data.reset_index(drop=True, inplace=True)
+    return simple_data
 
 def three_step_relaxation(path, vasp_cmd, handlers, backup=True): #path should contain necessary vasp config files
     orginal_dir = os.getcwd()
