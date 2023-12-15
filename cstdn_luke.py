@@ -231,7 +231,13 @@ def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers, backup=False): #pa
             os.remove(f'PROCAR.[i-1]')
     os.chdir(original_dir)
 
+def calculate_kpoint_convergence():
+    pass
+
 def plot_kpoint_convergence():
+    pass
+
+def calculate_encut_convergence():
     pass
 
 def encut_convergence_test():
