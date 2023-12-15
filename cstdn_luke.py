@@ -9,24 +9,35 @@ from pymatgen.core import structure
 from pymatgen.io.vasp.outputs import Outcar, Vasprun
 
 """
-kpoints_list should be a list of tuples ex:
-    [(1,1,1), (2,2,2), (3,3,3)]
+kpoints_list should be a list of strings ex:
+    ['1 1 1', '2 2 2', '3 3 3']
 incar_tags should be a dictionary ex:
     {'encut' 'ISMEAR': -5, 'IBRION': 2}
-
+only edits the forth line of the KPOINTS file
 """
 
-def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers, backup=True): #path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
+def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers, backup=False): #path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
     original_dir = os.getcwd()
     kpoints_conv_dir = os.path.join(path, 'kpoints_conv')
     os.makedirs(kpoints_conv_dir)
+    shutil.copy2(os.path.join(path, 'POSCAR'), os.path.join(kpoints_conv_dir, 'POSCAR'))
+    shutil.copy2(os.path.join(path, 'POTCAR'), os.path.join(kpoints_conv_dir, 'POTCAR'))
+    shutil.copy2(os.path.join(path, 'INCAR'), os.path.join(kpoints_conv_dir, 'INCAR'))
+    shutil.copy2(os.path.join(path, 'KPOINTS'), os.path.join(kpoints_conv_dir, 'KPOINTS'))
     os.chdir(kpoints_conv_dir)
-    for el in kpoints_list:
+    for i, el in enumerate(kpoints_list):
+        #change the kpoints file
+        with open('KPOINTS', 'r') as file:
+            lines = file.readlines()
+            lines[3] = el + '\n'
+
+        with open('KPOINTS', 'w') as file:
+            file.writelines(lines)
+
+        #run the vasp job
         VaspJob(
         vasp_cmd = vasp_cmd,
-        copy_magmom = True,
-        final = False,
-        suffix = '.1relax',
+        suffix = f'{i}',
         backup = backup
                 )
 
