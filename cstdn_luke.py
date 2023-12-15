@@ -1,6 +1,7 @@
 import os
 import shutil
 import pandas as pd
+import numpy as np
 
 from custodian.custodian import Custodian
 from custodian.vasp.handlers import VaspErrorHandler
@@ -128,11 +129,14 @@ def three_step_relaxation(path, vasp_cmd, handlers, backup=True): #path should c
     os.chdir(orginal_dir)
 
 """
-!!!WARNING!!! You probably want to have volumes in decreasing order eg.
+!!!WARNING!!! You probably want to have volumes in decreasing order eg:
 volumes = []
 for vol in range(300, 370, 10):
     volumes.append(vol)
-    volumes.reverse()
+volumes.reverse()
+
+or
+volumes = list(np.linspace(340, 270, 11))
 """
 def wavecar_prop_series(path, volumes, vasp_cmd, handlers): #path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
     for i, vol in enumerate(volumes):
@@ -236,11 +240,8 @@ if __name__ == "__main__":
     handlers = [VaspErrorHandler(errors_subset_to_catch = subset)]
     vasp_cmd = ["srun", "vasp_std"]
 
-    volumes = []
+    volumes = list(np.linspace(340, 270, 11))
+    wavecar_prop_series(os.getcwd(), volumes, vasp_cmd, handlers)
 
-    # for vol in range(300, 370, 10):
-    #     volumes.append(vol)
-    # wavecar_prop_series(os.getcwd(), volumes, vasp_cmd, handlers)
-
-    kpoints_list = ['4 4 5', '5 5 6', '6 6 7', '7 7 8', '7 7 9', '8 8 10', '9 9 11']
-    kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
+    # kpoints_list = ['4 4 5', '5 5 6', '6 6 7', '7 7 8', '7 7 9', '8 8 10', '9 9 11']
+    # kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
