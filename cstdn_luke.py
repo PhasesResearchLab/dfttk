@@ -217,6 +217,10 @@ if __name__ == "__main__":
     vasp_cmd = ["srun", "vasp_std"]
 
     volumes = []
-    for vol in range(300, 370, 10):
-        volumes.append(vol)
-    wavecar_prop_series(os.getcwd(), volumes, vasp_cmd, handlers)
+
+    # for vol in range(300, 370, 10):
+    #     volumes.append(vol)
+    # wavecar_prop_series(os.getcwd(), volumes, vasp_cmd, handlers)
+
+    kpoints_list = ['4 4 5', '5 5 6', '6 6 7', '7 7 8', '7 7 9', '8 8 10', '9 9 11']
+    kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
