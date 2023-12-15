@@ -210,6 +210,14 @@ def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers, backup=False): #pa
                 )
         c = Custodian(handlers, [job], max_errors = 3)
         c.run()
+        if os.path.isfile(f'WAVECAR.[i-1]'):
+            os.remove(f'WAVECAR.[i-1]')
+        if os.path.isfile(f'CHGCAR.[i-1]'):
+            os.remove(f'CHGCAR.[i-1]')
+        if os.path.isfile(f'CHG.[i-1]'):
+            os.remove(f'CHG.[i-1]')
+        if os.path.isfile(f'PROCAR.[i-1]'):
+            os.remove(f'PROCAR.[i-1]')
     os.chdir(original_dir)
 
 
