@@ -16,33 +16,6 @@ incar_tags should be a dictionary ex:
 only edits the forth line of the KPOINTS file
 """
 
-def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers, backup=False): #path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
-    original_dir = os.getcwd()
-    kpoints_conv_dir = os.path.join(path, 'kpoints_conv')
-    os.makedirs(kpoints_conv_dir)
-    shutil.copy2(os.path.join(path, 'POSCAR'), os.path.join(kpoints_conv_dir, 'POSCAR'))
-    shutil.copy2(os.path.join(path, 'POTCAR'), os.path.join(kpoints_conv_dir, 'POTCAR'))
-    shutil.copy2(os.path.join(path, 'INCAR'), os.path.join(kpoints_conv_dir, 'INCAR'))
-    shutil.copy2(os.path.join(path, 'KPOINTS'), os.path.join(kpoints_conv_dir, 'KPOINTS'))
-    os.chdir(kpoints_conv_dir)
-    for i, el in enumerate(kpoints_list):
-        #change the kpoints file
-        with open('KPOINTS', 'r') as file:
-            lines = file.readlines()
-            lines[3] = el + '\n'
-
-        with open('KPOINTS', 'w') as file:
-            file.writelines(lines)
-
-        #run the vasp job
-        VaspJob(
-        vasp_cmd = vasp_cmd,
-        suffix = f'{i}',
-        backup = backup
-                )
-
-
-    os.chdir(original_dir)
 
 # Function to extract the last occurrence of volume from OUTCAR files
 def extract_volume(file_path):
@@ -206,6 +179,38 @@ def wavecar_prop_series(path, volumes, vasp_cmd, handlers): #path should contain
         print('running three step relaxation for volume ' + str(vol))
         three_step_relaxation(vol_folder_path, vasp_cmd, handlers, backup=False)
 
+def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers, backup=False): #path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
+    original_dir = os.getcwd()
+    kpoints_conv_dir = os.path.join(path, 'kpoints_conv')
+    os.makedirs(kpoints_conv_dir)
+    shutil.copy2(os.path.join(path, 'POSCAR'), os.path.join(kpoints_conv_dir, 'POSCAR'))
+    shutil.copy2(os.path.join(path, 'POTCAR'), os.path.join(kpoints_conv_dir, 'POTCAR'))
+    shutil.copy2(os.path.join(path, 'INCAR'), os.path.join(kpoints_conv_dir, 'INCAR'))
+    shutil.copy2(os.path.join(path, 'KPOINTS'), os.path.join(kpoints_conv_dir, 'KPOINTS'))
+    os.chdir(kpoints_conv_dir)
+    for i, el in enumerate(kpoints_list):
+        #change the kpoints file
+        with open('KPOINTS', 'r') as file:
+            lines = file.readlines()
+            lines[3] = el + '\n'
+
+        with open('KPOINTS', 'w') as file:
+            file.writelines(lines)
+        
+        #run the vasp job
+        if i == len(kpoints_list) - 1:
+            final = True
+        else:
+            final = False
+        job = VaspJob(
+        vasp_cmd = vasp_cmd,
+        final=False,
+        suffix = f'.{i}',
+        backup = backup
+                )
+        c = Custodian(handlers, [job], max_errors = 3)
+        c.run()
+    os.chdir(original_dir)
 
 
 
