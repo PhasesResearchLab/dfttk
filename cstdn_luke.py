@@ -1,11 +1,37 @@
 import os
 import shutil
+import pandas as pd
 
 from custodian.custodian import Custodian
 from custodian.vasp.handlers import VaspErrorHandler
 from custodian.vasp.jobs import VaspJob
 from pymatgen.core import structure
 from pymatgen.io.vasp.outputs import Outcar, Vasprun
+
+"""
+kpoints_list should be a list of tuples ex:
+    [(1,1,1), (2,2,2), (3,3,3)]
+incar_tags should be a dictionary ex:
+    {'encut' 'ISMEAR': -5, 'IBRION': 2}
+
+"""
+
+def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers, backup=True): #path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
+    original_dir = os.getcwd()
+    kpoints_conv_dir = os.path.join(path, 'kpoints_conv')
+    os.makedirs(kpoints_conv_dir)
+    os.chdir(kpoints_conv_dir)
+    for el in kpoints_list:
+        VaspJob(
+        vasp_cmd = vasp_cmd,
+        copy_magmom = True,
+        final = False,
+        suffix = '.1relax',
+        backup = backup
+                )
+
+
+    os.chdir(original_dir)
 
 # Function to extract the last occurrence of volume from OUTCAR files
 def extract_volume(file_path):
@@ -179,4 +205,7 @@ if __name__ == "__main__":
     handlers = [VaspErrorHandler(errors_subset_to_catch = subset)]
     vasp_cmd = ["srun", "vasp_std"]
 
-    wavecar_prop_series(os.getcwd(), [50, 40, 30], vasp_cmd, handlers)
+    volumes = []
+    for vol in range(300, 370, 10):
+        volumes.append(vol)
+    wavecar_prop_series(os.getcwd(), volumes, vasp_cmd, handlers)
