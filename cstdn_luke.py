@@ -127,6 +127,13 @@ def three_step_relaxation(path, vasp_cmd, handlers, backup=True): #path should c
     c.run()
     os.chdir(orginal_dir)
 
+"""
+!!!WARNING!!! You probably want to have volumes in decreasing order eg.
+volumes = []
+for vol in range(300, 370, 10):
+    volumes.append(vol)
+    volumes.reverse()
+"""
 def wavecar_prop_series(path, volumes, vasp_cmd, handlers): #path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
     for i, vol in enumerate(volumes):
         #create vol folder
