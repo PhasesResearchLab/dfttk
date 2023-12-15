@@ -231,7 +231,14 @@ def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers, backup=False): #pa
             os.remove(f'PROCAR.[i-1]')
     os.chdir(original_dir)
 
+def plot_kpoint_convergence():
+    pass
 
+def encut_convergence_test():
+    pass
+
+def plot_encut_convergence():
+    pass
 
 if __name__ == "__main__":
     subset = list(VaspErrorHandler.error_msgs.keys())
@@ -240,8 +247,8 @@ if __name__ == "__main__":
     handlers = [VaspErrorHandler(errors_subset_to_catch = subset)]
     vasp_cmd = ["srun", "vasp_std"]
 
-    volumes = list(np.linspace(340, 270, 11))
-    wavecar_prop_series(os.getcwd(), volumes, vasp_cmd, handlers)
+    # volumes = list(np.linspace(340, 270, 11))
+    # wavecar_prop_series(os.getcwd(), volumes, vasp_cmd, handlers)
 
-    # kpoints_list = ['4 4 5', '5 5 6', '6 6 7', '7 7 8', '7 7 9', '8 8 10', '9 9 11']
-    # kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
+    kpoints_list = ['4 4 5', '5 5 6', '6 6 7', '7 7 8', '7 7 9', '8 8 10', '12 12 15']
+    kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
