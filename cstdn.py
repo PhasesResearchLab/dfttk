@@ -2,6 +2,7 @@ import os
 import shutil
 import pandas as pd
 import numpy as np
+import plotly.express as px
 
 from custodian.custodian import Custodian
 from custodian.vasp.handlers import VaspErrorHandler
@@ -89,6 +90,31 @@ def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
     simple_data.reset_index(drop=True, inplace=True)
     return simple_data
 
+def plot_mv(df, show_fig=True):
+    fig = px.line(df,
+                    x='vol',
+                    y='tot',
+                    color='# of ion',symbol='# of ion',
+                    hover_data=['config', '# of ion', 'vol', 'tot'],
+                    template='plotly_white')
+    fig.update_layout(title='Mag-V',
+                        xaxis_title='Volume [A^3]',
+                        yaxis_title='Magnetic Moment [mu_B]')
+    
+    fig.update_yaxes(nticks=10)
+    fig.update_xaxes(nticks=10)
+    
+    # Loop over each trace and update dash length
+    for i, trace in enumerate(fig.data):
+        dash_length = f"{2+(i+1)}px,{2+2*(i+1)}px"  # Dash length changes with each iteration
+        fig.data[-i-1].update(mode='markers+lines',
+                            marker=dict(size=8, line=dict(width=1), opacity=0.5),
+                            line=dict(width=3, dash=dash_length))
+
+
+    if show_fig:
+        fig.show()
+    return fig
 
 def three_step_relaxation(path, vasp_cmd, handlers, backup=True):  # Path should contain necessary VASP config files
     original_dir = os.getcwd()
