@@ -92,7 +92,7 @@ def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
 
 """
 df is a data frame with columns ['config', '# of ion', 'vol', 'tot']
-not sure what happens if you don't include config, might still work.
+not sure what happens if you don't include config, might still
 """
 def plot_mv(df, show_fig=True):
     fig = px.line(df,
