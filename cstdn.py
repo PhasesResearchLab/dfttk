@@ -335,19 +335,21 @@ def plot_encut_convergence():
 
 
 if __name__ == "__main__":
-    # Specify custodian handlers
-    subset = list(VaspErrorHandler.error_msgs.keys())
-    subset.remove("algo_tet")
-    handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]
+    print("This is a module for importing. It is not meant to be run directly.")
 
-    # Specify VASP command
-    vasp_cmd = ["srun", "vasp_std"]
+    # # Specify custodian handlers
+    # subset = list(VaspErrorHandler.error_msgs.keys())
+    # subset.remove("algo_tet")
+    # handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]
 
-    # three_step_relaxation('', vasp_cmd, handlers)
+    # # Specify VASP command
+    # vasp_cmd = ["srun", "vasp_std"]
+
+    # # three_step_relaxation('', vasp_cmd, handlers)
     
-    volumes = list(np.linspace(370, 270, 15))
+    # volumes = list(np.linspace(370, 270, 15))
 
-    vol_series(os.getcwd(), volumes, vasp_cmd, handlers, restarting=True)
+    # vol_series(os.getcwd(), volumes, vasp_cmd, handlers, restarting=True)
 
-    # kpoints_list = ['4 4 5', '5 5 6', '6 6 7', '7 7 8', '7 7 9', '8 8 10', '12 12 15']
-    # kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
+    # # kpoints_list = ['4 4 5', '5 5 6', '6 6 7', '7 7 8', '7 7 9', '8 8 10', '12 12 15']
+    # # kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
