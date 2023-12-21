@@ -176,7 +176,7 @@ volumes = list(np.linspace(340, 270, 11))
 """
 
 
-def wavecar_prop_series(path, volumes, vasp_cmd,
+def vol_series(path, volumes, vasp_cmd,
                         handlers):  # Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
     for i, vol in enumerate(volumes):
         # Create vol folder
@@ -304,10 +304,11 @@ if __name__ == "__main__":
     # Specify VASP command
     vasp_cmd = ["srun", "vasp_std"]
 
-    #three_step_relaxation('', vasp_cmd, handlers)
-    #volumes = list(np.linspace(340, 270, 11))
+    # three_step_relaxation('', vasp_cmd, handlers)
+    
+    volumes = list(np.linspace(370, 270, 15))
 
-    # wavecar_prop_series(os.getcwd(), volumes, vasp_cmd, handlers)
+    vol_series(os.getcwd(), volumes, vasp_cmd, handlers)
 
     # kpoints_list = ['4 4 5', '5 5 6', '6 6 7', '7 7 8', '7 7 9', '8 8 10', '12 12 15']
     # kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
