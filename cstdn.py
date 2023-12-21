@@ -247,22 +247,6 @@ def vol_series(path, volumes, vasp_cmd,
         print('Running three step relaxation for volume ' + str(vol))
         three_step_relaxation(vol_folder_path, vasp_cmd, handlers, backup=False)
 
-def restart_vol_series(path, volumes, vasp_cmd, handlers):
-    for i in range(len(volumes)):
-        vol_folder_name = 'vol_' + str(i)
-        vol_folder_path = os.path.join(path, vol_folder_name)
-        if not os.path.exists(vol_folder_path):
-            last_vol_folder_name = 'vol_' + str(i - 1)
-            last_vol_folder_path = os.path.join(path, last_vol_folder_name)
-            break
-    
-    for file in os.listdir(last_vol_folder_path):
-        file_path = os.path.join(last_vol_folder_path, file)
-        if os.path.isfile(file_path):
-            os.remove(file_path)
-    
-    
-    vol_series(path, volumes[i:], vasp_cmd, handlers)
 
 def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers,
                       backup=False):  # Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
