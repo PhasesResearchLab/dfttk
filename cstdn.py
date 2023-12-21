@@ -179,6 +179,19 @@ volumes = list(np.linspace(340, 270, 11))
 
 def vol_series(path, volumes, vasp_cmd,
                         handlers, restarting=False):  # Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
+    params = {'path': path,
+              'volumes': volumes,
+              'vasp_cmd': vasp_cmd,
+              'handlers': handlers,
+              'restarting': restarting}
+    params_json_path = os.path.join(path, 'params.json')
+    n = 0
+    while os.path.isfile(params_json_path):
+        n += 1
+        params_json_path = os.path.join(path, 'params_' + str(n) + '.json')
+    with open(params_json_path, 'w') as file:
+        json.dump(params, file)
+
     if restarting:
         for j in range(len(volumes)):
             vol_folder_name = 'vol_' + str(j)
@@ -326,7 +339,7 @@ if __name__ == "__main__":
     
     volumes = list(np.linspace(370, 270, 15))
 
-    vol_series(os.getcwd(), volumes, vasp_cmd, handlers)
+    vol_series(os.getcwd(), volumes, vasp_cmd, handlers, restarting=Ture)
 
     # kpoints_list = ['4 4 5', '5 5 6', '6 6 7', '7 7 8', '7 7 9', '8 8 10', '12 12 15']
     # kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
