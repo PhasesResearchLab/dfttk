@@ -178,8 +178,6 @@ volumes = list(np.linspace(340, 270, 11))
 
 Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
 """
-
-
 def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):  
     #write a params.json file to keep track of the parameters used
     #unfortunately, handlers is not json serializable, so the value is replace by a useless string
