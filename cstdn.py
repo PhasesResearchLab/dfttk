@@ -183,7 +183,7 @@ def vol_series(path, volumes, vasp_cmd,
     params = {'path': path,
               'volumes': volumes,
               'vasp_cmd': vasp_cmd,
-              'handlers': handlers,
+              'handlers': 'handlers is not json serializable',
               'restarting': restarting}
     params_json_path = os.path.join(path, 'params.json')
     n = 0
