@@ -1,4 +1,5 @@
 import os
+import glob
 import shutil
 import pandas as pd
 import numpy as np
@@ -177,8 +178,25 @@ volumes = list(np.linspace(340, 270, 11))
 
 
 def vol_series(path, volumes, vasp_cmd,
-                        handlers):  # Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
+                        handlers, restarting=False):  # Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
+    if restarting:
+        for j in range(len(volumes)):
+            vol_folder_name = 'vol_' + str(j)
+            vol_folder_path = os.path.join(path, vol_folder_name)
+            if not os.path.exists(vol_folder_path):
+                last_vol_folder_name = 'vol_' + str(j - 1)
+                last_vol_folder_path = os.path.join(path, last_vol_folder_name)
+                break
+        if j == 0:
+            print("No volumes to restart from. You might want to set restarting=False (which is the default) or check if 'vol_0' exists inside the path")
+            return
+        
+        last_vol_index = j-1
+        shutil.rmtree(last_vol_folder_path)
+
     for i, vol in enumerate(volumes):
+        if restarting and i < last_vol_index:
+            continue
         # Create vol folder
         vol_folder_name = 'vol_' + str(i)
         vol_folder_path = os.path.join(path, vol_folder_name)
@@ -192,11 +210,11 @@ def vol_series(path, volumes, vasp_cmd,
         else:  # Copy from previous folder and delete WAVECARs, CHGCARs, CHGs, PROCARs from previous volume folder
             previous_vol_folder_path = os.path.join(path, 'vol_' + str(i - 1))
             source_name_dest_name = [('CONTCAR.3static', 'POSCAR'),
-                                     ('INCAR.2relax', 'INCAR'),
-                                     ('KPOINTS.1relax', 'KPOINTS'),
-                                     ('POTCAR', 'POTCAR'),
-                                     ('WAVECAR.3static', 'WAVECAR'),
-                                     ('CHGCAR.3static', 'CHGCAR')]
+                                    ('INCAR.2relax', 'INCAR'),
+                                    ('KPOINTS.1relax', 'KPOINTS'),
+                                    ('POTCAR', 'POTCAR'),
+                                    ('WAVECAR.3static', 'WAVECAR'),
+                                    ('CHGCAR.3static', 'CHGCAR')]
             for file_name in source_name_dest_name:
                 file_source = os.path.join(previous_vol_folder_path, file_name[0])
                 file_dest = os.path.join(vol_folder_path, file_name[1])
@@ -205,9 +223,9 @@ def vol_series(path, volumes, vasp_cmd,
             # After copying, it is safe to delete some of the WAVECARS, CHGCARS, CHG and PROCARS from the previous volume folder to save space
             # Keeps WAVECAR.3static and CHGCAR.3static
             files_to_delete = ['WAVECAR.1relax', 'WAVECAR.2relax',
-                               'CHGCAR.1relax', 'CHGCAR.2relax',
-                               'CHG.1relax', 'CHG.2relax', 'CHG.3static',
-                               'PROCAR.1relax', 'PROCAR.2relax', 'PROCAR.3static']
+                            'CHGCAR.1relax', 'CHGCAR.2relax',
+                            'CHG.1relax', 'CHG.2relax', 'CHG.3static',
+                            'PROCAR.1relax', 'PROCAR.2relax', 'PROCAR.3static']
             paths_to_delete = []
             for file_name in files_to_delete:
                 file_path = os.path.join(previous_vol_folder_path, file_name)
@@ -229,6 +247,22 @@ def vol_series(path, volumes, vasp_cmd,
         print('Running three step relaxation for volume ' + str(vol))
         three_step_relaxation(vol_folder_path, vasp_cmd, handlers, backup=False)
 
+def restart_vol_series(path, volumes, vasp_cmd, handlers):
+    for i in range(len(volumes)):
+        vol_folder_name = 'vol_' + str(i)
+        vol_folder_path = os.path.join(path, vol_folder_name)
+        if not os.path.exists(vol_folder_path):
+            last_vol_folder_name = 'vol_' + str(i - 1)
+            last_vol_folder_path = os.path.join(path, last_vol_folder_name)
+            break
+    
+    for file in os.listdir(last_vol_folder_path):
+        file_path = os.path.join(last_vol_folder_path, file)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+    
+    
+    vol_series(path, volumes[i:], vasp_cmd, handlers)
 
 def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers,
                       backup=False):  # Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
