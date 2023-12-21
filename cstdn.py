@@ -4,6 +4,7 @@ import shutil
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import json
 
 from custodian.custodian import Custodian
 from custodian.vasp.handlers import VaspErrorHandler
@@ -339,7 +340,7 @@ if __name__ == "__main__":
     
     volumes = list(np.linspace(370, 270, 15))
 
-    vol_series(os.getcwd(), volumes, vasp_cmd, handlers, restarting=Ture)
+    vol_series(os.getcwd(), volumes, vasp_cmd, handlers, restarting=True)
 
     # kpoints_list = ['4 4 5', '5 5 6', '6 6 7', '7 7 8', '7 7 9', '8 8 10', '12 12 15']
     # kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
