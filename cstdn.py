@@ -175,11 +175,14 @@ volumes.reverse()
 
 or
 volumes = list(np.linspace(340, 270, 11))
+
+Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
 """
 
 
-def vol_series(path, volumes, vasp_cmd,
-                        handlers, restarting=False):  # Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
+def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):  
+    #write a params.json file to keep track of the parameters used
+    #unfortunately, handlers is not json serializable, so the value is replace by a useless string
     params = {'path': path,
               'volumes': volumes,
               'vasp_cmd': vasp_cmd,
@@ -192,7 +195,8 @@ def vol_series(path, volumes, vasp_cmd,
         params_json_path = os.path.join(path, 'params_' + str(n) + '.json')
     with open(params_json_path, 'w') as file:
         json.dump(params, file)
-
+    
+    # If restarting, find the last volume folder and delete it
     if restarting:
         for j in range(len(volumes)):
             vol_folder_name = 'vol_' + str(j)
@@ -205,12 +209,15 @@ def vol_series(path, volumes, vasp_cmd,
             print("No volumes to restart from. You might want to set restarting=False (which is the default) or check if 'vol_0' exists inside the path")
             return
         
+        # Delete the last volume folder
         last_vol_index = j-1
         shutil.rmtree(last_vol_folder_path)
 
     for i, vol in enumerate(volumes):
+        # if restarting, skip volumes that have already been run
         if restarting and i < last_vol_index:
             continue
+
         # Create vol folder
         vol_folder_name = 'vol_' + str(i)
         vol_folder_path = os.path.join(path, vol_folder_name)
