@@ -177,6 +177,10 @@ or
 volumes = list(np.linspace(340, 270, 11))
 
 Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
+
+When restarting, the last volume folder will be deleted and
+the second to last volume folder will be used as the starting point.
+
 """
 def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):  
     #write a params.json file to keep track of the parameters used
@@ -253,6 +257,8 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):
             for file_path in paths_to_delete:
                 if os.path.exists(file_path):
                     os.remove(file_path)
+                elif restarting and i == last_vol_index:
+                    pass
                 else:
                     print(f"The file {file_path} does not exist.")
 
