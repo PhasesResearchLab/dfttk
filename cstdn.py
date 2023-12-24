@@ -1,8 +1,10 @@
 import os
+import glob
 import shutil
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import json
 
 from custodian.custodian import Custodian
 from custodian.vasp.handlers import VaspErrorHandler
@@ -173,12 +175,51 @@ volumes.reverse()
 
 or
 volumes = list(np.linspace(340, 270, 11))
+
+Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
+
+When restarting, the last volume folder will be deleted and
+the second to last volume folder will be used as the starting point.
+
 """
+def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):  
+    #write a params.json file to keep track of the parameters used
+    #unfortunately, handlers is not json serializable, so the value is replace by a useless string
+    params = {'path': path,
+              'volumes': volumes,
+              'vasp_cmd': vasp_cmd,
+              'handlers': 'handlers is not json serializable',
+              'restarting': restarting}
+    params_json_path = os.path.join(path, 'params.json')
+    n = 0
+    while os.path.isfile(params_json_path):
+        n += 1
+        params_json_path = os.path.join(path, 'params_' + str(n) + '.json')
+    with open(params_json_path, 'w') as file:
+        json.dump(params, file)
+    
+    # If restarting, find the last volume folder and delete it
+    if restarting:
+        for j in range(len(volumes)):
+            vol_folder_name = 'vol_' + str(j)
+            vol_folder_path = os.path.join(path, vol_folder_name)
+            if not os.path.exists(vol_folder_path):
+                last_vol_folder_name = 'vol_' + str(j - 1)
+                last_vol_folder_path = os.path.join(path, last_vol_folder_name)
+                break
+        if j == 0:
+            print("No volumes to restart from. You might want to set restarting=False (which is the default) or check if 'vol_0' exists inside the path")
+            return
+        
+        # Delete the last volume folder
+        last_vol_index = j-1
+        shutil.rmtree(last_vol_folder_path)
 
-
-def wavecar_prop_series(path, volumes, vasp_cmd,
-                        handlers):  # Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
     for i, vol in enumerate(volumes):
+        # if restarting, skip volumes that have already been run
+        if restarting and i < last_vol_index:
+            continue
+
         # Create vol folder
         vol_folder_name = 'vol_' + str(i)
         vol_folder_path = os.path.join(path, vol_folder_name)
@@ -192,11 +233,11 @@ def wavecar_prop_series(path, volumes, vasp_cmd,
         else:  # Copy from previous folder and delete WAVECARs, CHGCARs, CHGs, PROCARs from previous volume folder
             previous_vol_folder_path = os.path.join(path, 'vol_' + str(i - 1))
             source_name_dest_name = [('CONTCAR.3static', 'POSCAR'),
-                                     ('INCAR.2relax', 'INCAR'),
-                                     ('KPOINTS.1relax', 'KPOINTS'),
-                                     ('POTCAR', 'POTCAR'),
-                                     ('WAVECAR.3static', 'WAVECAR'),
-                                     ('CHGCAR.3static', 'CHGCAR')]
+                                    ('INCAR.2relax', 'INCAR'),
+                                    ('KPOINTS.1relax', 'KPOINTS'),
+                                    ('POTCAR', 'POTCAR'),
+                                    ('WAVECAR.3static', 'WAVECAR'),
+                                    ('CHGCAR.3static', 'CHGCAR')]
             for file_name in source_name_dest_name:
                 file_source = os.path.join(previous_vol_folder_path, file_name[0])
                 file_dest = os.path.join(vol_folder_path, file_name[1])
@@ -205,9 +246,9 @@ def wavecar_prop_series(path, volumes, vasp_cmd,
             # After copying, it is safe to delete some of the WAVECARS, CHGCARS, CHG and PROCARS from the previous volume folder to save space
             # Keeps WAVECAR.3static and CHGCAR.3static
             files_to_delete = ['WAVECAR.1relax', 'WAVECAR.2relax',
-                               'CHGCAR.1relax', 'CHGCAR.2relax',
-                               'CHG.1relax', 'CHG.2relax', 'CHG.3static',
-                               'PROCAR.1relax', 'PROCAR.2relax', 'PROCAR.3static']
+                            'CHGCAR.1relax', 'CHGCAR.2relax',
+                            'CHG.1relax', 'CHG.2relax', 'CHG.3static',
+                            'PROCAR.1relax', 'PROCAR.2relax', 'PROCAR.3static']
             paths_to_delete = []
             for file_name in files_to_delete:
                 file_path = os.path.join(previous_vol_folder_path, file_name)
@@ -216,6 +257,8 @@ def wavecar_prop_series(path, volumes, vasp_cmd,
             for file_path in paths_to_delete:
                 if os.path.exists(file_path):
                     os.remove(file_path)
+                elif restarting and i == last_vol_index:
+                    pass
                 else:
                     print(f"The file {file_path} does not exist.")
 
@@ -296,18 +339,21 @@ def plot_encut_convergence():
 
 
 if __name__ == "__main__":
-    # Specify custodian handlers
-    subset = list(VaspErrorHandler.error_msgs.keys())
-    subset.remove("algo_tet")
-    handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]
+    print("This is a module for importing. It is not meant to be run directly.")
 
-    # Specify VASP command
-    vasp_cmd = ["srun", "vasp_std"]
+    # # Specify custodian handlers
+    # subset = list(VaspErrorHandler.error_msgs.keys())
+    # subset.remove("algo_tet")
+    # handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]
 
-    #three_step_relaxation('', vasp_cmd, handlers)
-    #volumes = list(np.linspace(340, 270, 11))
+    # # Specify VASP command
+    # vasp_cmd = ["srun", "vasp_std"]
 
-    # wavecar_prop_series(os.getcwd(), volumes, vasp_cmd, handlers)
+    # # three_step_relaxation('', vasp_cmd, handlers)
+    
+    # volumes = list(np.linspace(370, 270, 15))
 
-    # kpoints_list = ['4 4 5', '5 5 6', '6 6 7', '7 7 8', '7 7 9', '8 8 10', '12 12 15']
-    # kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
+    # vol_series(os.getcwd(), volumes, vasp_cmd, handlers, restarting=True)
+
+    # # kpoints_list = ['4 4 5', '5 5 6', '6 6 7', '7 7 8', '7 7 9', '8 8 10', '12 12 15']
+    # # kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
