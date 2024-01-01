@@ -86,7 +86,7 @@ def extract_mag_data(outcar_path='OUTCAR'):
 
 # Returns only the 'tot' magnetization of the last step for each specified ion
 def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
-    all_mag_data = get_mag_data(outcar_path)
+    all_mag_data = extract_mag_data(outcar_path)
     last_step_data = all_mag_data[all_mag_data['step'] == all_mag_data['step'].max()]
     simple_data = last_step_data[last_step_data['# of ion'].isin(ion_list)][['# of ion', 'tot']]
     simple_data.reset_index(drop=True, inplace=True)
@@ -94,7 +94,7 @@ def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
 
 """
 df is a data frame with columns ['config', '# of ion', 'vol', 'tot']
-not sure what happens if you don't include config, might still
+not sure what happens if you don't include config, might still work
 """
 def plot_mv(df, show_fig=True):
     fig = px.line(df,
@@ -121,6 +121,25 @@ def plot_mv(df, show_fig=True):
     if show_fig:
         fig.show()
     return fig
+
+def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR'):
+    for vol_dir in glob.glob(os.path.join(path, 'vol_*')):
+        outcar_path = os.path.join(vol_dir, outcar_name)
+        if not os.path.isfile(outcar_path):
+            print(f"Warning: File {outcar_path} does not exist. Skipping.")
+            continue
+        oszicar_path = os.path.join(vol_dir, oszicar_name)
+        if not os.path.isfile(oszicar_path):
+            print(f"Warning: File {oszicar_path} does not exist. Skipping.")
+            continue
+        vol = extract_volume(outcar_path)
+        mag_data = extract_simple_mag_data(ion_list, outcar_path)
+        mag_data['vol'] = vol
+        mag_data['config'] = vol_dir
+        if 'df' not in locals():
+            df = mag_data
+        else:
+            df = pd.concat([df, mag_data])
 
 def three_step_relaxation(path, vasp_cmd, handlers, backup=True):  # Path should contain necessary VASP config files
     original_dir = os.getcwd()
