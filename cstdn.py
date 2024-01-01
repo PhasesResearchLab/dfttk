@@ -126,8 +126,9 @@ def plot_mv(df, show_fig=True):
         fig.show()
     return fig
 
+
 """
-This function grabs all the necessary data from the OUTCAR
+This function grabs the necessary magnetic and volume data from the OUTCAR
 and OSZICAR files for each volume and returns a data frame.
 
 Within the path, there should be folders named vol_0, vol_1, etc.
@@ -139,9 +140,10 @@ outcar_name and oszicar_name must be the same in each volume folder.
 
 Consider adding config_name column to the data frame
 
-rn doesn't work.
+
 """
-def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR'):
+def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR'):
+    dfs_list = []
     for vol_dir in glob.glob(os.path.join(path, 'vol_*')):
         outcar_path = os.path.join(vol_dir, outcar_name)
         if not os.path.isfile(outcar_path):
@@ -152,12 +154,10 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
             print(f"Warning: File {oszicar_path} does not exist. Skipping.")
             continue
         vol = extract_volume(outcar_path)
-        pressure = extract_pressure(outcar_path)
-        energy = extract_energy(oszicar_path)
-        df = extract_simple_mag_data(ion_list, outcar_path)
-        df['vol'] = vol
-        df['pressure'] = pressure
-        df['energy'] = energy
+        mag_data = extract_simple_mag_data(ion_list, outcar_path)
+        mag_data['vol'] = vol
+        dfs_list.append(mag_data)
+    df = pd.concat(dfs_list, ignore_index=True)
     return df
 
 
