@@ -154,7 +154,7 @@ def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
         mag_data['vol'] = vol
         mag_data['config'] = config
         dfs_list.append(mag_data)
-    df = pd.concat(dfs_list, ignore_index=True)
+    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion'])
     return df
 
 
