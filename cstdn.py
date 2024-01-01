@@ -129,7 +129,7 @@ def plot_mv(df, show_fig=True):
 
 """
 This function grabs the necessary magnetic and volume data from the OUTCAR
-and OSZICAR files for each volume and returns a data frame.
+for each volume and returns a data frame.
 
 Within the path, there should be folders named vol_0, vol_1, etc.
 
@@ -142,16 +142,12 @@ Consider adding config_name column to the data frame
 
 
 """
-def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR'):
+def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
     dfs_list = []
     for vol_dir in glob.glob(os.path.join(path, 'vol_*')):
         outcar_path = os.path.join(vol_dir, outcar_name)
         if not os.path.isfile(outcar_path):
             print(f"Warning: File {outcar_path} does not exist. Skipping.")
-            continue
-        oszicar_path = os.path.join(vol_dir, oszicar_name)
-        if not os.path.isfile(oszicar_path):
-            print(f"Warning: File {oszicar_path} does not exist. Skipping.")
             continue
         vol = extract_volume(outcar_path)
         mag_data = extract_simple_mag_data(ion_list, outcar_path)
