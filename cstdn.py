@@ -84,7 +84,11 @@ def extract_mag_data(outcar_path='OUTCAR'):
         return df
 
 
-# Returns only the 'tot' magnetization of the last step for each specified ion
+"""
+Returns only the 'tot' magnetization of the last step for each specified ion
+
+ion_list should be a list of integers ex: [1, 2, 3, 4]
+"""
 def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
     all_mag_data = extract_mag_data(outcar_path)
     last_step_data = all_mag_data[all_mag_data['step'] == all_mag_data['step'].max()]
@@ -122,6 +126,21 @@ def plot_mv(df, show_fig=True):
         fig.show()
     return fig
 
+"""
+This function grabs all the necessary data from the OUTCAR
+and OSZICAR files for each volume and returns a data frame.
+
+Within the path, there should be folders named vol_0, vol_1, etc.
+
+There should be no other files or directories in the path with 
+names starting with 'vol_'.
+
+outcar_name and oszicar_name must be the same in each volume folder.
+
+Consider adding config_name column to the data frame
+
+rn doesn't work.
+"""
 def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR'):
     for vol_dir in glob.glob(os.path.join(path, 'vol_*')):
         outcar_path = os.path.join(vol_dir, outcar_name)
@@ -133,13 +152,14 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
             print(f"Warning: File {oszicar_path} does not exist. Skipping.")
             continue
         vol = extract_volume(outcar_path)
-        mag_data = extract_simple_mag_data(ion_list, outcar_path)
-        mag_data['vol'] = vol
-        mag_data['config'] = vol_dir
-        if 'df' not in locals():
-            df = mag_data
-        else:
-            df = pd.concat([df, mag_data])
+        pressure = extract_pressure(outcar_path)
+        energy = extract_energy(oszicar_path)
+        df = extract_simple_mag_data(ion_list, outcar_path)
+        df['vol'] = vol
+        df['pressure'] = pressure
+        df['energy'] = energy
+    return df
+
 
 def three_step_relaxation(path, vasp_cmd, handlers, backup=True):  # Path should contain necessary VASP config files
     original_dir = os.getcwd()
