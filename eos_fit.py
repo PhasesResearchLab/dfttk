@@ -1,4 +1,14 @@
 """
+Shun-Li Shang wrote the original MATLAB code for EOS fitting.
+Hui Sun converted the MATLAB code to python code.
+Nigel Hew modified the python code to make it more user-friendly and added more functions.
+"""
+
+"""
+This EOS fitting code is based on the following paper:
+Shun-Li Shang et al., Computational Materials Science, 47, 4, (2010).
+https://doi.org/10.1016/j.commatsci.2009.12.006
+
 Equations of State:
 1:  4-parameter (Teter-Shang) mBM4   1
 2:  5-parameter (Teter-Shang) mBM5   2
@@ -11,17 +21,15 @@ Equations of State:
 9:  4-parameter Morse         Morse  9
 """
 
-import sys, os
+import os
+import math
 import numpy as np
 import matplotlib.pyplot as plt
-import copy
-import math
 from scipy.optimize import fsolve
 from scipy.optimize import leastsq
-import argparse
 
-def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False):
-    # 1. Load the data
+def ev_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False):
+    # 1. Load the energy-volume data
     if num_structures == 'single':
         data = np.loadtxt(input_files[0])
         volume = data[:, 0]
@@ -36,6 +44,7 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
             energy[input_file] = np.loadtxt(input_file, usecols=(1,))
             volume_range_list[input_file] = np.linspace(min(volume[input_file]), max(volume[input_file]), 1000)
 
+        # EOS fitting for multiple structures only supports one EOS at a time
         if len(eos_index) > 1:
             raise ValueError("eos_index for multiple structures should only have one value")
 
@@ -46,27 +55,24 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
     # Conversion factor: 1 eV/Å^3 = 160.2176621 GPa
     conv_factor = 160.2176621
 
-    # 2. Fit to equations of state
-    # Equations of state for E-V fitting
+    # 2. Use the selected EOS to fit the energy-volume data
     def mBM4(volume, energy):
         eos_index = 1
 
         AA = np.vstack((np.ones(np.shape(volume)), volume ** (-1 / 3), volume ** (-2 / 3), volume ** (-1)))  # (nx4)
         AA = AA.T
         xx1 = np.linalg.pinv(AA)
-        xx = xx1.dot(energy)  # (4x1) = (4xn)*(nx1), solve it by pseudo-inversion: Ax=b
+        xx = xx1.dot(energy)  # (4x1) = (4xn)*(nx1), solve by pseudo-inversion: Ax=b
         a = xx[0]
         b = xx[1]
         c = xx[2]
         d = xx[3]
         e = 0.0
-        xx = [a, b, c, d, e]
 
         energy_eos = a + b * (volume_range) ** (-1 / 3) + c * (volume_range) ** (-2 / 3) + d * (volume_range) ** (
             -1) + e * (volume_range) ** (-4 / 3)
         energy_eos_points = a + b * (volume) ** (-1 / 3) + c * (volume) ** (-2 / 3) + d * (volume) ** (-1) + e * (
-            volume) ** (
-                                    -4 / 3)
+            volume) ** (-4 / 3)
         energy_difference = energy_eos_points - energy
 
         V = 4 * c ** 3 - 9 * b * c * d + np.sqrt((c ** 2 - 3 * b * d) * (4 * c ** 2 - 3 * b * d) ** 2)
@@ -105,27 +111,24 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
         AA = np.vstack(
             (np.ones(np.shape(volume)), volume ** (-1 / 3), volume ** (-2 / 3), volume ** (-1), volume ** (-4 / 3)))
         AA = AA.T
-        xx1 = np.linalg.pinv(AA);
-        xx = xx1.dot(energy)  # (4x1)=(4xn)*(nx1), solve it by pseudo-inversion: Ax=b
+        xx1 = np.linalg.pinv(AA)
+        xx = xx1.dot(energy)  # (4x1)=(4xn)*(nx1), solve by pseudo-inversion: Ax=b
         a = xx[0]
         b = xx[1]
         c = xx[2]
         d = xx[3]
         e = xx[4]
-        xx = [a, b, c, d, e]
 
         energy_eos = a + b * (volume_range) ** (-1 / 3) + c * (volume_range) ** (-2 / 3) + d * (volume_range) ** (
             -1) + e * (volume_range) ** (-4 / 3)
         energy_eos_points = a + b * (volume) ** (-1 / 3) + c * (volume) ** (-2 / 3) + d * (volume) ** (-1) + e * (
-            volume) ** (
-                                    -4 / 3)
+            volume) ** (-4 / 3)
         energy_difference = energy_eos_points - energy
 
         func = lambda volume_range: ((4 * e) / (3 * volume_range ** (7 / 3)) + d / volume_range ** 2 + (2 * c) / (
                 3 * volume_range ** (5 / 3)) + b / (
                                              3 * volume_range ** (4 / 3))) * conv_factor
         V = fsolve(func, np.mean(volume))
-
         P = (4 * e) / (3 * V ** (7 / 3)) + d / V ** 2 + (2 * c) / (3 * V ** (5 / 3)) + b / (3 * V ** (4 / 3))
         P = P * conv_factor
         B = ((28 * e) / (9 * V ** (10 / 3)) + (2 * d) / V ** 3 + (10 * c) / (9 * V ** (8 / 3)) + (4 * b) / (
@@ -157,26 +160,21 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
         AA = np.vstack((np.ones(np.shape(volume)), volume ** (-2 / 3), volume ** (-4 / 3), volume ** (-2)))
         AA = AA.T
         xx1 = np.linalg.pinv(AA)
-        xx = xx1.dot(energy)  # (4x1)=(4xn)*(nx1), solve it by pseudo-inversion: Ax=b
+        xx = xx1.dot(energy)  # (4x1)=(4xn)*(nx1), solve by pseudo-inversion: Ax=b
         a = xx[0]
         b = xx[1]
         c = xx[2]
         d = xx[3]
         e = 0.0
-        xx = [a, b, c, d, e]
 
         energy_eos = a + b * (volume_range) ** (-2 / 3) + c * (volume_range) ** (-4 / 3) + d * (volume_range) ** (
-            -2) + e * (
-                         volume_range) ** (-8 / 3)
+            -2) + e * (volume_range) ** (-8 / 3)
         energy_eos_points = a + b * (volume) ** (-2 / 3) + c * (volume) ** (-4 / 3) + d * (volume) ** (-2) + e * (
-            volume) ** (
-                                    -8 / 3)
+            volume) ** (-8 / 3)
         energy_difference = energy_eos_points - energy
 
-        V = math.sqrt(
-            -((4 * c ** 3 - 9 * b * c * d + math.sqrt(
-                (c ** 2 - 3 * b * d) * (4 * c ** 2 - 3 * b * d) ** 2)) / b ** 3))
-
+        V = math.sqrt(-((4 * c ** 3 - 9 * b * c * d + math.sqrt(
+            (c ** 2 - 3 * b * d) * (4 * c ** 2 - 3 * b * d) ** 2)) / b ** 3))
         P = (8 * e) / (3 * V ** (11 / 3)) + (2 * d) / V ** 3 + (4 * c) / (3 * V ** (7 / 3)) + (2 * b) / (
                 3 * V ** (5 / 3))
         P = P * conv_factor
@@ -210,26 +208,22 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
             (np.ones(np.shape(volume)), volume ** (-2 / 3), volume ** (-4 / 3), volume ** (-2), volume ** (-8 / 3)))
         AA = AA.T
         xx1 = np.linalg.pinv(AA)
-        xx = xx1.dot(energy)  # (4x1)=(4xn)*(nx1), solve it by pseudo-inversion: Ax=b
+        xx = xx1.dot(energy)  # (4x1)=(4xn)*(nx1), solve by pseudo-inversion: Ax=b
         a = xx[0]
         b = xx[1]
         c = xx[2]
         d = xx[3]
         e = xx[4]
-        xx = [a, b, c, d, e]
 
         energy_eos = a + b * (volume_range) ** (-2 / 3) + c * (volume_range) ** (-4 / 3) + d * (volume_range) ** (
             -2) + e * (volume_range) ** (-8 / 3)
         energy_eos_points = a + b * (volume) ** (-2 / 3) + c * (volume) ** (-4 / 3) + d * (volume) ** (-2) + e * (
-            volume) ** (
-                                    -8 / 3)
+            volume) ** (-8 / 3)
         energy_difference = energy_eos_points - energy
 
         func = lambda volume_range: ((8 * e) / (3 * volume_range ** (11 / 3)) + (2 * d) / volume_range ** 3 + (
-                4 * c) / (3 * volume_range ** (7 / 3)) + (2 * b) / (
-                                             3 * volume_range ** (5 / 3))) * conv_factor
+                4 * c) / (3 * volume_range ** (7 / 3)) + (2 * b) / (3 * volume_range ** (5 / 3))) * conv_factor
         V = fsolve(func, np.mean(volume))
-
         P = (8 * e) / (3 * V ** (11 / 3)) + (2 * d) / V ** 3 + (4 * c) / (3 * V ** (7 / 3)) + (2 * b) / (
                 3 * V ** (5 / 3))
         P = P * conv_factor
@@ -249,8 +243,7 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
         np.set_printoptions(precision=4, suppress=True)
 
         pressure_eos = ((8 * e) / (3 * volume_range ** (11 / 3)) + (2 * d) / volume_range ** 3 + (4 * c) / (
-                3 * volume_range ** (7 / 3)) + (2 * b) / (
-                                3 * volume_range ** (5 / 3))) * conv_factor
+                3 * volume_range ** (7 / 3)) + (2 * b) / (3 * volume_range ** (5 / 3))) * conv_factor
         energy_eos = np.concatenate(([eos_index], energy_eos))
         pressure_eos = np.concatenate(([eos_index], pressure_eos))
 
@@ -261,13 +254,12 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
         AA = np.vstack((np.ones(np.shape(volume)), np.log(volume), np.log(volume) ** 2, np.log(volume) ** 3))
         AA = AA.T
         xx1 = np.linalg.pinv(AA)
-        xx = xx1.dot(energy)  # (4x1)=(4xn)*(nx1), solve it by pseudo-inversion: Ax=b
+        xx = xx1.dot(energy)  # (4x1)=(4xn)*(nx1), solve by pseudo-inversion: Ax=b
         a = xx[0]
         b = xx[1]
         c = xx[2]
         d = xx[3]
         e = 0.0
-        xx = [a, b, c, d, e, ]
 
         energy_eos = a + b * np.log(volume_range) + c * np.log(volume_range) ** 2 + d * np.log(
             volume_range) ** 3 + e * np.log(volume_range) ** 4
@@ -302,7 +294,6 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
         eos_parameters = [V, E0, P, B, BP, B2P]
 
         fitting_error = np.array([math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))])
-
         results = np.concatenate(([eos_index], eos_parameters, fitting_error * (10 ** 4)))
         np.set_printoptions(precision=4, suppress=True)
 
@@ -319,13 +310,12 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
             (np.ones(np.shape(volume)), np.log(volume), np.log(volume) ** 2, np.log(volume) ** 3, np.log(volume) ** 4))
         AA = AA.T
         xx1 = np.linalg.pinv(AA)
-        xx = xx1.dot(energy)  # (4x1)=(4xn)*(nx1), solve it by pseudo-inversion: Ax=b
+        xx = xx1.dot(energy)  # (4x1)=(4xn)*(nx1), solve by pseudo-inversion: Ax=b
         a = xx[0]
         b = xx[1]
         c = xx[2]
         d = xx[3]
         e = xx[4]
-        xx = [a, b, c, d, e]
 
         energy_eos = a + b * np.log(volume_range) + c * np.log(volume_range) ** 2 + d * np.log(
             volume_range) ** 3 + e * np.log(volume_range) ** 4
@@ -371,7 +361,6 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
         return results, energy_eos, pressure_eos
 
     def murnaghan_eq(xini, Data):
-        # V-1      E0-2       B-3        bp-4
         V = xini[0]
         E0 = xini[1]
         B = xini[2]
@@ -379,7 +368,7 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
         volume_range = Data[:, 0]
         y = Data[:, 1]
         eng = E0 - (B * V) / (-1 + bp) + (B * (1 + (V / volume_range) ** bp / (-1 + bp)) * volume_range) / bp
-        return (eng - y)
+        return eng - y
 
     def murnaghan(volume, energy):
         eos_index = 7
@@ -388,11 +377,7 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
         Data = Data.T
 
         [results, energy_eos, pressure_eos] = mBM4(volume, energy)
-        xini = [results[1], results[2], results[4] / conv_factor,
-                results[5]]
-
-        # % V-1      E-2       B-3           bp-4
-        # %xini = [eos_parameters(1), eos_parameters(2), eos_parameters(3)/conv_factor, eos_parameters(4)]; % FEG_vdos_original as ieos==0
+        xini = [results[1], results[2], results[4] / conv_factor, results[5]]
         [xout, resnorm] = leastsq(murnaghan_eq, xini, Data)
 
         V = xout[0]
@@ -406,7 +391,6 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
         eos_parameters = [V, E0, 0, B * conv_factor, bp, 0]
 
         fitting_error = np.array([math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))])
-
         results = np.concatenate(([eos_index], eos_parameters, fitting_error * (10 ** 4)))
         np.set_printoptions(precision=4, suppress=True)
 
@@ -417,7 +401,6 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
         return results, energy_eos, pressure_eos
 
     def vinet_eq(xini, Data):
-        # V-1      E0-2       B-3        bp-4
         V = xini[0]
         E0 = xini[1]
         B = xini[2]
@@ -435,8 +418,7 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
         Data = Data.T
 
         [results, energy_eos, pressure_eos] = mBM4(volume, energy)
-        xini = [results[1], results[2], results[4] / conv_factor,
-                results[5]]
+        xini = [results[1], results[2], results[4] / conv_factor, results[5]]
         [xout, resnorm] = leastsq(vinet_eq, xini, Data)
         V = xout[0]
         E0 = xout[1]
@@ -446,17 +428,18 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
         energy_eos = E0 + (4 * B * V) / (-1 + bp) ** 2 - (
                 4 * B * V * (1 + (3 * (-1 + bp) * (-1 + (volume_range / V) ** (1 / 3))) / 2)) / (
                              (-1 + bp) ** 2 * np.exp((3 * (-1 + bp) * (-1 + (volume_range / V) ** (1 / 3))) / 2))
-
         energy_eos_points = E0 + (4 * B * V) / (-1 + bp) ** 2 - (
                 4 * B * V * (1 + (3 * (-1 + bp) * (-1 + (volume / V) ** (1 / 3))) / 2)) / (
                                     (-1 + bp) ** 2 * np.exp((3 * (-1 + bp) * (-1 + (volume / V) ** (1 / 3))) / 2))
         energy_difference = energy_eos_points - energy
+
         b2p = (19 - 18 * bp - 9 * bp ** 2) / (36 * B)
         eos_parameters = [V, E0, 0, B * conv_factor, bp, b2p / conv_factor]
-        fitting_error = np.array([math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))])
 
+        fitting_error = np.array([math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))])
         results = np.concatenate(([eos_index], eos_parameters, fitting_error * (10 ** 4)))
         np.set_printoptions(precision=4, suppress=True)
+
         pressure_eos = conv_factor * (-3 * B * (-1 + (volume_range / V) ** (1 / 3))) / (
                 np.exp((3 * (-1 + bp) * (-1 + (volume_range / V) ** (1 / 3))) / 2) * (volume_range / V) ** (2 / 3))
         energy_eos = np.concatenate(([eos_index], energy_eos))
@@ -501,10 +484,11 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
         energy_eos = a + b * np.exp(d * volume_range ** (1 / 3)) + c * np.exp(2 * d * volume_range ** (1 / 3))
         energy_eos_points = a + b * np.exp(d * volume ** (1 / 3)) + c * np.exp(2 * d * volume ** (1 / 3))
         energy_difference = energy_eos_points - energy
+
         b2p = (5 - 5 * bp - 2 * bp ** 2) / (9 * B)
         eos_parameters = [V, E0, 0, B * conv_factor, bp, b2p / conv_factor]
-        fitting_error = np.array([math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))])
 
+        fitting_error = np.array([math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))])
         results = np.concatenate(([eos_index], eos_parameters, fitting_error * (10 ** 4)))
         np.set_printoptions(precision=4, suppress=True)
 
@@ -516,7 +500,7 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
 
         return results, energy_eos, pressure_eos
 
-    # 3. Plot and output the results
+    # 3. Plot the results
     results = []
     energy_eos = []
     pressure_eos = []
@@ -567,6 +551,7 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
                 results.append(results9)
                 energy_eos.append(energy_eos9)
                 pressure_eos.append(pressure_eos9)
+
         if plot_ev and not plot_pv:
             plt.figure(figsize=(10, 5))
             plt.scatter(volume, energy, label='DFT')
@@ -622,7 +607,6 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
 
         if plot_ev and plot_pv:
             fig, axes = plt.subplots(1, 2, figsize=(12, 5))  # 1 row, 2 columns
-
             axes[0].scatter(volume, energy, label='DFT')
             for i in eos_index:
                 if i == 1:
@@ -740,13 +724,28 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
                     results.append(results9)
                     energy_eos.append(energy_eos9)
                     pressure_eos.append(pressure_eos9)
+
+        results = np.vstack(results)
+        results = np.delete(results, 3, axis=1)
+
+        energy_eos = np.vstack(energy_eos)
+        pressure_eos = np.vstack(pressure_eos)
+
+        structure_names = []
+        for input_file in input_files:
+            structure_names.append(input_file)
+        sorted_indices = np.argsort(results[:, 2])[::-1]  # Sort the results by minimum energy in descending order
+        results = results[sorted_indices]
+        structure_names = [structure_names[i] for i in sorted_indices]
+
         if plot_ev and not plot_pv:
             j = 0
-            plt.figure(figsize=(8, 5))
+            plt.figure(figsize=(10, 8))
             for key in volume:
                 volume_range = volume_range_list[key]
                 plt.scatter(volume[key], energy[key])
-                plt.scatter(results[j][1], results[j][2], facecolors='none', edgecolors='k')
+                plt.scatter(results[j][1], results[j][2], facecolors='none',
+                            edgecolors='k')  # Plot the minimum energy point
                 for i in eos_index:
                     if i == 1:
                         plt.plot(volume_range, energy_eos[j][1:], label=key)
@@ -779,11 +778,14 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
 
             plt.xlabel(r'Volume ($\mathrm{\AA}^3$)')
             plt.ylabel('Energy (eV)')
-            plt.legend()
+            handles, labels = plt.gca().get_legend_handles_labels()
+            plt.legend([handles[idx] for idx in sorted_indices], [labels[idx] for idx in sorted_indices],
+                       loc='center left', bbox_to_anchor=(1, 0.5), ncol=2)
             plt.show()
+
         if plot_pv and not plot_ev:
             j = 0
-            plt.figure(figsize=(8, 5))
+            plt.figure(figsize=(10, 8))
             for key in volume:
                 volume_range = volume_range_list[key]
                 for i in eos_index:
@@ -817,8 +819,11 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
                 j += 1
             plt.xlabel(r'Volume ($\mathrm{\AA}^3$)')
             plt.ylabel('Pressure (GPa)')
-            plt.legend()
+            handles, labels = plt.gca().get_legend_handles_labels()
+            plt.legend([handles[idx] for idx in sorted_indices], [labels[idx] for idx in sorted_indices],
+                       loc='center left', bbox_to_anchor=(1, 0.5), ncol=2)
             plt.show()
+
         if plot_ev and plot_pv:
             fig, axes = plt.subplots(1, 2, figsize=(12, 5))  # 1 row, 2 columns
             j = 0
@@ -896,13 +901,304 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
             plt.tight_layout()  # Automatically adjust subplots to fit in the figure
             plt.show()
 
-        results = np.vstack(results)
-        results = np.delete(results, 3, axis=1)
+        headers = ["Structure", "EOS", 'Volume (Å³)', "Energy (eV)", "B (GPa)", "B'", "B'' (1/GPa)",
+                   "Fitting error x 10⁻⁴"]
+        format_string = "{:^15}" * len(headers)
+        print(format_string.format(*headers))
 
-        energy_eos = np.vstack(energy_eos)
+        for i in range(len(results)):
+            formatted_results = ["{:.4f}".format(result) if isinstance(result, np.float64) else result for result in
+                                 results[i]]
+            formatted_results[0] = str(int(float(formatted_results[0])))
+            formatted_results.insert(0, structure_names[i])
+            print(format_string.format(*formatted_results))
+        return results, energy_eos, pressure_eos
+
+
+def pv_fit(num_structures, *input_files, eos_index, plot_pv=True):
+    # 1. Load the pressure-volume data
+    if num_structures == 'single':
+        data = np.loadtxt(input_files[0])
+        volume = data[:, 0]
+        pressure = data[:, 1] / 10  # Convert kB to GPa
+        volume_range = np.linspace(min(volume), max(volume), 1000)
+    if num_structures == 'multiple':
+        volume = {}
+        pressure = {}
+        volume_range_list = {}
+        for input_file in input_files:
+            volume[input_file] = np.loadtxt(input_file, usecols=(0,))
+            pressure[input_file] = np.loadtxt(input_file, usecols=(1,)) / 10  # GPa
+            volume_range_list[input_file] = np.linspace(min(volume[input_file]), max(volume[input_file]), 1000)
+
+        # EOS fitting for multiple structures only supports 1 EOS at a time
+        if len(eos_index) > 1:
+            raise ValueError("eos_index for multiple structures should only have one value")
+
+    # Remove any duplicates
+    eos_index = list(set(eos_index))
+    eos_index.sort()
+
+    # Conversion factor: 1 eV/Å^3 = 160.2176621 GPa
+    conv_factor = 160.2176621
+
+    # 2. Fit the pressure-volume data to the selected EOS
+    def mBM4_pv(volume, pressure):
+        eos_index = 1
+        AA = [volume ** (-4 / 3) * (1 / 3), volume ** (-5 / 3) * (2 / 3), volume ** (-2)]
+        AA = np.array(AA)
+        AA = AA.T
+        xx1 = np.linalg.pinv(AA)
+        xx = xx1.dot(pressure)  # (4x1)=(4xn)*(nx1), solve by pseudo-inversion: Ax=b
+        b = xx[0]
+        c = xx[1]
+        d = xx[2]
+        e = 0.0
+
+        pressure_eos = (4 * e) / (3 * volume_range ** (7 / 3)) + d / volume_range ** 2 + (2 * c) / (
+                3 * volume_range ** (5 / 3)) + b / (3 * volume_range ** (4 / 3))
+        pressure_eos_points = (4 * e) / (3 * volume ** (7 / 3)) + d / volume ** 2 + (2 * c) / (
+                3 * volume ** (5 / 3)) + b / (
+                                      3 * volume ** (4 / 3))
+
+        V = 4 * c ** 3 - 9 * b * c * d + np.sqrt((c ** 2 - 3 * b * d) * (4 * c ** 2 - 3 * b * d) ** 2)
+        V = -V / b ** 3
+        P = (4 * e) / (3 * V ** (7 / 3)) + d / V ** 2 + (2 * c) / (3 * V ** (5 / 3)) + b / (3 * V ** (4 / 3))
+        B = ((28 * e) / (9 * V ** (10 / 3)) + (2 * d) / V ** 3 + (10 * c) / (9 * V ** (8 / 3)) + (4 * b) / (
+                9 * V ** (7 / 3))) * V
+        BP = (98 * e + 54 * d * V ** (1 / 3) + 25 * c * V ** (2 / 3) + 8 * b * V) / (
+                42 * e + 27 * d * V ** (1 / 3) + 15 * c * V ** (2 / 3) + 6 * b * V)
+        B2P = (V ** (8 / 3) * (9 * d * (14 * e + 5 * c * V ** (2 / 3) + 8 * b * V) + 2 * V ** (1 / 3) * (
+                126 * b * e * V ** (1 / 3) + 5 * c * (28 * e + b * V)))) / (
+                      2 * (14 * e + 9 * d * V ** (1 / 3) + 5 * c * V ** (2 / 3) + 2 * b * V) ** 3)
+
+        eos_parameters = [V, P, B, BP, B2P]
+        pressure_difference = pressure_eos_points - pressure
+
+        fitting_error = math.sqrt(sum((pressure_difference ** 2) / len(pressure)))
+        results = np.hstack((np.insert(eos_parameters, 0, eos_index), fitting_error))
+
+        return results, pressure_eos
+
+    def mBM5_pv(volume, pressure):
+        eos_index = 2
+        AA = [volume ** (-4 / 3) * (1 / 3), volume ** (-5 / 3) * (2 / 3), volume ** (-2), volume ** (-7 / 3) * (4 / 3)]
+        AA = np.array(AA)
+        AA = AA.T
+        xx1 = np.linalg.pinv(AA)
+        xx = xx1.dot(pressure)  # (4x1)=(4xn)*(nx1), solve by pseudo-inversion: Ax=b
+        b = xx[0]
+        c = xx[1]
+        d = xx[2]
+        e = xx[3]
+
+        pressure_eos = (4 * e) / (3 * volume_range ** (7 / 3)) + d / volume_range ** 2 + (2 * c) / (
+                3 * volume_range ** (5 / 3)) + b / (3 * volume_range ** (4 / 3))
+        pressure_eos_points = (4 * e) / (3 * volume ** (7 / 3)) + d / volume ** 2 + (2 * c) / (
+                3 * volume ** (5 / 3)) + b / (
+                                      3 * volume ** (4 / 3))
+        pressure_difference = pressure_eos_points - pressure
+
+        fun = lambda x: (
+                (4 * e) / (3 * x ** (7 / 3)) + d / x ** 2 + (2 * c) / (3 * x ** (5 / 3)) + b / (3 * x ** (4 / 3)))
+        V = fsolve(fun, np.mean(volume))
+        P = (4 * e) / (3 * V ** (7 / 3)) + d / V ** 2 + (2 * c) / (3 * V ** (5 / 3)) + b / (3 * V ** (4 / 3))
+        B = ((28 * e) / (9 * V ** (10 / 3)) + (2 * d) / V ** 3 + (10 * c) / (9 * V ** (8 / 3)) + (4 * b) / (
+                9 * V ** (7 / 3))) * V
+        BP = (98 * e + 54 * d * V ** (1 / 3) + 25 * c * V ** (2 / 3) + 8 * b * V) / (
+                42 * e + 27 * d * V ** (1 / 3) + 15 * c * V ** (2 / 3) + 6 * b * V)
+        B2P = (V ** (8 / 3) * (9 * d * (14 * e + 5 * c * V ** (2 / 3) + 8 * b * V) + 2 * V ** (1 / 3) * (
+                126 * b * e * V ** (1 / 3) + 5 * c * (28 * e + b * V)))) / (
+                      2 * (14 * e + 9 * d * V ** (1 / 3) + 5 * c * V ** (2 / 3) + 2 * b * V) ** 3)
+        eos_parameters = [V, P, B, BP, B2P]
+
+        fitting_error = math.sqrt(sum((pressure_difference ** 2) / len(pressure)))
+        results = np.hstack((np.insert(eos_parameters, 0, eos_index), fitting_error))
+
+        return results, pressure_eos
+
+    def BM4_pv(volume, pressure):
+        eos_index = 3
+        AA = [volume ** (-5 / 3) * (2 / 3), volume ** (-7 / 3) * (4 / 3), volume ** (-3) * 2]
+        AA = np.array(AA)
+        AA = AA.T
+        xx1 = np.linalg.pinv(AA)
+        xx = xx1.dot(pressure)  # (4x1)=(4xn)*(nx1), solve by pseudo-inversion: Ax=b
+        b = xx[0]
+        c = xx[1]
+        d = xx[2]
+        e = 0.0
+
+        pressure_eos = (8 * e) / (3 * volume_range ** (11 / 3)) + (2 * d) / volume_range ** 3 + (4 * c) / (
+                3 * volume_range ** (7 / 3)) + (2 * b) / (
+                               3 * volume_range ** (5 / 3))
+        pressure_eos_points = (8 * e) / (3 * volume ** (11 / 3)) + (2 * d) / volume ** 3 + (4 * c) / (
+                3 * volume ** (7 / 3)) + (2 * b) / (
+                                      3 * volume ** (5 / 3))
+        pressure_difference = pressure_eos_points - pressure
+
+        V = np.sqrt(
+            -((4 * c ** 3 - 9 * b * c * d + np.sqrt((c ** 2 - 3 * b * d) * (4 * c ** 2 - 3 * b * d) ** 2)) / b ** 3))
+        P = (8 * e) / (3 * V ** (11 / 3)) + (2 * d) / V ** 3 + (4 * c) / (3 * V ** (7 / 3)) + (2 * b) / (
+                3 * V ** (5 / 3))
+        B = (2 * (44 * e + 27 * d * V ** (2 / 3) + 14 * c * V ** (4 / 3) + 5 * b * V ** 2)) / (9 * V ** (11 / 3))
+        BP = (484 * e + 243 * d * V ** (2 / 3) + 98 * c * V ** (4 / 3) + 25 * b * V ** 2) / (
+                132 * e + 81 * d * V ** (2 / 3) + 42 * c * V ** (4 / 3) + 15 * b * V ** 2)
+        B2P = (4 * V ** (13 / 3) * (27 * d * (22 * e + 7 * c * V ** (4 / 3) + 10 * b * V ** 2) + V ** (2 / 3) * (
+                990 * b * e * V ** (2 / 3) + 7 * c * (176 * e + 5 * b * V ** 2)))) / (
+                      44 * e + 27 * d * V ** (2 / 3) + 14 * c * V ** (4 / 3) + 5 * b * V ** 2) ** 3
+        eos_parameters = [V, P, B, BP, B2P]
+
+        fitting_error = math.sqrt(sum((pressure_difference ** 2) / len(pressure)))
+        results = np.hstack((np.insert(eos_parameters, 0, eos_index), fitting_error))
+
+        return results, pressure_eos
+
+    def BM5_pv(volume, pressure):
+        eos_index = 4
+        AA = [volume ** (-5 / 3) * (2 / 3), volume ** (-7 / 3) * (4 / 3), volume ** (-3) * 2,
+              volume ** (-11 / 3) * (8 / 3)]
+        AA = np.array(AA)
+        AA = AA.T
+        xx1 = np.linalg.pinv(AA)
+        xx = xx1.dot(pressure)  # (4x1)=(4xn)*(nx1), solve it by pseudo-inversion: Ax=b
+        b = xx[0]
+        c = xx[1]
+        d = xx[2]
+        e = xx[3]
+
+        pressure_eos = (8 * e) / (3 * volume_range ** (11 / 3)) + (2 * d) / volume_range ** 3 + (4 * c) / (
+                3 * volume_range ** (7 / 3)) + (2 * b) / (
+                               3 * volume_range ** (5 / 3))
+        pressure_eos_points = (8 * e) / (3 * volume ** (11 / 3)) + (2 * d) / volume ** 3 + (4 * c) / (
+                3 * volume ** (7 / 3)) + (2 * b) / (
+                                      3 * volume ** (5 / 3))
+        pressure_difference = pressure_eos_points - pressure
+
+        fun = lambda x: ((8 * e) / (3 * x ** (11 / 3)) + (2 * d) / x ** 3 + (4 * c) / (3 * x ** (7 / 3)) + (2 * b) / (
+                3 * x ** (5 / 3))) * conv_factor
+        V = fsolve(fun, np.mean(volume))
+
+        P = (8 * e) / (3 * V ** (11 / 3)) + (2 * d) / V ** 3 + (4 * c) / (3 * V ** (7 / 3)) + (2 * b) / (
+                3 * V ** (5 / 3))
+        B = (2 * (44 * e + 27 * d * V ** (2 / 3) + 14 * c * V ** (4 / 3) + 5 * b * V ** 2)) / (9 * V ** (11 / 3))
+        BP = (484 * e + 243 * d * V ** (2 / 3) + 98 * c * V ** (4 / 3) + 25 * b * V ** 2) / (
+                132 * e + 81 * d * V ** (2 / 3) + 42 * c * V ** (4 / 3) + 15 * b * V ** 2)
+        B2P = (4 * V ** (13 / 3) * (27 * d * (22 * e + 7 * c * V ** (4 / 3) + 10 * b * V ** 2) + V ** (2 / 3) * (
+                990 * b * e * V ** (2 / 3) + 7 * c * (176 * e + 5 * b * V ** 2)))) / (
+                      44 * e + 27 * d * V ** (2 / 3) + 14 * c * V ** (4 / 3) + 5 * b * V ** 2) ** 3
+        eos_parameters = [V, P, B, BP, B2P]
+
+        fitting_error = math.sqrt(sum((pressure_difference ** 2) / len(pressure)))
+        results = np.hstack((np.insert(eos_parameters, 0, eos_index), fitting_error))
+
+        return results, pressure_eos
+
+    # 3. Plot the EOS fitting results
+    results = []
+    pressure_eos = []
+    if num_structures == 'single':
+        for i in eos_index:
+            if i == 1:
+                [results1, pressure_eos1] = mBM4_pv(volume, pressure)
+                results.append(results1)
+                pressure_eos.append(pressure_eos1)
+            if i == 2:
+                [results2, pressure_eos2] = mBM5_pv(volume, pressure)
+                results.append(results2)
+                pressure_eos.append(pressure_eos2)
+            if i == 3:
+                [results3, pressure_eos3] = BM4_pv(volume, pressure)
+                results.append(results3)
+                pressure_eos.append(pressure_eos3)
+            if i == 4:
+                [results4, pressure_eos4] = BM5_pv(volume, pressure)
+                results.append(results4)
+                pressure_eos.append(pressure_eos4)
+
+        if plot_pv:
+            plt.figure(figsize=(10, 5))
+            plt.scatter(volume, pressure, label='DFT')
+            for i in eos_index:
+                if i == 1:
+                    plt.plot(volume_range, pressure_eos1, label='mBM4')
+                if i == 2:
+                    plt.plot(volume_range, pressure_eos2, label='mBM5')
+                if i == 3:
+                    plt.plot(volume_range, pressure_eos3, label='BM4')
+                if i == 4:
+                    plt.plot(volume_range, pressure_eos4, label='BM5')
+
+            plt.xlabel(r'Volume ($\mathrm{\AA}^3$)')
+            plt.ylabel('Pressure (GPa)')
+            plt.legend()
+            plt.show()
+
+        results = np.vstack(results)
+        sorted_indices = np.argsort(results[:, -1])
+        results = results[sorted_indices]
         pressure_eos = np.vstack(pressure_eos)
 
+        headers = ["EOS", 'Volume (Å³)', "Energy (eV)", "B (GPa)", "B'", "B'' (1/GPa)", "Fitting error x 10⁻⁴"]
+        format_string = "{:^15}" * len(headers)
+        print(format_string.format(*headers))
+        for i in range(len(results)):
+            formatted_results = ["{:.4f}".format(result) if isinstance(result, np.float64) else result for result in
+                                 results[i]]
+            formatted_results[0] = str(int(float(formatted_results[0])))
+            print(format_string.format(*formatted_results))
+        return results, pressure_eos
+
+    if num_structures == 'multiple':
+        for key in volume:
+            volume_range = volume_range_list[key]
+            for i in eos_index:
+                if i == 1:
+                    [results1, pressure_eos1] = mBM4_pv(volume[key], pressure[key])
+                    results.append(results1)
+                    pressure_eos.append(pressure_eos1)
+                if i == 2:
+                    [results2, pressure_eos2] = mBM5_pv(volume[key], pressure[key])
+                    results.append(results2)
+                    pressure_eos.append(pressure_eos2)
+                if i == 3:
+                    [results3, pressure_eos3] = BM4_pv(volume[key], pressure[key])
+                    results.append(results3)
+                    pressure_eos.append(pressure_eos3)
+                if i == 4:
+                    [results4, pressure_eos4] = BM5_pv(volume[key], pressure[key])
+                    results.append(results4)
+                    pressure_eos.append(pressure_eos4)
+
+        if plot_pv:
+            j = 0
+            plt.figure(figsize=(10, 5))
+            for key in volume:
+                volume_range = volume_range_list[key]
+                plt.scatter(volume[key], pressure[key])
+                for i in eos_index:
+                    if i == 1:
+                        plt.plot(volume_range, pressure_eos[j][:], label=key)
+                        plt.title('mBM4')
+                    if i == 2:
+                        plt.plot(volume_range, pressure_eos[j][:], label=key)
+                        plt.title('mBM5')
+                    if i == 3:
+                        plt.plot(volume_range, pressure_eos[j][:], label=key)
+                        plt.title('BM4')
+                    if i == 4:
+                        plt.plot(volume_range, pressure_eos[j][:], label=key)
+                        plt.title('BM5')
+                j += 1
+            plt.xlabel(r'Volume ($\mathrm{\AA}^3$)')
+            plt.ylabel('Pressure (GPa)')
+            plt.legend()
+            plt.show()
+
+        results = np.vstack(results)
+        pressure_eos = np.vstack(pressure_eos)
         structure_names = []
+
         for input_file in input_files:
             structure_names.append(input_file)
         headers = ["Structure", "EOS", 'Volume (Å³)', "Energy (eV)", "B (GPa)", "B'", "B'' (1/GPa)",
@@ -915,319 +1211,7 @@ def eos_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False
             formatted_results[0] = str(int(float(formatted_results[0])))
             formatted_results.insert(0, structure_names[i])
             print(format_string.format(*formatted_results))
-        return results, energy_eos, pressure_eos
-
-os.chdir('PbTiO3/EV_curves/r2SCAN')
-#[results, energy_eos, pressure_eos, volume_range] = eos_fit('single', '90DW', eos_index=[1,2], plot_ev=True, plot_pv=False)
-
-
-input_files = ['FEG', '90DW', '180DW']
-[results, energy_eos, pressure_eos] = eos_fit('multiple', *input_files, eos_index=[4], plot_ev=True, plot_pv=False)
-
-ipress = -1
-if ipress > 0:
-    press0 = np.loadtxt('pressure_FEG') # kBar
-    pressure = press0 / 10 # GPa
-
-
-def pvbuildeos(prop, L):
-    # %  V0  P0  B  BP  B2P  av_diff   max_diff
-    # %  1   2   3   4  5     6           7
-    V = prop[0];  # %  V0[A]3/atom)
-    P0 = prop[1];  # %  P0[G]a)
-    B = prop[2];  # %  B  GPa
-    bp = prop[3];  # %  BP
-    b2p = prop[4];  # %  b2p  (1/GPa)
-
-    if L == 1 or L == 2:
-        e = (3 * B * (74 + 9 * B * b2p - 45 * bp + 9 * bp ** 2) * V ** (7 / 3)) / 8;
-        d = (-3 * B * (83 + 9 * B * b2p - 48 * bp + 9 * bp ** 2) * V ** 2) / 2;
-        c = (9 * B * (94 + 9 * B * b2p - 51 * bp + 9 * bp ** 2) * V ** (5 / 3)) / 4;
-        b = (-3 * B * (107 + 9 * B * b2p - 54 * bp + 9 * bp ** 2) * V ** (4 / 3)) / 2;
-        if abs(e) < 1e-8:
-            e = 0;
-        res1 = [b, c, d, e];
-
-    if L == 3 or L == 4:
-        e = (3 * B * (143 + 9 * B * b2p - 63 * bp + 9 * bp ** 2) * V ** (11 / 3)) / 128;
-        d = (-3 * B * (167 + 9 * B * b2p - 69 * bp + 9 * bp ** 2) * V ** 3) / 32;
-        c = (9 * B * (199 + 9 * B * b2p - 75 * bp + 9 * bp ** 2) * V ** (7 / 3)) / 64;
-        b = (-3 * B * (239 + 9 * B * b2p - 81 * bp + 9 * bp ** 2) * V ** (5 / 3)) / 32;
-        if abs(e) < 1e-8:
-            e = 0;
-        res1 = [b, c, d, e];
-    return res1
-
-
-def pv2prop(xx, vzero, icase):
-    chunit = 160.2189
-    b = xx[0]
-    c = xx[1]
-    d = xx[2]
-    e = xx[3]
-
-    if icase == 1:
-        V = 4 * c ** 3 - 9 * b * c * d + np.sqrt((c ** 2 - 3 * b * d) * (4 * c ** 2 - 3 * b * d) ** 2)
-        V = -V / b ** 3
-
-    if icase == 2:
-        fun = lambda x: (
-                (4 * e) / (3 * x ** (7 / 3)) + d / x ** 2 + (2 * c) / (3 * x ** (5 / 3)) + b / (3 * x ** (4 / 3)))
-        V = fsolve(fun, vzero)
-
-    if icase == 1 or icase == 2:
-        P = (4 * e) / (3 * V ** (7 / 3)) + d / V ** 2 + (2 * c) / (3 * V ** (5 / 3)) + b / (3 * V ** (4 / 3))
-        B = ((28 * e) / (9 * V ** (10 / 3)) + (2 * d) / V ** 3 + (10 * c) / (9 * V ** (8 / 3)) + (4 * b) / (
-                9 * V ** (7 / 3))) * V
-        BP = (98 * e + 54 * d * V ** (1 / 3) + 25 * c * V ** (2 / 3) + 8 * b * V) / (
-                42 * e + 27 * d * V ** (1 / 3) + 15 * c * V ** (2 / 3) + 6 * b * V)
-        B2P = (V ** (8 / 3) * (9 * d * (14 * e + 5 * c * V ** (2 / 3) + 8 * b * V) + 2 * V ** (1 / 3) * (
-                126 * b * e * V ** (1 / 3) + 5 * c * (28 * e + b * V)))) / (
-                      2 * (14 * e + 9 * d * V ** (1 / 3) + 5 * c * V ** (2 / 3) + 2 * b * V) ** 3)
-        res1 = [V, P, B, BP, B2P]
-
-    if icase == 3:
-        V = np.sqrt(
-            -((4 * c ** 3 - 9 * b * c * d + np.sqrt((c ** 2 - 3 * b * d) * (4 * c ** 2 - 3 * b * d) ** 2)) / b ** 3))
-
-    if icase == 4:
-        fun = lambda x: ((8 * e) / (3 * x ** (11 / 3)) + (2 * d) / x ** 3 + (4 * c) / (3 * x ** (7 / 3)) + (2 * b) / (
-                3 * x ** (5 / 3))) * chunit
-        V = fsolve(fun, vzero)
-
-    if icase == 3 or icase == 4:
-        P = (8 * e) / (3 * V ** (11 / 3)) + (2 * d) / V ** 3 + (4 * c) / (3 * V ** (7 / 3)) + (2 * b) / (
-                3 * V ** (5 / 3))
-        B = (2 * (44 * e + 27 * d * V ** (2 / 3) + 14 * c * V ** (4 / 3) + 5 * b * V ** 2)) / (9 * V ** (11 / 3));
-        BP = (484 * e + 243 * d * V ** (2 / 3) + 98 * c * V ** (4 / 3) + 25 * b * V ** 2) / (
-                132 * e + 81 * d * V ** (2 / 3) + 42 * c * V ** (4 / 3) + 15 * b * V ** 2)
-        B2P = (4 * V ** (13 / 3) * (27 * d * (22 * e + 7 * c * V ** (4 / 3) + 10 * b * V ** 2) + V ** (2 / 3) * (
-                990 * b * e * V ** (2 / 3) + 7 * c * (176 * e + 5 * b * V ** 2)))) / (
-                      44 * e + 27 * d * V ** (2 / 3) + 14 * c * V ** (4 / 3) + 5 * b * V ** 2) ** 3
-        res1 = [V, P, B, BP, B2P]
-
-    return res1
-
-
-def pveosfit(volume, pressure, volume_range, isave, ifigure, kkfig):
-    numbereos = 4
-    ieos = [1, 2, 3, 4]
-    chunit = 160.2189
-    res = []
-    resdiff = []
-    resxx = []
-    respp = []
-
-    for L in ieos:
-
-        if L == 1:  # mBM4
-            AA = [volume ** (-4 / 3) * (1 / 3), volume ** (-5 / 3) * (2 / 3), volume ** (-2)]
-            AA = np.array(AA)
-            AA = AA.T
-            xx1 = np.linalg.pinv(AA)
-            xx = xx1.dot(pressure)  # (4x1)=(4xn)*(nx1), solve it by pseudo-inversion: Ax=b
-            b = xx[0]
-            c = xx[1]
-            d = xx[2]
-            e = 0.0
-            xx = [b, c, d, e]
-
-            pressure_eos = (4 * e) / (3 * volume_range ** (7 / 3)) + d / volume_range ** 2 + (2 * c) / (3 * volume_range ** (5 / 3)) + b / (3 * volume_range ** (4 / 3))
-            pressure_eos_points = (4 * e) / (3 * volume ** (7 / 3)) + d / volume ** 2 + (2 * c) / (3 * volume ** (5 / 3)) + b / (
-                    3 * volume ** (4 / 3))
-            plt.plot(volume_range, pressure_eos)
-            plt.scatter(volume, pressure)
-            plt.title('mBM4')
-            plt.xlabel(r'Volume ($\mathrm{\AA}^3$)')
-            plt.ylabel('Pressure (GPa)')
-            plt.show()
-            # Continue here!
-            prop = pv2prop(xx, np.mean(volume), L)  # [V0, P, B, BP, B2P]
-            newxx = pvbuildeos(prop, L)
-            xxnp = np.array(xx)
-            resxx1 = np.insert(xxnp, 0, L)
-            resxx2 = np.insert(newxx, 0, L)
-            resxx_2 = np.vstack((resxx1, resxx2))
-            diffp = pressure_eos_points - pressure
-
-            resxx = resxx_2
-            nnn = len(pressure)
-            qwe = diffp ** 2
-            asd = math.sqrt(sum(qwe / nnn))
-            respre = np.insert(prop, 0, L)
-            res_2 = np.hstack((respre, asd))
-            res = res_2
-            resee = res
-            respp = pressure_eos
-            resdiff = diffp
-
-        if L == 2:  # mBM5
-            AA = [volume ** (-4 / 3) * (1 / 3), volume ** (-5 / 3) * (2 / 3), volume ** (-2), volume ** (-7 / 3) * (4 / 3)]
-            AA = np.array(AA)
-            AA = AA.T
-            xx1 = np.linalg.pinv(AA)
-            xx = xx1.dot(pressure)  # (4x1)=(4xn)*(nx1), solve it by pseudo-inversion: Ax=b
-            b = xx[0]
-            c = xx[1]
-            d = xx[2]
-            e = xx[3]
-            xx = [b, c, d, e]
-
-            pressure_eos = (4 * e) / (3 * volume_range ** (7 / 3)) + d / volume_range ** 2 + (2 * c) / (3 * volume_range ** (5 / 3)) + b / (3 * volume_range ** (4 / 3))
-            pressure_eos_points = (4 * e) / (3 * volume ** (7 / 3)) + d / volume ** 2 + (2 * c) / (3 * volume ** (5 / 3)) + b / (
-                    3 * volume ** (4 / 3))
-
-            plt.plot(volume_range, pressure_eos, volume, pressure, 'o')
-            plt.title('P-V FITTED curve, mBM5, No. 2, GPa')
-            diffp = pressure_eos_points - pressure
-            prop = pv2prop(xx, np.mean(volume), L)  # [V0, P, B, BP, B2P]
-            newxx = pvbuildeos(prop, L)
-            xxnp = np.array(xx)
-            resxx1 = np.insert(xxnp, 0, L)
-            resxx2 = np.insert(newxx, 0, L)
-            resxx_2 = np.vstack((resxx1, resxx2))
-            resxx = np.hstack((resxx, resxx_2))
-            nnn = len(pressure)
-            qwe = diffp ** 2
-            asd = math.sqrt(sum(qwe / nnn))
-            respre = np.insert(prop, 0, L)
-            res_2 = np.hstack((respre, asd))
-            res = np.vstack((res, res_2))
-            resee = np.vstack((resee, res))
-            respp = np.vstack((respp, pressure_eos))
-            resdiff = np.vstack((resdiff, diffp))
-
-        if L == 3:  # BM4
-            AA = [volume ** (-5 / 3) * (2 / 3), volume ** (-7 / 3) * (4 / 3), volume ** (-3) * 2]
-            AA = np.array(AA)
-            AA = AA.T
-            xx1 = np.linalg.pinv(AA)
-            xx = xx1.dot(pressure)  # (4x1)=(4xn)*(nx1), solve it by pseudo-inversion: Ax=b
-            b = xx[0]
-            c = xx[1]
-            d = xx[2]
-            e = 0.0
-            xx = [b, c, d, e]
-            x = volume_range
-            pressure_eos = (8 * e) / (3 * x ** (11 / 3)) + (2 * d) / x ** 3 + (4 * c) / (3 * x ** (7 / 3)) + (2 * b) / (
-                    3 * x ** (5 / 3))
-            x = volume
-            pressure_eos_points = (8 * e) / (3 * x ** (11 / 3)) + (2 * d) / x ** 3 + (4 * c) / (3 * x ** (7 / 3)) + (2 * b) / (
-                    3 * x ** (5 / 3))
-
-            plt.plot(volume_range, pressure_eos, volume, pressure, 'o')
-            plt.title('P-V FITTED curve, BM4, No. 3, GPa')
-            diffp = pressure_eos_points - pressure
-            prop = pv2prop(xx, np.mean(volume), L)  # [V0, P, B, BP, B2P]
-            newxx = pvbuildeos(prop, L)
-
-            xxnp = np.array(xx)
-            resxx1 = np.insert(xxnp, 0, L)
-            resxx2 = np.insert(newxx, 0, L)
-            resxx_2 = np.vstack((resxx1, resxx2))
-            resxx = np.hstack((resxx, resxx_2))
-            nnn = len(pressure)
-            qwe = diffp ** 2
-            asd = math.sqrt(sum(qwe / nnn))
-            respre = np.insert(prop, 0, L)
-            res_2 = np.hstack((respre, asd))
-            res = np.vstack((res, res_2))
-            resee = np.vstack((resee, res))
-            respp = np.vstack((respp, pressure_eos))
-            resdiff = np.vstack((resdiff, diffp))
-
-        if L == 4:  # BM5
-            AA = [volume ** (-5 / 3) * (2 / 3), volume ** (-7 / 3) * (4 / 3), volume ** (-3) * 2, volume ** (-11 / 3) * (8 / 3)]
-            AA = np.array(AA)
-            AA = AA.T
-            xx1 = np.linalg.pinv(AA)
-            xx = xx1.dot(pressure)  # (4x1)=(4xn)*(nx1), solve it by pseudo-inversion: Ax=b
-            b = xx[0]
-            c = xx[1]
-            d = xx[2]
-            e = xx[3]
-            xx = [b, c, d, e]
-
-            x = volume_range
-            pressure_eos = (8 * e) / (3 * x ** (11 / 3)) + (2 * d) / x ** 3 + (4 * c) / (3 * x ** (7 / 3)) + (2 * b) / (
-                    3 * x ** (5 / 3))
-            x = volume
-            pressure_eos_points = (8 * e) / (3 * x ** (11 / 3)) + (2 * d) / x ** 3 + (4 * c) / (3 * x ** (7 / 3)) + (2 * b) / (
-                    3 * x ** (5 / 3))
-
-            plt.plot(volume_range, pressure_eos, volume, pressure, 'o')
-            plt.title('P-V curve, BM5, No. 4, GPa')
-            diffp = pressure_eos_points - pressure
-            prop = pv2prop(xx, np.mean(volume), L)  # [V0, P, B, BP, B2P]
-
-            newxx = pvbuildeos(prop, L)
-            xxnp = np.array(xx)
-            resxx1 = np.insert(xxnp, 0, L)
-            resxx2 = np.insert(newxx, 0, L)
-            resxx_2 = np.vstack((resxx1, resxx2))
-            resxx = np.hstack((resxx, resxx_2))
-            nnn = len(pressure)
-            qwe = diffp ** 2
-            asd = math.sqrt(sum(qwe / nnn))
-            respre = np.insert(prop, 0, L)
-            res_2 = np.hstack((respre, asd))
-            res = np.vstack((res, res_2))
-            resee = np.vstack((resee, res))
-            respp = np.vstack((respp, pressure_eos))
-            resdiff = np.vstack((resdiff, diffp))
-
-    if numbereos == 4:
-        pp4 = np.vstack((respp[0, ...], respp[2, ...]))
-        pp4 = pp4.T
-        pp5 = np.vstack((respp[1, ...], respp[3, ...]))
-        pp5 = pp5.T
-        if kkfig > 0:
-            figpv4 = plt.figure('fig-pv4')
-            plt.plot(volume_range, pp4, volume_range, pp5, '--', volume, pressure, 'o')
-            plt.title('P-V Fitted of 4 curves')
-            plt.savefig('fig2_pv_fitted.png')
-
-    if numbereos == 2:
-        pp4 = respp[0, ...]
-        pp4 = pp4.T
-        pp5 = respp[1, ...]
-        pp5 = pp5.T
-        if kkfig > 0:
-            figpv2 = plt.figure('fig-pv2')
-            plt.plot(volume_range, pp4, volume_range, pp5, '--', volume, pressure, 'o')
-            plt.title('P-V Fitted of 2 curves'),
-
-    resdiff = resdiff.T
-    max_diff = []
-    n = 0
-    max_diff1 = np.fabs(resdiff)
-    max_diff2 = max_diff1.argmax(axis=0)
-    for i in max_diff2:
-        max_diff = np.append(max_diff, max_diff1[i, n])
-        n = n + 1
-
-    av_diff = np.mean(max_diff1, axis=0)
-    dpp_av_max = np.vstack((av_diff, max_diff))
-
-    pvfit_res = res  # [res(:,1:2), res(:,4:end)]
-    np.savetxt("pvfit_res.txt", pvfit_res, fmt='%.4f')
-
-    if isave > 0:
-        resvp = np.hstack((volume_range.T, respp.T))
-        np.savetxt("out_fit_VP.txt", resvp, fmt='%.4f')
-    return res
-
-
-if ipress > 0:
-    data = np.loadtxt('FEG')
-    volume = data[:, 0]
-    energy = data[:, 1]
-    volume_range = np.arange(min(volume) - 1, max(volume) + 2, 0.05)
-    pvfit_res = pveosfit(volume, pressure, volume_range, -9, -9, 9)
-    # compare_res = np.vstack((fitted_res[0, ...], pvfit_res[0, ...], fitted_res[1, ...], pvfit_res[1, ...],
-    #                         fitted_res[2, ...], pvfit_res[2, ...], fitted_res[3, ...], pvfit_res[3, ...]))
-    # final_res = np.vstack((fitted_res, pvfit_res))
-
+        return results, pressure_eos
 
 # Done: double checked the values of eos_index=1:9 with MATLAB already. Agrees well!
 # Done: append all of the results
@@ -1240,5 +1224,7 @@ if ipress > 0:
 # Done: EOS multiple output an error if more than 1 eos_index is selected
 # Done: Something wrong with multiple structures. Mixes up the structure order!
 # Done: Modify the volume range for the multiple and single structures.
-# TODO: Add PV fitting
-
+# Done: Add PV fitting.
+# Done: Rank multiple configurations by decreasing volume. See if I can alter the arrangement of the legend as well.
+# TODO: Check PV fitting with MATLAB.
+# Done: Clean up the code.
