@@ -128,6 +128,7 @@ def plot_mv(df, show_fig=True):
 
 
 """
+~~~WARNING~~~ The currect intent is to replace this function with extract_config_data()
 This function grabs the necessary magnetic and volume data from the OUTCAR
 for each volume and returns a data frame.
 
@@ -154,9 +155,51 @@ def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
         mag_data['vol'] = vol
         mag_data['config'] = config
         dfs_list.append(mag_data)
-    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion'])
+    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion']).reset_index(drop=True)
     return df
 
+"""
+This function grabs all necessary data from the OUTCAR
+for each volume and returns a data frame in the tidy data format.
+
+Todo: extract the pressure data,
+Todo: extract any other data that might be useful
+
+Within the path, there should be folders named vol_0, vol_1, etc.
+
+There should be no other files or directories in the path with 
+names starting with 'vol_'.
+
+outcar_name and oszicar_name must be the same in each volume folder.
+
+Consider adding config_name column to the data frame
+"""
+
+def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR'):
+    dfs_list = []
+    start = path.find('config_') + len('config_') # Find the index where "config_" starts and add its length
+    config = path[start:] #get the string following "config_"
+    for vol_dir in glob.glob(os.path.join(path, 'vol_*')):
+        
+        outcar_path = os.path.join(vol_dir, outcar_name)
+        if not os.path.isfile(outcar_path):
+            print(f"Warning: File {outcar_path} does not exist. Skipping.")
+            continue
+
+        oszicar_path = os.path.join(vol_dir, oszicar_name)
+        if not os.path.isfile(oszicar_path):
+            print(f"Warning: File {oszicar_path} does not exist. Skipping.")
+            continue
+
+        vol = extract_volume(outcar_path)
+        energy = extract_energy(oszicar_path)
+        data_collection = extract_simple_mag_data(ion_list, outcar_path)
+        data_collection['vol'] = vol
+        data_collection['config'] = config
+        data_collection['energy'] = energy
+        dfs_list.append(data_collection)
+    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion']).reset_index(drop=True)
+    return df
 
 def three_step_relaxation(path, vasp_cmd, handlers, backup=True):  # Path should contain necessary VASP config files
     original_dir = os.getcwd()
