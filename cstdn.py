@@ -157,6 +157,31 @@ def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
     df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion'])
     return df
 
+def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR'):
+    dfs_list = []
+    start = path.find('config_') + len('config_') # Find the index where "config_" starts and add its length
+    config = path[start:] #get the string following "config_"
+    for vol_dir in glob.glob(os.path.join(path, 'vol_*')):
+        
+        outcar_path = os.path.join(vol_dir, outcar_name)
+        if not os.path.isfile(outcar_path):
+            print(f"Warning: File {outcar_path} does not exist. Skipping.")
+            continue
+
+        oszicar_path = os.path.join(vol_dir, oszicar_name)
+        if not os.path.isfile(oszicar_path):
+            print(f"Warning: File {oszicar_path} does not exist. Skipping.")
+            continue
+
+        vol = extract_volume(outcar_path)
+        energy = extract_energy(oszicar_path)
+        data_collection = extract_simple_mag_data(ion_list, outcar_path)
+        data_collection['vol'] = vol
+        data_collection['config'] = config
+        data_collection['energy'] = energy
+        dfs_list.append(data_collection)
+    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion'])
+    return df
 
 def three_step_relaxation(path, vasp_cmd, handlers, backup=True):  # Path should contain necessary VASP config files
     original_dir = os.getcwd()
