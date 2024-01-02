@@ -19,19 +19,35 @@ the OUTCAR files.
 
 import sys
 import os
+import pandas as pd
 
 # 1. 
 sys.path.append('/storage/home/lam7027/bin/vasp-job-automation') #Change this to your path
 import cstdn
+import os
 
 # 2.
 ion_list = [i for i in range(1, 9)] #recall that range(n, m) = [n, ..., m-1]
 
-# 5., 6., and 7.
-df = cstdn.extract_config_data(os.getcwd(), ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR') # get the data 
+# directory that contains the all the 'config_x' dirs
+configurations_dir = '/storage/home/lam7027/work/FeSe/cmme_2x2x1_vol_series_r2scan_rvv10_fixed_poscar/configurations'
+
+#make a list of all the 'config_x' dirs
+config_dirs = [os.path.join(configurations_dir, d) for d in os.listdir(configurations_dir) if os.path.isdir(os.path.join(configurations_dir, d))]
+
+df_list = []
+for config_dir in config_dirs:
+    config_df = cstdn.extract_config_data(config_dir, ion_list, outcar_name='OUTCAR.2relax', oszicar_name='OSZICAR.2relax') # get the data 
+    ev_fig = cstdn.plot_ev(config_df, show_fig=False)
+    mv_fig = cstdn.plot_mv(config_df, show_fig=False)
+    ev_fig.write_image(f'{os.path.basename(config_dir)}_ev_fig.png')
+    mv_fig.write_image(f'{os.path.basename(config_dir)}_mv_fig.png')
+    df_list.append(config_df)
+
+df = pd.concat(df_list, ignore_index=True)
+cstdn.plot_ev(df, show_fig=True)
 
 # plot the data with plotly. opens a browser window, if show_fig=True
-fig = cstdn.plot_mv(df, show_fig=True)
 fig = cstdn.plot_ev(df, show_fig=True) 
 
 # 3.

@@ -126,6 +126,15 @@ def plot_mv(df, show_fig=True):
         fig.show()
     return fig
 
+def plot_ev(df, show_fig=True):
+    fig = px.line(df, x='vol', y='energy', color='config', symbol='config', template='plotly_white')
+    fig.update_layout(title='E-V', xaxis_title='Volume [A^3]', yaxis_title='Energy (eV)')
+    fig.update_traces(mode='markers+lines',
+                        marker=dict(size=8, line=dict(width=1), opacity=0.66),
+                        line=dict(width=3)) 
+    if show_fig:
+        fig.show()
+    return fig
 
 """
 ~~~WARNING~~~ The currect intent is to replace this function with extract_config_data()
