@@ -7,6 +7,7 @@ Steps before running this script:
 4. decide if you want to save the figure to a png file
 5. specify the name of the OUTCAR file you want to extract data from
 6. specify the path of the 'config_x' dir where x is the config number
+7. specify the name of the OSZICAR file you want to extract data from
 e.g. 'path/and/stuff/config_1' (alternatively, leave the path as os.getcwd(),
 copy this script to the 'config_x' dir, and run it from there)
 
@@ -26,7 +27,7 @@ import cstdn
 # 2.
 ion_list = [i for i in range(1, 9)] #recall that range(n, m) = [n, ..., m-1]
 
-# 5. and 6.
+# 5., 6., and 7.
 df = cstdn.extract_config_data(os.getcwd(), ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR') # get the data 
 
 fig = cstdn.plot_mv(df, show_fig=True) # plot the data with plotly. opens a browser window, if show_fig=True
