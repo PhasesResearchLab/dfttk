@@ -154,7 +154,7 @@ def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
         mag_data['vol'] = vol
         mag_data['config'] = config
         dfs_list.append(mag_data)
-    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion'])
+    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion']).reset_index(drop=True)
     return df
 
 def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR'):
@@ -180,7 +180,7 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
         data_collection['config'] = config
         data_collection['energy'] = energy
         dfs_list.append(data_collection)
-    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion'])
+    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion']).reset_index(drop=True)
     return df
 
 def three_step_relaxation(path, vasp_cmd, handlers, backup=True):  # Path should contain necessary VASP config files
