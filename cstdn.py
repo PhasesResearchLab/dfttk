@@ -7,14 +7,13 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import json
+import eos
 
 from custodian.custodian import Custodian
 from custodian.vasp.handlers import VaspErrorHandler
 from custodian.vasp.jobs import VaspJob
 from pymatgen.core import structure
 from pymatgen.io.vasp.outputs import Outcar, Vasprun
-
-
 
 # Function to extract the last occurrence of volume from OUTCAR files
 def extract_volume(file_path):
