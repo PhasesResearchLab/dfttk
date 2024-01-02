@@ -1,3 +1,5 @@
+
+
 import os
 import glob
 import shutil
@@ -12,13 +14,6 @@ from custodian.vasp.jobs import VaspJob
 from pymatgen.core import structure
 from pymatgen.io.vasp.outputs import Outcar, Vasprun
 
-"""
-kpoints_list should be a list of strings ex:
-    ['1 1 1', '2 2 2', '3 3 3']
-incar_tags should be a dictionary ex:
-    {'encut' 'ISMEAR': -5, 'IBRION': 2}
-only edits the forth line of the KPOINTS file
-"""
 
 
 # Function to extract the last occurrence of volume from OUTCAR files
@@ -361,6 +356,15 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):
         three_step_relaxation(vol_folder_path, vasp_cmd, handlers, backup=False)
 
 
+"""
+kpoints_list should be a list of strings ex:
+    ['1 1 1', '2 2 2', '3 3 3']
+incar_tags should be a dictionary ex:
+    {'encut' 'ISMEAR': -5, 'IBRION': 2}
+only edits the forth line of the KPOINTS file
+
+Todo: use pymatgen to edit the KPOINTS file, not koints_list
+"""
 def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers,
                       backup=False):  # Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
     original_dir = os.getcwd()
