@@ -128,6 +128,7 @@ def plot_mv(df, show_fig=True):
 
 
 """
+~~~WARNING~~~ The currect intent is to replace this function with extract_config_data()
 This function grabs the necessary magnetic and volume data from the OUTCAR
 for each volume and returns a data frame.
 
@@ -156,6 +157,23 @@ def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
         dfs_list.append(mag_data)
     df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion']).reset_index(drop=True)
     return df
+
+"""
+This function grabs all necessary data from the OUTCAR
+for each volume and returns a data frame in the tidy data format.
+
+Todo: extract the pressure data,
+Todo: extract any other data that might be useful
+
+Within the path, there should be folders named vol_0, vol_1, etc.
+
+There should be no other files or directories in the path with 
+names starting with 'vol_'.
+
+outcar_name and oszicar_name must be the same in each volume folder.
+
+Consider adding config_name column to the data frame
+"""
 
 def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR'):
     dfs_list = []
