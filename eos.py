@@ -458,7 +458,7 @@ def morse_eq(xini, Data):
 def morse(volume, energy):
     eos_index = 9
     volume_range = np.linspace(min(volume), max(volume), 1000)
-    
+
     Data = np.vstack((volume, energy))
     Data = Data.T
 
@@ -494,3 +494,40 @@ def morse(volume, energy):
     pressure_eos = np.concatenate(([eos_index], pressure_eos))
 
     return results, energy_eos, pressure_eos
+
+if __name__ == "__main__":
+    energy = np.array([-.23101990E+03,
+    -.23108470E+03,
+    -.23114435E+03,
+    -.23119627E+03,
+    -.23123549E+03,
+    -.23125578E+03,
+    -.23125810E+03,
+    -.23123352E+03,
+    -.23117630E+03,
+    -.23107862E+03,
+    -.23093777E+03,
+    -.23074292E+03,
+    -.23049160E+03,
+    -.23017976E+03,
+    -.22980665E+03])
+
+    volume = np.array([370.000000,
+    362.857143,
+    355.714286,
+    348.571429,
+    341.428571,
+    334.285714,
+    327.142857,
+    320.000000,
+    312.857143,
+    305.714286,
+    298.571429,
+    291.428571,
+    284.285714,
+    277.142857,
+    270.000000])
+
+    results, energy_eos, pressure_eos = mBM4(volume, energy)
+    print(type(results))
+    print(energy_eos)
