@@ -20,6 +20,27 @@ from pymatgen.io.vasp.outputs import Outcar, Vasprun
 
 """
 eos fuctions
+Shun-Li Shang wrote the original MATLAB code for EOS fitting.
+Hui Sun converted the MATLAB code to python code.
+Nigel Hew modified the python code to make it more user-friendly and added more functions.
+Luke Myers performed some additional modifications to the python code.
+"""
+
+"""
+This EOS fitting code is based on the following paper:
+Shun-Li Shang et al., Computational Materials Science, 47, 4, (2010).
+https://doi.org/10.1016/j.commatsci.2009.12.006
+
+Equations of State:
+1:  4-parameter (Teter-Shang) mBM4   1
+2:  5-parameter (Teter-Shang) mBM5   2
+3:  4-parameter               BM4    3
+4:  5-parameter               BM5    4
+5:  4-parameter Natural       Log4   5
+6:  5-parameter Natural       Log5   6
+7:  4-parameter Murnaghan     Mur    7
+8:  4-parameter Vinet         Vinet  8
+9:  4-parameter Morse         Morse  9
 """
 def mBM4(volume, energy):
     eos_index = 1
@@ -483,6 +504,23 @@ def morse(volume, energy):
 """
 end eos functions
 """
+
+def fit_to_all_eos(df):
+    eos_df = pd.DataFrame(columns=['config', 'eos_name', 'volumes', 'energies', 'pressures'])
+    eos_functions = [mBM4, mBM5, BM4, BM5, LOG4, LOG5, murnaghan, vinet, morse]  # Add more EOS functions here
+    
+    for config in df['config'].unique():
+        config_df = df[df['config'] == config]
+        volumes = config_df['vol'].values
+        energies = config_df['energy'].values
+        
+        for eos_func in eos_functions:
+            _, volume_range, energy_eos, pressure_eos = eos_func(volumes, energies)
+            energy_eos = energy_eos[1:]
+            pressure_eos = pressure_eos[1:]
+            eos_name = eos_func.__name__
+            eos_df = pd.concat([eos_df, pd.DataFrame([[config, eos_name, volume_range, energy_eos, pressure_eos]], columns=['config', 'eos_name', 'volumes', 'energies', 'pressures'])], ignore_index=True)    
+    return eos_df
 
 # Function to extract the last occurrence of volume from OUTCAR files
 def extract_volume(file_path):
