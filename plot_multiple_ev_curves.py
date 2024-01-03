@@ -40,15 +40,14 @@ for config_dir in config_dirs:
     config_df = cstdn.extract_config_data(config_dir, ion_list, outcar_name='OUTCAR.2relax', oszicar_name='OSZICAR.2relax') # get the data 
     ev_fig = cstdn.plot_ev(config_df, show_fig=False)
     mv_fig = cstdn.plot_mv(config_df, show_fig=False)
-    ev_fig.write_image(f'{os.path.basename(config_dir)}_ev_fig.png')
-    mv_fig.write_image(f'{os.path.basename(config_dir)}_mv_fig.png')
+    # ev_fig.write_image(f'{os.path.basename(config_dir)}_ev_fig.png')
+    # mv_fig.write_image(f'{os.path.basename(config_dir)}_mv_fig.png')
     df_list.append(config_df)
 
 df = pd.concat(df_list, ignore_index=True)
-cstdn.plot_ev(df, show_fig=True)
 
 # plot the data with plotly. opens a browser window, if show_fig=True
-fig = cstdn.plot_ev(df, show_fig=True) 
+multiple_ev_fig = cstdn.plot_ev(df, show_fig=True) 
 
 # 3.
 #optionally save the data to a json file. Change the name of the json file as needed
