@@ -628,7 +628,7 @@ def plot_mv(df, show_fig=True):
         fig.show()
     return fig
 
-def plot_ev(df, show_fig=True):
+def plot_ev(df, eos_fitting='mBM4' ,show_fig=True):
     eos_df = fit_to_all_eos(df)
     fig = px.scatter(df, x='vol', y='energy', color='config', template='plotly_white')
     fig.update_layout(title='E-V', xaxis_title='Volume [A^3]', yaxis_title='Energy (eV)')
@@ -637,7 +637,8 @@ def plot_ev(df, show_fig=True):
         eos_config_df = eos_df[eos_df['config'] == config]
         for eos_name in eos_config_df['eos_name'].unique():
             eos_name_df = eos_config_df[eos_config_df['eos_name'] == eos_name]
-            fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0], mode='lines', name=f'{eos_name} fit', line=dict(width=3, dash='dash')))
+            if eos_name == eos_fitting:  # Add this condition to only add the eos trace if eos_name == eos_fitting
+                fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0], mode='lines', name=f'{eos_name} fit', line=dict(width=1)))
     if show_fig:
         fig.show()
     return fig
