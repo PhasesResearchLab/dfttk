@@ -11,6 +11,7 @@ import numpy as np
 import plotly.express as px
 import json
 import sys
+import plotly.graph_objects as go
 
 from custodian.custodian import Custodian
 from custodian.vasp.handlers import VaspErrorHandler
@@ -629,13 +630,14 @@ def plot_mv(df, show_fig=True):
 
 def plot_ev(df, show_fig=True):
     eos_df = fit_to_all_eos(df)
-    fig = px.scatter(df, x='vol', y='energy', color='config', symbol='config', template='plotly_white')
+    fig = px.scatter(df, x='vol', y='energy', color='config', template='plotly_white')
     fig.update_layout(title='E-V', xaxis_title='Volume [A^3]', yaxis_title='Energy (eV)')
-    fig.update_traces(marker=dict(size=8, line=dict(width=1), opacity=0.66))
     
-    # Plot eos_df on top of scatter data
-    # fig.add_trace(px.line(eos_df, x='vol', y='energy').data[0])
-    
+    for config in eos_df['config'].unique():
+        eos_config_df = eos_df[eos_df['config'] == config]
+        for eos_name in eos_config_df['eos_name'].unique():
+            eos_name_df = eos_config_df[eos_config_df['eos_name'] == eos_name]
+            fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0], mode='lines', name=f'{eos_name} fit', line=dict(width=3, dash='dash')))
     if show_fig:
         fig.show()
     return fig
