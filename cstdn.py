@@ -642,7 +642,7 @@ def plot_ev(df, eos_fitting='mBM4' ,show_fig=True):
             for eos_name in eos_config_df['eos_name'].unique():
                 eos_name_df = eos_config_df[eos_config_df['eos_name'] == eos_name]
                 fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0], mode='lines', name=f'{eos_name} fit', line=dict(width=1)))
-        elif eos_fitting == 'none':
+        elif eos_fitting == None:
             pass
         else:
             print(f"Warning: eos_fitting '{eos_fitting}' not found in eos_df. Skipping.")

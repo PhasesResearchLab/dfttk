@@ -38,8 +38,8 @@ config_dirs = [os.path.join(configurations_dir, d) for d in os.listdir(configura
 df_list = []
 for config_dir in config_dirs:
     config_df = cstdn.extract_config_data(config_dir, ion_list, outcar_name='OUTCAR.2relax', oszicar_name='OSZICAR.2relax') # get the data 
-    ev_fig = cstdn.plot_ev(config_df, show_fig=False)
-    mv_fig = cstdn.plot_mv(config_df, show_fig=False)
+    ev_fig = cstdn.plot_ev(config_df, None, show_fig=True) # plot ev data for individual configs
+    mv_fig = cstdn.plot_mv(config_df, show_fig=False) # plot mv data for individual configs
     # ev_fig.write_image(f'{os.path.basename(config_dir)}_ev_fig.png')
     # mv_fig.write_image(f'{os.path.basename(config_dir)}_mv_fig.png')
     df_list.append(config_df)
@@ -47,7 +47,7 @@ for config_dir in config_dirs:
 df = pd.concat(df_list, ignore_index=True)
 
 # plot the data with plotly. opens a browser window, if show_fig=True
-multiple_ev_fig = cstdn.plot_ev(df, show_fig=True) 
+multiple_ev_fig = cstdn.plot_ev(df, 'mBM4', show_fig=False) 
 
 # 3.
 #optionally save the data to a json file. Change the name of the json file as needed
