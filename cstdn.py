@@ -639,6 +639,12 @@ def plot_ev(df, eos_fitting='mBM4' ,show_fig=True):
             eos_name_df = eos_config_df[eos_config_df['eos_name'] == eos_name]
             if eos_name == eos_fitting:  # Add this condition to only add the eos trace if eos_name == eos_fitting
                 fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0], mode='lines', name=f'{eos_name} fit', line=dict(width=1)))
+            elif eos_fitting == 'all':
+                fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0], mode='lines', name=f'{eos_name} fit', line=dict(width=1)))
+            elif eos_fitting == 'none':
+                pass
+            else:
+                print(f"Warning: eos_fitting={eos_fitting} is not a valid option. Skipping.")
     if show_fig:
         fig.show()
     return fig
