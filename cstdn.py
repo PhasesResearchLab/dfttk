@@ -7,7 +7,6 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import json
-import eos
 
 from custodian.custodian import Custodian
 from custodian.vasp.handlers import VaspErrorHandler
