@@ -548,22 +548,30 @@ def convert_input_files_to_df(input_files, left_col, right_col):
 
 """
 data may be a single pandas dat frame or a list of pandas data frames
-data may also be a list of input_file names as strings ex: ['str_0', 'str_1', 'str_2', ...]
+data may also be a list of input_file names as strings ex:
+    ['str_0', 'str_1', 'str_2', ...]
+
+Not sure if a list of dataframe will actually work. the function simply
+concats them all together
 """
 
 def plot_ev(data, eos_fitting='mBM4' ,show_fig=True, left_col='volume', right_col='energy'):
+    
+    # determine if the type of data and how to handle it.
     if isinstance(data, pd.DataFrame):
         df = data
     elif isinstance(data, list) and all(type(elem) == type(data[0]) for elem in data): #check if each elem of the list is the same type as the zeroth element
         if data[0] == pd.DataFrame:
             df = pd.concat(data, ignore_index=True)
         elif data[0] == 'str':
-
-
+            df = convert_input_files_to_df(data, left_col, right_col)
     else:
-        raise ValueError("Invalid data format. Please provide either a pandas DataFrame or a tuple with elements of the same data type.")
+        raise ValueError("data must be a pandas DataFrame or a list of pandas DataFrames or a list of input_file names as strings")
     
+    # create a data frame with the eos fits for each config
     eos_df = fit_to_all_eos(df)
+
+    # plot the fitted equations
     fig = px.scatter(df, x='volume', y='energy', color='config', template='plotly_white')
     fig.update_layout(title='E-V', xaxis_title='Volume [A^3]', yaxis_title='Energy (eV)')
     
