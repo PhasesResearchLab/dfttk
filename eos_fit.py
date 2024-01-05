@@ -637,7 +637,7 @@ def plot_ev(data, eos_fitting='mBM4', highlight_minimum=True ,show_fig=True, lef
             if highlight_minimum == True:
                 min_energy = min(eos_name_df['energies'].values[0])
                 volume_at_min_energy = eos_name_df['volumes'].values[0][np.where(eos_name_df['energies'].values[0] == min_energy)[0][0]] #check this
-                fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers', name=f'{eos_fitting} min energy', marker=dict(color='black', size=10)))
+                fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers', name=f'{eos_fitting} min energy', marker=dict(color='black', size=10, symbol='cross')))
             elif highlight_minimum == False:
                 pass
             else:
@@ -650,7 +650,7 @@ def plot_ev(data, eos_fitting='mBM4', highlight_minimum=True ,show_fig=True, lef
                 if highlight_minimum == True:
                     min_energy = min(eos_name_df['energies'].values[0])
                     volume_at_min_energy = eos_name_df['volumes'].values[0][np.where(eos_name_df['energies'].values[0] == min_energy)[0][0]] #check this
-                    fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers', name=f'{eos_fitting} min energy', marker=dict(color='black', size=10)))
+                    fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers', name=f'{eos_fitting} min energy', marker=dict(color='black', size=8, symbol='cross')))
         elif eos_fitting == None:
             pass
         else:
