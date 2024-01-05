@@ -35,6 +35,7 @@ import numpy as np
 import plotly.express as px
 import json
 import sys
+import os
 import plotly.graph_objects as go
 
 def mBM4(volume, energy):
@@ -516,20 +517,52 @@ def fit_to_all_eos(df):
 
 
 """
-input_files
+The input_files should be a list of strings containing the file names of the input files
+
+the name of each input files should end in'_x' where x is the config_name ex:
+    str_0, str_1, str_2, ...
+    volume_energy_0, volume_energy_1, volume_energy_2, ...
+
+The contents of the input files should be organized as two columns separated by a space
+and not contain any headers ex:
+    1.0 2.0
+    2.0 3.0
+    3.0 4.0
+    ...
+the data reader is np.loadtxt()
+
+left_col is the type of data in the left column ex: 'volume'
+right_col is the type of data in the right column ex: 'energy'
 """
-def convert_input_files_to_df(*input_files, left_col='volume', right_col='energy'):
-    df = pd.DataFrame(columns=['config', 'volume', 'energy'])
+def convert_input_files_to_df(input_files, left_col, right_col):
+    df = pd.DataFrame(columns=['config', left_col, right_col])
     for input_file in input_files:
-        config = input_file.split('/')[-1].split('.')[0]
+        config = os.path.splitext(os.path.basename(input_file))[0]
+        if '_' in config:
+            config = config.split('_')[-1]
         data = np.loadtxt(input_file)
-        volume = data[:, 0]
-        energy = data[:, 1]
-        df = pd.concat([df, pd.DataFrame([[config, volume, energy]], columns=['config', 'volume', 'energy'])], ignore_index=True)
+        left_data = data[:, 0]
+        right_data = data[:, 1]
+        df = pd.concat([df, pd.DataFrame([[config, left_data, right_data]], columns=['config', 'left_col', 'right_col'])], ignore_index=True)
     return df
 
+"""
+data may be a single pandas dat frame or a list of pandas data frames
+data may also be a list of input_file names as strings ex: ['str_0', 'str_1', 'str_2', ...]
+"""
 
-def plot_ev(df, eos_fitting='mBM4' ,show_fig=True):
+def plot_ev(data, eos_fitting='mBM4' ,show_fig=True, left_col='volume', right_col='energy'):
+    if isinstance(data, pd.DataFrame):
+        df = data
+    elif isinstance(data, list) and all(type(elem) == type(data[0]) for elem in data): #check if each elem of the list is the same type as the zeroth element
+        if data[0] == pd.DataFrame:
+            df = pd.concat(data, ignore_index=True)
+        elif data[0] == 'str':
+
+
+    else:
+        raise ValueError("Invalid data format. Please provide either a pandas DataFrame or a tuple with elements of the same data type.")
+    
     eos_df = fit_to_all_eos(df)
     fig = px.scatter(df, x='volume', y='energy', color='config', template='plotly_white')
     fig.update_layout(title='E-V', xaxis_title='Volume [A^3]', yaxis_title='Energy (eV)')
