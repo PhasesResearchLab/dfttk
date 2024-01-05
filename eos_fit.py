@@ -503,7 +503,7 @@ def fit_to_all_eos(df):
     
     for config in df['config'].unique():
         config_df = df[df['config'] == config]
-        volumes = config_df['vol'].values
+        volumes = config_df['volume'].values
         energies = config_df['energy'].values
         
         for eos_func in eos_functions:
@@ -518,20 +518,20 @@ def fit_to_all_eos(df):
 """
 input_files
 """
-def convert_input_files_to_df(*input_files):
-    df = pd.DataFrame(columns=['config', 'vol', 'energy'])
+def convert_input_files_to_df(*input_files, left_col='volume', right_col='energy'):
+    df = pd.DataFrame(columns=['config', 'volume', 'energy'])
     for input_file in input_files:
         config = input_file.split('/')[-1].split('.')[0]
         data = np.loadtxt(input_file)
         volume = data[:, 0]
         energy = data[:, 1]
-        df = pd.concat([df, pd.DataFrame([[config, volume, energy]], columns=['config', 'vol', 'energy'])], ignore_index=True)
+        df = pd.concat([df, pd.DataFrame([[config, volume, energy]], columns=['config', 'volume', 'energy'])], ignore_index=True)
     return df
 
 
 def plot_ev(df, eos_fitting='mBM4' ,show_fig=True):
     eos_df = fit_to_all_eos(df)
-    fig = px.scatter(df, x='vol', y='energy', color='config', template='plotly_white')
+    fig = px.scatter(df, x='volume', y='energy', color='config', template='plotly_white')
     fig.update_layout(title='E-V', xaxis_title='Volume [A^3]', yaxis_title='Energy (eV)')
     
     # loop over configs in the data frame

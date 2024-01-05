@@ -583,15 +583,15 @@ def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
     return simple_data
 
 """
-df is a data frame with columns ['config', '# of ion', 'vol', 'tot']
+df is a data frame with columns ['config', '# of ion', 'volume', 'tot']
 breaks if missing these columns
 """
 def plot_mv(df, show_fig=True):
     fig = px.line(df,
-                    x='vol',
+                    x='volume',
                     y='tot',
                     color='# of ion',symbol='# of ion',
-                    hover_data=['config', '# of ion', 'vol', 'tot'],
+                    hover_data=['config', '# of ion', 'volume', 'tot'],
                     template='plotly_white')
     fig.update_layout(title='Mag-V',
                         xaxis_title='Volume [A^3]',
@@ -614,7 +614,7 @@ def plot_mv(df, show_fig=True):
 
 def plot_ev(df, eos_fitting='mBM4' ,show_fig=True):
     eos_df = fit_to_all_eos(df)
-    fig = px.scatter(df, x='vol', y='energy', color='config', template='plotly_white')
+    fig = px.scatter(df, x='volume', y='energy', color='config', template='plotly_white')
     fig.update_layout(title='E-V', xaxis_title='Volume [A^3]', yaxis_title='Energy (eV)')
     
     for config in eos_df['config'].unique():
@@ -659,10 +659,10 @@ def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
             continue
         vol = extract_volume(outcar_path)
         mag_data = extract_simple_mag_data(ion_list, outcar_path)
-        mag_data['vol'] = vol
+        mag_data['volume'] = vol
         mag_data['config'] = config
         dfs_list.append(mag_data)
-    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion']).reset_index(drop=True)
+    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['volume', '# of ion']).reset_index(drop=True)
     return df
 
 """
@@ -701,11 +701,11 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
         vol = extract_volume(outcar_path)
         energy = extract_energy(oszicar_path)
         data_collection = extract_simple_mag_data(ion_list, outcar_path)
-        data_collection['vol'] = vol
+        data_collection['volume'] = vol
         data_collection['config'] = config
         data_collection['energy'] = energy
         dfs_list.append(data_collection)
-    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion']).reset_index(drop=True)
+    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['volume', '# of ion']).reset_index(drop=True)
     return df
 
 def three_step_relaxation(path, vasp_cmd, handlers, backup=True):  # Path should contain necessary VASP config files
