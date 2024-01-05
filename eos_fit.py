@@ -501,7 +501,7 @@ def morse(volume, energy):
     return results, volume_range, energy_eos, pressure_eos
 
 def fit_to_all_eos(df):
-    eos_df = pd.DataFrame(columns=['config', 'eos_name', 'volumes', 'energies', 'pressures'])
+    eos_df = pd.DataFrame(columns=['config', 'eos_name', 'results', 'volumes', 'energies', 'pressures'])
     eos_functions = [mBM4, mBM5, BM4, BM5, LOG4, LOG5, murnaghan, vinet, morse]  # Add more EOS functions here
     
     for config in df['config'].unique():
@@ -510,11 +510,11 @@ def fit_to_all_eos(df):
         energies = config_df['energy'].values
         
         for eos_func in eos_functions:
-            eos_parameters, volume_range, energy_eos, pressure_eos = eos_func(volumes, energies)
+            results, volume_range, energy_eos, pressure_eos = eos_func(volumes, energies)
             energy_eos = energy_eos[1:]
             pressure_eos = pressure_eos[1:]
             eos_name = eos_func.__name__
-            eos_df = pd.concat([eos_df, pd.DataFrame([[config, eos_name, eos_parameters, volume_range, energy_eos, pressure_eos]], columns=['config', 'eos_name', 'eos_parameters' 'volumes', 'energies', 'pressures'])], ignore_index=True)    
+            eos_df = pd.concat([eos_df, pd.DataFrame([[config, eos_name, results, volume_range, energy_eos, pressure_eos]], columns=['config', 'eos_name', 'results' 'volumes', 'energies', 'pressures'])], ignore_index=True)    
     return eos_df
 
 
@@ -559,7 +559,7 @@ concats them all together
 
 def plot_ev(data, eos_fitting='mBM4' ,show_fig=True, left_col='volume', right_col='energy'):
     
-    # determine if the type of data and how to handle it.
+    # determine the type of data and how to handle it.
     if isinstance(data, pd.DataFrame):
         df = data
     elif isinstance(data, list) and all(type(elem) == type(data[0]) for elem in data): #check if each elem of the list is the same type as the zeroth element
@@ -583,6 +583,11 @@ def plot_ev(data, eos_fitting='mBM4' ,show_fig=True, left_col='volume', right_co
         if eos_fitting in eos_config_df['eos_name'].unique():
             eos_name_df = eos_config_df[eos_config_df['eos_name'] == eos_fitting]
             fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0], mode='lines', name=f'{eos_fitting} fit', line=dict(width=1)))
+            # plot the minimum energy data point for each config from the fitting equation
+            min_energy = min(eos_name_df['energies'].values[0])
+            volume_at_min_energy = eos_name_df['volumes'].values[0][np.where(eos_name_df['energies'].values[0] == min_energy)[0][0]] #check this
+            fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers', name=f'{eos_fitting} min energy', marker=dict(color='black', size=10)))
+
         elif eos_fitting == 'all':
             for eos_name in eos_config_df['eos_name'].unique():
                 eos_name_df = eos_config_df[eos_config_df['eos_name'] == eos_name]
