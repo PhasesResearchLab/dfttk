@@ -582,35 +582,7 @@ def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
     simple_data.reset_index(drop=True, inplace=True)
     return simple_data
 
-"""
-df is a data frame with columns ['config', '# of ion', 'volume', 'tot']
-breaks if missing these columns
-"""
-def plot_mv(df, show_fig=True):
-    fig = px.line(df,
-                    x='volume',
-                    y='tot',
-                    color='# of ion',symbol='# of ion',
-                    hover_data=['config', '# of ion', 'volume', 'tot'],
-                    template='plotly_white')
-    fig.update_layout(title='Mag-V',
-                        xaxis_title='Volume [A^3]',
-                        yaxis_title='Magnetic Moment [mu_B]')
-    
-    fig.update_yaxes(nticks=10)
-    fig.update_xaxes(nticks=10)
-    
-    # Loop over each trace and update dash length
-    for i, trace in enumerate(fig.data):
-        dash_length = f"{2+(i+1)}px,{2+2*(i+1)}px"  # Dash length changes with each iteration
-        fig.data[-i-1].update(mode='markers+lines',
-                            marker=dict(size=8, line=dict(width=1), opacity=0.5),
-                            line=dict(width=3, dash=dash_length))
 
-
-    if show_fig:
-        fig.show()
-    return fig
 
 def plot_ev(df, eos_fitting='mBM4' ,show_fig=True):
     eos_df = fit_to_all_eos(df)
