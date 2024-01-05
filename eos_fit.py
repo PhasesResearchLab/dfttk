@@ -2,6 +2,8 @@
 Shun-Li Shang wrote the original MATLAB code for EOS fitting.
 Hui Sun converted the MATLAB code to python code.
 Nigel Hew modified the python code to make it more user-friendly and added more functions.
+Luke Myers performed additional modifications to simplify the plotting functions, and
+include the ability to use dataframe inputs and plotly.
 """
 
 """
@@ -508,11 +510,11 @@ def fit_to_all_eos(df):
         energies = config_df['energy'].values
         
         for eos_func in eos_functions:
-            _, volume_range, energy_eos, pressure_eos = eos_func(volumes, energies)
+            eos_parameters, volume_range, energy_eos, pressure_eos = eos_func(volumes, energies)
             energy_eos = energy_eos[1:]
             pressure_eos = pressure_eos[1:]
             eos_name = eos_func.__name__
-            eos_df = pd.concat([eos_df, pd.DataFrame([[config, eos_name, volume_range, energy_eos, pressure_eos]], columns=['config', 'eos_name', 'volumes', 'energies', 'pressures'])], ignore_index=True)    
+            eos_df = pd.concat([eos_df, pd.DataFrame([[config, eos_name, eos_parameters, volume_range, energy_eos, pressure_eos]], columns=['config', 'eos_name', 'eos_parameters' 'volumes', 'energies', 'pressures'])], ignore_index=True)    
     return eos_df
 
 
