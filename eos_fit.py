@@ -545,7 +545,8 @@ def convert_input_files_to_df(input_files, left_col, right_col):
         data = np.loadtxt(input_file)
         left_data = data[:, 0]
         right_data = data[:, 1]
-        df = pd.concat([df, pd.DataFrame([[config, left_data, right_data]], columns=['config', 'left_col', 'right_col'])], ignore_index=True)
+        for i in range(len(left_data)):
+            df.loc[len(df)] = {'config': config, left_col: left_data[i], right_col: right_data[i]}
     return df
 
 """
