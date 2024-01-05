@@ -514,7 +514,7 @@ def fit_to_all_eos(df):
             energy_eos = energy_eos[1:]
             pressure_eos = pressure_eos[1:]
             eos_name = eos_func.__name__
-            eos_df = pd.concat([eos_df, pd.DataFrame([[config, eos_name, results, volume_range, energy_eos, pressure_eos]], columns=['config', 'eos_name', 'results' 'volumes', 'energies', 'pressures'])], ignore_index=True)    
+            eos_df = pd.concat([eos_df, pd.DataFrame([[config, eos_name, results, volume_range, energy_eos, pressure_eos]], columns=['config', 'eos_name', 'results', 'volumes', 'energies', 'pressures'])], ignore_index=True)    
     return eos_df
 
 
@@ -549,6 +549,25 @@ def convert_input_files_to_df(input_files, left_col, right_col):
     return df
 
 """
+the selection_dict should be a dictionary with the following format:
+    selection_dict = {10: [0,1,2,3],
+                        11: [0,1,2,3],
+                        12: [0,1,2,3],
+                        ...}
+where the keys are the config # and the values are the volumes 0=lowest
+volume, 1=second lowest volume, etc.
+"""
+def select_data(df, selection_dict):
+    # first rank the volumes from lowest to highest
+    df['volume_rank'] = df.groupby('config')['volume'].rank(method='dense').astype(int)
+    print(df)
+    selected_data = pd.DataFrame()  # Initialize selected_data variable
+    for config in selection_dict.keys():
+        for volume_rank in selection_dict[config]:
+            selected_data = pd.concat([selected_data, df[(df['config'] == config) & (df['volume_rank'] == volume_rank)]], ignore_index=True)
+    return selected_data
+
+"""
 data may be a single pandas dat frame or a list of pandas data frames
 data may also be a list of input_file names as strings ex:
     ['str_0', 'str_1', 'str_2', ...]
@@ -561,6 +580,7 @@ concats them all together
 df is a data frame with columns ['config', '# of ion', 'volume', 'tot']
 breaks if missing these columns
 """
+
 def plot_mv(df, show_fig=True):
     fig = px.line(df,
                     x='volume',
@@ -587,7 +607,7 @@ def plot_mv(df, show_fig=True):
         fig.show()
     return fig
 
-def plot_ev(data, eos_fitting='mBM4' ,show_fig=True, left_col='volume', right_col='energy'):
+def plot_ev(data, eos_fitting='mBM4', highlight_minimum=True ,show_fig=True, left_col='volume', right_col='energy'):
     
     # determine the type of data and how to handle it.
     if isinstance(data, pd.DataFrame):
@@ -614,14 +634,23 @@ def plot_ev(data, eos_fitting='mBM4' ,show_fig=True, left_col='volume', right_co
             eos_name_df = eos_config_df[eos_config_df['eos_name'] == eos_fitting]
             fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0], mode='lines', name=f'{eos_fitting} fit', line=dict(width=1)))
             # plot the minimum energy data point for each config from the fitting equation
-            min_energy = min(eos_name_df['energies'].values[0])
-            volume_at_min_energy = eos_name_df['volumes'].values[0][np.where(eos_name_df['energies'].values[0] == min_energy)[0][0]] #check this
-            fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers', name=f'{eos_fitting} min energy', marker=dict(color='black', size=10)))
-
+            if highlight_minimum == True:
+                min_energy = min(eos_name_df['energies'].values[0])
+                volume_at_min_energy = eos_name_df['volumes'].values[0][np.where(eos_name_df['energies'].values[0] == min_energy)[0][0]] #check this
+                fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers', name=f'{eos_fitting} min energy', marker=dict(color='black', size=10)))
+            elif highlight_minimum == False:
+                pass
+            else:
+                print('highlight_minimum must be True or False')
         elif eos_fitting == 'all':
             for eos_name in eos_config_df['eos_name'].unique():
                 eos_name_df = eos_config_df[eos_config_df['eos_name'] == eos_name]
                 fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0], mode='lines', name=f'{eos_name} fit', line=dict(width=1)))
+                # plot the minimum energy data point for each config from the fitting equation
+                if highlight_minimum == True:
+                    min_energy = min(eos_name_df['energies'].values[0])
+                    volume_at_min_energy = eos_name_df['volumes'].values[0][np.where(eos_name_df['energies'].values[0] == min_energy)[0][0]] #check this
+                    fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers', name=f'{eos_fitting} min energy', marker=dict(color='black', size=10)))
         elif eos_fitting == None:
             pass
         else:
