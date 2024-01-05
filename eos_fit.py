@@ -608,15 +608,15 @@ def plot_mv(df, show_fig=True):
     return fig
 
 def plot_ev(data, eos_fitting='mBM4', highlight_minimum=True ,show_fig=True, left_col='volume', right_col='energy'):
-    
     # determine the type of data and how to handle it.
     if isinstance(data, pd.DataFrame):
         df = data
     elif isinstance(data, list) and all(type(elem) == type(data[0]) for elem in data): #check if each elem of the list is the same type as the zeroth element
-        if data[0] == pd.DataFrame:
+        if isinstance(data[0], pd.DataFrame):
             df = pd.concat(data, ignore_index=True)
-        elif data[0] == 'str':
+        elif isinstance(data[0], str):
             df = convert_input_files_to_df(data, left_col, right_col)
+            print(df)
     else:
         raise ValueError("data must be a pandas DataFrame or a list of pandas DataFrames or a list of input_file names as strings")
     
