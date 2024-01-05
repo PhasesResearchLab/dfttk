@@ -27,6 +27,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
 from scipy.optimize import leastsq
+import os
+import glob
+import shutil
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import json
+import sys
+import plotly.graph_objects as go
 
 def mBM4(volume, energy):
     eos_index = 1
@@ -488,11 +497,44 @@ def morse(volume, energy):
 
     return results, volume_range, energy_eos, pressure_eos
 
+def fit_to_all_eos(df):
+    eos_df = pd.DataFrame(columns=['config', 'eos_name', 'volumes', 'energies', 'pressures'])
+    eos_functions = [mBM4, mBM5, BM4, BM5, LOG4, LOG5, murnaghan, vinet, morse]  # Add more EOS functions here
+    
+    for config in df['config'].unique():
+        config_df = df[df['config'] == config]
+        volumes = config_df['vol'].values
+        energies = config_df['energy'].values
+        
+        for eos_func in eos_functions:
+            _, volume_range, energy_eos, pressure_eos = eos_func(volumes, energies)
+            energy_eos = energy_eos[1:]
+            pressure_eos = pressure_eos[1:]
+            eos_name = eos_func.__name__
+            eos_df = pd.concat([eos_df, pd.DataFrame([[config, eos_name, volume_range, energy_eos, pressure_eos]], columns=['config', 'eos_name', 'volumes', 'energies', 'pressures'])], ignore_index=True)    
+    return eos_df
+
+
+"""
+input_files
+"""
+def convert_input_files_to_df(*input_files):
+    df = pd.DataFrame(columns=['config', 'vol', 'energy'])
+    for input_file in input_files:
+        config = input_file.split('/')[-1].split('.')[0]
+        data = np.loadtxt(input_file)
+        volume = data[:, 0]
+        energy = data[:, 1]
+        df = pd.concat([df, pd.DataFrame([[config, volume, energy]], columns=['config', 'vol', 'energy'])], ignore_index=True)
+    return df
+
+
 def plot_ev(df, eos_fitting='mBM4' ,show_fig=True):
     eos_df = fit_to_all_eos(df)
     fig = px.scatter(df, x='vol', y='energy', color='config', template='plotly_white')
     fig.update_layout(title='E-V', xaxis_title='Volume [A^3]', yaxis_title='Energy (eV)')
     
+    # loop over configs in the data frame
     for config in eos_df['config'].unique():
         eos_config_df = eos_df[eos_df['config'] == config]
         if eos_fitting in eos_config_df['eos_name'].unique():
@@ -510,9 +552,11 @@ def plot_ev(df, eos_fitting='mBM4' ,show_fig=True):
         fig.show()
     return fig
 
+def plot_pv():
+    pass
 
 
-def ev_fit_old(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False):
+def ev_fit(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=False):
     # 1. Load the energy-volume data
     if num_structures == 'single':
         data = np.loadtxt(input_files[0])
@@ -1399,7 +1443,7 @@ def ev_fit_old(num_structures, *input_files, eos_index, plot_ev=True, plot_pv=Fa
         return results, energy_eos, pressure_eos
 
 
-def pv_fit_old(num_structures, *input_files, eos_index, plot_pv=True):
+def pv_fit(num_structures, *input_files, eos_index, plot_pv=True):
     # 1. Load the pressure-volume data
     if num_structures == 'single':
         data = np.loadtxt(input_files[0])
