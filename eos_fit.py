@@ -651,7 +651,7 @@ def plot_ev(data, eos_fitting='mBM4', highlight_minimum=True ,show_fig=True, lef
                 volume_at_min_energy = eos_name_df['volumes'].values[0][np.where(eos_name_df['energies'].values[0] == min_energy)[0][0]] #check this
                 fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers',
                                          name=f'{eos_fitting} min energy', marker=dict(color='black',
-                                         size=10, symbol='cross'), legendgroup='Minimum'))
+                                         size=10, symbol='cross'), legendgroup='minimum'))
             elif highlight_minimum == False:
                 pass
             else:
