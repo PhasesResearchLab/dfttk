@@ -644,7 +644,7 @@ def plot_ev(data, eos_fitting='mBM4', highlight_minimum=True ,show_fig=True, lef
         if eos_fitting in eos_config_df['eos_name'].unique():
             eos_name_df = eos_config_df[eos_config_df['eos_name'] == eos_fitting]
             fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0],
-                                     mode='lines', name=f'{eos_fitting} fit', line=dict(width=1), legendgroup='Data'))
+                                     mode='lines', name=f'{eos_fitting} fit', line=dict(width=1), legendgroup='data'))
             # plot the minimum energy data point for each config from the fitting equation
             if highlight_minimum == True:
                 min_energy = min(eos_name_df['energies'].values[0])
@@ -659,12 +659,15 @@ def plot_ev(data, eos_fitting='mBM4', highlight_minimum=True ,show_fig=True, lef
         elif eos_fitting == 'all':
             for eos_name in eos_config_df['eos_name'].unique():
                 eos_name_df = eos_config_df[eos_config_df['eos_name'] == eos_name]
-                fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0], mode='lines', name=f'{eos_name} fit', line=dict(width=1)))
+                fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0],
+                                         mode='lines', name=f'{eos_name} fit', line=dict(width=1), legendgroup='eos'))
                 # plot the minimum energy data point for each config from the fitting equation
                 if highlight_minimum == True:
                     min_energy = min(eos_name_df['energies'].values[0])
                     volume_at_min_energy = eos_name_df['volumes'].values[0][np.where(eos_name_df['energies'].values[0] == min_energy)[0][0]] #check this
-                    fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers', name=f'{eos_name} min energy', marker=dict(color='black', size=8, symbol='cross')))
+                    fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers',
+                                             name=f'{eos_name} min energy', marker=dict(color='black',
+                                             size=8, symbol='cross'), legendgroup='minimum'))
         elif eos_fitting == None:
             pass
         else:
