@@ -569,7 +569,7 @@ def select_data(df, selection_dict):
     return selected_data
 
 """
-data may be a single pandas dat frame or a list of pandas data frames
+data may be a single pandas data frame or a list of pandas data frames
 data may also be a list of input_file names as strings ex:
     ['str_0', 'str_1', 'str_2', ...]
 
