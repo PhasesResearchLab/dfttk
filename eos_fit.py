@@ -634,7 +634,7 @@ def plot_ev(data, eos_fitting='mBM4', highlight_minimum=True ,show_fig=True, lef
             mode='markers',
             marker=dict(colorscale='Viridis'),  # Assign different colors based on 'config' column,
             legendgroup='EOS',
-            name=f'config {config}'
+            name=f'Config {config}'
         ))
     fig.update_layout(title='E-V', xaxis_title='Volume [Å^3]', yaxis_title='Energy (eV)', template='plotly_white')
     
