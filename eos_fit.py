@@ -626,7 +626,7 @@ def plot_ev(data, eos_fitting='mBM4', highlight_minimum=True ,show_fig=True, lef
 
     # plot the fitted equations
     fig = px.scatter(df, x='volume', y='energy', color='config', template='plotly_white')
-    fig.update_layout(title='E-V', xaxis_title='Volume [A^3]', yaxis_title='Energy (eV)')
+    fig.update_layout(title='E-V', xaxis_title='Volume [Å^3]', yaxis_title='Energy (eV)')
     
     # loop over configs in the data frame
     for config in eos_df['config'].unique():
