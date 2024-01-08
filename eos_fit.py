@@ -624,21 +624,34 @@ def plot_ev(data, eos_fitting='mBM4', highlight_minimum=True ,show_fig=True, lef
     # create a data frame with the eos fits for each config
     eos_df = fit_to_all_eos(df)
 
-    # plot the fitted equations
-    fig = px.scatter(df, x='volume', y='energy', color='config', template='plotly_white')
-    fig.update_layout(title='E-V', xaxis_title='Volume [Å^3]', yaxis_title='Energy (eV)')
+    # plot the data
+    fig = go.Figure()
+    for config in df['config'].unique():
+        config_df = df[df['config'] == config]
+        fig.add_trace(go.Scatter(
+            x=config_df['volume'],
+            y=config_df['energy'],
+            mode='markers',
+            marker=dict(colorscale='Viridis'),  # Assign different colors based on 'config' column,
+            legendgroup='EOS',
+            name=f'config {config}'
+        ))
+    fig.update_layout(title='E-V', xaxis_title='Volume [Å^3]', yaxis_title='Energy (eV)', template='plotly_white')
     
-    # loop over configs in the data frame
+    # loop over configs in the eos data frame and plot the eos fits
     for config in eos_df['config'].unique():
         eos_config_df = eos_df[eos_df['config'] == config]
         if eos_fitting in eos_config_df['eos_name'].unique():
             eos_name_df = eos_config_df[eos_config_df['eos_name'] == eos_fitting]
-            fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0], mode='lines', name=f'{eos_fitting} fit', line=dict(width=1)))
+            fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0],
+                                     mode='lines', name=f'{eos_fitting} fit', line=dict(width=1), legendgroup='Data'))
             # plot the minimum energy data point for each config from the fitting equation
             if highlight_minimum == True:
                 min_energy = min(eos_name_df['energies'].values[0])
                 volume_at_min_energy = eos_name_df['volumes'].values[0][np.where(eos_name_df['energies'].values[0] == min_energy)[0][0]] #check this
-                fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers', name=f'{eos_fitting} min energy', marker=dict(color='black', size=10, symbol='cross')))
+                fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers',
+                                         name=f'{eos_fitting} min energy', marker=dict(color='black',
+                                         size=10, symbol='cross'), legendgroup='Minimum'))
             elif highlight_minimum == False:
                 pass
             else:
