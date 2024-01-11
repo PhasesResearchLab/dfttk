@@ -30,7 +30,9 @@ ion_list = [i for i in range(1, 9)] #recall that range(n, m) = [n, ..., m-1]
 # 5., 6., and 7.
 df = cstdn.extract_config_data(os.getcwd(), ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR') # get the data 
 
-fig = cstdn.plot_mv(df, show_fig=True) # plot the data with plotly. opens a browser window, if show_fig=True
+# plot the data with plotly. opens a browser window, if show_fig=True
+fig = cstdn.plot_mv(df, show_fig=True)
+fig = cstdn.plot_ev(df, show_fig=True) 
 
 # 3.
 #optionally save the data to a json file. Change the name of the json file as needed

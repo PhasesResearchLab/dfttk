@@ -1,0 +1,24 @@
+#!/bin/bash
+
+#SBATCH --nodes=5
+#SBATCH --ntasks=20
+#SBATCH --mem=24GB
+#SBATCH --time=48:00:00
+#SBATCH --partition=open
+#SBATCH --constraint=icelake
+#SBATCH --job-name=d4_21
+
+echo ” ”
+echo “Job started on `hostname` at `date`”
+echo ” ”
+echo “Running program...”
+
+
+module load vasp/vasp-6.4.1b
+python /storage/home/lam7027/bin/vasp-job-automation/cstdn.py
+
+echo ” ”
+echo “Job completed at `date`”
+echo ” ”
+diff=$SECONDS
+echo “$(($diff / 3600)) hours, $((($diff / 60) % 60)) minutes and $(($diff % 60)) seconds elapsed.”
