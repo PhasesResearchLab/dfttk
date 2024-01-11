@@ -1,3 +1,8 @@
+
+import math
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+from scipy.optimize import leastsq
 import os
 import glob
 import shutil
@@ -5,20 +10,14 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import json
+import sys
+import plotly.graph_objects as go
 
 from custodian.custodian import Custodian
 from custodian.vasp.handlers import VaspErrorHandler
 from custodian.vasp.jobs import VaspJob
 from pymatgen.core import structure
 from pymatgen.io.vasp.outputs import Outcar, Vasprun
-
-"""
-kpoints_list should be a list of strings ex:
-    ['1 1 1', '2 2 2', '3 3 3']
-incar_tags should be a dictionary ex:
-    {'encut' 'ISMEAR': -5, 'IBRION': 2}
-only edits the forth line of the KPOINTS file
-"""
 
 
 # Function to extract the last occurrence of volume from OUTCAR files
@@ -96,45 +95,8 @@ def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
     simple_data.reset_index(drop=True, inplace=True)
     return simple_data
 
-"""
-df is a data frame with columns ['config', '# of ion', 'vol', 'tot']
-breaks if missing these columns
-"""
-def plot_mv(df, show_fig=True):
-    fig = px.line(df,
-                    x='vol',
-                    y='tot',
-                    color='# of ion',symbol='# of ion',
-                    hover_data=['config', '# of ion', 'vol', 'tot'],
-                    template='plotly_white')
-    fig.update_layout(title='Mag-V',
-                        xaxis_title='Volume [A^3]',
-                        yaxis_title='Magnetic Moment [mu_B]')
-    
-    fig.update_yaxes(nticks=10)
-    fig.update_xaxes(nticks=10)
-    
-    # Loop over each trace and update dash length
-    for i, trace in enumerate(fig.data):
-        dash_length = f"{2+(i+1)}px,{2+2*(i+1)}px"  # Dash length changes with each iteration
-        fig.data[-i-1].update(mode='markers+lines',
-                            marker=dict(size=8, line=dict(width=1), opacity=0.5),
-                            line=dict(width=3, dash=dash_length))
 
 
-    if show_fig:
-        fig.show()
-    return fig
-
-def plot_ev(df, show_fig=True):
-    fig = px.line(df, x='vol', y='energy', color='config', symbol='config', template='plotly_white')
-    fig.update_layout(title='E-V', xaxis_title='Volume [A^3]', yaxis_title='Energy (eV)')
-    fig.update_traces(mode='markers+lines',
-                        marker=dict(size=8, line=dict(width=1), opacity=0.66),
-                        line=dict(width=3)) 
-    if show_fig:
-        fig.show()
-    return fig
 
 """
 ~~~WARNING~~~ The currect intent is to replace this function with extract_config_data()
@@ -161,10 +123,10 @@ def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
             continue
         vol = extract_volume(outcar_path)
         mag_data = extract_simple_mag_data(ion_list, outcar_path)
-        mag_data['vol'] = vol
+        mag_data['volume'] = vol
         mag_data['config'] = config
         dfs_list.append(mag_data)
-    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion']).reset_index(drop=True)
+    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['volume', '# of ion']).reset_index(drop=True)
     return df
 
 """
@@ -203,11 +165,11 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
         vol = extract_volume(outcar_path)
         energy = extract_energy(oszicar_path)
         data_collection = extract_simple_mag_data(ion_list, outcar_path)
-        data_collection['vol'] = vol
+        data_collection['volume'] = vol
         data_collection['config'] = config
         data_collection['energy'] = energy
         dfs_list.append(data_collection)
-    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['vol', '# of ion']).reset_index(drop=True)
+    df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['volume', '# of ion']).reset_index(drop=True)
     return df
 
 def three_step_relaxation(path, vasp_cmd, handlers, backup=True):  # Path should contain necessary VASP config files
@@ -361,6 +323,15 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):
         three_step_relaxation(vol_folder_path, vasp_cmd, handlers, backup=False)
 
 
+"""
+kpoints_list should be a list of strings ex:
+    ['1 1 1', '2 2 2', '3 3 3']
+incar_tags should be a dictionary ex:
+    {'encut' 'ISMEAR': -5, 'IBRION': 2}
+only edits the forth line of the KPOINTS file
+
+Todo: use pymatgen to edit the KPOINTS file, not koints_list
+"""
 def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers,
                       backup=False):  # Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
     original_dir = os.getcwd()

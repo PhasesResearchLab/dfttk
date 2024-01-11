@@ -1,0 +1,72 @@
+ running   20 mpi-ranks, on    5 nodes
+ distrk:  each k-point on   20 cores,    1 groups
+ distr:  one band on    1 cores,   20 groups
+ vasp.6.4.1 05Apr23 (build Jun 01 2023 13:46:15) complex                        
+  
+ POSCAR found type information on POSCAR FeSe
+ POSCAR found :  2 types and      16 ions
+ Reading from existing POTCAR
+ scaLAPACK will be used
+ -----------------------------------------------------------------------------
+|                                                                             |
+|           W    W    AA    RRRRR   N    N  II  N    N   GGGG   !!!           |
+|           W    W   A  A   R    R  NN   N  II  NN   N  G    G  !!!           |
+|           W    W  A    A  R    R  N N  N  II  N N  N  G       !!!           |
+|           W WW W  AAAAAA  RRRRR   N  N N  II  N  N N  G  GGG   !            |
+|           WW  WW  A    A  R   R   N   NN  II  N   NN  G    G                |
+|           W    W  A    A  R    R  N    N  II  N    N   GGGG   !!!           |
+|                                                                             |
+|     For optimal performance we recommend to set                             |
+|       NCORE = 2 up to number-of-cores-per-socket                            |
+|     NCORE specifies how many cores store one orbital (NPAR=cpu/NCORE).      |
+|     This setting can greatly improve the performance of VASP for DFT.       |
+|     The default, NCORE=1 might be grossly inefficient on modern             |
+|     multi-core architectures or massively parallel machines. Do your        |
+|     own testing! More info at https://www.vasp.at/wiki/index.php/NCORE      |
+|     Unfortunately you need to use the default for GW and RPA                |
+|     calculations (for HF NCORE is supported but not extensively tested      |
+|     yet).                                                                   |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
+ Reading from existing POTCAR
+ LDA part: xc-table for Pade appr. of Perdew
+ POSCAR, INCAR and KPOINTS ok, starting setup
+ FFT: planning ... GRIDC
+ FFT: planning ... GRID_SOFT
+ FFT: planning ... GRID
+ WAVECAR not read
+ WARNING: random wavefunctions but no delay for mixing, default for NELMDL
+ entering main loop
+       N       E                     dE             d eps       ncg     rms          rms(c)
+DAV:   1     0.201112875532E+04    0.20111E+04   -0.88894E+04 35340   0.194E+03
+DAV:   2     0.122937531614E+03   -0.18882E+04   -0.18332E+04 32000   0.569E+02
+DAV:   3    -0.850195787303E+02   -0.20796E+03   -0.18479E+03 46020   0.186E+02
+DAV:   4    -0.997950758787E+02   -0.14775E+02   -0.14429E+02 47280   0.515E+01
+DAV:   5    -0.100143982317E+03   -0.34891E+00   -0.34796E+00 45100   0.837E+00    0.278E+01
+RMM:   6    -0.113583037396E+03   -0.13439E+02   -0.17591E+02 34845   0.857E+01    0.537E+01
+RMM:   7    -0.908682075515E+02    0.22715E+02   -0.45632E+01 32070   0.515E+01    0.114E+01
+RMM:   8    -0.915267170139E+02   -0.65851E+00   -0.36044E+00 46144   0.525E+00    0.552E+00
+RMM:   9    -0.916204995784E+02   -0.93783E-01   -0.96153E-01 50701   0.294E+00    0.294E+00
+RMM:  10    -0.916461728074E+02   -0.25673E-01   -0.29181E-01 52344   0.162E+00    0.170E+00
+RMM:  11    -0.916440588221E+02    0.21140E-02   -0.67702E-02 48468   0.109E+00    0.638E-01
+RMM:  12    -0.916536401153E+02   -0.95813E-02   -0.20945E-02 49121   0.496E-01    0.362E-01
+RMM:  13    -0.916533891550E+02    0.25096E-03   -0.53364E-03 45068   0.243E-01    0.146E-01
+RMM:  14    -0.916532355609E+02    0.15359E-03   -0.16688E-03 34261   0.146E-01
+   1 F= -.98281199E+02 E0= -.98281199E+02  d E =0.000000E+00  mag=    -0.0000
+ -----------------------------------------------------------------------------
+|                                                                             |
+|           W    W    AA    RRRRR   N    N  II  N    N   GGGG   !!!           |
+|           W    W   A  A   R    R  NN   N  II  NN   N  G    G  !!!           |
+|           W    W  A    A  R    R  N N  N  II  N N  N  G       !!!           |
+|           W WW W  AAAAAA  RRRRR   N  N N  II  N  N N  G  GGG   !            |
+|           WW  WW  A    A  R   R   N   NN  II  N   NN  G    G                |
+|           W    W  A    A  R    R  N    N  II  N    N   GGGG   !!!           |
+|                                                                             |
+|     Tetrahedron method does not include variations of the Fermi             |
+|     occupations, so forces and stress will be inaccurate. We suggest        |
+|     using a different smearing scheme ISMEAR = 1 or 2 for metals in         |
+|     relaxations.                                                            |
+|                                                                             |
+ -----------------------------------------------------------------------------
+
