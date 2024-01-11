@@ -1,4 +1,3 @@
-
 import math
 import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
@@ -12,6 +11,7 @@ import plotly.express as px
 import json
 import sys
 import plotly.graph_objects as go
+import json
 
 from custodian.custodian import Custodian
 from custodian.vasp.handlers import VaspErrorHandler
@@ -172,12 +172,12 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
     df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['volume', '# of ion']).reset_index(drop=True)
     return df
 
-def three_step_relaxation(path, vasp_cmd, handlers, backup=True):  # Path should contain necessary VASP config files
+def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=True):  # Path should contain necessary VASP config files
     original_dir = os.getcwd()
     os.chdir(path)
     step1 = VaspJob(
         vasp_cmd=vasp_cmd,
-        copy_magmom=True,
+        copy_magmom=copy_magmom,
         final=False,
         suffix='.1relax',
         backup=backup,
@@ -185,7 +185,7 @@ def three_step_relaxation(path, vasp_cmd, handlers, backup=True):  # Path should
 
     step2 = VaspJob(
         vasp_cmd=vasp_cmd,
-        copy_magmom=True,
+        copy_magmom=copy_magmom,
         final=False,
         suffix='.2relax',
         backup=backup,
@@ -196,7 +196,7 @@ def three_step_relaxation(path, vasp_cmd, handlers, backup=True):  # Path should
 
     step3 = VaspJob(
         vasp_cmd=vasp_cmd,
-        copy_magmom=True,
+        copy_magmom=copy_magmom,
         final=True,
         suffix='.3static',
         backup=backup,
@@ -233,14 +233,16 @@ the second to last volume folder will be used as the starting point.
 
 """
 def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):  
-    #write a params.json file to keep track of the parameters used
-    #unfortunately, handlers is not json serializable, so the value is replace by a useless string
+    
+    # Write a params.json file to keep track of the parameters used
+    # Unfortunately, handlers is not json serializable, so the value is replace by a useless string
     params = {'path': path,
               'volumes': volumes,
               'vasp_cmd': vasp_cmd,
               'handlers': 'handlers is not json serializable',
               'restarting': restarting}
     params_json_path = os.path.join(path, 'params.json')
+    
     n = 0
     while os.path.isfile(params_json_path):
         n += 1
@@ -249,6 +251,7 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):
         json.dump(params, file)
     
     # If restarting, find the last volume folder and delete it
+    # Supply the same volume list as before
     if restarting:
         for j in range(len(volumes)):
             vol_folder_name = 'vol_' + str(j)
@@ -266,7 +269,7 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):
         shutil.rmtree(last_vol_folder_path)
 
     for i, vol in enumerate(volumes):
-        # if restarting, skip volumes that have already been run
+        # If restarting, skip volumes that have already been run
         if restarting and i < last_vol_index:
             continue
 
@@ -293,6 +296,7 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):
                 file_dest = os.path.join(vol_folder_path, file_name[1])
                 if os.path.isfile(file_source):
                     shutil.copy2(file_source, file_dest)
+                    
             # After copying, it is safe to delete some of the WAVECARS, CHGCARS, CHG and PROCARS from the previous volume folder to save space
             # Keeps WAVECAR.3static and CHGCAR.3static
             files_to_delete = ['WAVECAR.1relax', 'WAVECAR.2relax',
@@ -321,7 +325,19 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):
         # Run VASP
         print('Running three step relaxation for volume ' + str(vol))
         three_step_relaxation(vol_folder_path, vasp_cmd, handlers, backup=False)
+    
+    # Delete some files in the last volume folder to save space
+    previous_vol_folder_path = os.path.join(path, 'vol_' + str(i))
+    paths_to_delete = []
+    for file_name in files_to_delete:
+        file_path = os.path.join(previous_vol_folder_path, file_name)
+        paths_to_delete.append(file_path)
 
+    for file_path in paths_to_delete:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        else:
+            print(f"The file {file_path} does not exist.")
 
 """
 kpoints_list should be a list of strings ex:
@@ -400,19 +416,3 @@ def plot_encut_convergence():
 if __name__ == "__main__":
     print("This is a module for importing. It is not meant to be run directly.")
 
-    # # Specify custodian handlers
-    # subset = list(VaspErrorHandler.error_msgs.keys())
-    # subset.remove("algo_tet")
-    # handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]
-
-    # # Specify VASP command
-    # vasp_cmd = ["srun", "vasp_std"]
-
-    # # three_step_relaxation('', vasp_cmd, handlers)
-    
-    # volumes = list(np.linspace(370, 270, 15))
-
-    # vol_series(os.getcwd(), volumes, vasp_cmd, handlers, restarting=True)
-
-    # # kpoints_list = ['4 4 5', '5 5 6', '6 6 7', '7 7 8', '7 7 9', '8 8 10', '12 12 15']
-    # # kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
