@@ -1,11 +1,13 @@
 from pymatgen.core import Structure
 from pymatgen.transformations.standard_transformations import SupercellTransformation
+from pymatgen.analysis.magnetism.analyzer import MagneticStructureEnumerator
+
 
 # Load your primitive cell from a POSCAR file or create it manually
 prim_cell = Structure.from_file("/storage/home/lam7027/work/FeSe/POSCAR.oqmd")
 
 # Define the scaling factors for the supercell
-scaling_matrix = [[1, 1, 0], [-1, 1, 0], [0, 0, 1]]
+scaling_matrix = [2, 0, 0], [0, 2, 0], [0, 0, 1]
 
 # Create the supercell transformation
 supercell_transformation = SupercellTransformation(scaling_matrix=scaling_matrix)
@@ -22,3 +24,8 @@ print(supercell)
 
 # Save the supercell to a new POSCAR file
 supercell.to("/storage/home/lam7027/work/FeSe/POSCAR.oqmd_supercell")
+
+# use MagneticStructureEnumerator to generate all possible magnetic structures
+
+# enumerate all possible magnetic structures
+ms = MagneticStructureEnumerator(supercell)
