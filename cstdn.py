@@ -232,7 +232,7 @@ When restarting, the last volume folder will be deleted and
 the second to last volume folder will be used as the starting point.
 
 """
-def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):  
+def vol_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar=False, keep_chgcar=False):  
     
     # Write a params.json file to keep track of the parameters used
     # Unfortunately, handlers is not json serializable, so the value is replace by a useless string
@@ -259,11 +259,53 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):
             if not os.path.exists(vol_folder_path):
                 last_vol_folder_name = 'vol_' + str(j - 1)
                 last_vol_folder_path = os.path.join(path, last_vol_folder_name)
+                last_complete_vol_folder_name = 'vol_' + str(j - 2)
+                last_complete_vol_folder_path = os.path.join(path, last_complete_vol_folder_name)
                 break
         if j == 0:
             print("No volumes to restart from. You might want to set restarting=False (which is the default) or check if 'vol_0' exists inside the path")
             return
         
+        # find the initial WAVECAR and CHGCAR in the last volume folder 
+        # and move to the previous volume folder
+        # we may need these before we delete the folder
+        initial_wavecar = os.path.join(last_vol_folder_path, 'WAVECAR.1relax')
+        alt_initial_wavecar = os.path.join(last_vol_folder_path, 'WAVECAR')
+        last_complete_wavecar = os.path.join(last_complete_vol_folder_path, 'WAVECAR.3static')
+        outcar1_is_file = os.path.isfile(os.path.join(last_vol_folder_path, 'OUTCAR.1relax'))
+        outcar2_is_file = os.path.isfile(os.path.join(last_vol_folder_path, 'OUTCAR.2relax'))
+        outcar3_is_file = os.path.isfile(os.path.join(last_vol_folder_path, 'OUTCAR.3static'))
+        if os.path.isfile(last_complete_wavecar): # check to see if the last complete volume folder has a WAVECAR.3static
+            pass
+        elif os.path.isfile(initial_wavecar):
+            shutil.move(initial_wavecar, os.path.join(last_complete_vol_folder_path, 'WAVECAR.3static')) # move the WAVECAR.1relax to the last complete volume folder
+        elif os.path.isfile(alt_initial_wavecar) and not outcar1_is_file and not outcar2_is_file and not outcar3_is_file: # check outcars to ensure correct wavecar
+            shutil.move(alt_initial_wavecar, os.path.join(last_complete_vol_folder_path, 'WAVECAR.3static')) # move the WAVECAR to the last complete volume folder
+        else:
+            print("Cannot determine which WAVECAR to restart with.:")
+            print("    1. There is no 'WAVECAR.3static' in the last complete volume folder")
+            print("    2. There is no 'WAVECAR.1relax' in the last volume folder")
+            print("    3. There is no 'WAVECAR' in the last volume folder, or there is an 'OUTCAR.1relax', 'OUTCAR.2relax', or 'OUTCAR.3static' in the last volume folder.")
+            print("You might want to make sure that files are where they are supposed to be and named correctly.")
+            return
+        
+        initial_chgcar = os.path.join(last_vol_folder_path, 'CHGCAR.1relax')
+        alt_initial_chgcar = os.path.join(last_vol_folder_path, 'CHGCAR')
+        last_complete_chgcar = os.path.join(last_complete_vol_folder_path, 'CHGCAR.3static')
+        if os.path.isfile(last_complete_chgcar): # check to see if the last complete volume folder has a CHGCAR.3static
+            pass
+        elif os.path.isfile(initial_chgcar):
+            shutil.move(initial_chgcar, os.path.join(last_complete_vol_folder_path, 'CHGCAR.3static'))
+        elif os.path.isfile(alt_initial_chgcar) and not outcar1_is_file and not outcar2_is_file and not outcar3_is_file: # check outcars to ensure correct chgcar
+            shutil.move(alt_initial_chgcar, os.path.join(last_complete_vol_folder_path, 'CHGCAR.3static'))
+        else:
+            print("Cannot determine which CHGCAR to restart with.:")
+            print("    1. There is no 'CHGCAR.3static' in the last complete volume folder")
+            print("    2. There is no 'CHGCAR.1relax' in the last volume folder")
+            print("    3. There is no 'CHGCAR' in the last volume folder, or there is an 'OUTCAR.1relax', 'OUTCAR.2relax', or 'OUTCAR.3static' in the last volume folder.")
+            print("You might want to make sure that files are where they are supposed to be and named correctly.")
+            return
+
         # Delete the last volume folder
         last_vol_index = j-1
         shutil.rmtree(last_vol_folder_path)
@@ -300,9 +342,14 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):
             # After copying, it is safe to delete some of the WAVECARS, CHGCARS, CHG and PROCARS from the previous volume folder to save space
             # Keeps WAVECAR.3static and CHGCAR.3static
             files_to_delete = ['WAVECAR.1relax', 'WAVECAR.2relax',
+                            'WAVECAR.3static', 'CHGCAR3.static',
                             'CHGCAR.1relax', 'CHGCAR.2relax',
                             'CHG.1relax', 'CHG.2relax', 'CHG.3static',
                             'PROCAR.1relax', 'PROCAR.2relax', 'PROCAR.3static']
+            if keep_wavecar:
+                files_to_delete.remove('WAVECAR.3static')
+            if keep_chgcar:
+                files_to_delete.remove('CHGCAR.3static')
             paths_to_delete = []
             for file_name in files_to_delete:
                 file_path = os.path.join(previous_vol_folder_path, file_name)
