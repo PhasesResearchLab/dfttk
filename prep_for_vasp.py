@@ -91,6 +91,10 @@ def remove_spin_up_less_than_down(atom_count_df, atom_up, atom_down): #takes the
             os.remove(f'strs/str.{row["file_number"]}')
 
 
+"""
+Needs to be generalize to take a dictionary of atom names and spin values
+or perhaps just two lists, or a list of tuples, or something like that.
+"""
 def make_incars(atom_1, atom_2, atom_3, spin_1, spin_2, spin_3, incar='INCAR', configurations_directory='configurations', strs_dir='strs'): #takes an INCAR file and adds a line for the magnetic moment in accordance with the str file
     str_files = [filename for filename in os.listdir(strs_dir) if filename.startswith('str')]
     for str_file in str_files:
@@ -128,6 +132,26 @@ def make_kpoints(kppa, force_gamma=False, configurations_directory='configuratio
         structure = Structure.from_file(os.path.join(configurations_directory, config_dir, 'POSCAR'))
         kpoints = Kpoints.automatic_density(structure, kppa, force_gamma=force_gamma)
         kpoints.write_file(os.path.join(configurations_directory, config_dir, 'KPOINTS'))
+
+
+"""
+function that creates a submit script for each configuration directory. It
+also changes the job name to be the same as the configuration name. that is,
+everything after config_ in the directory name.
+"""
+def create_submit_scripts(configurations_directory='configurations', submit_script='submit.sh'):
+    config_dirs = [dir for dir in os.listdir(configurations_directory) if os.path.isdir(os.path.join(configurations_directory, dir))]
+    with open(submit_script, 'r') as submit_file:
+        lines = submit_file.readlines()
+    for config_dir in config_dirs:
+        new_job_name = config_dir.split('config_')[-1]
+        submit_script_path = os.path.join(configurations_directory, config_dir, submit_script)
+        with open(submit_script_path, 'w') as file:
+            for line in lines:
+                if line.startswith('#SBATCH --job-name='):
+                    file.write(f'#SBATCH --job-name={new_job_name}\n')
+                else:
+                    file.write(line)
 
 # def prep_for_vasp(ywoutput, magnetic_configurations=False):
 #     parse(ywoutput)
