@@ -5,6 +5,7 @@ from ase import io
 import shutil
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
+from pymatgen.io.vasp.outputs import Poscar
 
 def write_to_file(filename, lines):
     with open(filename, 'w') as file:
@@ -116,6 +117,7 @@ def make_incars(atom_1, atom_2, atom_3, spin_1, spin_2, spin_3, incar='INCAR', c
             file.write('\nMAGMOM = %s' % mag_mom_string)
 
 
+
 """
 This function differs from make_incars and convert_strs_to_poscars in that it
 requires the config_dirs to already exist. it also assume that there is a
@@ -152,6 +154,53 @@ def create_submit_scripts(configurations_directory='configurations', submit_scri
                     file.write(f'#SBATCH --job-name={new_job_name}\n')
                 else:
                     file.write(line)
+
+
+def read_magmom_line(incar_file):
+    with open(incar_file, 'r') as file:
+        for line in file:
+            if line.startswith('MAGMOM ='):
+                magmom_line = line.strip()
+                numeric_part = magmom_line.split('=')[1].strip()
+                numeric_list = numeric_part.split()
+                numeric_values = [int(value) for value in numeric_list]
+                return numeric_values
+    return None
+
+"""
+this function is a patch to rearrange the sites and magmoms in the POSCAR and
+INCAR files. If the sites are not grouped by specie, VASP will look for more
+potentials than supplied/necessary.
+"""
+def rearrage_sites_and_magmoms(config_dir):
+    incar_file = os.path.join(config_dir, 'INCAR')
+    poscar_file = os.path.join(config_dir, 'POSCAR')
+    struct = Structure.from_file(poscar_file) # read poscar
+    orig_magmoms = read_magmom_line(incar_file) # read magmom from incar
+    struct.add_site_property("magmom", orig_magmoms) # add magmom to structure
+    struct = struct.get_sorted_structure() # sort structure with the magmoms
+    rearranged_magmoms = struct.site_properties['magmom'] # get the rearranged magmoms
+    numeric_strings = [str(value) for value in rearranged_magmoms] # convert values to strings
+    result_string = ' '.join(numeric_strings) # join the strings
+    result_string = "MAGMOM = " + result_string # add the MAGMOM = part
+
+    # Write the result_string to the INCAR file
+    with open(incar_file, 'r') as file:
+        lines = file.readlines()
+    with open(incar_file, 'w') as file:
+        for line in lines:
+            if line.startswith('MAGMOM ='):
+                file.write(result_string + '\n')
+            else:
+                file.write(line)
+    
+    # Write the rearranged structure to the POSCAR file
+    poscar = Poscar(struct)
+    poscar.write_file(poscar_file)
+    return None
+
+
+
 
 # def prep_for_vasp(ywoutput, magnetic_configurations=False):
 #     parse(ywoutput)
