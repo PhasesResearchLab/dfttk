@@ -14,6 +14,6 @@ handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]
 # Specify VASP command
 vasp_cmd = ["srun", "vasp_std"]
 
-kpoints_list = ['4 4 5', '5 5 6']
+kppa_list = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
 
-cstdn.kpoints_conv_test(os.getcwd(), kpoints_list, vasp_cmd, handlers, backup=False)
+cstdn.kpoints_conv_test(os.getcwd(), kppa_list, vasp_cmd, handlers, backup=False)

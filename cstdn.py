@@ -1,23 +1,15 @@
-import math
-import matplotlib.pyplot as plt
-from scipy.optimize import fsolve
-from scipy.optimize import leastsq
 import os
 import glob
 import shutil
 import pandas as pd
-import numpy as np
-import plotly.express as px
-import json
-import sys
-import plotly.graph_objects as go
 import json
 
 from custodian.custodian import Custodian
 from custodian.vasp.handlers import VaspErrorHandler
 from custodian.vasp.jobs import VaspJob
-from pymatgen.core import structure
+from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.outputs import Outcar, Vasprun
+from pymatgen.io.vasp.inputs import Kpoints
 
 
 # Function to extract the last occurrence of volume from OUTCAR files
@@ -232,7 +224,7 @@ When restarting, the last volume folder will be deleted and
 the second to last volume folder will be used as the starting point.
 
 """
-def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):  
+def vol_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar=False, keep_chgcar=False):  
     
     # Write a params.json file to keep track of the parameters used
     # Unfortunately, handlers is not json serializable, so the value is replace by a useless string
@@ -259,11 +251,53 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):
             if not os.path.exists(vol_folder_path):
                 last_vol_folder_name = 'vol_' + str(j - 1)
                 last_vol_folder_path = os.path.join(path, last_vol_folder_name)
+                last_complete_vol_folder_name = 'vol_' + str(j - 2)
+                last_complete_vol_folder_path = os.path.join(path, last_complete_vol_folder_name)
                 break
         if j == 0:
             print("No volumes to restart from. You might want to set restarting=False (which is the default) or check if 'vol_0' exists inside the path")
             return
         
+        # find the initial WAVECAR and CHGCAR in the last volume folder 
+        # and move to the previous volume folder
+        # we may need these before we delete the folder
+        initial_wavecar = os.path.join(last_vol_folder_path, 'WAVECAR.1relax')
+        alt_initial_wavecar = os.path.join(last_vol_folder_path, 'WAVECAR')
+        last_complete_wavecar = os.path.join(last_complete_vol_folder_path, 'WAVECAR.3static')
+        outcar1_is_file = os.path.isfile(os.path.join(last_vol_folder_path, 'OUTCAR.1relax'))
+        outcar2_is_file = os.path.isfile(os.path.join(last_vol_folder_path, 'OUTCAR.2relax'))
+        outcar3_is_file = os.path.isfile(os.path.join(last_vol_folder_path, 'OUTCAR.3static'))
+        if os.path.isfile(last_complete_wavecar): # check to see if the last complete volume folder has a WAVECAR.3static
+            pass
+        elif os.path.isfile(initial_wavecar):
+            shutil.move(initial_wavecar, os.path.join(last_complete_vol_folder_path, 'WAVECAR.3static')) # move the WAVECAR.1relax to the last complete volume folder
+        elif os.path.isfile(alt_initial_wavecar) and not outcar1_is_file and not outcar2_is_file and not outcar3_is_file: # check outcars to ensure correct wavecar
+            shutil.move(alt_initial_wavecar, os.path.join(last_complete_vol_folder_path, 'WAVECAR.3static')) # move the WAVECAR to the last complete volume folder
+        else:
+            print("Cannot determine which WAVECAR to restart with.:")
+            print("    1. There is no 'WAVECAR.3static' in the last complete volume folder")
+            print("    2. There is no 'WAVECAR.1relax' in the last volume folder")
+            print("    3. There is no 'WAVECAR' in the last volume folder, or there is an 'OUTCAR.1relax', 'OUTCAR.2relax', or 'OUTCAR.3static' in the last volume folder.")
+            print("You might want to make sure that files are where they are supposed to be and named correctly.")
+            return
+        
+        initial_chgcar = os.path.join(last_vol_folder_path, 'CHGCAR.1relax')
+        alt_initial_chgcar = os.path.join(last_vol_folder_path, 'CHGCAR')
+        last_complete_chgcar = os.path.join(last_complete_vol_folder_path, 'CHGCAR.3static')
+        if os.path.isfile(last_complete_chgcar): # check to see if the last complete volume folder has a CHGCAR.3static
+            pass
+        elif os.path.isfile(initial_chgcar):
+            shutil.move(initial_chgcar, os.path.join(last_complete_vol_folder_path, 'CHGCAR.3static'))
+        elif os.path.isfile(alt_initial_chgcar) and not outcar1_is_file and not outcar2_is_file and not outcar3_is_file: # check outcars to ensure correct chgcar
+            shutil.move(alt_initial_chgcar, os.path.join(last_complete_vol_folder_path, 'CHGCAR.3static'))
+        else:
+            print("Cannot determine which CHGCAR to restart with.:")
+            print("    1. There is no 'CHGCAR.3static' in the last complete volume folder")
+            print("    2. There is no 'CHGCAR.1relax' in the last volume folder")
+            print("    3. There is no 'CHGCAR' in the last volume folder, or there is an 'OUTCAR.1relax', 'OUTCAR.2relax', or 'OUTCAR.3static' in the last volume folder.")
+            print("You might want to make sure that files are where they are supposed to be and named correctly.")
+            return
+
         # Delete the last volume folder
         last_vol_index = j-1
         shutil.rmtree(last_vol_folder_path)
@@ -300,9 +334,14 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):
             # After copying, it is safe to delete some of the WAVECARS, CHGCARS, CHG and PROCARS from the previous volume folder to save space
             # Keeps WAVECAR.3static and CHGCAR.3static
             files_to_delete = ['WAVECAR.1relax', 'WAVECAR.2relax',
+                            'WAVECAR.3static', 'CHGCAR.3static',
                             'CHGCAR.1relax', 'CHGCAR.2relax',
                             'CHG.1relax', 'CHG.2relax', 'CHG.3static',
                             'PROCAR.1relax', 'PROCAR.2relax', 'PROCAR.3static']
+            if keep_wavecar:
+                files_to_delete.remove('WAVECAR.3static')
+            if keep_chgcar:
+                files_to_delete.remove('CHGCAR.3static')
             paths_to_delete = []
             for file_name in files_to_delete:
                 file_path = os.path.join(previous_vol_folder_path, file_name)
@@ -318,7 +357,7 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):
 
         # Change the volume of the POSCAR
         poscar = os.path.join(vol_folder_path, 'POSCAR')
-        struct = structure.Structure.from_file(poscar)
+        struct = Structure.from_file(poscar)
         struct.scale_lattice(vol)
         struct.to_file(poscar, "POSCAR")
 
@@ -339,48 +378,43 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False):
         else:
             print(f"The file {file_path} does not exist.")
 
-"""
-kpoints_list should be a list of strings ex:
-    ['1 1 1', '2 2 2', '3 3 3']
-incar_tags should be a dictionary ex:
-    {'encut' 'ISMEAR': -5, 'IBRION': 2}
-only edits the forth line of the KPOINTS file
-
-Todo: use pymatgen to edit the KPOINTS file, not koints_list
-"""
-def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers,
-                      backup=False):  # Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
+def kpoints_conv_test(path, kppa_list, vasp_cmd, handlers, backup=False):
     original_dir = os.getcwd()
     kpoints_conv_dir = os.path.join(path, 'kpoints_conv')
     os.makedirs(kpoints_conv_dir)
+    
+    # copy vasp input files except KPOINTS
     shutil.copy2(os.path.join(path, 'POSCAR'), os.path.join(kpoints_conv_dir, 'POSCAR'))
     shutil.copy2(os.path.join(path, 'POTCAR'), os.path.join(kpoints_conv_dir, 'POTCAR'))
     shutil.copy2(os.path.join(path, 'INCAR'), os.path.join(kpoints_conv_dir, 'INCAR'))
-    shutil.copy2(os.path.join(path, 'KPOINTS'), os.path.join(kpoints_conv_dir, 'KPOINTS'))
+    
+    # create KPOINTS file and run VASP
     os.chdir(kpoints_conv_dir)
-    for i, el in enumerate(kpoints_list):
-        # Change the kpoints file
-        with open('KPOINTS', 'r') as file:
-            lines = file.readlines()
-            lines[3] = el + '\n'
-
-        with open('KPOINTS', 'w') as file:
-            file.writelines(lines)
-
-        # Run the VASP job
-        if i == len(kpoints_list) - 1:
+    struct = Structure.from_file('POSCAR')
+    for i, kppa in enumerate(kppa_list):
+        kpoints = Kpoints.automatic_density(struct, kppa)
+        kpoints.write_file('KPOINTS')
+        
+        if i == len(kppa_list) - 1:
             final = True
         else:
             final = False
 
+        # Run the VASP job
         job = VaspJob(
             vasp_cmd=vasp_cmd,
-            final=False,
-            suffix=f'.{i}',
-            backup=backup
+            final=final,
+            backup=backup,
+            suffix=f'.{kppa}',
+            settings_override=[
+            {"dict": "INCAR", "action": {"_set": {
+                "ISIF": 2, "NSW": 0
+            }}}]
         )
         c = Custodian(handlers, [job], max_errors=3)
         c.run()
+        
+        # remove these files incase you didn't set up the incar correctly.
         if os.path.isfile(f'WAVECAR.[i-1]'):
             os.remove(f'WAVECAR.[i-1]')
         if os.path.isfile(f'CHGCAR.[i-1]'):
@@ -390,6 +424,10 @@ def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers,
         if os.path.isfile(f'PROCAR.[i-1]'):
             os.remove(f'PROCAR.[i-1]')
     os.chdir(original_dir)
+
+
+
+
 
 
 # TODO: Good idea for the below. Maybe we can combine the convergence and plot in the above functions?
