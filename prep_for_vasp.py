@@ -199,8 +199,45 @@ def rearrage_sites_and_magmoms(config_dir):
     poscar.write_file(poscar_file)
     return None
 
+"""
+This function loops through all the config directories and scales
+the POSCAR files to the specified volume per atom. It does not return
+anything, but it changes the POSCAR files in place.
+volums_per_atom (float or int) – The volume per atom in Å^3/atom
+"""
+def scale_poscars(vol_per_atom, configurations_directory='configurations'):
+    config_dirs = [dir for dir in os.listdir(configurations_directory) if os.path.isdir(os.path.join(configurations_directory, dir))]
+    for config_dir in config_dirs:
+        poscar_file = os.path.join(configurations_directory, config_dir, 'POSCAR')
+        struct = Structure.from_file(poscar_file)
+        number_of_atoms = struct.num_sites
+        volume = vol_per_atom * number_of_atoms
+        struct.scale_lattice(volume)
+        poscar = Poscar(struct)
+        poscar.write_file(poscar_file)
+    return None
 
-
+"""
+Changes lreal to false in the incar if it has less than or equal to max_atoms.
+This is useful for small systems where the real space projection is not
+recommended.
+"""
+def lreal_to_false(configurations_directory='configurations', max_atoms=10):
+    config_dirs = [dir for dir in os.listdir(configurations_directory) if os.path.isdir(os.path.join(configurations_directory, dir))]
+    for config_dir in config_dirs:
+        poscar_file = os.path.join(configurations_directory, config_dir, 'POSCAR')
+        struct = Structure.from_file(poscar_file)
+        if struct.num_sites <= max_atoms:
+            incar_file = os.path.join(configurations_directory, config_dir, 'INCAR')
+            with open(incar_file, 'r') as file:
+                lines = file.readlines()
+            with open(incar_file, 'w') as file:
+                for line in lines:
+                    if line.startswith('LREAL ='):
+                        file.write('LREAL = .FALSE.\n')
+                    else:
+                        file.write(line)
+    return None
 
 # def prep_for_vasp(ywoutput, magnetic_configurations=False):
 #     parse(ywoutput)
