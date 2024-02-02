@@ -1,23 +1,15 @@
-import math
-import matplotlib.pyplot as plt
-from scipy.optimize import fsolve
-from scipy.optimize import leastsq
 import os
 import glob
 import shutil
 import pandas as pd
-import numpy as np
-import plotly.express as px
-import json
-import sys
-import plotly.graph_objects as go
 import json
 
 from custodian.custodian import Custodian
 from custodian.vasp.handlers import VaspErrorHandler
 from custodian.vasp.jobs import VaspJob
-from pymatgen.core import structure
+from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.outputs import Outcar, Vasprun
+from pymatgen.io.vasp.inputs import Kpoints
 
 
 # Function to extract the last occurrence of volume from OUTCAR files
@@ -365,7 +357,7 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar
 
         # Change the volume of the POSCAR
         poscar = os.path.join(vol_folder_path, 'POSCAR')
-        struct = structure.Structure.from_file(poscar)
+        struct = Structure.from_file(poscar)
         struct.scale_lattice(vol)
         struct.to_file(poscar, "POSCAR")
 
@@ -386,48 +378,43 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar
         else:
             print(f"The file {file_path} does not exist.")
 
-"""
-kpoints_list should be a list of strings ex:
-    ['1 1 1', '2 2 2', '3 3 3']
-incar_tags should be a dictionary ex:
-    {'encut' 'ISMEAR': -5, 'IBRION': 2}
-only edits the forth line of the KPOINTS file
-
-Todo: use pymatgen to edit the KPOINTS file, not koints_list
-"""
-def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers,
-                      backup=False):  # Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
+def kpoints_conv_test(path, kppa_list, vasp_cmd, handlers, backup=False):
     original_dir = os.getcwd()
     kpoints_conv_dir = os.path.join(path, 'kpoints_conv')
     os.makedirs(kpoints_conv_dir)
+    
+    # copy vasp input files except KPOINTS
     shutil.copy2(os.path.join(path, 'POSCAR'), os.path.join(kpoints_conv_dir, 'POSCAR'))
     shutil.copy2(os.path.join(path, 'POTCAR'), os.path.join(kpoints_conv_dir, 'POTCAR'))
     shutil.copy2(os.path.join(path, 'INCAR'), os.path.join(kpoints_conv_dir, 'INCAR'))
-    shutil.copy2(os.path.join(path, 'KPOINTS'), os.path.join(kpoints_conv_dir, 'KPOINTS'))
+    
+    # create KPOINTS file and run VASP
     os.chdir(kpoints_conv_dir)
-    for i, el in enumerate(kpoints_list):
-        # Change the kpoints file
-        with open('KPOINTS', 'r') as file:
-            lines = file.readlines()
-            lines[3] = el + '\n'
-
-        with open('KPOINTS', 'w') as file:
-            file.writelines(lines)
-
-        # Run the VASP job
-        if i == len(kpoints_list) - 1:
+    struct = Structure.from_file('POSCAR')
+    for i, kppa in enumerate(kppa_list):
+        kpoints = Kpoints.automatic_density(struct, kppa)
+        kpoints.write_file('KPOINTS')
+        
+        if i == len(kppa_list) - 1:
             final = True
         else:
             final = False
 
+        # Run the VASP job
         job = VaspJob(
             vasp_cmd=vasp_cmd,
-            final=False,
-            suffix=f'.{i}',
-            backup=backup
+            final=final,
+            backup=backup,
+            suffix=f'.{kppa}',
+            settings_override=[
+            {"dict": "INCAR", "action": {"_set": {
+                "ISIF": 2, "NSW": 0
+            }}}]
         )
         c = Custodian(handlers, [job], max_errors=3)
         c.run()
+        
+        # remove these files incase you didn't set up the incar correctly.
         if os.path.isfile(f'WAVECAR.[i-1]'):
             os.remove(f'WAVECAR.[i-1]')
         if os.path.isfile(f'CHGCAR.[i-1]'):
@@ -437,6 +424,10 @@ def kpoints_conv_test(path, kpoints_list, vasp_cmd, handlers,
         if os.path.isfile(f'PROCAR.[i-1]'):
             os.remove(f'PROCAR.[i-1]')
     os.chdir(original_dir)
+
+
+
+
 
 
 # TODO: Good idea for the below. Maybe we can combine the convergence and plot in the above functions?
