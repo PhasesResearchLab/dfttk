@@ -628,9 +628,17 @@ def plot_ev(data, eos_fitting='BM4', highlight_minimum=True, per_atom=False, sho
     fig = go.Figure()
     for config in df['config'].unique():
         config_df = df[df['config'] == config]
+        if per_atom == False:
+            x = config_df['volume']
+            y = config_df['energy']
+        elif per_atom == True:
+            x = config_df['volume'] / config_df['number_of_atoms']
+            y = config_df['energy'] / config_df['number_of_atoms']
+        else:
+            print('per_atom must be True or False')
         fig.add_trace(go.Scatter(
-            x=config_df['volume'],
-            y=config_df['energy'],
+            x=x,
+            y=y,
             mode='markers',
             marker=dict(colorscale='Viridis'),  # Assign different colors based on 'config' column,
             legendgroup='EOS',
