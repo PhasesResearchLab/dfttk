@@ -138,7 +138,7 @@ outcar_name and oszicar_name must be the same in each volume folder.
 Consider adding config_name column to the data frame
 """
 
-def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR'):
+def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR', contcar_name='CONTCAR'):
     dfs_list = []
     start = path.find('config_') + len('config_') # Find the index where "config_" starts and add its length
     config = path[start:] #get the string following "config_"
@@ -154,12 +154,20 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
             print(f"Warning: File {oszicar_path} does not exist. Skipping.")
             continue
 
+        contcar_path = os.path.join(vol_dir, contcar_name)
+        if not os.path.isfile(contcar_path):
+            print(f"Warning: File {contcar_path} does not exist. Skipping.")
+            continue
+
+        struct = Structure.from_file(contcar_path)
+        number_of_atoms = len(struct.sites)
         vol = extract_volume(outcar_path)
         energy = extract_energy(oszicar_path)
         data_collection = extract_simple_mag_data(ion_list, outcar_path)
         data_collection['volume'] = vol
         data_collection['config'] = config
         data_collection['energy'] = energy
+        data_collection['number_of_atoms'] = number_of_atoms
         dfs_list.append(data_collection)
     df = pd.concat(dfs_list, ignore_index=True).sort_values(by=['volume', '# of ion']).reset_index(drop=True)
     return df

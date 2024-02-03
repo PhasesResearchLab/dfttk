@@ -501,20 +501,21 @@ def morse(volume, energy):
     return results, volume_range, energy_eos, pressure_eos
 
 def fit_to_all_eos(df):
-    eos_df = pd.DataFrame(columns=['config', 'eos_name', 'results', 'volumes', 'energies', 'pressures'])
+    eos_df = pd.DataFrame(columns=['config', 'eos_name', 'results', 'volumes', 'energies', 'pressures', 'number_of_atoms'])
     eos_functions = [mBM4, mBM5, BM4, BM5, LOG4, LOG5, murnaghan, vinet, morse]  # Add more EOS functions here
     
     for config in df['config'].unique():
         config_df = df[df['config'] == config]
         volumes = config_df['volume'].values
         energies = config_df['energy'].values
+        number_of_atoms = config_df['number_of_atoms'].values
         
         for eos_func in eos_functions:
             results, volume_range, energy_eos, pressure_eos = eos_func(volumes, energies)
             energy_eos = energy_eos[1:]
             pressure_eos = pressure_eos[1:]
             eos_name = eos_func.__name__
-            eos_df = pd.concat([eos_df, pd.DataFrame([[config, eos_name, results, volume_range, energy_eos, pressure_eos]], columns=['config', 'eos_name', 'results', 'volumes', 'energies', 'pressures'])], ignore_index=True)    
+            eos_df = pd.concat([eos_df, pd.DataFrame([[config, eos_name, results, volume_range, energy_eos, pressure_eos, number_of_atoms]], columns=['config', 'eos_name', 'results', 'volumes', 'energies', 'pressures', 'number_of_atoms'])], ignore_index=True)    
     return eos_df
 
 
@@ -608,7 +609,7 @@ def plot_mv(df, show_fig=True):
         fig.show()
     return fig
 
-def plot_ev(data, eos_fitting='BM4', highlight_minimum=True ,show_fig=True, left_col='volume', right_col='energy'):
+def plot_ev(data, eos_fitting='BM4', highlight_minimum=True, per_atom=False, show_fig=True, left_col='volume', right_col='energy'):
     # determine the type of data and how to handle it.
     if isinstance(data, pd.DataFrame):
         df = data
@@ -628,30 +629,54 @@ def plot_ev(data, eos_fitting='BM4', highlight_minimum=True ,show_fig=True, left
     fig = go.Figure()
     for config in df['config'].unique():
         config_df = df[df['config'] == config]
+        if per_atom == False:
+            x = config_df['volume']
+            y = config_df['energy']
+        elif per_atom == True:
+            x = config_df['volume'] / config_df['number_of_atoms']
+            y = config_df['energy'] / config_df['number_of_atoms']
+        else:
+            print('per_atom must be True or False')
         fig.add_trace(go.Scatter(
-            x=config_df['volume'],
-            y=config_df['energy'],
+            x=x,
+            y=y,
             mode='markers',
             marker=dict(colorscale='Viridis'),  # Assign different colors based on 'config' column,
             legendgroup='EOS',
             name=f'Config {config}'
         ))
-    fig.update_layout(title='E-V', xaxis_title='Volume [Å^3]', yaxis_title='Energy (eV)', template='plotly_white')
+    if per_atom == False:
+        fig.update_layout(title='E-V', xaxis_title='Volume [Å^3]', yaxis_title='Energy (eV)', template='plotly_white')
+    elif per_atom == True:
+        fig.update_layout(title='E-V', xaxis_title='Volume [Å^3/atom]', yaxis_title='Energy (eV/atom)', template='plotly_white')
+    else:
+        print('per_atom must be True or False')
     
     # loop over configs in the eos data frame and plot the eos fits
     for config in eos_df['config'].unique():
         eos_config_df = eos_df[eos_df['config'] == config]
         if eos_fitting in eos_config_df['eos_name'].unique():
             eos_name_df = eos_config_df[eos_config_df['eos_name'] == eos_fitting]
-            fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0],
-                                     mode='lines', name=f'{eos_fitting} fit', line=dict(width=1), legendgroup='data'))
+            if per_atom == False:
+                fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0],
+                                        mode='lines', name=f'{eos_fitting} fit', line=dict(width=1), legendgroup='data'))
+            elif per_atom == True:
+                fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0] / eos_name_df['number_of_atoms'].values[0][0], y=eos_name_df['energies'].values[0] / eos_name_df['number_of_atoms'].values[0][0],
+                                        mode='lines', name=f'{eos_fitting} fit', line=dict(width=1), legendgroup='data'))
             # plot the minimum energy data point for each config from the fitting equation
             if highlight_minimum == True:
                 min_energy = min(eos_name_df['energies'].values[0])
-                volume_at_min_energy = eos_name_df['volumes'].values[0][np.where(eos_name_df['energies'].values[0] == min_energy)[0][0]] #check this
-                fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers',
-                                         name=f'{eos_fitting} min energy', marker=dict(color='black',
-                                         size=10, symbol='cross'), legendgroup='minimum'))
+                volume_at_min_energy = eos_name_df['volumes'].values[0][np.where(eos_name_df['energies'].values[0] == min_energy)[0][0]]
+                if per_atom == False:
+                    fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers',
+                                            name=f'{eos_fitting} min energy', marker=dict(color='black',
+                                            size=10, symbol='cross'), legendgroup='minimum'))
+                elif per_atom == True:
+                    fig.add_trace(go.Scatter(x=[volume_at_min_energy / eos_name_df['number_of_atoms'].values[0][0]], y=[min_energy / eos_name_df['number_of_atoms'].values[0][0]], mode='markers',
+                                            name=f'{eos_fitting} min energy', marker=dict(color='black',
+                                            size=10, symbol='cross'), legendgroup='minimum'))
+                else:
+                    print('per_atom must be True or False')
             elif highlight_minimum == False:
                 pass
             else:
@@ -659,15 +684,28 @@ def plot_ev(data, eos_fitting='BM4', highlight_minimum=True ,show_fig=True, left
         elif eos_fitting == 'all':
             for eos_name in eos_config_df['eos_name'].unique():
                 eos_name_df = eos_config_df[eos_config_df['eos_name'] == eos_name]
-                fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0],
-                                         mode='lines', name=f'{eos_name} fit', line=dict(width=1), legendgroup='eos'))
+                if per_atom == False:
+                    fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0], y=eos_name_df['energies'].values[0],
+                                            mode='lines', name=f'{eos_name} fit', line=dict(width=1), legendgroup='eos'))
+                elif per_atom == True:
+                    fig.add_trace(go.Scatter(x=eos_name_df['volumes'].values[0] / eos_name_df['number_of_atoms'].values[0][0], y=eos_name_df['energies'].values[0] / eos_name_df['number_of_atoms'].values[0][0],
+                                            mode='lines', name=f'{eos_name} fit', line=dict(width=1), legendgroup='eos'))
+                else:
+                    print('per_atom must be True or False')
                 # plot the minimum energy data point for each config from the fitting equation
                 if highlight_minimum == True:
                     min_energy = min(eos_name_df['energies'].values[0])
-                    volume_at_min_energy = eos_name_df['volumes'].values[0][np.where(eos_name_df['energies'].values[0] == min_energy)[0][0]] #check this
-                    fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers',
-                                             name=f'{eos_name} min energy', marker=dict(color='black',
-                                             size=8, symbol='cross'), legendgroup='minimum'))
+                    volume_at_min_energy = eos_name_df['volumes'].values[0][np.where(eos_name_df['energies'].values[0] == min_energy)[0][0]]
+                    if per_atom == False:
+                        fig.add_trace(go.Scatter(x=[volume_at_min_energy], y=[min_energy], mode='markers',
+                                                name=f'{eos_name} min energy', marker=dict(color='black',
+                                                size=8, symbol='cross'), legendgroup='minimum'))
+                    elif per_atom == True:
+                        fig.add_trace(go.Scatter(x=[volume_at_min_energy / eos_name_df['number_of_atoms'].values[0][0]], y=[min_energy / eos_name_df['number_of_atoms'].values[0][0]], mode='markers',
+                                                name=f'{eos_name} min energy', marker=dict(color='black',
+                                                size=8, symbol='cross'), legendgroup='minimum'))
+                    else:
+                        print('per_atom must be True or False')
         elif eos_fitting == None:
             pass
         else:
