@@ -243,6 +243,24 @@ def lreal_to_false(configurations_directory='configurations', max_atoms=10):
                     file.write('LREAL = .FALSE.\n')
     return None
 
+def change_incar_tag(tag, value, configurations_directory='configurations'):
+    config_dirs = [dir for dir in os.listdir(configurations_directory) if os.path.isdir(os.path.join(configurations_directory, dir))]
+    for config_dir in config_dirs:
+        incar_file = os.path.join(configurations_directory, config_dir, 'INCAR')
+        with open(incar_file, 'r') as file:
+            lines = file.readlines()
+        with open(incar_file, 'w') as file:
+            tag_found = False
+            for line in lines:
+                if line.startswith(tag):
+                    file.write(f'{tag} = {value}\n')
+                    tag_found = True
+                else:
+                    file.write(line)
+            if not tag_found:
+                file.write(f'{tag} = {value}\n')
+    return None
+
 # def prep_for_vasp(ywoutput, magnetic_configurations=False):
 #     parse(ywoutput)
 
