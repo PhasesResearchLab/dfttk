@@ -87,7 +87,39 @@ def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
     simple_data.reset_index(drop=True, inplace=True)
     return simple_data
 
+"""
+I think this function could be replaced by adding this line the the extract_config_data() function
+or something like that. I'm not sure yet.
+"""
+def append_energy_per_atom(df):
+    df['energy_per_atom'] = df['energy'] / df['number_of_atoms']
+    return df
 
+
+"""
+This function exists because I should not have combined the magmom data for each ion into the main dataframe.
+Future plans include a redefinition of the extract_config_data() function to return a dataframe with a pointer
+to another dataframe containing the magmom data for each ion for that volume of that config.
+"""
+def remove_magmom_data(df):
+    try:
+        new_df = df.drop('# of ion', axis=1)
+        new_df = new_df.drop('tot', axis=1)
+        new_df = new_df.drop_duplicates()
+    except Exception as e:
+        print("There was an error removing the magmom data. Are you sure there was magnetic data in the df? e: ", e)
+        new_df = df
+    return new_df
+
+
+"""
+takes a dataframe and returns the rows with the lowest energy per atom
+"""
+def get_lowest_atomic_energy_configs(df, number_of_lowest=1):
+    lowest_energy_configs = df[df['energy_per_atom'] == df['energy_per_atom'].min()]
+    if number_of_lowest > 1:
+        lowest_energy_configs = df.nsmallest(number_of_lowest, 'energy')
+    return lowest_energy_configs
 
 
 """
