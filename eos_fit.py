@@ -714,6 +714,43 @@ def plot_ev(data, eos_fitting='BM4', highlight_minimum=True, per_atom=False, sho
         fig.show()
     return fig
 
+def plot_config_energy(df, number_of_lowest_configs=5, show_fig=True):
+    try:
+        new_df = df.drop('# of ion', axis=1)
+        new_df = new_df.drop('tot', axis=1)
+        new_df = new_df.drop_duplicates()
+        new_df['energy_per_atom'] = new_df['energy'] / new_df['number_of_atoms']
+        new_df = new_df.nsmallest(number_of_lowest_configs, 'energy_per_atom').copy()
+    except Exception as e:
+        print('possible error. Could not strip magnetic data: ', e)
+        new_df['energy_per_atom'] = new_df['energy'] / new_df['number_of_atoms']
+        new_df = df.nsmallest(number_of_lowest_configs, 'energy_per_atom').copy()
+    new_df['energy_differnce'] = (new_df['energy_per_atom'] - new_df['energy_per_atom'].min())*1000
+    fig = px.scatter(new_df, x='config', y='energy_differnce', 
+                     color='config', template='plotly_white')
+    fig.update_traces(
+        marker=dict(size=5, symbol="cross-thin-open", color='blue'),
+        selector=dict(mode="markers"))
+    fig.update_layout(title='Configuration Energy', xaxis_title='Configuration', yaxis_title='Energy difference (meV/atom)')
+    fig.update_layout(showlegend=False)
+    if show_fig:
+        fig.show()
+
+def plot_energy_histogram(df, nbins=None, show_fig=True):
+    try:
+        new_df = df.drop('# of ion', axis=1)
+        new_df = new_df.drop('tot', axis=1)
+        new_df = new_df.drop_duplicates()
+        new_df['energy_per_atom'] = new_df['energy'] / new_df['number_of_atoms']
+    except Exception as e:
+        print('possible error. Could not strip magnetic data: ', e)
+        new_df['energy_per_atom'] = new_df['energy'] / new_df['number_of_atoms']
+    new_df['relative_energy'] = (new_df['energy_per_atom'] - new_df['energy_per_atom'].min())*1000
+    fig = px.histogram(new_df, x='relative_energy', nbins=nbins, template='plotly_white')
+    print(new_df)
+    if show_fig:
+        fig.show()
+
 def plot_pv():
     pass
 
