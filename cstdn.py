@@ -116,9 +116,7 @@ def remove_magmom_data(df):
 takes a dataframe and returns the rows with the lowest energy per atom
 """
 def get_lowest_atomic_energy_configs(df, number_of_lowest=1):
-    lowest_energy_configs = df[df['energy_per_atom'] == df['energy_per_atom'].min()]
-    if number_of_lowest > 1:
-        lowest_energy_configs = df.nsmallest(number_of_lowest, 'energy')
+    lowest_energy_configs = df.nsmallest(number_of_lowest, 'energy_per_atom')
     return lowest_energy_configs
 
 
