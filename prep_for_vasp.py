@@ -261,6 +261,43 @@ def change_incar_tag(tag, value, configurations_directory='configurations'):
                 file.write(f'{tag} = {value}\n')
     return None
 
+
+"""
+df here is a dataframe that contains a 'config' column of the configs you want to
+set up the ev calculation for.
+"""
+def set_up_ev_from_fixed_volume_calculations(df, path_to_fixed_volume_configurations, dest_configurations_path):
+    try:
+        os.makedirs(dest_configurations_path, exist_ok=True)
+    except FileExistsError:
+        print(f"Destination directory '{dest_configurations_path}' already exists.")
+        return None
+
+    for config in df['config']:
+        subdirectories = [d for d in os.listdir(os.path.join(path_to_fixed_volume_configurations, f'config_{config}')) if os.path.isdir(os.path.join(path_to_fixed_volume_configurations, f'config_{config}', d))]        
+        if len(subdirectories) != 1:
+            print(f"ERROR: There should be exactly one subdirectory (e.g., 'vol_21') for each config '{config}' in the dataframe.\nBut there are {len(subdirectories)} subdirectories.")
+            return None
+        
+        subdirectory = subdirectories[0]
+        fixed_vol_contcar = os.path.join(path_to_fixed_volume_configurations, f'config_{config}', subdirectory, "CONTCAR")
+        fixed_vol_potcar = os.path.join(path_to_fixed_volume_configurations, f'config_{config}', subdirectory, "POTCAR")
+        fixed_vol_incar = os.path.join(path_to_fixed_volume_configurations, f'config_{config}', subdirectory, "INCAR")
+        
+        dest_poscar = os.path.join(dest_configurations_path, f'config_{config}', "POSCAR")
+        dest_potcar = os.path.join(dest_configurations_path, f'config_{config}', "POTCAR")
+        dest_incar = os.path.join(dest_configurations_path, f'config_{config}', "INCAR")
+        
+        try:
+            os.makedirs(os.path.join(dest_configurations_path, f'config_{config}'), exist_ok=False)
+            shutil.copy(fixed_vol_contcar, dest_poscar)
+            shutil.copy(fixed_vol_potcar, dest_potcar)
+            shutil.copy(fixed_vol_incar, dest_incar)
+        except Exception as e:
+            print(f"Error processing configuration '{config}': {str(e)}")    
+    return None
+
+
 # def prep_for_vasp(ywoutput, magnetic_configurations=False):
 #     parse(ywoutput)
 
