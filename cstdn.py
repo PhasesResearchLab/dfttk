@@ -211,6 +211,11 @@ def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=Tr
         final=False,
         suffix='.1relax',
         backup=backup,
+        settings_override=[
+            {"dict": "INCAR", "action": {"_set": {
+                "LWAVE": True
+            }}}
+        ]
     )
 
     step2 = VaspJob(
@@ -220,7 +225,10 @@ def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=Tr
         suffix='.2relax',
         backup=backup,
         settings_override=[
-            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}}
+            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
+            {"dict": "INCAR", "action": {"_set": {
+                "LWAVE": True
+            }}}
         ]
     )
 
@@ -234,7 +242,8 @@ def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=Tr
             {"dict": "INCAR", "action": {"_set": {
                 "IBRION": -1,
                 "NSW": 0,
-                "ISMEAR": -5
+                "ISMEAR": -5,
+                "LWAVE": True
             }}},
             {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}}
         ]
