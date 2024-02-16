@@ -381,7 +381,7 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar
             # After copying, it is safe to delete some of the WAVECARS, CHGCARS, CHG and PROCARS from the previous volume folder to save space
             # Keeps WAVECAR.3static and CHGCAR.3static
             files_to_delete = ['WAVECAR.1relax', 'WAVECAR.2relax',
-                            'WAVECAR.3static', 'CHGCAR3.static',
+                            'WAVECAR.3static', 'CHGCAR.3static',
                             'CHGCAR.1relax', 'CHGCAR.2relax',
                             'CHG.1relax', 'CHG.2relax', 'CHG.3static',
                             'PROCAR.1relax', 'PROCAR.2relax', 'PROCAR.3static']
