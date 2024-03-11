@@ -1,4 +1,3 @@
 three_step_relaxation and vol_series:
-3. ev_curve_series
 4. Maybe remove handlers. Figure out how to document. 
 5. Check if can propagate CHGCAR without WAVECAR.

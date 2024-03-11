@@ -259,7 +259,7 @@ def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=Tr
     os.chdir(original_dir)
 
 
-def vol_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar=False, keep_chgcar=False):
+def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar=False, keep_chgcar=False):
     """
     !!!WARNING!!! You probably want to have volumes in decreasing order eg:
     volumes = []
