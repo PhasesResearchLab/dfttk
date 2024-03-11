@@ -261,7 +261,7 @@ def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=Tr
 
 def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar=False, keep_chgcar=False):
     """
-    !!!WARNING!!! You probably want to have volumes in decreasing order eg:
+    For spin-polarized calculations (ISPIN=2), you probably want to have volumes in decreasing order eg:
     volumes = []
     for vol in range(300, 370, 10):
         volumes.append(vol)
@@ -270,7 +270,7 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
     or
     volumes = list(np.linspace(340, 270, 11))
 
-    Path should contain starting POSCAR, POTCAR, INCAR, KPOINTS
+    Path should contain starting POSCAR, POTCAR, INCAR, and KPOINTS files
 
     When restarting, the last volume folder will be deleted and
     the second to last volume folder will be used as the starting point.
