@@ -10,6 +10,40 @@ from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
 
 
+def extract_volume(file_path):
+    # Function to extract the last occurrence of volume from OUTCAR files
+
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        for line in reversed(lines):
+            if 'volume' in line:
+                volume = float(line.split()[-1])
+                break  # Stop searching after finding the last occurrence
+    return volume
+
+
+def extract_pressure(file_path):
+    # Function to extract the last occurrence of pressure from OUTCAR files
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        for line in reversed(lines):
+            if 'pressure' in line:
+                pressure = float(line.split()[3])
+                break  # Stop searching after finding the last occurrence
+    return pressure
+
+
+def extract_energy(file_path):
+    # Function to extract energy from OSZICAR files
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        for line in reversed(lines):
+            if 'F=' in line:
+                energy = float(line.split()[4])
+                break  # Stop searching after finding the last occurrence
+    return energy
+
+
 def extract_mag_data(outcar_path='OUTCAR'):
     if not os.path.isfile(outcar_path):
         print(f"Warning: File {outcar_path} does not exist. Skipping.")
@@ -42,10 +76,10 @@ def extract_mag_data(outcar_path='OUTCAR'):
 
 
 def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
-    '''
-    Returns only the 'tot' magnetization of the last step for each specified ion. 
-    The ion_list should be a list of integers ex: [1, 2, 3, 4]
-    '''
+    """
+    Returns only the 'tot' magnetization of the last step for each specified ion.
+    The ion_list should be a list of integers ex: [1, 2, 3, 4].
+    """
 
     all_mag_data = extract_mag_data(outcar_path)
     last_step_data = all_mag_data[all_mag_data['step']
@@ -58,7 +92,7 @@ def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
 
 def append_energy_per_atom(df):
     """
-    I think this function could be replaced by adding this line to the extract_config_data() function
+    I think this function could be replaced by adding this line the the extract_config_data() function
     or something like that. I'm not sure yet.
     """
 
@@ -84,7 +118,7 @@ def remove_magmom_data(df):
 
 
 def get_lowest_atomic_energy_configs(df, number_of_lowest=1):
-    # Takes a dataframe and returns the rows with the lowest energy per atom
+    # This function takes a dataframe and returns the rows with the lowest energy per atom
 
     lowest_energy_configs = df.nsmallest(number_of_lowest, 'energy_per_atom')
     return lowest_energy_configs
@@ -109,7 +143,7 @@ def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
     dfs_list = []
     # Find the index where "config_" starts and add its length
     start = path.find('config_') + len('config_')
-    config = path[start:]  # get the string following "config_"
+    config = path[start:]  # Get the string following "config_"
     for vol_dir in glob.glob(os.path.join(path, 'vol_*')):
         outcar_path = os.path.join(vol_dir, outcar_name)
         if not os.path.isfile(outcar_path):
@@ -130,7 +164,7 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
     This function grabs all necessary data from the OUTCAR
     for each volume and returns a data frame in the tidy data format.
 
-    TODO: extract the pressure data,
+    TODO: extract the pressure data
     TODO: extract any other data that might be useful
 
     Within the path, there should be folders named vol_0, vol_1, etc.
@@ -142,10 +176,11 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
 
     Consider adding config_name column to the data frame
     """
+
     dfs_list = []
     # Find the index where "config_" starts and add its length
     start = path.find('config_') + len('config_')
-    config = path[start:]  # get the string following "config_"
+    config = path[start:]  # Get the string following "config_"
     for vol_dir in glob.glob(os.path.join(path, 'vol_*')):
 
         outcar_path = os.path.join(vol_dir, outcar_name)
@@ -179,6 +214,7 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
 
 
 def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=True):
+
     # Path should contain necessary VASP config files
     original_dir = os.getcwd()
     os.chdir(path)
@@ -238,7 +274,6 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar
 
     When restarting, the last volume folder will be deleted and
     the second to last volume folder will be used as the starting point.
-
     """
 
     # Write a params.json file to keep track of the parameters used
@@ -274,9 +309,9 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar
             print("No volumes to restart from. You might want to set restarting=False (which is the default) or check if 'vol_0' exists inside the path")
             return
 
-        # find the initial WAVECAR and CHGCAR in the last volume folder
-        # and move to the previous volume folder
-        # we may need these before we delete the folder
+        # Find the initial WAVECAR and CHGCAR in the last volume folder
+        # and move to the previous volume folder.
+        # We may need these before we delete the folder
         initial_wavecar = os.path.join(last_vol_folder_path, 'WAVECAR.1relax')
         alt_initial_wavecar = os.path.join(last_vol_folder_path, 'WAVECAR')
         last_complete_wavecar = os.path.join(
@@ -287,39 +322,39 @@ def vol_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar
             os.path.join(last_vol_folder_path, 'OUTCAR.2relax'))
         outcar3_is_file = os.path.isfile(os.path.join(
             last_vol_folder_path, 'OUTCAR.3static'))
-        # check to see if the last complete volume folder has a WAVECAR.3static
+        # Check to see if the last complete volume folder has a WAVECAR.3static
         if os.path.isfile(last_complete_wavecar):
             pass
         elif os.path.isfile(initial_wavecar):
-            # move the WAVECAR.1relax to the last complete volume folder
+            # Move the WAVECAR.1relax to the last complete volume folder
             shutil.move(initial_wavecar, os.path.join(
                 last_complete_vol_folder_path, 'WAVECAR.3static'))
-        # check outcars to ensure correct wavecar
+        # Check OUTCARs to ensure correct WAVECAR
         elif os.path.isfile(alt_initial_wavecar) and not outcar1_is_file and not outcar2_is_file and not outcar3_is_file:
-            # move the WAVECAR to the last complete volume folder
+            # Move the WAVECAR to the last complete volume folder
             shutil.move(alt_initial_wavecar, os.path.join(
                 last_complete_vol_folder_path, 'WAVECAR.3static'))
         else:
             print("Cannot determine which WAVECAR to restart with.:")
-            print(
-                "    1. There is no 'WAVECAR.3static' in the last complete volume folder")
-            print("    2. There is no 'WAVECAR.1relax' in the last volume folder")
-            print("    3. There is no 'WAVECAR' in the last volume folder, or there is an 'OUTCAR.1relax', 'OUTCAR.2relax', or 'OUTCAR.3static' in the last volume folder.")
-            print(
-                "You might want to make sure that files are where they are supposed to be and named correctly.")
+            print("1. There is no 'WAVECAR.3static' in the last complete volume folder")
+            print("2. There is no 'WAVECAR.1relax' in the last volume folder")
+            print("3. There is no 'WAVECAR' in the last volume folder, or there is an 'OUTCAR.1relax', 'OUTCAR.2relax', or 'OUTCAR.3static' in the last volume folder.")
+            print("You might want to make sure that files are where they are supposed to be and named correctly.")
             return
 
         initial_chgcar = os.path.join(last_vol_folder_path, 'CHGCAR.1relax')
         alt_initial_chgcar = os.path.join(last_vol_folder_path, 'CHGCAR')
         last_complete_chgcar = os.path.join(
             last_complete_vol_folder_path, 'CHGCAR.3static')
-        # check to see if the last complete volume folder has a CHGCAR.3static
+
+        # Check to see if the last complete volume folder has a CHGCAR.3static
         if os.path.isfile(last_complete_chgcar):
             pass
         elif os.path.isfile(initial_chgcar):
             shutil.move(initial_chgcar, os.path.join(
                 last_complete_vol_folder_path, 'CHGCAR.3static'))
-        # check outcars to ensure correct chgcar
+
+        # Check outcars to ensure correct CHGCAR
         elif os.path.isfile(alt_initial_chgcar) and not outcar1_is_file and not outcar2_is_file and not outcar3_is_file:
             shutil.move(alt_initial_chgcar, os.path.join(
                 last_complete_vol_folder_path, 'CHGCAR.3static'))
@@ -420,7 +455,7 @@ def kpoints_conv_test(path, kppa_list, vasp_cmd, handlers, backup=False):
     kpoints_conv_dir = os.path.join(path, 'kpoints_conv')
     os.makedirs(kpoints_conv_dir)
 
-    # copy vasp input files except KPOINTS
+    # Copy VASP input files except KPOINTS
     shutil.copy2(os.path.join(path, 'POSCAR'),
                  os.path.join(kpoints_conv_dir, 'POSCAR'))
     shutil.copy2(os.path.join(path, 'POTCAR'),
@@ -428,7 +463,7 @@ def kpoints_conv_test(path, kppa_list, vasp_cmd, handlers, backup=False):
     shutil.copy2(os.path.join(path, 'INCAR'),
                  os.path.join(kpoints_conv_dir, 'INCAR'))
 
-    # create KPOINTS file and run VASP
+    # Create KPOINTS file and run VASP
     os.chdir(kpoints_conv_dir)
     struct = Structure.from_file('POSCAR')
     for i, kppa in enumerate(kppa_list):
@@ -454,7 +489,7 @@ def kpoints_conv_test(path, kppa_list, vasp_cmd, handlers, backup=False):
         c = Custodian(handlers, [job], max_errors=3)
         c.run()
 
-        # remove these files incase you didn't set up the incar correctly.
+        # Remove these files incase you didn't set up the incar correctly.
         if os.path.isfile(f'WAVECAR.[i-1]'):
             os.remove(f'WAVECAR.[i-1]')
         if os.path.isfile(f'CHGCAR.[i-1]'):
