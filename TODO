@@ -1,0 +1,38 @@
+cstdn.py 
+
+1. Change the name to something like workflows.py
+
+
+
+Old functions:
+# Function to extract the last occurrence of volume from OUTCAR files
+def extract_volume(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        for line in reversed(lines):
+            if 'volume' in line:
+                volume = float(line.split()[-1])
+                break  # Stop searching after finding the last occurrence
+    return volume
+
+
+# Function to extract the last occurrence of pressure from OUTCAR files
+def extract_pressure(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        for line in reversed(lines):
+            if 'pressure' in line:
+                pressure = float(line.split()[3])
+                break  # Stop searching after finding the last occurrence
+    return pressure
+
+
+# Function to extract energy from OSZICAR files
+def extract_energy(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        for line in reversed(lines):
+            if 'F=' in line:
+                energy = float(line.split()[4])
+                break  # Stop searching after finding the last occurrence
+    return energy
