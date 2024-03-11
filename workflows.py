@@ -277,18 +277,20 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
     """
 
     # Write a params.json file to keep track of the parameters used
-    # Unfortunately, handlers is not json serializable, so the value is replace by a useless string
+    errors_subset_list = [handler.errors_subset_to_catch for handler in handlers]
     params = {'path': path,
               'volumes': volumes,
               'vasp_cmd': vasp_cmd,
-              'handlers': 'handlers is not json serializable',
+              'handlers': errors_subset_list[0],
               'restarting': restarting}
     params_json_path = os.path.join(path, 'params.json')
 
     n = 0
+    params_json_path = os.path.join(path, 'params_' + str(n) + '.json')
     while os.path.isfile(params_json_path):
         n += 1
         params_json_path = os.path.join(path, 'params_' + str(n) + '.json')
+
     with open(params_json_path, 'w') as file:
         json.dump(params, file)
 

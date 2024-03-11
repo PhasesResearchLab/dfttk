@@ -2,9 +2,10 @@ import sys
 import os
 import numpy as np
 from custodian.vasp.handlers import VaspErrorHandler
-sys.path.append('/storage/home/lam7027/work/bin/vasp-job-automation')
-import cstdn
 
+# Replace the path below with your own path to workflows.py
+sys.path.append('/storage/home/lam7027/work/bin/vasp-job-automation')
+import workflows
 
 # Specify custodian handlers
 subset = list(VaspErrorHandler.error_msgs.keys())
@@ -18,5 +19,5 @@ vasp_cmd = ["srun", "vasp_std"]
 
 volumes = list(np.linspace(370, 270, 15))
 
-cstdn.vol_series(os.getcwd(), volumes, vasp_cmd, handlers, restarting=False)
+workflows.ev_curve_series(os.getcwd(), volumes, vasp_cmd, handlers, restarting=False)
 
