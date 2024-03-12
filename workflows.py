@@ -213,7 +213,7 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
     return df
 
 
-def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=True):
+def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=False):
 
     # Path should contain necessary VASP config files
     original_dir = os.getcwd()
@@ -245,6 +245,7 @@ def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=Tr
         backup=backup,
         settings_override=[
             {"dict": "INCAR", "action": {"_set": {
+                "ALGO": "Normal",
                 "IBRION": -1,
                 "NSW": 0,
                 "ISMEAR": -5
@@ -259,9 +260,9 @@ def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=Tr
     os.chdir(original_dir)
 
 
-def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar=False, keep_chgcar=False):
+def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar=False, keep_chgcar=False, copy_magmom=False):
     """
-    For spin-polarized calculations (ISPIN=2), you probably want to have volumes in decreasing order eg:
+    For spin-polarized calculations (ISPIN=2), you probably want to have volumes in decreasing order, e.g.:
     volumes = []
     for vol in range(300, 370, 10):
         volumes.append(vol)
@@ -273,7 +274,7 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
     Path should contain starting POSCAR, POTCAR, INCAR, and KPOINTS files
 
     When restarting, the last volume folder will be deleted and
-    the second to last volume folder will be used as the starting point.
+    the second last volume folder will be used as the starting point.
     """
 
     # Write a params.json file to keep track of the parameters used
@@ -311,6 +312,7 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
             print("No volumes to restart from. You might want to set restarting=False (which is the default) or check if 'vol_0' exists inside the path")
             return
 
+        #TODO: Review restarting procedure and simplify it
         # Find the initial WAVECAR and CHGCAR in the last volume folder
         # and move to the previous volume folder.
         # We may need these before we delete the folder
@@ -324,6 +326,7 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
             os.path.join(last_vol_folder_path, 'OUTCAR.2relax'))
         outcar3_is_file = os.path.isfile(os.path.join(
             last_vol_folder_path, 'OUTCAR.3static'))
+        
         # Check to see if the last complete volume folder has a WAVECAR.3static
         if os.path.isfile(last_complete_wavecar):
             pass
@@ -340,8 +343,8 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
             print("Cannot determine which WAVECAR to restart with.:")
             print("1. There is no 'WAVECAR.3static' in the last complete volume folder")
             print("2. There is no 'WAVECAR.1relax' in the last volume folder")
-            print("3. There is no 'WAVECAR' in the last volume folder, or there is an 'OUTCAR.1relax', 'OUTCAR.2relax', or 'OUTCAR.3static' in the last volume folder.")
-            print("You might want to make sure that files are where they are supposed to be and named correctly.")
+            print("3. There is no 'WAVECAR' in the last volume folder, and there is no 'OUTCAR.1relax', 'OUTCAR.2relax', and 'OUTCAR.3static' in the last volume folder.")
+            print("You might want to make sure that the files are where they are supposed to be and named correctly.")
             return
 
         initial_chgcar = os.path.join(last_vol_folder_path, 'CHGCAR.1relax')
@@ -356,7 +359,7 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
             shutil.move(initial_chgcar, os.path.join(
                 last_complete_vol_folder_path, 'CHGCAR.3static'))
 
-        # Check outcars to ensure correct CHGCAR
+        # Check OUTCARs to ensure correct CHGCAR
         elif os.path.isfile(alt_initial_chgcar) and not outcar1_is_file and not outcar2_is_file and not outcar3_is_file:
             shutil.move(alt_initial_chgcar, os.path.join(
                 last_complete_vol_folder_path, 'CHGCAR.3static'))
@@ -403,18 +406,19 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
                 if os.path.isfile(file_source):
                     shutil.copy2(file_source, file_dest)
 
-            # After copying, it is safe to delete some of the WAVECARS, CHGCARS, CHG and PROCARS from the previous volume folder to save space
-            # Keeps WAVECAR.3static and CHGCAR.3static
+            # After copying, it is safe to delete the WAVECAR, CHGCAR, CHG, and PROCAR files from the previous volume folder to save space
             files_to_delete = ['WAVECAR.1relax', 'WAVECAR.2relax',
                                'WAVECAR.3static', 'CHGCAR.3static',
                                'CHGCAR.1relax', 'CHGCAR.2relax',
                                'CHG.1relax', 'CHG.2relax', 'CHG.3static',
                                'PROCAR.1relax', 'PROCAR.2relax', 'PROCAR.3static']
+            
             if keep_wavecar:
                 files_to_delete.remove('WAVECAR.3static')
             if keep_chgcar:
                 files_to_delete.remove('CHGCAR.3static')
             paths_to_delete = []
+            
             for file_name in files_to_delete:
                 file_path = os.path.join(previous_vol_folder_path, file_name)
                 paths_to_delete.append(file_path)
@@ -436,7 +440,7 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
         # Run VASP
         print('Running three step relaxation for volume ' + str(vol))
         three_step_relaxation(vol_folder_path, vasp_cmd,
-                              handlers, backup=False)
+                              handlers, backup=False, copy_magmom=copy_magmom)
 
     # Delete some files in the last volume folder to save space
     previous_vol_folder_path = os.path.join(path, 'vol_' + str(i))
