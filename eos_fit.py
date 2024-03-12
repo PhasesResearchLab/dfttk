@@ -24,21 +24,18 @@ Equations of State:
 """
 
 import os
+import sys
 import math
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import fsolve
-from scipy.optimize import leastsq
-import os
+import json
 import glob
 import shutil
-import pandas as pd
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 import plotly.express as px
-import json
-import sys
-import os
 import plotly.graph_objects as go
+from scipy.optimize import fsolve
+from scipy.optimize import leastsq
 
 def mBM4(volume, energy):
     eos_index = 1
