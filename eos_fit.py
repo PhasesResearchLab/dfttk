@@ -727,8 +727,10 @@ def plot_config_energy(df, number_of_lowest_configs=5, show_fig=True):
         print('possible error. Could not strip magnetic data: ', e)
         new_df['energy_per_atom'] = new_df['energy'] / new_df['number_of_atoms']
         new_df = df.nsmallest(number_of_lowest_configs, 'energy_per_atom').copy()
-    new_df['energy_differnce'] = (new_df['energy_per_atom'] - new_df['energy_per_atom'].min())*1000
-    fig = px.scatter(new_df, x='config', y='energy_differnce', 
+    new_df['energy_difference'] = (new_df['energy_per_atom'] - new_df['energy_per_atom'].min())*1000
+    new_df = new_df.reset_index(drop=True)
+    new_df['rank'] = new_df['energy_difference'].rank(method='min') - 1
+    fig = px.scatter(new_df, x='rank', y='energy_difference', 
                      color='config', template='plotly_white')
     fig.update_traces(
         marker=dict(size=5, symbol="cross-thin-open", color='blue'),
