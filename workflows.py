@@ -13,13 +13,12 @@ from pymatgen.io.vasp.inputs import Kpoints
 
 def extract_volume(file_path):
     # Function to extract the last occurrence of volume from OUTCAR files
-
     with open(file_path, 'r') as file:
         lines = file.readlines()
         for line in reversed(lines):
             if 'volume' in line:
                 volume = float(line.split()[-1])
-                break  # Stop searching after finding the last occurrence
+                break
     return volume
 
 
@@ -30,7 +29,7 @@ def extract_pressure(file_path):
         for line in reversed(lines):
             if 'pressure' in line:
                 pressure = float(line.split()[3])
-                break  # Stop searching after finding the last occurrence
+                break
     return pressure
 
 
@@ -41,7 +40,7 @@ def extract_energy(file_path):
         for line in reversed(lines):
             if 'F=' in line:
                 energy = float(line.split()[4])
-                break  # Stop searching after finding the last occurrence
+                break
     return energy
 
 
