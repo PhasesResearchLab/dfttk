@@ -11,9 +11,9 @@ from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
 
 
-def extract_volume(file_path):
+def extract_volume(path):
     # Function to extract the last occurrence of volume from an OUTCAR file
-    with open(file_path, 'r') as file:
+    with open(path, 'r') as file:
         lines = file.readlines()
         for line in reversed(lines):
             if 'volume' in line:
@@ -22,9 +22,9 @@ def extract_volume(file_path):
     return volume
 
 
-def extract_pressure(file_path):
+def extract_pressure(path):
     # Function to extract the last occurrence of pressure from an OUTCAR file
-    with open(file_path, 'r') as file:
+    with open(path, 'r') as file:
         lines = file.readlines()
         for line in reversed(lines):
             if 'pressure' in line:
@@ -33,9 +33,9 @@ def extract_pressure(file_path):
     return pressure
 
 
-def extract_energy(file_path):
+def extract_energy(path):
     # Function to extract the final energy from an OSZICAR file
-    with open(file_path, 'r') as file:
+    with open(path, 'r') as file:
         lines = file.readlines()
         for line in reversed(lines):
             if 'F=' in line:
@@ -43,7 +43,7 @@ def extract_energy(file_path):
                 break
     return energy
 
-
+def write_ev()
 def extract_mag_data(outcar_path='OUTCAR'):
     if not os.path.isfile(outcar_path):
         print(f"Warning: File {outcar_path} does not exist. Skipping.")
