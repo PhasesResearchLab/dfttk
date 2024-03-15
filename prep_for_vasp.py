@@ -93,24 +93,27 @@ def remove_spin_up_less_than_down(atom_count_df, atom_up, atom_down): #takes the
 
 
 """
-Needs to be generalize to take a dictionary of atom names and spin values
-or perhaps just two lists, or a list of tuples, or something like that.
+magmoms is a dictionary that looks like:
+magmoms = {'Fe+': 5, 'Fe-': -5, 'O': 0}
 """
-def make_incars(atom_1, atom_2, atom_3, spin_1, spin_2, spin_3, incar='INCAR', configurations_directory='configurations', strs_dir='strs'): #takes an INCAR file and adds a line for the magnetic moment in accordance with the str file
+
+def make_incars(magmoms, incar='INCAR', configurations_directory='configurations', strs_dir='strs'): #takes an INCAR file and adds a line for the magnetic moment in accordance with the str file
     str_files = [filename for filename in os.listdir(strs_dir) if filename.startswith('str')]
     for str_file in str_files:
         mag_mom_list = []
         output_directory = os.path.join(configurations_directory, 'config_' + str_file[4:])
         incar_to = os.path.join(output_directory, 'INCAR')
+        atoms = list(magmoms.keys())
         with open(os.path.join(strs_dir, str_file), 'r') as file:
             lines = file.readlines()
             for line in lines:
-                if atom_1 in line:
-                    mag_mom_list.append(spin_1)
-                elif atom_2 in line:
-                    mag_mom_list.append(spin_2)
-                elif atom_3 in line:
-                    mag_mom_list.append(spin_3)
+                count = 0
+                for atom in atoms:
+                    if atom in line:
+                        mag_mom_list.append(magmoms[atom])
+                        count += 1
+                if count not in [0, 1]:
+                    raise ValueError(f'Error: {count} atoms found in line {line} in file {str_file}')
         mag_mom_string = ' '.join(mag_mom_list)
         shutil.copy(incar, incar_to)
         with open(incar_to, 'a') as file:
