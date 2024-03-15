@@ -12,7 +12,7 @@ from pymatgen.io.vasp.inputs import Kpoints
 
 
 def extract_volume(file_path):
-    # Function to extract the last occurrence of volume from OUTCAR files
+    # Function to extract the last occurrence of volume from an OUTCAR file
     with open(file_path, 'r') as file:
         lines = file.readlines()
         for line in reversed(lines):
@@ -23,7 +23,7 @@ def extract_volume(file_path):
 
 
 def extract_pressure(file_path):
-    # Function to extract the last occurrence of pressure from OUTCAR files
+    # Function to extract the last occurrence of pressure from an OUTCAR file
     with open(file_path, 'r') as file:
         lines = file.readlines()
         for line in reversed(lines):
@@ -34,7 +34,7 @@ def extract_pressure(file_path):
 
 
 def extract_energy(file_path):
-    # Function to extract energy from OSZICAR files
+    # Function to extract the final energy from an OSZICAR file
     with open(file_path, 'r') as file:
         lines = file.readlines()
         for line in reversed(lines):
