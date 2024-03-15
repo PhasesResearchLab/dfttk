@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 import json
 import shutil
@@ -278,7 +279,8 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
     """
 
     # Write a params.json file to keep track of the parameters used
-    errors_subset_list = [handler.errors_subset_to_catch for handler in handlers]
+    errors_subset_list = [
+        handler.errors_subset_to_catch for handler in handlers]
     params = {'path': path,
               'volumes': volumes,
               'vasp_cmd': vasp_cmd,
@@ -295,85 +297,83 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
     with open(params_json_path, 'w') as file:
         json.dump(params, file)
 
-    # If restarting, find the last volume folder and delete it
-    # Supply the same volume list as before
+    # If restarting, the volumes in the vol folders should match the volumes list in order
+    # TODO: Do I add something to check this?
+    # You must supply a volumes list greater than or equal to the number of vol folders
     if restarting:
-        for j in range(len(volumes)):
-            vol_folder_name = 'vol_' + str(j)
-            vol_folder_path = os.path.join(path, vol_folder_name)
-            if not os.path.exists(vol_folder_path):
-                last_vol_folder_name = 'vol_' + str(j - 1)
-                last_vol_folder_path = os.path.join(path, last_vol_folder_name)
-                last_complete_vol_folder_name = 'vol_' + str(j - 2)
-                last_complete_vol_folder_path = os.path.join(
-                    path, last_complete_vol_folder_name)
-                break
-        if j == 0:
-            print("No volumes to restart from. You might want to set restarting=False (which is the default) or check if 'vol_0' exists inside the path")
-            return
-
-        #TODO: Review restarting procedure and simplify it
-        # Find the initial WAVECAR and CHGCAR in the last volume folder
-        # and move to the previous volume folder.
-        # We may need these before we delete the folder
-        initial_wavecar = os.path.join(last_vol_folder_path, 'WAVECAR.1relax')
-        alt_initial_wavecar = os.path.join(last_vol_folder_path, 'WAVECAR')
-        last_complete_wavecar = os.path.join(
-            last_complete_vol_folder_path, 'WAVECAR.3static')
-        outcar1_is_file = os.path.isfile(
-            os.path.join(last_vol_folder_path, 'OUTCAR.1relax'))
-        outcar2_is_file = os.path.isfile(
-            os.path.join(last_vol_folder_path, 'OUTCAR.2relax'))
-        outcar3_is_file = os.path.isfile(os.path.join(
-            last_vol_folder_path, 'OUTCAR.3static'))
         
-        # Check to see if the last complete volume folder has a WAVECAR.3static
-        if os.path.isfile(last_complete_wavecar):
-            pass
-        elif os.path.isfile(initial_wavecar):
-            # Move the WAVECAR.1relax to the last complete volume folder
-            shutil.move(initial_wavecar, os.path.join(
-                last_complete_vol_folder_path, 'WAVECAR.3static'))
-        # Check OUTCARs to ensure correct WAVECAR
-        elif os.path.isfile(alt_initial_wavecar) and not outcar1_is_file and not outcar2_is_file and not outcar3_is_file:
-            # Move the WAVECAR to the last complete volume folder
-            shutil.move(alt_initial_wavecar, os.path.join(
-                last_complete_vol_folder_path, 'WAVECAR.3static'))
+        # Exit if the number of volumes supplied is less than the number of volume folders
+        vol_folders = [f for f in os.listdir(path) if os.path.isdir(f) and f.startswith('vol')]
+
+        if len(volumes) < len(vol_folders):
+            print('Error: Less volumes than expected')
+            sys.exit(1)
+
+        j = len(vol_folders) - 1
+        last_vol_folder_name = 'vol_' + str(j)
+        last_vol_folder_path = os.path.join(path, last_vol_folder_name)
+
+        # Failed at the third step
+        if all(os.path.isfile(os.path.join(last_vol_folder_name, file)) for file in ['INCAR.2relax', 'POSCAR.2relax', 'KPOINTS.2relax']):
+            files = ['INCAR.2relax', 'POSCAR.2relax', 'KPOINTS.2relax',
+                     'POTCAR', 'CHGCAR.2relax', 'WAVECAR.2relax']
+            source_name_dest_name = [('INCAR.2relax', 'INCAR'),
+                                     ('CONTCAR.2relax', 'POSCAR'),
+                                     ('KPOINTS.2relax', 'KPOINTS'),
+                                     ('CHGCAR.2relax', 'CHGCAR'),
+                                     ('WAVECAR.2relax', 'WAVECAR')]
+            for file_name in source_name_dest_name:
+                file_source = os.path.join(last_vol_folder_path, file_name[0])
+                file_dest = os.path.join(last_vol_folder_path, file_name[1])
+                if os.path.isfile(file_source):
+                    shutil.copy2(file_source, file_dest)
+
+            keep_files = [name[1]
+                          for name in source_name_dest_name] + ['POTCAR']
+            for filename in os.listdir(last_vol_folder_path):
+                file_path = os.path.join(last_vol_folder_path, filename)
+                if filename not in keep_files:
+                    os.remove(file_path)
+
+            # Run VASP
+            print('Running three step relaxation for volume ' + str(volumes[j]))
+            three_step_relaxation(last_vol_folder_path, vasp_cmd,
+                                  handlers, backup=False, copy_magmom=copy_magmom)
+            last_vol_index = j + 1
+
+        # Failed at the second step
+        elif all(os.path.isfile(os.path.join(last_vol_folder_name, file)) for file in ['INCAR.1relax', 'POSCAR.1relax', 'KPOINTS.1relax']):
+            files = ['INCAR.1relax', 'POSCAR.1relax', 'KPOINTS.1relax',
+                     'POTCAR', 'CHGCAR.1relax', 'WAVECAR.1relax']
+            source_name_dest_name = [('INCAR.1relax', 'INCAR'),
+                                     ('CONTCAR.1relax', 'POSCAR'),
+                                     ('KPOINTS.1relax', 'KPOINTS'),
+                                     ('CHGCAR.1relax', 'CHGCAR'),
+                                     ('WAVECAR.1relax', 'WAVECAR')]
+            for file_name in source_name_dest_name:
+                file_source = os.path.join(last_vol_folder_path, file_name[0])
+                file_dest = os.path.join(last_vol_folder_path, file_name[1])
+                if os.path.isfile(file_source):
+                    shutil.copy2(file_source, file_dest)
+
+            keep_files = [name[1]
+                          for name in source_name_dest_name] + ['POTCAR']
+            for filename in os.listdir(last_vol_folder_path):
+                file_path = os.path.join(last_vol_folder_path, filename)
+                if filename not in keep_files:
+                    os.remove(file_path)
+
+            # Run VASP
+            print('Running three step relaxation for volume ' + str(volumes[j]))
+            three_step_relaxation(last_vol_folder_path, vasp_cmd,
+                                  handlers, backup=False, copy_magmom=copy_magmom)
+            last_vol_index = j + 1
+
+        # Failed at the first step
         else:
-            print("Cannot determine which WAVECAR to restart with.:")
-            print("1. There is no 'WAVECAR.3static' in the last complete volume folder")
-            print("2. There is no 'WAVECAR.1relax' in the last volume folder")
-            print("3. There is no 'WAVECAR' in the last volume folder, and there is no 'OUTCAR.1relax', 'OUTCAR.2relax', and 'OUTCAR.3static' in the last volume folder.")
-            print("You might want to make sure that the files are where they are supposed to be and named correctly.")
-            return
-
-        initial_chgcar = os.path.join(last_vol_folder_path, 'CHGCAR.1relax')
-        alt_initial_chgcar = os.path.join(last_vol_folder_path, 'CHGCAR')
-        last_complete_chgcar = os.path.join(
-            last_complete_vol_folder_path, 'CHGCAR.3static')
-
-        # Check to see if the last complete volume folder has a CHGCAR.3static
-        if os.path.isfile(last_complete_chgcar):
-            pass
-        elif os.path.isfile(initial_chgcar):
-            shutil.move(initial_chgcar, os.path.join(
-                last_complete_vol_folder_path, 'CHGCAR.3static'))
-
-        # Check OUTCARs to ensure correct CHGCAR
-        elif os.path.isfile(alt_initial_chgcar) and not outcar1_is_file and not outcar2_is_file and not outcar3_is_file:
-            shutil.move(alt_initial_chgcar, os.path.join(
-                last_complete_vol_folder_path, 'CHGCAR.3static'))
-        else:
-            print("Cannot determine which CHGCAR to restart with.:")
-            print("1. There is no 'CHGCAR.3static' in the last complete volume folder")
-            print("2. There is no 'CHGCAR.1relax' in the last volume folder")
-            print("3. There is no 'CHGCAR' in the last volume folder, or there is an 'OUTCAR.1relax', 'OUTCAR.2relax', or 'OUTCAR.3static' in the last volume folder.")
-            print("You might want to make sure that files are where they are supposed to be and named correctly.")
-            return
-
-        # Delete the last volume folder
-        last_vol_index = j-1
-        shutil.rmtree(last_vol_folder_path)
+            # Delete the last volume folder
+            shutil.rmtree(last_vol_folder_path)
+            last_vol_index = j
 
     for i, vol in enumerate(volumes):
         # If restarting, skip volumes that have already been run
@@ -412,13 +412,13 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
                                'CHGCAR.1relax', 'CHGCAR.2relax',
                                'CHG.1relax', 'CHG.2relax', 'CHG.3static',
                                'PROCAR.1relax', 'PROCAR.2relax', 'PROCAR.3static']
-            
+
             if keep_wavecar:
                 files_to_delete.remove('WAVECAR.3static')
             if keep_chgcar:
                 files_to_delete.remove('CHGCAR.3static')
             paths_to_delete = []
-            
+
             for file_name in files_to_delete:
                 file_path = os.path.join(previous_vol_folder_path, file_name)
                 paths_to_delete.append(file_path)
