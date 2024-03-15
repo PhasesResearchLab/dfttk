@@ -161,6 +161,8 @@ def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
 
 def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR', contcar_name='CONTCAR'):
     """
+    !!!Warning!!! this function will soon be deprecated. Use extract_configuration_data() instead if possible.
+    
     This function grabs all necessary data from the OUTCAR
     for each volume and returns a data frame in the tidy data format.
 
@@ -212,6 +214,49 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
         by=['volume', '# of ion']).reset_index(drop=True)
     return df
 
+def extract_configuration_data(path, ion_list=[1], outcar_name='OUTCAR', oszicar_name='OSZICAR',
+                               contcar_name='CONTCAR', collect_mag_data='False'):
+    row_list = []
+    start = path.find('config_') + len('config_') # Find the index where "config_" starts and add its length
+    config = path[start:] #get the string following "config_"
+    for vol_dir in glob.glob(os.path.join(path, 'vol_*')):
+        
+        outcar_path = os.path.join(vol_dir, outcar_name)
+        if not os.path.isfile(outcar_path):
+            print(f"Warning: File {outcar_path} does not exist. Skipping.")
+            continue
+
+        oszicar_path = os.path.join(vol_dir, oszicar_name)
+        if not os.path.isfile(oszicar_path):
+            print(f"Warning: File {oszicar_path} does not exist. Skipping.")
+            continue
+
+        contcar_path = os.path.join(vol_dir, contcar_name)
+        if not os.path.isfile(contcar_path):
+            print(f"Warning: File {contcar_path} does not exist. Skipping.")
+            continue
+
+        struct = Structure.from_file(contcar_path)
+        number_of_atoms = len(struct.sites)
+        vol = extract_volume(outcar_path)
+        energy = extract_energy(oszicar_path)
+        if collect_mag_data==True:
+            mag_data = extract_simple_mag_data(ion_list, outcar_path)
+            row = {'volume': vol,
+                            'config': config,
+                            'energy': energy,
+                            'number_of_atoms': number_of_atoms,
+                            'mag_data': mag_data
+                            }
+        else:
+            row = {'volume': vol,
+                            'config': config,
+                            'energy': energy,
+                            'number_of_atoms': number_of_atoms
+                            }
+        row_list.append(row)
+    df = pd.DataFrame(row_list)        
+    return df
 
 def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=False):
 

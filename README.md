@@ -1,4 +1,4 @@
-# custodian-for-vasp
+# Custodian Workflows
 For vasp job automation using custodian
 
 use conda to install env.yml
