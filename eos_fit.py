@@ -713,7 +713,8 @@ def plot_ev(data, eos_fitting='BM4', highlight_minimum=True, per_atom=False, sho
         fig.show()
     return fig
 
-def plot_config_energy(df, number_of_lowest_configs=5, show_fig=True):
+def plot_config_energy(df, number_of_lowest_configs=5, show_fig=True, xmax=None ,ymax=None):
+    new_df = df
     try:
         new_df = df.drop('# of ion', axis=1)
         new_df = new_df.drop('tot', axis=1)
@@ -727,6 +728,18 @@ def plot_config_energy(df, number_of_lowest_configs=5, show_fig=True):
     new_df['energy_difference'] = (new_df['energy_per_atom'] - new_df['energy_per_atom'].min())*1000
     new_df = new_df.reset_index(drop=True)
     new_df['rank'] = new_df['energy_difference'].rank(method='min') - 1
+    if xmax == None:
+        xmax = new_df['rank'].max()
+    if ymax == None:
+        max_energy_difference = new_df['energy_difference'].max()
+        # Get the order of magnitude of the max_energy_difference
+        rounding_order_of_magnitude = 10 ** (len(str(int(max_energy_difference))) - 2)
+
+        # Round up to the nearest order of magnitude
+        ymax = math.ceil(max_energy_difference / rounding_order_of_magnitude) * rounding_order_of_magnitude
+
+        # Get the next multiple of order of magnitude with the second digit being 0
+        ymax = ((ymax // rounding_order_of_magnitude) + 1) * rounding_order_of_magnitude
     fig = px.scatter(new_df, x='rank', y='energy_difference', 
                      color='config', template='plotly_white')
     fig.update_traces(
@@ -734,6 +747,33 @@ def plot_config_energy(df, number_of_lowest_configs=5, show_fig=True):
         selector=dict(mode="markers"))
     fig.update_layout(title='Configuration Energy', xaxis_title='Configuration', yaxis_title='Energy difference (meV/atom)')
     fig.update_layout(showlegend=False)
+    fig.update_layout(title_text='Configuration Energy',
+                          plot_bgcolor='white',
+                          width=600,
+                          height=600,
+                          margin=dict(l=80, r=30, t=80, b=80)
+                          )
+    fig.update_yaxes(range=[0, ymax],
+                            showline=True,  # add line at x=0
+                            linecolor='black',
+                            linewidth=2.4,
+                            ticks='inside',
+                            mirror='allticks',  # add ticks to top/right axes
+                            tickwidth=2.4,
+                            tickcolor='black',
+                            showgrid=False
+                            )
+    fig.update_xaxes(range=[0, xmax],
+                            showline=True,
+                            showticklabels=True,
+                            linecolor='black',
+                            linewidth=2.4,
+                            ticks='inside',
+                            mirror='allticks',
+                            tickwidth=2.4,
+                            tickcolor='black',
+                            showgrid=False
+                            )
     if show_fig:
         fig.show()
     return fig
