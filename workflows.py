@@ -360,6 +360,8 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
 
     When restarting, the last volume folder will be deleted and
     the second last volume folder will be used as the starting point.
+    
+    #To Do: fix restarting so that it looks at files relative to the input path.
     """
 
     # Write a params.json file to keep track of the parameters used
@@ -382,7 +384,6 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
         json.dump(params, file)
 
     # If restarting, the volumes in the vol folders should match the volumes list in order
-    # TODO: Do I add something to check this?
     # You must supply a volumes list greater than or equal to the number of vol folders
     if restarting:
         vol_folders = [f for f in os.listdir(path) if os.path.isdir(f) and f.startswith('vol')]
