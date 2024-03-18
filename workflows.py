@@ -345,13 +345,27 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
     # TODO: Do I add something to check this?
     # You must supply a volumes list greater than or equal to the number of vol folders
     if restarting:
-        
-        # Exit if the number of volumes supplied is less than the number of volume folders
         vol_folders = [f for f in os.listdir(path) if os.path.isdir(f) and f.startswith('vol')]
-
-        if len(volumes) < len(vol_folders):
-            print('Error: Less volumes than expected')
+        
+        # read volumes completed/started
+        volumes_started = []
+        for vol_folder in vol_folders:
+            try:
+                vol_started = extract_volume(os.path.join(vol_folder, 'POSCAR.1relax') for vol_folder in vol_folders)
+            except Exception:
+                try:
+                    vol_started = extract_volume(os.path.join(vol_folder, 'POSCAR') for vol_folder in vol_folders)
+                except Exception as e:
+                    print("Error: Could not extract volumes from POSCAR files. Do the files POSCAR.1relax or POSCAR exist in each volume folder?")
+                    sys.exit(1)
+            volumes_started.append(vol_started)
+            
+        # compare volumes started to the begining of the inputed volumes. if they don't match exit.
+        if not volumes_started == volumes[:len(volumes_started)]:
+            print("Error: The volumes completed/started do not match the start of the inputed volumes list. Exiting.")
             sys.exit(1)
+        else:
+            print("The volumes completed/started match the start of the inputed volumes list. continuing restart")
 
         j = len(vol_folders) - 1
         last_vol_folder_name = 'vol_' + str(j)
