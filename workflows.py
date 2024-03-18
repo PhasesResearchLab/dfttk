@@ -3,6 +3,7 @@ import sys
 import glob
 import json
 import shutil
+import numpy as np
 import pandas as pd
 
 from custodian.custodian import Custodian
@@ -11,9 +12,9 @@ from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
 
 
-def extract_volume(file_path):
+def extract_volume(path):
     # Function to extract the last occurrence of volume from an OUTCAR file
-    with open(file_path, 'r') as file:
+    with open(path, 'r') as file:
         lines = file.readlines()
         for line in reversed(lines):
             if 'volume' in line:
@@ -22,9 +23,9 @@ def extract_volume(file_path):
     return volume
 
 
-def extract_pressure(file_path):
+def extract_pressure(path):
     # Function to extract the last occurrence of pressure from an OUTCAR file
-    with open(file_path, 'r') as file:
+    with open(path, 'r') as file:
         lines = file.readlines()
         for line in reversed(lines):
             if 'pressure' in line:
@@ -33,15 +34,51 @@ def extract_pressure(file_path):
     return pressure
 
 
-def extract_energy(file_path):
+def extract_energy(path):
     # Function to extract the final energy from an OSZICAR file
-    with open(file_path, 'r') as file:
+    with open(path, 'r') as file:
         lines = file.readlines()
         for line in reversed(lines):
             if 'F=' in line:
                 energy = float(line.split()[4])
                 break
     return energy
+
+
+def write_ev(path):
+    # Function to write the volumes and energies to a text file
+    os.chdir(path)
+    folders = glob.glob(os.path.join(path, 'vol_*'))
+    data = []
+    for folder in folders:
+        os.chdir(folder)
+        volume = extract_volume('OUTCAR.3static')
+        energy = extract_energy('OSZICAR.3static')
+        data.append([volume, energy])
+        os.chdir(path)
+    data = np.array(data)
+    sorted_indices = np.argsort(data[:, 0])
+    sorted_data = data[sorted_indices]
+    np.savetxt('volume_energy.txt', sorted_data, fmt='%f')
+    return
+
+
+def write_pv(path):
+    # Function to write the volumes and pressures to a text file
+    os.chdir(path)
+    folders = glob.glob(os.path.join(path, 'vol_*'))
+    data = []
+    for folder in folders:
+        os.chdir(folder)
+        volume = extract_volume('OUTCAR.3static')
+        pressure = extract_pressure('OUTCAR.3static')
+        data.append([volume, pressure])
+        os.chdir(path)
+    data = np.array(data)
+    sorted_indices = np.argsort(data[:, 0])
+    sorted_data = data[sorted_indices]
+    np.savetxt('volume_pressure.txt', sorted_data, fmt='%f')
+    return
 
 
 def extract_mag_data(outcar_path='OUTCAR'):
@@ -162,7 +199,7 @@ def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
 def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR', contcar_name='CONTCAR'):
     """
     !!!Warning!!! this function will soon be deprecated. Use extract_configuration_data() instead if possible.
-    
+
     This function grabs all necessary data from the OUTCAR
     for each volume and returns a data frame in the tidy data format.
 
@@ -214,13 +251,15 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
         by=['volume', '# of ion']).reset_index(drop=True)
     return df
 
+
 def extract_configuration_data(path, ion_list=[1], outcar_name='OUTCAR', oszicar_name='OSZICAR',
                                contcar_name='CONTCAR', collect_mag_data='False'):
     row_list = []
-    start = path.find('config_') + len('config_') # Find the index where "config_" starts and add its length
-    config = path[start:] #get the string following "config_"
+    # Find the index where "config_" starts and add its length
+    start = path.find('config_') + len('config_')
+    config = path[start:]  # get the string following "config_"
     for vol_dir in glob.glob(os.path.join(path, 'vol_*')):
-        
+
         outcar_path = os.path.join(vol_dir, outcar_name)
         if not os.path.isfile(outcar_path):
             print(f"Warning: File {outcar_path} does not exist. Skipping.")
@@ -240,23 +279,24 @@ def extract_configuration_data(path, ion_list=[1], outcar_name='OUTCAR', oszicar
         number_of_atoms = len(struct.sites)
         vol = extract_volume(outcar_path)
         energy = extract_energy(oszicar_path)
-        if collect_mag_data==True:
+        if collect_mag_data == True:
             mag_data = extract_simple_mag_data(ion_list, outcar_path)
             row = {'volume': vol,
-                            'config': config,
-                            'energy': energy,
-                            'number_of_atoms': number_of_atoms,
-                            'mag_data': mag_data
-                            }
+                   'config': config,
+                   'energy': energy,
+                   'number_of_atoms': number_of_atoms,
+                   'mag_data': mag_data
+                   }
         else:
             row = {'volume': vol,
-                            'config': config,
-                            'energy': energy,
-                            'number_of_atoms': number_of_atoms
-                            }
+                   'config': config,
+                   'energy': energy,
+                   'number_of_atoms': number_of_atoms
+                   }
         row_list.append(row)
-    df = pd.DataFrame(row_list)        
+    df = pd.DataFrame(row_list)
     return df
+
 
 def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=False):
 
@@ -345,9 +385,10 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
     # TODO: Do I add something to check this?
     # You must supply a volumes list greater than or equal to the number of vol folders
     if restarting:
-        
+
         # Exit if the number of volumes supplied is less than the number of volume folders
-        vol_folders = [f for f in os.listdir(path) if os.path.isdir(f) and f.startswith('vol')]
+        vol_folders = [f for f in os.listdir(
+            path) if os.path.isdir(f) and f.startswith('vol')]
 
         if len(volumes) < len(vol_folders):
             print('Error: Less volumes than expected')
@@ -380,7 +421,8 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
                     os.remove(file_path)
 
             # Run VASP
-            print('Running three step relaxation for volume ' + str(volumes[j]))
+            print('Running three step relaxation for volume ' +
+                  str(volumes[j]))
             three_step_relaxation(last_vol_folder_path, vasp_cmd,
                                   handlers, backup=False, copy_magmom=copy_magmom)
             last_vol_index = j + 1
@@ -408,7 +450,8 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
                     os.remove(file_path)
 
             # Run VASP
-            print('Running three step relaxation for volume ' + str(volumes[j]))
+            print('Running three step relaxation for volume ' +
+                  str(volumes[j]))
             three_step_relaxation(last_vol_folder_path, vasp_cmd,
                                   handlers, backup=False, copy_magmom=copy_magmom)
             last_vol_index = j + 1
