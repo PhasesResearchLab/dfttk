@@ -346,23 +346,27 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
     # You must supply a volumes list greater than or equal to the number of vol folders
     if restarting:
         vol_folders = [f for f in os.listdir(path) if os.path.isdir(f) and f.startswith('vol')]
+        print(vol_folders)
         
         # read volumes completed/started
         volumes_started = []
         for vol_folder in vol_folders:
             try:
-                vol_started = extract_volume(os.path.join(vol_folder, 'POSCAR.1relax') for vol_folder in vol_folders)
-            except Exception:
+                struct = Structure.from_file(os.path.join(path, vol_folder, 'POSCAR.1relax'))
+            except Exception as e:
+                print(f'possible error: {e}, trying POSCAR')
                 try:
-                    vol_started = extract_volume(os.path.join(vol_folder, 'POSCAR') for vol_folder in vol_folders)
+                    struct = Structure.from_file(os.path.join(path, vol_folder, 'POSCAR'))
                 except Exception as e:
-                    print("Error: Could not extract volumes from POSCAR files. Do the files POSCAR.1relax or POSCAR exist in each volume folder?")
+                    print(f"Error: {e}. Could not extract volumes from POSCAR files. Do the files POSCAR.1relax or POSCAR exist in each volume folder?")
                     sys.exit(1)
-            volumes_started.append(vol_started)
+            vol_started = struct.volume
+            volumes_started.append(round(vol_started, 6)) # round to 6 decimal places to avoid floating point errors
+            rounded_volumes = [round(vol, 6) for vol in volumes]
             
         # compare volumes started to the begining of the inputed volumes. if they don't match exit.
-        if not volumes_started == volumes[:len(volumes_started)]:
-            print("Error: The volumes completed/started do not match the start of the inputed volumes list. Exiting.")
+        if not volumes_started == rounded_volumes[:len(volumes_started)]:
+            print(f"Error: The volumes completed/started do not match the start of the inputed volumes list. \n rounded_input_volumes: {rounded_volumes} \n volumes_started (rounded): {volumes_started} Exiting.")
             sys.exit(1)
         else:
             print("The volumes completed/started match the start of the inputed volumes list. continuing restart")
