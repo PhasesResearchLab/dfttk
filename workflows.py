@@ -417,7 +417,7 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
         last_vol_folder_path = os.path.join(path, last_vol_folder_name)
 
         # Failed at the third step
-        if all(os.path.isfile(os.path.join(last_vol_folder_name, file)) for file in ['INCAR.2relax', 'POSCAR.2relax', 'KPOINTS.2relax']):
+        if all(os.path.isfile(os.path.join(last_vol_folder_path, file)) for file in ['INCAR.2relax', 'POSCAR.2relax', 'KPOINTS.2relax']):
             files = ['INCAR.2relax', 'POSCAR.2relax', 'KPOINTS.2relax',
                      'POTCAR', 'CHGCAR.2relax', 'WAVECAR.2relax']
             source_name_dest_name = [('INCAR.2relax', 'INCAR'),
@@ -446,7 +446,7 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
             last_vol_index = j + 1
 
         # Failed at the second step
-        elif all(os.path.isfile(os.path.join(last_vol_folder_name, file)) for file in ['INCAR.1relax', 'POSCAR.1relax', 'KPOINTS.1relax']):
+        elif all(os.path.isfile(os.path.join(last_vol_folder_path, file)) for file in ['INCAR.1relax', 'POSCAR.1relax', 'KPOINTS.1relax']):
             files = ['INCAR.1relax', 'POSCAR.1relax', 'KPOINTS.1relax',
                      'POTCAR', 'CHGCAR.1relax', 'WAVECAR.1relax']
             source_name_dest_name = [('INCAR.1relax', 'INCAR'),
