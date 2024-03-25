@@ -480,6 +480,12 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
             shutil.rmtree(last_vol_folder_path)
             last_vol_index = j
 
+    files_to_delete = ['WAVECAR.1relax', 'WAVECAR.2relax',
+                       'WAVECAR.3static', 'CHGCAR.3static',
+                       'CHGCAR.1relax', 'CHGCAR.2relax',
+                       'CHG.1relax', 'CHG.2relax', 'CHG.3static',
+                       'PROCAR.1relax', 'PROCAR.2relax', 'PROCAR.3static']
+    
     for i, vol in enumerate(volumes):
         # If restarting, skip volumes that have already been run
         if restarting and i < last_vol_index:
@@ -512,12 +518,6 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
                     shutil.copy2(file_source, file_dest)
 
             # After copying, it is safe to delete the WAVECAR, CHGCAR, CHG, and PROCAR files from the previous volume folder to save space
-            files_to_delete = ['WAVECAR.1relax', 'WAVECAR.2relax',
-                               'WAVECAR.3static', 'CHGCAR.3static',
-                               'CHGCAR.1relax', 'CHGCAR.2relax',
-                               'CHG.1relax', 'CHG.2relax', 'CHG.3static',
-                               'PROCAR.1relax', 'PROCAR.2relax', 'PROCAR.3static']
-
             if keep_wavecar:
                 files_to_delete.remove('WAVECAR.3static')
             if keep_chgcar:
