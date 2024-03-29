@@ -10,7 +10,7 @@ from custodian.custodian import Custodian
 from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
-
+import matplotlib.pyplot as plt
 
 def extract_volume(path):
     # Function to extract the last occurrence of volume from an OUTCAR file
@@ -561,7 +561,8 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
             print(f"The file {file_path} does not exist.")
 
 
-def kpoints_conv_test(path, kppa_list, vasp_cmd, handlers, backup=False):
+def kpoints_conv_test(path, kppa_list, vasp_cmd, handlers, force_gamma = True, backup=False):
+    # The path should contain the necessary VASP input files
     original_dir = os.getcwd()
     kpoints_conv_dir = os.path.join(path, 'kpoints_conv')
     os.makedirs(kpoints_conv_dir)
@@ -578,15 +579,15 @@ def kpoints_conv_test(path, kppa_list, vasp_cmd, handlers, backup=False):
     os.chdir(kpoints_conv_dir)
     struct = Structure.from_file('POSCAR')
     for i, kppa in enumerate(kppa_list):
-        kpoints = Kpoints.automatic_density(struct, kppa)
+        kpoints = Kpoints.automatic_density(struct, kppa, force_gamma=force_gamma)
         kpoints.write_file('KPOINTS')
-
+        
         if i == len(kppa_list) - 1:
             final = True
         else:
             final = False
-
-        # Run the VASP job
+         
+        # Run a single-point VASP job
         job = VaspJob(
             vasp_cmd=vasp_cmd,
             final=final,
@@ -594,33 +595,56 @@ def kpoints_conv_test(path, kppa_list, vasp_cmd, handlers, backup=False):
             suffix=f'.{kppa}',
             settings_override=[
                 {"dict": "INCAR", "action": {"_set": {
-                    "ISIF": 2, "NSW": 0
+                    "IBRION": -1, "NSW": 0
                 }}}]
         )
         c = Custodian(handlers, [job], max_errors=3)
         c.run()
 
-        # Remove these files incase you didn't set up the incar correctly.
-        if os.path.isfile(f'WAVECAR.[i-1]'):
-            os.remove(f'WAVECAR.[i-1]')
-        if os.path.isfile(f'CHGCAR.[i-1]'):
-            os.remove(f'CHGCAR.[i-1]')
-        if os.path.isfile(f'CHG.[i-1]'):
-            os.remove(f'CHG.[i-1]')
-        if os.path.isfile(f'PROCAR.[i-1]'):
-            os.remove(f'PROCAR.[i-1]')
+        # Remove these files to save space
+        if os.path.isfile(f'WAVECAR.{kppa}'):
+            os.remove(f'WAVECAR.{kppa}')
+        if os.path.isfile(f'CHGCAR.{kppa}'):
+            os.remove(f'CHGCAR.{kppa}')
+        if os.path.isfile(f'CHG.{kppa}'):
+            os.remove(f'CHG.{kppa}')
+        if os.path.isfile(f'PROCAR.{kppa}'):
+            os.remove(f'PROCAR.{kppa}')
     os.chdir(original_dir)
+    return
 
+def calculate_kpoint_conv(path, kppa_list, plot=True):
+    # The path should contain the kpoints_conv_dir
+    original_dir = os.getcwd()
+    kpoints_conv_dir = os.path.join(path, 'kpoints_conv')
 
-# TODO: Good idea for the below. Maybe we can combine the convergence and plot in the above functions?
-def calculate_kpoint_convergence():
-    pass
-
-
-def plot_kpoint_convergence():
-    pass
-
-
+    # Write the kpoint densities and energies to a text file
+    os.chdir(kpoints_conv_dir)
+    data = []
+    for kppa in kppa_list:
+        energy = extract_energy(f'OSZICAR.{kppa}')
+        data.append([kppa, energy])
+    data = np.array(data)
+    sorted_indices = np.argsort(data[:, 0])
+    sorted_data = data[sorted_indices]
+    num_atoms = len(Structure.from_file(f'POSCAR.{kppa}').sites)
+    sorted_data = np.column_stack((sorted_data, np.zeros(len(sorted_data))))
+    sorted_data[1:, 2] = (sorted_data[1:, 1] - sorted_data[:-1, 1]) / num_atoms * 1000
+    os.chdir(path)
+    np.savetxt('kppa_energy.txt', sorted_data, fmt='%f')
+    
+    if plot:
+        fig, axis = plt.subplots(1, 2, figsize=(12, 6))
+        axis[0].plot(sorted_data[:, 0], sorted_data[:, 1], marker='o')
+        axis[0].set_xlabel('k-point density')
+        axis[0].set_ylabel('Energy (eV)')
+        axis[1].plot(sorted_data[:, 0], sorted_data[:, 2], marker='o')
+        axis[1].set_xlabel('k-point density')
+        axis[1].set_ylabel('ΔEnergy (meV/atom)')
+        plt.tight_layout()
+        plt.savefig('kpoint_conv.png', dpi=300)
+    return
+    
 def calculate_encut_convergence():
     pass
 
