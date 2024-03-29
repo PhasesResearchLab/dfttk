@@ -639,22 +639,97 @@ def calculate_kpoint_conv(path, kppa_list, plot=True):
         axis[0].set_xlabel('k-point density')
         axis[0].set_ylabel('Energy (eV)')
         axis[1].plot(sorted_data[:, 0], sorted_data[:, 2], marker='o')
+        axis[1].axhline(y=1, color='black', linestyle='--')
+        axis[1].axhline(y=-1, color='black', linestyle='--')
         axis[1].set_xlabel('k-point density')
         axis[1].set_ylabel('ΔEnergy (meV/atom)')
         plt.tight_layout()
         plt.savefig('kpoint_conv.png', dpi=300)
     return
     
-def calculate_encut_convergence():
-    pass
+def encut_conv_test(path, encut_list, vasp_cmd, handlers, backup=False):
+    # The path should contain the necessary VASP input files
+    original_dir = os.getcwd()
+    encut_conv_dir = os.path.join(path, 'encut_conv')
+    os.makedirs(encut_conv_dir)
+
+    # Copy VASP input files
+    shutil.copy2(os.path.join(path, 'POSCAR'),
+                 os.path.join(encut_conv_dir, 'POSCAR'))
+    shutil.copy2(os.path.join(path, 'KPOINTS'),
+                 os.path.join(encut_conv_dir, 'KPOINTS'))
+    shutil.copy2(os.path.join(path, 'POTCAR'),
+                 os.path.join(encut_conv_dir, 'POTCAR'))
+    shutil.copy2(os.path.join(path, 'INCAR'),
+                 os.path.join(encut_conv_dir, 'INCAR'))
+
+    os.chdir(encut_conv_dir)
+    for i, encut in enumerate(encut_list):
+        if i == len(encut_list) - 1:
+            final = True
+        else:
+            final = False
+         
+        # Run a single-point VASP job
+        job = VaspJob(
+            vasp_cmd=vasp_cmd,
+            final=final,
+            backup=backup,
+            suffix=f'.{encut}',
+            settings_override=[
+                {"dict": "INCAR", "action": {"_set": {
+                    "IBRION": -1, "NSW": 0, "ENCUT": encut
+                }}}]
+        )
+        c = Custodian(handlers, [job], max_errors=3)
+        c.run()
+
+        # Remove these files to save space
+        if os.path.isfile(f'WAVECAR.{encut}'):
+            os.remove(f'WAVECAR.{encut}')
+        if os.path.isfile(f'CHGCAR.{encut}'):
+            os.remove(f'CHGCAR.{encut}')
+        if os.path.isfile(f'CHG.{encut}'):
+            os.remove(f'CHG.{encut}')
+        if os.path.isfile(f'PROCAR.{encut}'):
+            os.remove(f'PROCAR.{encut}')
+    os.chdir(original_dir)
+    return
 
 
-def encut_convergence_test():
-    pass
+def calculate_encut_conv(path, encut_list, plot=True):
+    # The path should contain the encut_conv_dir
+    original_dir = os.getcwd()
+    encut_conv_dir = os.path.join(path, 'encut_conv')
 
-
-def plot_encut_convergence():
-    pass
+    # Write the ENCUT and energies to a text file
+    os.chdir(encut_conv_dir)
+    data = []
+    for encut in encut_list:
+        energy = extract_energy(f'OSZICAR.{encut}')
+        data.append([encut, energy])
+    data = np.array(data)
+    sorted_indices = np.argsort(data[:, 0])
+    sorted_data = data[sorted_indices]
+    num_atoms = len(Structure.from_file(f'POSCAR.{encut}').sites)
+    sorted_data = np.column_stack((sorted_data, np.zeros(len(sorted_data))))
+    sorted_data[1:, 2] = (sorted_data[1:, 1] - sorted_data[:-1, 1]) / num_atoms * 1000
+    os.chdir(path)
+    np.savetxt('encut_energy.txt', sorted_data, fmt='%f')
+    
+    if plot:
+        fig, axis = plt.subplots(1, 2, figsize=(12, 6))
+        axis[0].plot(sorted_data[:, 0], sorted_data[:, 1], marker='o')
+        axis[0].set_xlabel('ENCUT (eV)')
+        axis[0].set_ylabel('Energy (eV)')
+        axis[1].plot(sorted_data[:, 0], sorted_data[:, 2], marker='o')
+        axis[1].axhline(y=1, color='black', linestyle='--')
+        axis[1].axhline(y=-1, color='black', linestyle='--')
+        axis[1].set_xlabel('ENCUT')
+        axis[1].set_ylabel('ΔEnergy (meV/atom)')
+        plt.tight_layout()
+        plt.savefig('encut_conv.png', dpi=300)
+    return
 
 
 if __name__ == "__main__":
