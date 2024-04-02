@@ -5,7 +5,7 @@ from custodian.vasp.handlers import VaspErrorHandler
 
 # Replace the path below with your own path to workflows.py
 sys.path.append('/storage/home/lam7027/work/bin/vasp-job-automation')
-import workflows
+import src.workflows as workflows
 
 # Specify custodian handlers
 subset = list(VaspErrorHandler.error_msgs.keys())

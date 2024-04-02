@@ -3,7 +3,7 @@ import os
 import numpy as np
 from custodian.vasp.handlers import VaspErrorHandler
 #sys.path.append('/storage/home/lam7027/bin/vasp-job-automation')
-import workflows
+import src.workflows as workflows
 
 
 # Specify custodian handlers
