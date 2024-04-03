@@ -5,16 +5,27 @@ import json
 import shutil
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from custodian.custodian import Custodian
 from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
-import matplotlib.pyplot as plt
 
 def extract_volume(path):
-    # Function to extract the last occurrence of volume from an OUTCAR file
+    """Function to extract the last occurrence of volume from an OUTCAR file
+
+    Args:
+        path (str): the path to an OUTCAR file
+
+    Returns:
+        float: the volume from an OUTCAR file
+    """    
+
     with open(path, 'r') as file:
+        file_name = os.path.basename(path)
+        assert file_name.startswith('OUTCAR'), "File name does not start with 'OUTCAR'"
+        
         lines = file.readlines()
         for line in reversed(lines):
             if 'volume' in line:
@@ -24,8 +35,19 @@ def extract_volume(path):
 
 
 def extract_pressure(path):
-    # Function to extract the last occurrence of pressure from an OUTCAR file
+    """Function to extract the last occurrence of pressure from an OUTCAR file
+
+    Args:
+        path (str): the path to an OUTCAR file
+
+    Returns:
+        float: the pressure from an OUTCAR file
+    """    
+    
     with open(path, 'r') as file:
+        file_name = os.path.basename(path)
+        assert file_name.startswith('OUTCAR'), "File name does not start with 'OUTCAR'"
+        
         lines = file.readlines()
         for line in reversed(lines):
             if 'pressure' in line:
