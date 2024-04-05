@@ -438,7 +438,7 @@ def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=Fa
     c.run()
     os.chdir(original_dir)
 
-
+# TODO: write tests for this function
 def ev_curve_series(
     path,
     volumes,
@@ -449,25 +449,22 @@ def ev_curve_series(
     keep_chgcar=False,
     copy_magmom=False,
 ):
-    """
-    For spin-polarized calculations (ISPIN=2), you probably want to have volumes in decreasing order, e.g.:
-    volumes = []
-    for vol in range(300, 370, 10):
-        volumes.append(vol)
-    volumes.reverse()
+    """This function runs a series of three_step_relaxation calculations for a list of volumes. It starts with the first volume, then 
+       copies the relevant files to the next volume folder, scales the volume of the POSCAR accordingly, and so on.
 
-    or
-    volumes = list(np.linspace(340, 270, 11))
+    Args:
+        path (str): the path to the folder containing the VASP input files
+        volumes (list): the list of volumes to run the calculations for
+        vasp_cmd (list): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (class 'list'): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        restarting (bool, optional): for restarting failed jobs. Defaults to False.
+        keep_wavecar (bool, optional): if True, does not delete WAVECAR.3static. Defaults to False.
+        keep_chgcar (bool, optional): if True, does not delete CHGCAR.3static. Defaults to False.
+        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        file of the next run. Defaults to False.
+    """    
 
-    Path should contain starting POSCAR, POTCAR, INCAR, and KPOINTS files
-
-    When restarting, the last volume folder will be deleted and
-    the second last volume folder will be used as the starting point.
-
-    #To Do: fix restarting so that it looks at files relative to the input path.
-    """
-
-    # Write a params.json file to keep track of the parameters used
+    # Writes a params.json file to keep track of the parameters used
     errors_subset_list = [handler.errors_subset_to_catch for handler in handlers]
     params = {
         "path": path,
@@ -476,7 +473,6 @@ def ev_curve_series(
         "handlers": errors_subset_list[0],
         "restarting": restarting,
     }
-    params_json_path = os.path.join(path, "params.json")
 
     n = 0
     params_json_path = os.path.join(path, "params_" + str(n) + ".json")
@@ -487,15 +483,16 @@ def ev_curve_series(
     with open(params_json_path, "w") as file:
         json.dump(params, file)
 
-    # If restarting, the volumes in the vol folders should match the volumes list in order
-    # You must supply a volumes list greater than or equal to the number of vol folders
+    # If restarting, you must supply a volumes list greater than or equal to the number of vol folders and the volumes in 
+    # the vol folders should match the volumes list in order
     if restarting:
+        
+        # Check if the POSCAR files exist in the vol folders
         vol_folders = [
-            f for f in os.listdir(path) if os.path.isdir(f) and f.startswith("vol")
+            folder for folder in os.listdir(path) if os.path.isdir(folder) and folder.startswith("vol")
         ]
-        print(vol_folders)
 
-        # read volumes completed/started
+        # TODO: This is assuming all the previous volumes succeeded. Do we need these try and except blocks?
         volumes_started = []
         for vol_folder in vol_folders:
             try:
@@ -513,40 +510,32 @@ def ev_curve_series(
                         f"Error: {e}. Could not extract volumes from POSCAR files. Do the files POSCAR.1relax or POSCAR exist in each volume folder?"
                     )
                     sys.exit(1)
-            vol_started = struct.volume
+            volume_started = struct.volume
             volumes_started.append(
-                round(vol_started, 6)
-            )  # round to 6 decimal places to avoid floating point errors
-            rounded_volumes = [round(vol, 6) for vol in volumes]
+                round(volume_started, 6)
+            )
+            rounded_volumes_supplied = [round(volume, 6) for volume in volumes]
 
-        # compare volumes started to the begining of the inputed volumes. if they don't match exit.
-        if not volumes_started == rounded_volumes[: len(volumes_started)]:
+        # Compare volumes_started from vol_* folders to the same number of the inputed volumes starting from the beginning. If they don't match, exit. 
+        if not volumes_started == rounded_volumes_supplied[: len(volumes_started)]:
             print(
-                f"Error: The volumes completed/started do not match the start of the inputed volumes list. \n rounded_input_volumes: {rounded_volumes} \n volumes_started (rounded): {volumes_started} Exiting."
+                f"Error: The volumes completed do not match the inputed volumes list of the same number starting from the beginning. \n rounded_input_volumes: {rounded_volumes_supplied} \n volumes_started (rounded): {volumes_started} \n Exiting."
             )
             sys.exit(1)
         else:
             print(
-                "The volumes completed/started match the start of the inputed volumes list. continuing restart"
+                "The volumes completed match the inputed volumes list of the same number starting from the beginning. Continuing restart"
             )
 
         j = len(vol_folders) - 1
         last_vol_folder_name = "vol_" + str(j)
         last_vol_folder_path = os.path.join(path, last_vol_folder_name)
 
-        # Failed at the third step
+        # If the job failed at the third step of three_step_relaxation, restart using the files from the second step
         if all(
             os.path.isfile(os.path.join(last_vol_folder_path, file))
             for file in ["INCAR.2relax", "POSCAR.2relax", "KPOINTS.2relax"]
         ):
-            files = [
-                "INCAR.2relax",
-                "POSCAR.2relax",
-                "KPOINTS.2relax",
-                "POTCAR",
-                "CHGCAR.2relax",
-                "WAVECAR.2relax",
-            ]
             source_name_dest_name = [
                 ("INCAR.2relax", "INCAR"),
                 ("CONTCAR.2relax", "POSCAR"),
@@ -566,7 +555,6 @@ def ev_curve_series(
                 if filename not in keep_files:
                     os.remove(file_path)
 
-            # Run VASP
             print("Running three step relaxation for volume " + str(volumes[j]))
             three_step_relaxation(
                 last_vol_folder_path,
@@ -577,19 +565,11 @@ def ev_curve_series(
             )
             last_vol_index = j + 1
 
-        # Failed at the second step
+        # If the job failed at the second step of three_step_relaxation, restart using the files from the first step
         elif all(
             os.path.isfile(os.path.join(last_vol_folder_path, file))
             for file in ["INCAR.1relax", "POSCAR.1relax", "KPOINTS.1relax"]
         ):
-            files = [
-                "INCAR.1relax",
-                "POSCAR.1relax",
-                "KPOINTS.1relax",
-                "POTCAR",
-                "CHGCAR.1relax",
-                "WAVECAR.1relax",
-            ]
             source_name_dest_name = [
                 ("INCAR.1relax", "INCAR"),
                 ("CONTCAR.1relax", "POSCAR"),
@@ -609,7 +589,6 @@ def ev_curve_series(
                 if filename not in keep_files:
                     os.remove(file_path)
 
-            # Run VASP
             print("Running three step relaxation for volume " + str(volumes[j]))
             three_step_relaxation(
                 last_vol_folder_path,
@@ -620,9 +599,8 @@ def ev_curve_series(
             )
             last_vol_index = j + 1
 
-        # Failed at the first step
+        # If the job failed at the first step of three_step_relaxation, delete the folder
         else:
-            # Delete the last volume folder
             shutil.rmtree(last_vol_folder_path)
             last_vol_index = j
 
@@ -646,12 +624,11 @@ def ev_curve_series(
         if restarting and i < last_vol_index:
             continue
 
-        # Create vol folder
         vol_folder_name = "vol_" + str(i)
         vol_folder_path = os.path.join(path, vol_folder_name)
         os.makedirs(vol_folder_path)
 
-        if i == 0:  # Copy from path
+        if i == 0: 
             files_to_copy = ["INCAR", "KPOINTS", "POSCAR", "POTCAR"]
             for file_name in files_to_copy:
                 if os.path.isfile(os.path.join(path, file_name)):
@@ -659,7 +636,7 @@ def ev_curve_series(
                         os.path.join(path, file_name),
                         os.path.join(vol_folder_path, file_name),
                     )
-        else:  # Copy from previous folder and delete WAVECARs, CHGCARs, CHGs, PROCARs from previous volume folder
+        else: 
             previous_vol_folder_path = os.path.join(path, "vol_" + str(i - 1))
             source_name_dest_name = [
                 ("CONTCAR.3static", "POSCAR"),
@@ -675,7 +652,6 @@ def ev_curve_series(
                 if os.path.isfile(file_source):
                     shutil.copy2(file_source, file_dest)
 
-            # After copying, it is safe to delete the WAVECAR, CHGCAR, CHG, and PROCAR files from the previous volume folder to save space
             if keep_wavecar:
                 files_to_delete.remove("WAVECAR.3static")
             if keep_chgcar:
@@ -694,19 +670,16 @@ def ev_curve_series(
                 else:
                     print(f"The file {file_path} does not exist.")
 
-        # Change the volume of the POSCAR
         poscar = os.path.join(vol_folder_path, "POSCAR")
         struct = Structure.from_file(poscar)
         struct.scale_lattice(vol)
         struct.to_file(poscar, "POSCAR")
 
-        # Run VASP
         print("Running three step relaxation for volume " + str(vol))
         three_step_relaxation(
             vol_folder_path, vasp_cmd, handlers, backup=False, copy_magmom=copy_magmom
         )
 
-    # Delete some files in the last volume folder to save space
     previous_vol_folder_path = os.path.join(path, "vol_" + str(i))
     paths_to_delete = []
     for file_name in files_to_delete:
@@ -723,17 +696,26 @@ def ev_curve_series(
 def kpoints_conv_test(
     path, kppa_list, vasp_cmd, handlers, force_gamma=True, backup=False
 ):
-    # The path should contain the necessary VASP input files
+    """This function runs a series of VASP calculations with different k-point densities for convergence testing.
+
+    Args:
+        path (str): the path to the folder containing the VASP input files
+        kppa_list (list): the list of k-point densities to run the calculations for
+        vasp_cmd (list): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (class 'list'): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        force_gamma (bool, optional): If True, forces a gamma-centered mesh. Defaults to True.
+        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        .orig. Defaults to False.
+    """    
+    
     original_dir = os.getcwd()
     kpoints_conv_dir = os.path.join(path, "kpoints_conv")
     os.makedirs(kpoints_conv_dir)
 
-    # Copy VASP input files except KPOINTS
     shutil.copy2(os.path.join(path, "POSCAR"), os.path.join(kpoints_conv_dir, "POSCAR"))
     shutil.copy2(os.path.join(path, "POTCAR"), os.path.join(kpoints_conv_dir, "POTCAR"))
     shutil.copy2(os.path.join(path, "INCAR"), os.path.join(kpoints_conv_dir, "INCAR"))
 
-    # Create KPOINTS file and run VASP
     os.chdir(kpoints_conv_dir)
     struct = Structure.from_file("POSCAR")
     for i, kppa in enumerate(kppa_list):
@@ -745,7 +727,6 @@ def kpoints_conv_test(
         else:
             final = False
 
-        # Run a single-point VASP job
         job = VaspJob(
             vasp_cmd=vasp_cmd,
             final=final,
@@ -758,7 +739,6 @@ def kpoints_conv_test(
         c = Custodian(handlers, [job], max_errors=3)
         c.run()
 
-        # Remove these files to save space
         if os.path.isfile(f"WAVECAR.{kppa}"):
             os.remove(f"WAVECAR.{kppa}")
         if os.path.isfile(f"CHGCAR.{kppa}"):
@@ -772,11 +752,16 @@ def kpoints_conv_test(
 
 
 def calculate_kpoint_conv(path, kppa_list, plot=True):
-    # The path should contain the kpoints_conv_dir
+    """This function calculates the energy convergence with respect to k-point density and plots the results.
+
+    Args:
+        path (str): the path to the folder containing the VASP input files
+        kppa_list (list): the list of k-point densities to run the calculations for
+        plot (bool, optional): If True, plots the results. Defaults to True.
+    """    
     original_dir = os.getcwd()
     kpoints_conv_dir = os.path.join(path, "kpoints_conv")
 
-    # Write the kpoint densities and energies to a text file
     os.chdir(kpoints_conv_dir)
     data = []
     for kppa in kppa_list:
@@ -803,16 +788,24 @@ def calculate_kpoint_conv(path, kppa_list, plot=True):
         axis[1].set_ylabel("ΔEnergy (meV/atom)")
         plt.tight_layout()
         plt.savefig("kpoint_conv.png", dpi=300)
-    return
+    os.chdir(original_dir)
 
 
 def encut_conv_test(path, encut_list, vasp_cmd, handlers, backup=False):
-    # The path should contain the necessary VASP input files
+    """This function runs a series of VASP calculations with different ENCUT values for convergence testing.
+
+    Args:
+        path (str): the path to the folder containing the VASP input files
+        encut_list (list): the list of ENCUT values to run the calculations for
+        vasp_cmd (list): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (class 'list'): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        .orig. Defaults to False.
+    """    
     original_dir = os.getcwd()
     encut_conv_dir = os.path.join(path, "encut_conv")
     os.makedirs(encut_conv_dir)
 
-    # Copy VASP input files
     shutil.copy2(os.path.join(path, "POSCAR"), os.path.join(encut_conv_dir, "POSCAR"))
     shutil.copy2(os.path.join(path, "KPOINTS"), os.path.join(encut_conv_dir, "KPOINTS"))
     shutil.copy2(os.path.join(path, "POTCAR"), os.path.join(encut_conv_dir, "POTCAR"))
@@ -825,7 +818,6 @@ def encut_conv_test(path, encut_list, vasp_cmd, handlers, backup=False):
         else:
             final = False
 
-        # Run a single-point VASP job
         job = VaspJob(
             vasp_cmd=vasp_cmd,
             final=final,
@@ -841,7 +833,6 @@ def encut_conv_test(path, encut_list, vasp_cmd, handlers, backup=False):
         c = Custodian(handlers, [job], max_errors=3)
         c.run()
 
-        # Remove these files to save space
         if os.path.isfile(f"WAVECAR.{encut}"):
             os.remove(f"WAVECAR.{encut}")
         if os.path.isfile(f"CHGCAR.{encut}"):
@@ -851,15 +842,19 @@ def encut_conv_test(path, encut_list, vasp_cmd, handlers, backup=False):
         if os.path.isfile(f"PROCAR.{encut}"):
             os.remove(f"PROCAR.{encut}")
     os.chdir(original_dir)
-    return
 
 
 def calculate_encut_conv(path, encut_list, plot=True):
-    # The path should contain the encut_conv_dir
+    """This function calculates the energy convergence with respect to ENCUT and plots the results.
+
+    Args:
+        path (str): the path to the folder containing the VASP input files
+        encut_list (list): the list of ENCUT values to run the calculations for
+        plot (bool, optional): If True, plots the results. Defaults to True.
+    """    
     original_dir = os.getcwd()
     encut_conv_dir = os.path.join(path, "encut_conv")
 
-    # Write the ENCUT and energies to a text file
     os.chdir(encut_conv_dir)
     data = []
     for encut in encut_list:
@@ -886,7 +881,7 @@ def calculate_encut_conv(path, encut_list, plot=True):
         axis[1].set_ylabel("ΔEnergy (meV/atom)")
         plt.tight_layout()
         plt.savefig("encut_conv.png", dpi=300)
-    return
+    os.chdir(original_dir)
 
 
 if __name__ == "__main__":
