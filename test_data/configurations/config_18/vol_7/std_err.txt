@@ -1,2 +1,0 @@
-srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
-slurmstepd: error: *** STEP 7554632.21 ON p-sc-2305 CANCELLED AT 2023-12-17T17:31:48 DUE TO TIME LIMIT ***
