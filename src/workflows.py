@@ -12,6 +12,7 @@ from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
 
+
 def extract_volume(path):
     """Function to extract the last occurrence of volume from an OUTCAR file
 
@@ -20,15 +21,15 @@ def extract_volume(path):
 
     Returns:
         float: the volume from an OUTCAR file
-    """    
+    """
 
-    with open(path, 'r') as file:
+    with open(path, "r") as file:
         file_name = os.path.basename(path)
-        assert file_name.startswith('OUTCAR'), "File name does not start with 'OUTCAR'"
-        
+        assert file_name.startswith("OUTCAR"), "File name does not start with 'OUTCAR'"
+
         lines = file.readlines()
         for line in reversed(lines):
-            if 'volume' in line:
+            if "volume" in line:
                 volume = float(line.split()[-1])
                 break
     return volume
@@ -42,109 +43,149 @@ def extract_pressure(path):
 
     Returns:
         float: the pressure from an OUTCAR file
-    """    
-    
-    with open(path, 'r') as file:
+    """
+
+    with open(path, "r") as file:
         file_name = os.path.basename(path)
-        assert file_name.startswith('OUTCAR'), "File name does not start with 'OUTCAR'"
-        
+        assert file_name.startswith("OUTCAR"), "File name does not start with 'OUTCAR'"
+
         lines = file.readlines()
         for line in reversed(lines):
-            if 'pressure' in line:
+            if "pressure" in line:
                 pressure = float(line.split()[3])
                 break
     return pressure
 
 
 def extract_energy(path):
-    # Function to extract the final energy from an OSZICAR file
-    with open(path, 'r') as file:
+    """Function to extract the final energy from an OSZICAR file
+
+    Args:
+        path (str): the path to an OSZICAR file
+
+    Returns:
+        float: the final energy from an OSZICAR file
+    """
+
+    with open(path, "r") as file:
+        file_name = os.path.basename(path)
+        assert file_name.startswith(
+            "OSZICAR"
+        ), "File name does not start with 'OSZICAR'"
+
         lines = file.readlines()
         for line in reversed(lines):
-            if 'F=' in line:
+            if "F=" in line:
                 energy = float(line.split()[4])
                 break
     return energy
 
 
 def write_ev(path):
-    # Function to write the volumes and energies to a text file
+    """Function to write the volumes and energies obtained from ev_curve_series to a text file.
+    The data will be obtained from vol_* folders.
+
+    Args:
+        path (str): the path to the directory containing the vol_* folders
+    """
+
+    original_dir = os.getcwd()
     os.chdir(path)
-    folders = glob.glob(os.path.join(path, 'vol_*'))
+
+    folders = [
+        name
+        for name in os.listdir(os.getcwd())
+        if os.path.isdir(name) and name.startswith("vol")
+    ]
+
     data = []
     for folder in folders:
         os.chdir(folder)
-        volume = extract_volume('OUTCAR.3static')
-        energy = extract_energy('OSZICAR.3static')
+        volume = extract_volume("OUTCAR.3static")
+        energy = extract_energy("OSZICAR.3static")
         data.append([volume, energy])
-        os.chdir(path)
+        os.chdir("../")
+
     data = np.array(data)
     sorted_indices = np.argsort(data[:, 0])
     sorted_data = data[sorted_indices]
-    np.savetxt('volume_energy.txt', sorted_data, fmt='%f')
-    return
+    np.savetxt("volume_energy.txt", sorted_data, fmt="%f")
+    os.chdir(original_dir)
 
 
 def write_pv(path):
-    # Function to write the volumes and pressures to a text file
+    """Function to write the volumes and pressures obtained from ev_curve_series to a text file.
+    The data will be obtained from vol_* folders.
+
+    Args:
+        path (str): the path to the directory containing the vol_* folders
+    """
+
+    original_dir = os.getcwd()
     os.chdir(path)
-    folders = glob.glob(os.path.join(path, 'vol_*'))
+
+    folders = [
+        name
+        for name in os.listdir(os.getcwd())
+        if os.path.isdir(name) and name.startswith("vol")
+    ]
+
     data = []
     for folder in folders:
         os.chdir(folder)
-        volume = extract_volume('OUTCAR.3static')
-        pressure = extract_pressure('OUTCAR.3static')
+        volume = extract_volume("OUTCAR.3static")
+        pressure = extract_pressure("OUTCAR.3static")
         data.append([volume, pressure])
-        os.chdir(path)
+        os.chdir("../")
+
     data = np.array(data)
     sorted_indices = np.argsort(data[:, 0])
     sorted_data = data[sorted_indices]
-    np.savetxt('volume_pressure.txt', sorted_data, fmt='%f')
-    return
+    np.savetxt("volume_pressure.txt", sorted_data, fmt="%f")
+    os.chdir(original_dir)
 
 
-def extract_mag_data(outcar_path='OUTCAR'):
+def extract_mag_data(outcar_path="OUTCAR"):
     if not os.path.isfile(outcar_path):
         print(f"Warning: File {outcar_path} does not exist. Skipping.")
         return None
-    with open(outcar_path, 'r') as file:
+    with open(outcar_path, "r") as file:
         data = []
         step = 0
         found_mag_data = False
         data_start = False
         lines = file.readlines()
         for line in lines:
-            if 'magnetization (x)' in line:
+            if "magnetization (x)" in line:
                 found_mag_data = True
                 step += 1
-            elif found_mag_data and not data_start and '----' in line:
+            elif found_mag_data and not data_start and "----" in line:
                 data_start = True
-            elif data_start and '----' not in line:
+            elif data_start and "----" not in line:
                 ion = int(line.split()[0])
                 s = float(line.split()[1])
                 p = float(line.split()[2])
                 d = float(line.split()[3])
                 tot = float(line.split()[4])
                 data.append((step, ion, s, p, d, tot))
-            elif data_start and '----' in line:
+            elif data_start and "----" in line:
                 data_start = False
                 found_mag_data = False
-        df = pd.DataFrame(
-            data, columns=['step', '# of ion', 's', 'p', 'd', 'tot'])
+        df = pd.DataFrame(data, columns=["step", "# of ion", "s", "p", "d", "tot"])
         return df
 
 
-def extract_simple_mag_data(ion_list, outcar_path='OUTCAR'):
+def extract_simple_mag_data(ion_list, outcar_path="OUTCAR"):
     """
     Returns only the 'tot' magnetization of the last step for each specified ion.
     The ion_list should be a list of integers ex: [1, 2, 3, 4].
     """
 
     all_mag_data = extract_mag_data(outcar_path)
-    last_step_data = all_mag_data[all_mag_data['step']
-                                  == all_mag_data['step'].max()]
-    simple_data = last_step_data[last_step_data['# of ion'].isin(ion_list)][[
-        '# of ion', 'tot']]
+    last_step_data = all_mag_data[all_mag_data["step"] == all_mag_data["step"].max()]
+    simple_data = last_step_data[last_step_data["# of ion"].isin(ion_list)][
+        ["# of ion", "tot"]
+    ]
     simple_data.reset_index(drop=True, inplace=True)
     return simple_data
 
@@ -155,7 +196,7 @@ def append_energy_per_atom(df):
     or something like that. I'm not sure yet.
     """
 
-    df['energy_per_atom'] = df['energy'] / df['number_of_atoms']
+    df["energy_per_atom"] = df["energy"] / df["number_of_atoms"]
     return df
 
 
@@ -167,11 +208,14 @@ def remove_magmom_data(df):
     """
 
     try:
-        new_df = df.drop('# of ion', axis=1)
-        new_df = new_df.drop('tot', axis=1)
+        new_df = df.drop("# of ion", axis=1)
+        new_df = new_df.drop("tot", axis=1)
         new_df = new_df.drop_duplicates()
     except Exception as e:
-        print("There was an error removing the magmom data. Are you sure there was magnetic data in the df? e: ", e)
+        print(
+            "There was an error removing the magmom data. Are you sure there was magnetic data in the df? e: ",
+            e,
+        )
         new_df = df
     return new_df
 
@@ -179,11 +223,11 @@ def remove_magmom_data(df):
 def get_lowest_atomic_energy_configs(df, number_of_lowest=1):
     # This function takes a dataframe and returns the rows with the lowest energy per atom
 
-    lowest_energy_configs = df.nsmallest(number_of_lowest, 'energy_per_atom')
+    lowest_energy_configs = df.nsmallest(number_of_lowest, "energy_per_atom")
     return lowest_energy_configs
 
 
-def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
+def extract_config_mv_data(path, ion_list, outcar_name="OUTCAR"):
     """
     ~~~WARNING~~~ The currect intent is to replace this function with extract_config_data()
     This function grabs the necessary magnetic and volume data from the OUTCAR
@@ -191,7 +235,7 @@ def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
 
     Within the path, there should be folders named vol_0, vol_1, etc.
 
-    There should be no other files or directories in the path with 
+    There should be no other files or directories in the path with
     names starting with 'vol_'.
 
     outcar_name and oszicar_name must be the same in each volume folder.
@@ -201,24 +245,29 @@ def extract_config_mv_data(path, ion_list, outcar_name='OUTCAR'):
 
     dfs_list = []
     # Find the index where "config_" starts and add its length
-    start = path.find('config_') + len('config_')
+    start = path.find("config_") + len("config_")
     config = path[start:]  # Get the string following "config_"
-    for vol_dir in glob.glob(os.path.join(path, 'vol_*')):
+    for vol_dir in glob.glob(os.path.join(path, "vol_*")):
         outcar_path = os.path.join(vol_dir, outcar_name)
         if not os.path.isfile(outcar_path):
             print(f"Warning: File {outcar_path} does not exist. Skipping.")
             continue
         vol = extract_volume(outcar_path)
         mag_data = extract_simple_mag_data(ion_list, outcar_path)
-        mag_data['volume'] = vol
-        mag_data['config'] = config
+        mag_data["volume"] = vol
+        mag_data["config"] = config
         dfs_list.append(mag_data)
-    df = pd.concat(dfs_list, ignore_index=True).sort_values(
-        by=['volume', '# of ion']).reset_index(drop=True)
+    df = (
+        pd.concat(dfs_list, ignore_index=True)
+        .sort_values(by=["volume", "# of ion"])
+        .reset_index(drop=True)
+    )
     return df
 
 
-def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZICAR', contcar_name='CONTCAR'):
+def extract_config_data(
+    path, ion_list, outcar_name="OUTCAR", oszicar_name="OSZICAR", contcar_name="CONTCAR"
+):
     """
     !!!Warning!!! this function will soon be deprecated. Use extract_configuration_data() instead if possible.
 
@@ -230,7 +279,7 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
 
     Within the path, there should be folders named vol_0, vol_1, etc.
 
-    There should be no other files or directories in the path with 
+    There should be no other files or directories in the path with
     names starting with 'vol_'.
 
     outcar_name and oszicar_name must be the same in each volume folder.
@@ -240,9 +289,9 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
 
     dfs_list = []
     # Find the index where "config_" starts and add its length
-    start = path.find('config_') + len('config_')
+    start = path.find("config_") + len("config_")
     config = path[start:]  # Get the string following "config_"
-    for vol_dir in glob.glob(os.path.join(path, 'vol_*')):
+    for vol_dir in glob.glob(os.path.join(path, "vol_*")):
 
         outcar_path = os.path.join(vol_dir, outcar_name)
         if not os.path.isfile(outcar_path):
@@ -264,23 +313,32 @@ def extract_config_data(path, ion_list, outcar_name='OUTCAR', oszicar_name='OSZI
         vol = extract_volume(outcar_path)
         energy = extract_energy(oszicar_path)
         data_collection = extract_simple_mag_data(ion_list, outcar_path)
-        data_collection['volume'] = vol
-        data_collection['config'] = config
-        data_collection['energy'] = energy
-        data_collection['number_of_atoms'] = number_of_atoms
+        data_collection["volume"] = vol
+        data_collection["config"] = config
+        data_collection["energy"] = energy
+        data_collection["number_of_atoms"] = number_of_atoms
         dfs_list.append(data_collection)
-    df = pd.concat(dfs_list, ignore_index=True).sort_values(
-        by=['volume', '# of ion']).reset_index(drop=True)
+    df = (
+        pd.concat(dfs_list, ignore_index=True)
+        .sort_values(by=["volume", "# of ion"])
+        .reset_index(drop=True)
+    )
     return df
 
 
-def extract_configuration_data(path, ion_list=[1], outcar_name='OUTCAR', oszicar_name='OSZICAR',
-                               contcar_name='CONTCAR', collect_mag_data='False'):
+def extract_configuration_data(
+    path,
+    ion_list=[1],
+    outcar_name="OUTCAR",
+    oszicar_name="OSZICAR",
+    contcar_name="CONTCAR",
+    collect_mag_data="False",
+):
     row_list = []
     # Find the index where "config_" starts and add its length
-    start = path.find('config_') + len('config_')
+    start = path.find("config_") + len("config_")
     config = path[start:]  # get the string following "config_"
-    for vol_dir in glob.glob(os.path.join(path, 'vol_*')):
+    for vol_dir in glob.glob(os.path.join(path, "vol_*")):
 
         outcar_path = os.path.join(vol_dir, outcar_name)
         if not os.path.isfile(outcar_path):
@@ -303,33 +361,47 @@ def extract_configuration_data(path, ion_list=[1], outcar_name='OUTCAR', oszicar
         energy = extract_energy(oszicar_path)
         if collect_mag_data == True:
             mag_data = extract_simple_mag_data(ion_list, outcar_path)
-            row = {'volume': vol,
-                   'config': config,
-                   'energy': energy,
-                   'number_of_atoms': number_of_atoms,
-                   'mag_data': mag_data
-                   }
+            row = {
+                "volume": vol,
+                "config": config,
+                "energy": energy,
+                "number_of_atoms": number_of_atoms,
+                "mag_data": mag_data,
+            }
         else:
-            row = {'volume': vol,
-                   'config': config,
-                   'energy': energy,
-                   'number_of_atoms': number_of_atoms
-                   }
+            row = {
+                "volume": vol,
+                "config": config,
+                "energy": energy,
+                "number_of_atoms": number_of_atoms,
+            }
         row_list.append(row)
     df = pd.DataFrame(row_list)
     return df
 
 
 def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=False):
+    """This function runs a three-step relaxation (two consecutive relaxations followed by
+       one static) for a given path using VASP. The path should contain the necessary VASP
+       input files: POSCAR, POTCAR, INCAR, and KPOINTS.
 
-    # Path should contain necessary VASP config files
+    Args:
+        path (str): the path to the folder containing the VASP input files
+        vasp_cmd (list): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (class 'list'): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        file of the next run. Defaults to False.
+        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        .orig. Defaults to False.
+    """
+
     original_dir = os.getcwd()
     os.chdir(path)
     step1 = VaspJob(
         vasp_cmd=vasp_cmd,
         copy_magmom=copy_magmom,
         final=False,
-        suffix='.1relax',
+        suffix=".1relax",
         backup=backup,
     )
 
@@ -337,28 +409,28 @@ def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=Fa
         vasp_cmd=vasp_cmd,
         copy_magmom=copy_magmom,
         final=False,
-        suffix='.2relax',
+        suffix=".2relax",
         backup=backup,
         settings_override=[
             {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}}
-        ]
+        ],
     )
 
     step3 = VaspJob(
         vasp_cmd=vasp_cmd,
         copy_magmom=copy_magmom,
         final=True,
-        suffix='.3static',
+        suffix=".3static",
         backup=backup,
         settings_override=[
-            {"dict": "INCAR", "action": {"_set": {
-                "ALGO": "Normal",
-                "IBRION": -1,
-                "NSW": 0,
-                "ISMEAR": -5
-            }}},
-            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}}
-        ]
+            {
+                "dict": "INCAR",
+                "action": {
+                    "_set": {"ALGO": "Normal", "IBRION": -1, "NSW": 0, "ISMEAR": -5}
+                },
+            },
+            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
+        ],
     )
 
     jobs = [step1, step2, step3]
@@ -367,7 +439,16 @@ def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=Fa
     os.chdir(original_dir)
 
 
-def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wavecar=False, keep_chgcar=False, copy_magmom=False):
+def ev_curve_series(
+    path,
+    volumes,
+    vasp_cmd,
+    handlers,
+    restarting=False,
+    keep_wavecar=False,
+    keep_chgcar=False,
+    copy_magmom=False,
+):
     """
     For spin-polarized calculations (ISPIN=2), you probably want to have volumes in decreasing order, e.g.:
     volumes = []
@@ -382,118 +463,161 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
 
     When restarting, the last volume folder will be deleted and
     the second last volume folder will be used as the starting point.
-    
+
     #To Do: fix restarting so that it looks at files relative to the input path.
     """
 
     # Write a params.json file to keep track of the parameters used
-    errors_subset_list = [
-        handler.errors_subset_to_catch for handler in handlers]
-    params = {'path': path,
-              'volumes': volumes,
-              'vasp_cmd': vasp_cmd,
-              'handlers': errors_subset_list[0],
-              'restarting': restarting}
-    params_json_path = os.path.join(path, 'params.json')
+    errors_subset_list = [handler.errors_subset_to_catch for handler in handlers]
+    params = {
+        "path": path,
+        "volumes": volumes,
+        "vasp_cmd": vasp_cmd,
+        "handlers": errors_subset_list[0],
+        "restarting": restarting,
+    }
+    params_json_path = os.path.join(path, "params.json")
 
     n = 0
-    params_json_path = os.path.join(path, 'params_' + str(n) + '.json')
+    params_json_path = os.path.join(path, "params_" + str(n) + ".json")
     while os.path.isfile(params_json_path):
         n += 1
-        params_json_path = os.path.join(path, 'params_' + str(n) + '.json')
+        params_json_path = os.path.join(path, "params_" + str(n) + ".json")
 
-    with open(params_json_path, 'w') as file:
+    with open(params_json_path, "w") as file:
         json.dump(params, file)
 
     # If restarting, the volumes in the vol folders should match the volumes list in order
     # You must supply a volumes list greater than or equal to the number of vol folders
     if restarting:
-        vol_folders = [f for f in os.listdir(path) if os.path.isdir(f) and f.startswith('vol')]
+        vol_folders = [
+            f for f in os.listdir(path) if os.path.isdir(f) and f.startswith("vol")
+        ]
         print(vol_folders)
-        
+
         # read volumes completed/started
         volumes_started = []
         for vol_folder in vol_folders:
             try:
-                struct = Structure.from_file(os.path.join(path, vol_folder, 'POSCAR.1relax'))
+                struct = Structure.from_file(
+                    os.path.join(path, vol_folder, "POSCAR.1relax")
+                )
             except Exception as e:
-                print(f'possible error: {e}, trying POSCAR')
+                print(f"possible error: {e}, trying POSCAR")
                 try:
-                    struct = Structure.from_file(os.path.join(path, vol_folder, 'POSCAR'))
+                    struct = Structure.from_file(
+                        os.path.join(path, vol_folder, "POSCAR")
+                    )
                 except Exception as e:
-                    print(f"Error: {e}. Could not extract volumes from POSCAR files. Do the files POSCAR.1relax or POSCAR exist in each volume folder?")
+                    print(
+                        f"Error: {e}. Could not extract volumes from POSCAR files. Do the files POSCAR.1relax or POSCAR exist in each volume folder?"
+                    )
                     sys.exit(1)
             vol_started = struct.volume
-            volumes_started.append(round(vol_started, 6)) # round to 6 decimal places to avoid floating point errors
+            volumes_started.append(
+                round(vol_started, 6)
+            )  # round to 6 decimal places to avoid floating point errors
             rounded_volumes = [round(vol, 6) for vol in volumes]
-            
+
         # compare volumes started to the begining of the inputed volumes. if they don't match exit.
-        if not volumes_started == rounded_volumes[:len(volumes_started)]:
-            print(f"Error: The volumes completed/started do not match the start of the inputed volumes list. \n rounded_input_volumes: {rounded_volumes} \n volumes_started (rounded): {volumes_started} Exiting.")
+        if not volumes_started == rounded_volumes[: len(volumes_started)]:
+            print(
+                f"Error: The volumes completed/started do not match the start of the inputed volumes list. \n rounded_input_volumes: {rounded_volumes} \n volumes_started (rounded): {volumes_started} Exiting."
+            )
             sys.exit(1)
         else:
-            print("The volumes completed/started match the start of the inputed volumes list. continuing restart")
+            print(
+                "The volumes completed/started match the start of the inputed volumes list. continuing restart"
+            )
 
         j = len(vol_folders) - 1
-        last_vol_folder_name = 'vol_' + str(j)
+        last_vol_folder_name = "vol_" + str(j)
         last_vol_folder_path = os.path.join(path, last_vol_folder_name)
 
         # Failed at the third step
-        if all(os.path.isfile(os.path.join(last_vol_folder_path, file)) for file in ['INCAR.2relax', 'POSCAR.2relax', 'KPOINTS.2relax']):
-            files = ['INCAR.2relax', 'POSCAR.2relax', 'KPOINTS.2relax',
-                     'POTCAR', 'CHGCAR.2relax', 'WAVECAR.2relax']
-            source_name_dest_name = [('INCAR.2relax', 'INCAR'),
-                                     ('CONTCAR.2relax', 'POSCAR'),
-                                     ('KPOINTS.2relax', 'KPOINTS'),
-                                     ('CHGCAR.2relax', 'CHGCAR'),
-                                     ('WAVECAR.2relax', 'WAVECAR')]
+        if all(
+            os.path.isfile(os.path.join(last_vol_folder_path, file))
+            for file in ["INCAR.2relax", "POSCAR.2relax", "KPOINTS.2relax"]
+        ):
+            files = [
+                "INCAR.2relax",
+                "POSCAR.2relax",
+                "KPOINTS.2relax",
+                "POTCAR",
+                "CHGCAR.2relax",
+                "WAVECAR.2relax",
+            ]
+            source_name_dest_name = [
+                ("INCAR.2relax", "INCAR"),
+                ("CONTCAR.2relax", "POSCAR"),
+                ("KPOINTS.2relax", "KPOINTS"),
+                ("CHGCAR.2relax", "CHGCAR"),
+                ("WAVECAR.2relax", "WAVECAR"),
+            ]
             for file_name in source_name_dest_name:
                 file_source = os.path.join(last_vol_folder_path, file_name[0])
                 file_dest = os.path.join(last_vol_folder_path, file_name[1])
                 if os.path.isfile(file_source):
                     shutil.copy2(file_source, file_dest)
 
-            keep_files = [name[1]
-                          for name in source_name_dest_name] + ['POTCAR']
+            keep_files = [name[1] for name in source_name_dest_name] + ["POTCAR"]
             for filename in os.listdir(last_vol_folder_path):
                 file_path = os.path.join(last_vol_folder_path, filename)
                 if filename not in keep_files:
                     os.remove(file_path)
 
             # Run VASP
-            print('Running three step relaxation for volume ' +
-                  str(volumes[j]))
-            three_step_relaxation(last_vol_folder_path, vasp_cmd,
-                                  handlers, backup=False, copy_magmom=copy_magmom)
+            print("Running three step relaxation for volume " + str(volumes[j]))
+            three_step_relaxation(
+                last_vol_folder_path,
+                vasp_cmd,
+                handlers,
+                backup=False,
+                copy_magmom=copy_magmom,
+            )
             last_vol_index = j + 1
 
         # Failed at the second step
-        elif all(os.path.isfile(os.path.join(last_vol_folder_path, file)) for file in ['INCAR.1relax', 'POSCAR.1relax', 'KPOINTS.1relax']):
-            files = ['INCAR.1relax', 'POSCAR.1relax', 'KPOINTS.1relax',
-                     'POTCAR', 'CHGCAR.1relax', 'WAVECAR.1relax']
-            source_name_dest_name = [('INCAR.1relax', 'INCAR'),
-                                     ('CONTCAR.1relax', 'POSCAR'),
-                                     ('KPOINTS.1relax', 'KPOINTS'),
-                                     ('CHGCAR.1relax', 'CHGCAR'),
-                                     ('WAVECAR.1relax', 'WAVECAR')]
+        elif all(
+            os.path.isfile(os.path.join(last_vol_folder_path, file))
+            for file in ["INCAR.1relax", "POSCAR.1relax", "KPOINTS.1relax"]
+        ):
+            files = [
+                "INCAR.1relax",
+                "POSCAR.1relax",
+                "KPOINTS.1relax",
+                "POTCAR",
+                "CHGCAR.1relax",
+                "WAVECAR.1relax",
+            ]
+            source_name_dest_name = [
+                ("INCAR.1relax", "INCAR"),
+                ("CONTCAR.1relax", "POSCAR"),
+                ("KPOINTS.1relax", "KPOINTS"),
+                ("CHGCAR.1relax", "CHGCAR"),
+                ("WAVECAR.1relax", "WAVECAR"),
+            ]
             for file_name in source_name_dest_name:
                 file_source = os.path.join(last_vol_folder_path, file_name[0])
                 file_dest = os.path.join(last_vol_folder_path, file_name[1])
                 if os.path.isfile(file_source):
                     shutil.copy2(file_source, file_dest)
 
-            keep_files = [name[1]
-                          for name in source_name_dest_name] + ['POTCAR']
+            keep_files = [name[1] for name in source_name_dest_name] + ["POTCAR"]
             for filename in os.listdir(last_vol_folder_path):
                 file_path = os.path.join(last_vol_folder_path, filename)
                 if filename not in keep_files:
                     os.remove(file_path)
 
             # Run VASP
-            print('Running three step relaxation for volume ' +
-                  str(volumes[j]))
-            three_step_relaxation(last_vol_folder_path, vasp_cmd,
-                                  handlers, backup=False, copy_magmom=copy_magmom)
+            print("Running three step relaxation for volume " + str(volumes[j]))
+            three_step_relaxation(
+                last_vol_folder_path,
+                vasp_cmd,
+                handlers,
+                backup=False,
+                copy_magmom=copy_magmom,
+            )
             last_vol_index = j + 1
 
         # Failed at the first step
@@ -502,48 +626,60 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
             shutil.rmtree(last_vol_folder_path)
             last_vol_index = j
 
-    files_to_delete = ['WAVECAR.1relax', 'WAVECAR.2relax',
-                       'WAVECAR.3static', 'CHGCAR.3static',
-                       'CHGCAR.1relax', 'CHGCAR.2relax',
-                       'CHG.1relax', 'CHG.2relax', 'CHG.3static',
-                       'PROCAR.1relax', 'PROCAR.2relax', 'PROCAR.3static']
-    
+    files_to_delete = [
+        "WAVECAR.1relax",
+        "WAVECAR.2relax",
+        "WAVECAR.3static",
+        "CHGCAR.3static",
+        "CHGCAR.1relax",
+        "CHGCAR.2relax",
+        "CHG.1relax",
+        "CHG.2relax",
+        "CHG.3static",
+        "PROCAR.1relax",
+        "PROCAR.2relax",
+        "PROCAR.3static",
+    ]
+
     for i, vol in enumerate(volumes):
         # If restarting, skip volumes that have already been run
         if restarting and i < last_vol_index:
             continue
 
         # Create vol folder
-        vol_folder_name = 'vol_' + str(i)
+        vol_folder_name = "vol_" + str(i)
         vol_folder_path = os.path.join(path, vol_folder_name)
         os.makedirs(vol_folder_path)
 
         if i == 0:  # Copy from path
-            files_to_copy = ['INCAR', 'KPOINTS', 'POSCAR', 'POTCAR']
+            files_to_copy = ["INCAR", "KPOINTS", "POSCAR", "POTCAR"]
             for file_name in files_to_copy:
                 if os.path.isfile(os.path.join(path, file_name)):
-                    shutil.copy2(os.path.join(path, file_name),
-                                 os.path.join(vol_folder_path, file_name))
+                    shutil.copy2(
+                        os.path.join(path, file_name),
+                        os.path.join(vol_folder_path, file_name),
+                    )
         else:  # Copy from previous folder and delete WAVECARs, CHGCARs, CHGs, PROCARs from previous volume folder
-            previous_vol_folder_path = os.path.join(path, 'vol_' + str(i - 1))
-            source_name_dest_name = [('CONTCAR.3static', 'POSCAR'),
-                                     ('INCAR.2relax', 'INCAR'),
-                                     ('KPOINTS.1relax', 'KPOINTS'),
-                                     ('POTCAR', 'POTCAR'),
-                                     ('WAVECAR.3static', 'WAVECAR'),
-                                     ('CHGCAR.3static', 'CHGCAR')]
+            previous_vol_folder_path = os.path.join(path, "vol_" + str(i - 1))
+            source_name_dest_name = [
+                ("CONTCAR.3static", "POSCAR"),
+                ("INCAR.2relax", "INCAR"),
+                ("KPOINTS.1relax", "KPOINTS"),
+                ("POTCAR", "POTCAR"),
+                ("WAVECAR.3static", "WAVECAR"),
+                ("CHGCAR.3static", "CHGCAR"),
+            ]
             for file_name in source_name_dest_name:
-                file_source = os.path.join(
-                    previous_vol_folder_path, file_name[0])
+                file_source = os.path.join(previous_vol_folder_path, file_name[0])
                 file_dest = os.path.join(vol_folder_path, file_name[1])
                 if os.path.isfile(file_source):
                     shutil.copy2(file_source, file_dest)
 
             # After copying, it is safe to delete the WAVECAR, CHGCAR, CHG, and PROCAR files from the previous volume folder to save space
             if keep_wavecar:
-                files_to_delete.remove('WAVECAR.3static')
+                files_to_delete.remove("WAVECAR.3static")
             if keep_chgcar:
-                files_to_delete.remove('CHGCAR.3static')
+                files_to_delete.remove("CHGCAR.3static")
             paths_to_delete = []
 
             for file_name in files_to_delete:
@@ -559,18 +695,19 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
                     print(f"The file {file_path} does not exist.")
 
         # Change the volume of the POSCAR
-        poscar = os.path.join(vol_folder_path, 'POSCAR')
+        poscar = os.path.join(vol_folder_path, "POSCAR")
         struct = Structure.from_file(poscar)
         struct.scale_lattice(vol)
         struct.to_file(poscar, "POSCAR")
 
         # Run VASP
-        print('Running three step relaxation for volume ' + str(vol))
-        three_step_relaxation(vol_folder_path, vasp_cmd,
-                              handlers, backup=False, copy_magmom=copy_magmom)
+        print("Running three step relaxation for volume " + str(vol))
+        three_step_relaxation(
+            vol_folder_path, vasp_cmd, handlers, backup=False, copy_magmom=copy_magmom
+        )
 
     # Delete some files in the last volume folder to save space
-    previous_vol_folder_path = os.path.join(path, 'vol_' + str(i))
+    previous_vol_folder_path = os.path.join(path, "vol_" + str(i))
     paths_to_delete = []
     for file_name in files_to_delete:
         file_path = os.path.join(previous_vol_folder_path, file_name)
@@ -583,107 +720,103 @@ def ev_curve_series(path, volumes, vasp_cmd, handlers, restarting=False, keep_wa
             print(f"The file {file_path} does not exist.")
 
 
-def kpoints_conv_test(path, kppa_list, vasp_cmd, handlers, force_gamma = True, backup=False):
+def kpoints_conv_test(
+    path, kppa_list, vasp_cmd, handlers, force_gamma=True, backup=False
+):
     # The path should contain the necessary VASP input files
     original_dir = os.getcwd()
-    kpoints_conv_dir = os.path.join(path, 'kpoints_conv')
+    kpoints_conv_dir = os.path.join(path, "kpoints_conv")
     os.makedirs(kpoints_conv_dir)
 
     # Copy VASP input files except KPOINTS
-    shutil.copy2(os.path.join(path, 'POSCAR'),
-                 os.path.join(kpoints_conv_dir, 'POSCAR'))
-    shutil.copy2(os.path.join(path, 'POTCAR'),
-                 os.path.join(kpoints_conv_dir, 'POTCAR'))
-    shutil.copy2(os.path.join(path, 'INCAR'),
-                 os.path.join(kpoints_conv_dir, 'INCAR'))
+    shutil.copy2(os.path.join(path, "POSCAR"), os.path.join(kpoints_conv_dir, "POSCAR"))
+    shutil.copy2(os.path.join(path, "POTCAR"), os.path.join(kpoints_conv_dir, "POTCAR"))
+    shutil.copy2(os.path.join(path, "INCAR"), os.path.join(kpoints_conv_dir, "INCAR"))
 
     # Create KPOINTS file and run VASP
     os.chdir(kpoints_conv_dir)
-    struct = Structure.from_file('POSCAR')
+    struct = Structure.from_file("POSCAR")
     for i, kppa in enumerate(kppa_list):
         kpoints = Kpoints.automatic_density(struct, kppa, force_gamma=force_gamma)
-        kpoints.write_file('KPOINTS')
-        
+        kpoints.write_file("KPOINTS")
+
         if i == len(kppa_list) - 1:
             final = True
         else:
             final = False
-         
+
         # Run a single-point VASP job
         job = VaspJob(
             vasp_cmd=vasp_cmd,
             final=final,
             backup=backup,
-            suffix=f'.{kppa}',
+            suffix=f".{kppa}",
             settings_override=[
-                {"dict": "INCAR", "action": {"_set": {
-                    "IBRION": -1, "NSW": 0
-                }}}]
+                {"dict": "INCAR", "action": {"_set": {"IBRION": -1, "NSW": 0}}}
+            ],
         )
         c = Custodian(handlers, [job], max_errors=3)
         c.run()
 
         # Remove these files to save space
-        if os.path.isfile(f'WAVECAR.{kppa}'):
-            os.remove(f'WAVECAR.{kppa}')
-        if os.path.isfile(f'CHGCAR.{kppa}'):
-            os.remove(f'CHGCAR.{kppa}')
-        if os.path.isfile(f'CHG.{kppa}'):
-            os.remove(f'CHG.{kppa}')
-        if os.path.isfile(f'PROCAR.{kppa}'):
-            os.remove(f'PROCAR.{kppa}')
+        if os.path.isfile(f"WAVECAR.{kppa}"):
+            os.remove(f"WAVECAR.{kppa}")
+        if os.path.isfile(f"CHGCAR.{kppa}"):
+            os.remove(f"CHGCAR.{kppa}")
+        if os.path.isfile(f"CHG.{kppa}"):
+            os.remove(f"CHG.{kppa}")
+        if os.path.isfile(f"PROCAR.{kppa}"):
+            os.remove(f"PROCAR.{kppa}")
     os.chdir(original_dir)
     return
+
 
 def calculate_kpoint_conv(path, kppa_list, plot=True):
     # The path should contain the kpoints_conv_dir
     original_dir = os.getcwd()
-    kpoints_conv_dir = os.path.join(path, 'kpoints_conv')
+    kpoints_conv_dir = os.path.join(path, "kpoints_conv")
 
     # Write the kpoint densities and energies to a text file
     os.chdir(kpoints_conv_dir)
     data = []
     for kppa in kppa_list:
-        energy = extract_energy(f'OSZICAR.{kppa}')
+        energy = extract_energy(f"OSZICAR.{kppa}")
         data.append([kppa, energy])
     data = np.array(data)
     sorted_indices = np.argsort(data[:, 0])
     sorted_data = data[sorted_indices]
-    num_atoms = len(Structure.from_file(f'POSCAR.{kppa}').sites)
+    num_atoms = len(Structure.from_file(f"POSCAR.{kppa}").sites)
     sorted_data = np.column_stack((sorted_data, np.zeros(len(sorted_data))))
     sorted_data[1:, 2] = (sorted_data[1:, 1] - sorted_data[:-1, 1]) / num_atoms * 1000
     os.chdir(path)
-    np.savetxt('kppa_energy.txt', sorted_data, fmt='%f')
-    
+    np.savetxt("kppa_energy.txt", sorted_data, fmt="%f")
+
     if plot:
         fig, axis = plt.subplots(1, 2, figsize=(12, 6))
-        axis[0].plot(sorted_data[:, 0], sorted_data[:, 1], marker='o')
-        axis[0].set_xlabel('k-point density')
-        axis[0].set_ylabel('Energy (eV)')
-        axis[1].plot(sorted_data[:, 0], sorted_data[:, 2], marker='o')
-        axis[1].axhline(y=1, color='black', linestyle='--')
-        axis[1].axhline(y=-1, color='black', linestyle='--')
-        axis[1].set_xlabel('k-point density')
-        axis[1].set_ylabel('ΔEnergy (meV/atom)')
+        axis[0].plot(sorted_data[:, 0], sorted_data[:, 1], marker="o")
+        axis[0].set_xlabel("k-point density")
+        axis[0].set_ylabel("Energy (eV)")
+        axis[1].plot(sorted_data[:, 0], sorted_data[:, 2], marker="o")
+        axis[1].axhline(y=1, color="black", linestyle="--")
+        axis[1].axhline(y=-1, color="black", linestyle="--")
+        axis[1].set_xlabel("k-point density")
+        axis[1].set_ylabel("ΔEnergy (meV/atom)")
         plt.tight_layout()
-        plt.savefig('kpoint_conv.png', dpi=300)
+        plt.savefig("kpoint_conv.png", dpi=300)
     return
-    
+
+
 def encut_conv_test(path, encut_list, vasp_cmd, handlers, backup=False):
     # The path should contain the necessary VASP input files
     original_dir = os.getcwd()
-    encut_conv_dir = os.path.join(path, 'encut_conv')
+    encut_conv_dir = os.path.join(path, "encut_conv")
     os.makedirs(encut_conv_dir)
 
     # Copy VASP input files
-    shutil.copy2(os.path.join(path, 'POSCAR'),
-                 os.path.join(encut_conv_dir, 'POSCAR'))
-    shutil.copy2(os.path.join(path, 'KPOINTS'),
-                 os.path.join(encut_conv_dir, 'KPOINTS'))
-    shutil.copy2(os.path.join(path, 'POTCAR'),
-                 os.path.join(encut_conv_dir, 'POTCAR'))
-    shutil.copy2(os.path.join(path, 'INCAR'),
-                 os.path.join(encut_conv_dir, 'INCAR'))
+    shutil.copy2(os.path.join(path, "POSCAR"), os.path.join(encut_conv_dir, "POSCAR"))
+    shutil.copy2(os.path.join(path, "KPOINTS"), os.path.join(encut_conv_dir, "KPOINTS"))
+    shutil.copy2(os.path.join(path, "POTCAR"), os.path.join(encut_conv_dir, "POTCAR"))
+    shutil.copy2(os.path.join(path, "INCAR"), os.path.join(encut_conv_dir, "INCAR"))
 
     os.chdir(encut_conv_dir)
     for i, encut in enumerate(encut_list):
@@ -691,30 +824,32 @@ def encut_conv_test(path, encut_list, vasp_cmd, handlers, backup=False):
             final = True
         else:
             final = False
-         
+
         # Run a single-point VASP job
         job = VaspJob(
             vasp_cmd=vasp_cmd,
             final=final,
             backup=backup,
-            suffix=f'.{encut}',
+            suffix=f".{encut}",
             settings_override=[
-                {"dict": "INCAR", "action": {"_set": {
-                    "IBRION": -1, "NSW": 0, "ENCUT": encut
-                }}}]
+                {
+                    "dict": "INCAR",
+                    "action": {"_set": {"IBRION": -1, "NSW": 0, "ENCUT": encut}},
+                }
+            ],
         )
         c = Custodian(handlers, [job], max_errors=3)
         c.run()
 
         # Remove these files to save space
-        if os.path.isfile(f'WAVECAR.{encut}'):
-            os.remove(f'WAVECAR.{encut}')
-        if os.path.isfile(f'CHGCAR.{encut}'):
-            os.remove(f'CHGCAR.{encut}')
-        if os.path.isfile(f'CHG.{encut}'):
-            os.remove(f'CHG.{encut}')
-        if os.path.isfile(f'PROCAR.{encut}'):
-            os.remove(f'PROCAR.{encut}')
+        if os.path.isfile(f"WAVECAR.{encut}"):
+            os.remove(f"WAVECAR.{encut}")
+        if os.path.isfile(f"CHGCAR.{encut}"):
+            os.remove(f"CHGCAR.{encut}")
+        if os.path.isfile(f"CHG.{encut}"):
+            os.remove(f"CHG.{encut}")
+        if os.path.isfile(f"PROCAR.{encut}"):
+            os.remove(f"PROCAR.{encut}")
     os.chdir(original_dir)
     return
 
@@ -722,37 +857,85 @@ def encut_conv_test(path, encut_list, vasp_cmd, handlers, backup=False):
 def calculate_encut_conv(path, encut_list, plot=True):
     # The path should contain the encut_conv_dir
     original_dir = os.getcwd()
-    encut_conv_dir = os.path.join(path, 'encut_conv')
+    encut_conv_dir = os.path.join(path, "encut_conv")
 
     # Write the ENCUT and energies to a text file
     os.chdir(encut_conv_dir)
     data = []
     for encut in encut_list:
-        energy = extract_energy(f'OSZICAR.{encut}')
+        energy = extract_energy(f"OSZICAR.{encut}")
         data.append([encut, energy])
     data = np.array(data)
     sorted_indices = np.argsort(data[:, 0])
     sorted_data = data[sorted_indices]
-    num_atoms = len(Structure.from_file(f'POSCAR.{encut}').sites)
+    num_atoms = len(Structure.from_file(f"POSCAR.{encut}").sites)
     sorted_data = np.column_stack((sorted_data, np.zeros(len(sorted_data))))
     sorted_data[1:, 2] = (sorted_data[1:, 1] - sorted_data[:-1, 1]) / num_atoms * 1000
     os.chdir(path)
-    np.savetxt('encut_energy.txt', sorted_data, fmt='%f')
-    
+    np.savetxt("encut_energy.txt", sorted_data, fmt="%f")
+
     if plot:
         fig, axis = plt.subplots(1, 2, figsize=(12, 6))
-        axis[0].plot(sorted_data[:, 0], sorted_data[:, 1], marker='o')
-        axis[0].set_xlabel('ENCUT (eV)')
-        axis[0].set_ylabel('Energy (eV)')
-        axis[1].plot(sorted_data[:, 0], sorted_data[:, 2], marker='o')
-        axis[1].axhline(y=1, color='black', linestyle='--')
-        axis[1].axhline(y=-1, color='black', linestyle='--')
-        axis[1].set_xlabel('ENCUT')
-        axis[1].set_ylabel('ΔEnergy (meV/atom)')
+        axis[0].plot(sorted_data[:, 0], sorted_data[:, 1], marker="o")
+        axis[0].set_xlabel("ENCUT (eV)")
+        axis[0].set_ylabel("Energy (eV)")
+        axis[1].plot(sorted_data[:, 0], sorted_data[:, 2], marker="o")
+        axis[1].axhline(y=1, color="black", linestyle="--")
+        axis[1].axhline(y=-1, color="black", linestyle="--")
+        axis[1].set_xlabel("ENCUT")
+        axis[1].set_ylabel("ΔEnergy (meV/atom)")
         plt.tight_layout()
-        plt.savefig('encut_conv.png', dpi=300)
+        plt.savefig("encut_conv.png", dpi=300)
     return
 
 
 if __name__ == "__main__":
     print("This is a module for importing. It is not meant to be run directly.")
+    print("But anyway, here are some tests!")
+
+    # TODO: Change test_data to something more appropriate
+    # TODO: Is there a better way to specify these paths?
+    # At the moment, have to run the tests from the src directory
+    OUTCAR_path = "../test_data/FeSe/configurations/config_18/vol_1/OUTCAR.3static"
+    OSZICAR_path = "../test_data/FeSe/configurations/config_18/vol_1/OSZICAR.3static"
+
+    volume = extract_volume(OUTCAR_path)
+    pressure = extract_pressure(OUTCAR_path)
+    energy = extract_energy(OSZICAR_path)
+
+    assert extract_volume(OUTCAR_path) == 333.0
+    assert extract_pressure(OUTCAR_path) == -19.74
+    assert extract_energy(OSZICAR_path) == -101.28406
+
+    path = "../test_data/FeSe/configurations/config_18"
+    write_ev(path)
+    data = np.loadtxt(os.path.join(path, "volume_energy.txt"))
+    expected_data = np.array(
+        [
+            [298.0, -101.64358],
+            [305.0, -101.58832],
+            [312.0, -101.52038],
+            [319.0, -101.44049],
+            [326.0, -101.36327],
+            [333.0, -101.28406],
+        ]
+    )
+
+    assert np.array_equal(data, expected_data), "Data does not match expected values"
+
+    write_pv(path)
+    data = np.loadtxt(os.path.join(path, "volume_pressure.txt"))
+    expected_data = np.array(
+        [
+            [298.0, -10.74],
+            [305.0, -18.71],
+            [312.0, -14.49],
+            [319.0, -19.19],
+            [326.0, -29.42],
+            [333.0, -19.74],
+        ]
+    )
+
+    assert np.array_equal(data, expected_data), "Data does not match expected values"
+
+    print("Tests passed")
