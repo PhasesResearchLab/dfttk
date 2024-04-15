@@ -483,11 +483,11 @@ def ev_curve_series(
     with open(params_json_path, "w") as file:
         json.dump(params, file)
 
-    # If restarting, you must supply a volumes list greater than or equal to the number of vol folders and the volumes in 
-    # the vol folders should match the volumes list in order
+    # Currently, restarting only supports:
+    # 1) Volumes list greater than or equal to the number of vol folders
+    # 2) The volumes in the vol folders should match the volumes list in order
     if restarting:
         
-        # Check if the POSCAR files exist in the vol folders
         vol_folders = [
             folder for folder in os.listdir(path) if os.path.isdir(folder) and folder.startswith("vol")
         ]
@@ -516,7 +516,6 @@ def ev_curve_series(
             )
             rounded_volumes_supplied = [round(volume, 6) for volume in volumes]
 
-        # Compare volumes_started from vol_* folders to the same number of the inputed volumes starting from the beginning. If they don't match, exit. 
         if not volumes_started == rounded_volumes_supplied[: len(volumes_started)]:
             print(
                 f"Error: The volumes completed do not match the inputed volumes list of the same number starting from the beginning. \n rounded_input_volumes: {rounded_volumes_supplied} \n volumes_started (rounded): {volumes_started} \n Exiting."
@@ -619,8 +618,8 @@ def ev_curve_series(
         "PROCAR.3static",
     ]
 
+    # This starts the EV curve calculations in series. If restarting, skip the volumes that have already been completed.
     for i, vol in enumerate(volumes):
-        # If restarting, skip volumes that have already been run
         if restarting and i < last_vol_index:
             continue
 
@@ -692,6 +691,99 @@ def ev_curve_series(
         else:
             print(f"The file {file_path} does not exist.")
 
+def run_phonons(vasp_cmd, handlers, copy_magmom=False, backup=False):
+    # TODO: Can I use multiple _set in the settings_override list?
+    
+    step1 = VaspJob(
+        vasp_cmd=vasp_cmd,
+        copy_magmom=copy_magmom,
+        final=False,
+        suffix=".1relax",
+        backup=backup,
+    )
+ 
+    step2 = VaspJob(
+        vasp_cmd=vasp_cmd,
+        copy_magmom=copy_magmom,
+        final=True,
+        suffix=".2phonons",
+        backup=backup,
+        settings_override=[
+            {
+                "dict": "INCAR",
+                "action": {
+                    "_set": {"EDIFF": "1E-6", "IBRION": 6, "NSW": 1, "ISIF": 0, "POTIM": 0.015}
+                },
+            },
+            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
+        ]
+    )
+
+    jobs = [step1, step2]
+    c = Custodian(handlers, jobs, max_errors=3)
+    c.run()
+    
+    
+def phonons_parallel(
+    path,
+    phonon_volumes,
+    supercell_size,
+    kppa,
+    sbatch_command
+):
+    
+    # Copy files to phonon folders
+    vol_folders = [folder for folder in os.listdir(path) if os.path.isdir(os.path
+        .join(path, folder)) and folder.startswith("vol")]
+
+    ev_volumes_finished = []
+    ev_folder_names = []
+    for vol_folder in vol_folders:
+        structure = Structure.from_file(os.path.join(path, vol_folder, "CONTCAR.3static"))
+        ev_volumes_finished.append(round(structure.volume, 6))
+        ev_folder_names.append(vol_folder)
+    
+    ev_volumes_and_folders_finished = [[a, b] for a, b in zip(ev_volumes_finished, ev_folder_names)]
+
+    for i in range(len(ev_volumes_and_folders_finished)):
+        ev_volumes_and_folders_finished[i][1] = ev_volumes_and_folders_finished[i][1].replace("vol_", "")
+    
+    phonon_volumes_and_folders = []
+    for ev_volume_finished, folder in ev_volumes_and_folders_finished:
+        if ev_volume_finished in phonon_volumes:
+            phonon_volumes_and_folders.append([ev_volume_finished, folder])
+
+    for phonon_volume, phonon_folder in phonon_volumes_and_folders:
+        os.makedirs(os.path.join(path, f"phonon_{phonon_folder}"), exist_ok=True)
+
+    source_name_dest_name = [
+        ("CONTCAR.3static", "POSCAR"),
+        ("INCAR.2relax", "INCAR"),
+        ("POTCAR", "POTCAR"),
+]
+
+    for phonon_volume, phonon_folder in phonon_volumes_and_folders:
+        for source_name, dest_name in source_name_dest_name:
+            file_source = os.path.join(path,  f"vol_{phonon_folder}", source_name)
+            file_dest = os.path.join(path, f"phonon_{phonon_folder}", dest_name)
+            if os.path.isfile(file_source):
+                shutil.copy2(file_source, file_dest)
+            shutil.copy2(os.path.join(path, sbatch_command), os.path.join(path, f"phonon_{phonon_folder}", sbatch_command))
+            
+    # Create a supercell and write the KPOINTS file 
+    for phonon_volume, phonon_folder in phonon_volumes_and_folders:
+        structure = Structure.from_file(os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"))
+        structure.make_supercell(supercell_size)
+        structure.to_file(os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR")
+        kpoints = Kpoints.automatic_density(structure, kppa, force_gamma=True)
+        kpoints.write_file(os.path.join(path, f"phonon_{phonon_folder}", "KPOINTS"))
+    
+    # Run the phonon calculations in parallel
+    for phonon_volume, phonon_folder in phonon_volumes_and_folders:
+        os.chdir(os.path.join(path, f"phonon_{phonon_folder}"))
+        os.system(sbatch_command)
+        os.chdir(path)
+    
 
 def kpoints_conv_test(
     path, kppa_list, vasp_cmd, handlers, force_gamma=True, backup=False
