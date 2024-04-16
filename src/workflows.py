@@ -380,7 +380,16 @@ def extract_configuration_data(
     return df
 
 
-def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=False):
+def three_step_relaxation(
+    path,
+    vasp_cmd,
+    handlers,
+    copy_magmom=False,
+    backup=False,
+    default_settings=True,
+    settings_override_2relax=None,
+    settings_override_3static=None,
+):
     """This function runs a three-step relaxation (two consecutive relaxations followed by
        one static) for a given path using VASP. The path should contain the necessary VASP
        input files: POSCAR, POTCAR, INCAR, and KPOINTS.
@@ -394,6 +403,20 @@ def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=Fa
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
     """
+
+    if default_settings:
+        settings_override_2relax = [
+            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}}
+        ]
+        settings_override_3static = [
+            {
+                "dict": "INCAR",
+                "action": {
+                    "_set": {"ALGO": "Normal", "IBRION": -1, "NSW": 0, "ISMEAR": -5}
+                },
+            },
+            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
+        ]
 
     original_dir = os.getcwd()
     os.chdir(path)
@@ -411,9 +434,7 @@ def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=Fa
         final=False,
         suffix=".2relax",
         backup=backup,
-        settings_override=[
-            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}}
-        ],
+        settings_override=settings_override_2relax,
     )
 
     step3 = VaspJob(
@@ -422,21 +443,14 @@ def three_step_relaxation(path, vasp_cmd, handlers, copy_magmom=False, backup=Fa
         final=True,
         suffix=".3static",
         backup=backup,
-        settings_override=[
-            {
-                "dict": "INCAR",
-                "action": {
-                    "_set": {"ALGO": "Normal", "IBRION": -1, "NSW": 0, "ISMEAR": -5}
-                },
-            },
-            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
-        ],
+        settings_override=settings_override_3static,
     )
 
     jobs = [step1, step2, step3]
     c = Custodian(handlers, jobs, max_errors=3)
     c.run()
     os.chdir(original_dir)
+
 
 # TODO: write tests for this function
 def ev_curve_series(
@@ -448,8 +462,11 @@ def ev_curve_series(
     keep_wavecar=False,
     keep_chgcar=False,
     copy_magmom=False,
+    default_settings=True,
+    settings_override_2relax=None,
+    settings_override_3static=None,
 ):
-    """This function runs a series of three_step_relaxation calculations for a list of volumes. It starts with the first volume, then 
+    """This function runs a series of three_step_relaxation calculations for a list of volumes. It starts with the first volume, then
        copies the relevant files to the next volume folder, scales the volume of the POSCAR accordingly, and so on.
 
     Args:
@@ -462,7 +479,7 @@ def ev_curve_series(
         keep_chgcar (bool, optional): if True, does not delete CHGCAR.3static. Defaults to False.
         copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
         file of the next run. Defaults to False.
-    """    
+    """
 
     # Writes a params.json file to keep track of the parameters used
     errors_subset_list = [handler.errors_subset_to_catch for handler in handlers]
@@ -483,13 +500,15 @@ def ev_curve_series(
     with open(params_json_path, "w") as file:
         json.dump(params, file)
 
-    # If restarting, you must supply a volumes list greater than or equal to the number of vol folders and the volumes in 
-    # the vol folders should match the volumes list in order
+    # Currently, restarting only supports:
+    # 1) Volumes list greater than or equal to the number of vol folders
+    # 2) The volumes in the vol folders should match the volumes list in order
     if restarting:
-        
-        # Check if the POSCAR files exist in the vol folders
+
         vol_folders = [
-            folder for folder in os.listdir(path) if os.path.isdir(folder) and folder.startswith("vol")
+            folder
+            for folder in os.listdir(path)
+            if os.path.isdir(folder) and folder.startswith("vol")
         ]
 
         # TODO: This is assuming all the previous volumes succeeded. Do we need these try and except blocks?
@@ -511,12 +530,9 @@ def ev_curve_series(
                     )
                     sys.exit(1)
             volume_started = struct.volume
-            volumes_started.append(
-                round(volume_started, 6)
-            )
+            volumes_started.append(round(volume_started, 6))
             rounded_volumes_supplied = [round(volume, 6) for volume in volumes]
 
-        # Compare volumes_started from vol_* folders to the same number of the inputed volumes starting from the beginning. If they don't match, exit. 
         if not volumes_started == rounded_volumes_supplied[: len(volumes_started)]:
             print(
                 f"Error: The volumes completed do not match the inputed volumes list of the same number starting from the beginning. \n rounded_input_volumes: {rounded_volumes_supplied} \n volumes_started (rounded): {volumes_started} \n Exiting."
@@ -619,8 +635,8 @@ def ev_curve_series(
         "PROCAR.3static",
     ]
 
+    # This starts the EV curve calculations in series. If restarting, skip the volumes that have already been completed.
     for i, vol in enumerate(volumes):
-        # If restarting, skip volumes that have already been run
         if restarting and i < last_vol_index:
             continue
 
@@ -628,7 +644,7 @@ def ev_curve_series(
         vol_folder_path = os.path.join(path, vol_folder_name)
         os.makedirs(vol_folder_path)
 
-        if i == 0: 
+        if i == 0:
             files_to_copy = ["INCAR", "KPOINTS", "POSCAR", "POTCAR"]
             for file_name in files_to_copy:
                 if os.path.isfile(os.path.join(path, file_name)):
@@ -636,7 +652,7 @@ def ev_curve_series(
                         os.path.join(path, file_name),
                         os.path.join(vol_folder_path, file_name),
                     )
-        else: 
+        else:
             previous_vol_folder_path = os.path.join(path, "vol_" + str(i - 1))
             source_name_dest_name = [
                 ("CONTCAR.3static", "POSCAR"),
@@ -677,7 +693,14 @@ def ev_curve_series(
 
         print("Running three step relaxation for volume " + str(vol))
         three_step_relaxation(
-            vol_folder_path, vasp_cmd, handlers, backup=False, copy_magmom=copy_magmom
+            vol_folder_path,
+            vasp_cmd,
+            handlers,
+            backup=False,
+            copy_magmom=copy_magmom,
+            default_settings=default_settings,
+            settings_override_2relax=settings_override_2relax,
+            settings_override_3static=settings_override_3static,
         )
 
     previous_vol_folder_path = os.path.join(path, "vol_" + str(i))
@@ -693,6 +716,116 @@ def ev_curve_series(
             print(f"The file {file_path} does not exist.")
 
 
+def run_phonons(vasp_cmd, handlers, copy_magmom=False, backup=False):
+    # TODO: add a way to override the default settings
+
+    step1 = VaspJob(
+        vasp_cmd=vasp_cmd,
+        copy_magmom=copy_magmom,
+        final=False,
+        suffix=".1relax",
+        backup=backup,
+    )
+
+    step2 = VaspJob(
+        vasp_cmd=vasp_cmd,
+        copy_magmom=copy_magmom,
+        final=True,
+        suffix=".2phonons",
+        backup=backup,
+        settings_override=[
+            {
+                "dict": "INCAR",
+                "action": {
+                    "_set": {
+                        "EDIFF": "1E-6",
+                        "IBRION": 6,
+                        "NSW": 1,
+                        "ISIF": 0,
+                        "POTIM": 0.015,
+                    }
+                },
+            },
+            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
+        ],
+    )
+
+    jobs = [step1, step2]
+    c = Custodian(handlers, jobs, max_errors=3)
+    c.run()
+
+
+def phonons_parallel(path, phonon_volumes, supercell_size, kppa, sbatch_command):
+
+    # Copy files to phonon folders
+    vol_folders = [
+        folder
+        for folder in os.listdir(path)
+        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol")
+    ]
+
+    ev_volumes_finished = []
+    ev_folder_names = []
+    for vol_folder in vol_folders:
+        structure = Structure.from_file(
+            os.path.join(path, vol_folder, "CONTCAR.3static")
+        )
+        ev_volumes_finished.append(round(structure.volume, 6))
+        ev_folder_names.append(vol_folder)
+
+    ev_volumes_and_folders_finished = [
+        [a, b] for a, b in zip(ev_volumes_finished, ev_folder_names)
+    ]
+
+    for i in range(len(ev_volumes_and_folders_finished)):
+        ev_volumes_and_folders_finished[i][1] = ev_volumes_and_folders_finished[i][
+            1
+        ].replace("vol_", "")
+
+    phonon_volumes_and_folders = []
+    for ev_volume_finished, folder in ev_volumes_and_folders_finished:
+        if ev_volume_finished in phonon_volumes:
+            phonon_volumes_and_folders.append([ev_volume_finished, folder])
+
+    for phonon_volume, phonon_folder in phonon_volumes_and_folders:
+        os.makedirs(os.path.join(path, f"phonon_{phonon_folder}"), exist_ok=True)
+
+    source_name_dest_name = [
+        ("CONTCAR.3static", "POSCAR"),
+        ("INCAR.2relax", "INCAR"),
+        ("POTCAR", "POTCAR"),
+    ]
+
+    for phonon_volume, phonon_folder in phonon_volumes_and_folders:
+        for source_name, dest_name in source_name_dest_name:
+            file_source = os.path.join(path, f"vol_{phonon_folder}", source_name)
+            file_dest = os.path.join(path, f"phonon_{phonon_folder}", dest_name)
+            if os.path.isfile(file_source):
+                shutil.copy2(file_source, file_dest)
+            shutil.copy2(
+                os.path.join(path, sbatch_command),
+                os.path.join(path, f"phonon_{phonon_folder}", sbatch_command),
+            )
+
+    # Create a supercell and write the KPOINTS file
+    for phonon_volume, phonon_folder in phonon_volumes_and_folders:
+        structure = Structure.from_file(
+            os.path.join(path, f"phonon_{phonon_folder}", "POSCAR")
+        )
+        structure.make_supercell(supercell_size)
+        structure.to_file(
+            os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
+        )
+        kpoints = Kpoints.automatic_density(structure, kppa, force_gamma=True)
+        kpoints.write_file(os.path.join(path, f"phonon_{phonon_folder}", "KPOINTS"))
+
+    # Run the phonon calculations in parallel
+    for phonon_volume, phonon_folder in phonon_volumes_and_folders:
+        os.chdir(os.path.join(path, f"phonon_{phonon_folder}"))
+        os.system(sbatch_command)
+        os.chdir(path)
+
+
 def kpoints_conv_test(
     path, kppa_list, vasp_cmd, handlers, force_gamma=True, backup=False
 ):
@@ -706,8 +839,8 @@ def kpoints_conv_test(
         force_gamma (bool, optional): If True, forces a gamma-centered mesh. Defaults to True.
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
-    """    
-    
+    """
+
     original_dir = os.getcwd()
     kpoints_conv_dir = os.path.join(path, "kpoints_conv")
     os.makedirs(kpoints_conv_dir)
@@ -758,7 +891,7 @@ def calculate_kpoint_conv(path, kppa_list, plot=True):
         path (str): the path to the folder containing the VASP input files
         kppa_list (list): the list of k-point densities to run the calculations for
         plot (bool, optional): If True, plots the results. Defaults to True.
-    """    
+    """
     original_dir = os.getcwd()
     kpoints_conv_dir = os.path.join(path, "kpoints_conv")
 
@@ -801,7 +934,7 @@ def encut_conv_test(path, encut_list, vasp_cmd, handlers, backup=False):
         handlers (class 'list'): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
-    """    
+    """
     original_dir = os.getcwd()
     encut_conv_dir = os.path.join(path, "encut_conv")
     os.makedirs(encut_conv_dir)
@@ -851,7 +984,7 @@ def calculate_encut_conv(path, encut_list, plot=True):
         path (str): the path to the folder containing the VASP input files
         encut_list (list): the list of ENCUT values to run the calculations for
         plot (bool, optional): If True, plots the results. Defaults to True.
-    """    
+    """
     original_dir = os.getcwd()
     encut_conv_dir = os.path.join(path, "encut_conv")
 
