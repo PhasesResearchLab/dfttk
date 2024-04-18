@@ -727,12 +727,15 @@ def ev_curve_series(
         if os.path.exists(file_path):
             os.remove(file_path)
 
+
+def custodian_errors_location(path):
     vol_folders = [d for d in os.listdir(path) if d.startswith('vol')]
     for vol_folder in vol_folders:
         error_folders = [f for f in os.listdir(os.path.join(path, vol_folder)) if f.startswith('error')]
         if len(error_folders) > 0:
             print(f'In {vol_folder} there are error folders: {error_folders}')
     
+def NELM_reached(path):    
     start_dir = path  
     target_line = "The electronic self-consistency was not achieved in the given"
     for dirpath, dirs, files in os.walk(start_dir):
