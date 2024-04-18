@@ -732,7 +732,18 @@ def ev_curve_series(
         error_folders = [f for f in os.listdir(os.path.join(path, vol_folder)) if f.startswith('error')]
         if len(error_folders) > 0:
             print(f'In {vol_folder} there are error folders: {error_folders}')
-        
+    
+    start_dir = path  
+    target_line = "The electronic self-consistency was not achieved in the given"
+    for dirpath, dirs, files in os.walk(start_dir):
+        for filename in files:
+            filepath = os.path.join(dirpath, filename)
+            with open(filepath, 'r', errors='ignore') as file:
+                for line in file:
+                    if target_line in line:
+                        print(f'{filepath} has reached NELM.')
+                        break
+                    
 
 def run_phonons(vasp_cmd, handlers, copy_magmom=False, backup=False):
     # TODO: add a way to override the default settings
