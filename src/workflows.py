@@ -468,7 +468,7 @@ def three_step_relaxation(
 
 
 # TODO: write tests for this function
-# TODO: print out the volume folders that have errors
+# TODO: write something to tell you when NELM is reached and in which folder
 def ev_curve_series(
     path,
     volumes,
@@ -699,9 +699,6 @@ def ev_curve_series(
                     os.remove(file_path)
                 elif restarting and i == last_vol_index:
                     pass
-                else:
-                    print(f"The file {file_path} does not exist.")
-                #TODO: Delete this else statement
                 
         poscar = os.path.join(vol_folder_path, "POSCAR")
         struct = Structure.from_file(poscar)
@@ -729,9 +726,13 @@ def ev_curve_series(
     for file_path in paths_to_delete:
         if os.path.exists(file_path):
             os.remove(file_path)
-        else:
-            print(f"The file {file_path} does not exist.")
 
+    vol_folders = [d for d in os.listdir(path) if d.startswith('vol')]
+    for vol_folder in vol_folders:
+        error_folders = [f for f in os.listdir(os.path.join(path, vol_folder)) if f.startswith('error')]
+        if len(error_folders) > 0:
+            print(f'In {vol_folder} there are error folders: {error_folders}')
+        
 
 def run_phonons(vasp_cmd, handlers, copy_magmom=False, backup=False):
     # TODO: add a way to override the default settings
