@@ -146,9 +146,19 @@ def write_pv(path):
 
 
 def extract_mag_data(outcar_path="OUTCAR"):
+    """Extracts the magnetization data from an OUTCAR file and returns a pandas DataFrame.
+
+    Args:
+        outcar_path (str, optional): Path to an OUTCAR file. Defaults to "OUTCAR".
+
+    Returns:
+        <class 'pandas.core.frame.DataFrame'>: a pandas DataFrame containing the magnetization data
+    """    
+    
     if not os.path.isfile(outcar_path):
         print(f"Warning: File {outcar_path} does not exist. Skipping.")
         return None
+    
     with open(outcar_path, "r") as file:
         data = []
         step = 0
@@ -175,19 +185,24 @@ def extract_mag_data(outcar_path="OUTCAR"):
         return df
 
 
-def extract_simple_mag_data(ion_list, outcar_path="OUTCAR"):
-    """
-    Returns only the 'tot' magnetization of the last step for each specified ion.
-    The ion_list should be a list of integers ex: [1, 2, 3, 4].
-    """
+def extract_tot_mag_data(ion_list, outcar_path="OUTCAR"):
+    """Returns only the 'tot' magnetization of the last step for each specified ion.
+
+    Args:
+        ion_list (list): The ion_list should be a list of integers ex: [1, 2, 3, 4].
+        outcar_path (str, optional): Path to an OUTCAR file. Defaults to "OUTCAR".
+
+    Returns:
+        <class 'pandas.core.frame.DataFrame'>: a pandas DataFrame containing the 'tot' magnetization data
+    """    
 
     all_mag_data = extract_mag_data(outcar_path)
     last_step_data = all_mag_data[all_mag_data["step"] == all_mag_data["step"].max()]
-    simple_data = last_step_data[last_step_data["# of ion"].isin(ion_list)][
+    tot_data = last_step_data[last_step_data["# of ion"].isin(ion_list)][
         ["# of ion", "tot"]
     ]
-    simple_data.reset_index(drop=True, inplace=True)
-    return simple_data
+    tot_data.reset_index(drop=True, inplace=True)
+    return tot_data
 
 
 def append_energy_per_atom(df):
@@ -453,6 +468,7 @@ def three_step_relaxation(
 
 
 # TODO: write tests for this function
+# TODO: write something to tell you when NELM is reached and in which folder
 def ev_curve_series(
     path,
     volumes,
@@ -683,9 +699,7 @@ def ev_curve_series(
                     os.remove(file_path)
                 elif restarting and i == last_vol_index:
                     pass
-                else:
-                    print(f"The file {file_path} does not exist.")
-
+                
         poscar = os.path.join(vol_folder_path, "POSCAR")
         struct = Structure.from_file(poscar)
         struct.scale_lattice(vol)
@@ -712,9 +726,27 @@ def ev_curve_series(
     for file_path in paths_to_delete:
         if os.path.exists(file_path):
             os.remove(file_path)
-        else:
-            print(f"The file {file_path} does not exist.")
 
+
+def custodian_errors_location(path):
+    vol_folders = [d for d in os.listdir(path) if d.startswith('vol')]
+    for vol_folder in vol_folders:
+        error_folders = [f for f in os.listdir(os.path.join(path, vol_folder)) if f.startswith('error')]
+        if len(error_folders) > 0:
+            print(f'In {vol_folder} there are error folders: {error_folders}')
+    
+def NELM_reached(path):    
+    start_dir = path  
+    target_line = "The electronic self-consistency was not achieved in the given"
+    for dirpath, dirs, files in os.walk(start_dir):
+        for filename in files:
+            filepath = os.path.join(dirpath, filename)
+            with open(filepath, 'r', errors='ignore') as file:
+                for line in file:
+                    if target_line in line:
+                        print(f'{filepath} has reached NELM.')
+                        break
+                    
 
 def run_phonons(vasp_cmd, handlers, copy_magmom=False, backup=False):
     # TODO: add a way to override the default settings
