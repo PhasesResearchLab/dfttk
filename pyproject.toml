@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dfttk"
+name = "dfttk2"
 version = "0.0.0"
 authors = [
   { name="Luke A. Myers", email="lam7027@psu.edu" },
@@ -17,7 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+    "License :: MIT License",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Density Functional Theory",
@@ -28,14 +28,13 @@ readme = "README.md"
 
 requires-python = ">=3.9"
 dependencies = [
-    "pymatgen>=2023.12.18",
-    "numpy>=1.26,
+    "pymatgen>=2024.2.20",
+    "numpy>=1.26",
     "pandas>=2.1.4",
     "matplotlib>=3.8.2",
     "plotly>=5.18.0",
     "scipy>=1.11.4",
-    "custodian>=2023.10.9",
-    "
+    "custodian>=2023.10.9"
 ]
 
 keywords = ["VASP", "automation", "thermodynamics", "zentropy", "dfttk", "DFT", "custodian", "materials", "science"]
