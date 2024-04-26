@@ -27,15 +27,3 @@ Or clone a specific branch:
     cd vasp-job-automation
     pip install -e .
 
-Install the following dependencies:
-
-    pip install numpy pandas matplotlib plotly scipy custodian pymatgen
-
-Or use conda to install environment.yml:
-
-    conda env create -f environment.yml
-
-or activate a prexisting environment and update with:
-
-    conda activate preexisting_environment_name
-    conda env update --file environment.yml
