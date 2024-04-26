@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dfttk"
+version = "0.0.0"
+authors = [
+  { name="Luke A. Myers", email="lam7027@psu.edu" },
+  { name="Nigel Lee En Hew", email="njh5724@psu.edu"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Density Functional Theory",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+readme = "README.md"
+
+requires-python = ">=3.9"
+dependencies = [
+    "pymatgen>=2023.12.18",
+    "numpy>=1.26,
+    "pandas>=2.1.4",
+    "matplotlib>=3.8.2",
+    "plotly>=5.18.0",
+    "scipy>=1.11.4",
+    "custodian>=2023.10.9",
+    "
+]
+
+keywords = ["VASP", "automation", "thermodynamics", "zentropy", "dfttk", "DFT", "custodian", "materials", "science"]
+
+[project.urls]
+"Homepage" = "https://github.com/lukeamyers/vasp-job-automation"
