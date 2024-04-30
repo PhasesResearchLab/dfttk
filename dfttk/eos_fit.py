@@ -1515,10 +1515,14 @@ def plot_energy_difference(
     
     # plot energy difference vs volume
     fig = plot_ev(energy_difference_df, eos_fitting=None, per_atom=per_atom, show_fig=False)
-    if convert_to_mev:
-        fig.update_layout(title="Energy Difference vs Volume", yaxis_title="Energy Difference (meV)")
-    else:
-        fig.update_layout(title="Energy Difference vs Volume", yaxis_title="Energy Difference (eV)")
+    if convert_to_mev and not per_atom:
+        fig.update_layout(title="Energy Difference vs Volume", yaxis_title=r"$\text{Energy Difference } (meV/atom)$")
+    elif not convert_to_mev and not per_atom:
+        fig.update_layout(title="Energy Difference vs Volume", yaxis_title=r"$\text{Energy Difference } (eV)$")
+    elif convert_to_mev and per_atom:
+        fig.update_layout(title="Energy Difference vs Volume", yaxis_title=r"$\text{Energy Difference } (eV)$")
+    elif not convert_to_mev and per_atom:
+        fig.update_layout(title="Energy Difference vs Volume", yaxis_title=r"$\text{Energy Difference } (eV/atom)$")
     if show_fig:
         fig.show()    
 
