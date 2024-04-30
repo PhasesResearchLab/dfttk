@@ -1,5 +1,0 @@
-” ”
-“Job started on p-sc-2305 at Fri Dec 15 17:31:38 EST 2023”
-” ”
-“Running program...”
-slurmstepd: error: *** JOB 7554632 ON p-sc-2305 CANCELLED AT 2023-12-17T17:31:48 DUE TO TIME LIMIT ***
