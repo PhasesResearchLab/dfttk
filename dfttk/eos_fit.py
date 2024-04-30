@@ -1288,6 +1288,12 @@ def plot_energy_difference(
     per_atom=False,
     show_fig=True,
     convert_to_mev=False):
+    """
+    Takes a dataframe and plots the energy difference from a 
+    reference configuration within the dataframe vs volume.
+    
+    Utilizes plot_ev() for the actual plotting.
+    """
     df_list = []
     for config in df['config'].unique():
         df_list.append(df[df['config'] == config].reset_index(drop=True))
