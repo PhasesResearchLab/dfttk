@@ -1282,16 +1282,21 @@ def plot_ev(
         fig.show()
     return fig
 
-def plot_energy_difference(df, per_atom=False, show_fig=True, convert_to_mev=False):
+def plot_energy_difference(
+    df,
+    reference_config,
+    per_atom=False,
+    show_fig=True,
+    convert_to_mev=False):
     df_list = []
     for config in df['config'].unique():
         df_list.append(df[df['config'] == config].reset_index(drop=True))
-        if config == 'bcc':
-            df_bcc = df[df['config'] == config].reset_index(drop=True)
+        if config == reference_config:
+            reference_df = df[df['config'] == config].reset_index(drop=True)
 
     # Subtract the 'energy' columns
     for df_el in df_list:
-        df_el['energy'] -= df_bcc['energy']
+        df_el['energy'] -= reference_df['energy']
         
     energy_difference_df = pd.concat(df_list)
     
