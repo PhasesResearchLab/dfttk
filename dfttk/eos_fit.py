@@ -1203,16 +1203,31 @@ def plot_ev_temp(data, eos_fitting='BM4', highlight_minimum=True, per_atom=False
     return fig
 
 
-def assign_colors_to_configs(df):
+def assign_colors_to_configs(df, cmap='rainbow', alpha=0.75):
 
-    cmap = plt.get_cmap('viridis')
+    cmap = plt.get_cmap(cmap)
     unique_configs = df["config"].unique()
     colors = [cmap(i / len(unique_configs)) for i in range(len(unique_configs))]
-    colors = ['rgba({0}, {1}, {2}, {3})'.format(*color) for color in colors]
+    colors = [f'rgba({color[0]}, {color[1]}, {color[2]}, {alpha})' for color in colors]
     config_colors = {config: colors[i % len(colors)] for i, config in enumerate(unique_configs)}
     return config_colors
-    
 
+def assign_marker_symbols_to_configs(df):
+    unique_configs = df["config"].unique()
+    symbols = ['circle', 'square', 'diamond', 'x',
+               'triangle-up', 'triangle-down', 'triangle-left',
+               'triangle-right', 'pentagon', 'hexagon', 'octagon',
+               'star', 'hexagram', 'star-triangle-up',
+               'star-triangle-down', 'star-square', 'star-diamond',
+               'diamond-tall', 'diamond-wide', 'hourglass',
+               'bowtie', 'circle-cross', 'circle-x',
+               'square-cross', 'square-x', 'diamond-cross',
+               'diamond-x', 'cross-thin', 'x-thin', 'asterisk',
+               'hash', 'y-up', 'y-down', 'y-left', 'y-right',
+               'line-ew', 'line-ns', 'line-ne', 'line-nw']
+    config_symbols = {config: symbols[i % len(symbols)] for i, config in enumerate(unique_configs)}
+    return config_symbols
+    
 def plot_ev(
     data,
     eos_fitting="BM4",
@@ -1242,8 +1257,9 @@ def plot_ev(
     if eos_fitting != None:
         eos_df = fit_to_all_eos(df)
 
-    # assign colors
+    # assign colors and symbols
     config_colors = assign_colors_to_configs(df)
+    config_symbols = assign_marker_symbols_to_configs(df)
         
     # plot the data
     fig = go.Figure()
@@ -1263,7 +1279,9 @@ def plot_ev(
                 y=y,
                 mode="markers",
                 marker=dict(
-                    color='rgb(0.1, 0.1, 0.8)'
+                    size=10,
+                    color=config_colors[config],
+                    symbol=config_symbols[config]
                 ),
                 legendgroup="EOS",
                 name=f"Config {config}",
@@ -1299,8 +1317,9 @@ def plot_ev(
                             y=eos_name_df["energies"].values[0],
                             mode="lines",
                             name=f"{eos_fitting} fit",
-                            line=dict(width=1),
+                            line=dict(width=1.75, color= config_colors[config]),
                             legendgroup="data",
+                            showlegend=False
                         )
                     )
                 elif per_atom == True:
@@ -1312,7 +1331,7 @@ def plot_ev(
                             / eos_name_df["number_of_atoms"].values[0][0],
                             mode="lines",
                             name=f"{eos_fitting} fit",
-                            line=dict(width=1),
+                            line=dict(width=1.75, color= config_colors[config]),
                             legendgroup="data",
                         )
                     )
@@ -1331,6 +1350,7 @@ def plot_ev(
                                 name=f"{eos_fitting} min energy",
                                 marker=dict(color="black", size=10, symbol="cross"),
                                 legendgroup="minimum",
+                                showlegend=False
                             )
                         )
                     elif per_atom == True:
@@ -1430,7 +1450,7 @@ def plot_ev(
                     f"Warning: eos_fitting '{eos_fitting}' not found in eos_df. Skipping."
                 )
     fig.update_layout(plot_bgcolor='white',
-                          width=800,
+                          width=660,
                           height=600,
                           margin=dict(l=80, r=30, t=80, b=80)
                           )
