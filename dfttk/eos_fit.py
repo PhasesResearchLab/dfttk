@@ -1300,9 +1300,17 @@ def plot_energy_difference(
         if config == reference_config:
             reference_df = df[df['config'] == config].reset_index(drop=True)
 
-    # Subtract the 'energy' columns
+    # Subtract reference energies
+    missing_volumes = []
     for df_el in df_list:
-        df_el['energy'] -= reference_df['energy']
+        for i, row in df_el.iterrows():
+            try:
+                reference_energy = reference_df[reference_df['volume'] == row['volume']]['energy'].values[0]
+                df_el.at[i, 'energy'] = row['energy'] - reference_energy
+            except Exception as e:
+                missing_volumes.append((row['config'],row['volume']))
+    if missing_volumes:
+        print(f"Warning: Missing volumes for configurations: {missing_volumes}")
         
     energy_difference_df = pd.concat(df_list)
     
