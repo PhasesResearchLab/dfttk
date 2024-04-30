@@ -1063,8 +1063,6 @@ def plot_mv(df, show_fig=True):
     if show_fig:
         fig.show()
     return fig
-
-def plot_ev_temp(data, eos_fitting='BM4', highlight_minimum=True, per_atom=False, show_fig=True, left_col='volume', right_col='energy'):
     # determine the type of data and how to handle it.
     if isinstance(data, pd.DataFrame):
         df = data
