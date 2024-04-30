@@ -1203,6 +1203,16 @@ def plot_ev_temp(data, eos_fitting='BM4', highlight_minimum=True, per_atom=False
     return fig
 
 
+def assign_colors_to_configs(df):
+
+    cmap = plt.get_cmap('viridis')
+    unique_configs = df["config"].unique()
+    colors = [cmap(i / len(unique_configs)) for i in range(len(unique_configs))]
+    colors = ['rgba({0}, {1}, {2}, {3})'.format(*color) for color in colors]
+    config_colors = {config: colors[i % len(colors)] for i, config in enumerate(unique_configs)}
+    return config_colors
+    
+
 def plot_ev(
     data,
     eos_fitting="BM4",
@@ -1232,6 +1242,9 @@ def plot_ev(
     if eos_fitting != None:
         eos_df = fit_to_all_eos(df)
 
+    # assign colors
+    config_colors = assign_colors_to_configs(df)
+        
     # plot the data
     fig = go.Figure()
     for config in df["config"].unique():
@@ -1250,8 +1263,8 @@ def plot_ev(
                 y=y,
                 mode="markers",
                 marker=dict(
-                    colorscale="Viridis"
-                ),  # Assign different colors based on 'config' column,
+                    color='rgb(0.1, 0.1, 0.8)'
+                ),
                 legendgroup="EOS",
                 name=f"Config {config}",
             )
@@ -1416,6 +1429,30 @@ def plot_ev(
                 print(
                     f"Warning: eos_fitting '{eos_fitting}' not found in eos_df. Skipping."
                 )
+    fig.update_layout(plot_bgcolor='white',
+                          width=800,
+                          height=600,
+                          margin=dict(l=80, r=30, t=80, b=80)
+                          )
+    fig.update_yaxes(showline=True,  # add line at x=0
+                            linecolor='black',
+                            linewidth=2.4,
+                            ticks='inside',
+                            mirror='allticks',  # add ticks to top/right axes
+                            tickwidth=2.4,
+                            tickcolor='black',
+                            showgrid=False
+                            )
+    fig.update_xaxes(showline=True,
+                            showticklabels=True,
+                            linecolor='black',
+                            linewidth=2.4,
+                            ticks='inside',
+                            mirror='allticks',
+                            tickwidth=2.4,
+                            tickcolor='black',
+                            showgrid=False
+                            )
     if show_fig:
         fig.show()
     return fig
