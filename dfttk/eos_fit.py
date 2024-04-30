@@ -1290,15 +1290,15 @@ def plot_ev(
     if per_atom == False:
         fig.update_layout(
             title="E-V",
-            xaxis_title="Volume [Å^3]",
-            yaxis_title="Energy (eV)",
+            xaxis_title=r"$\text{Volume } (Å^3)$",
+            yaxis_title=r"$\text{Energy } (eV)$",
             template="plotly_white",
         )
     elif per_atom == True:
         fig.update_layout(
             title="E-V",
-            xaxis_title="Volume [Å^3/atom]",
-            yaxis_title="Energy (eV/atom)",
+            xaxis_title=r"$\text{Volume } (Å^3/atom)$",
+            yaxis_title=r"$\text{Energy }Energy (eV/atom)$",
             template="plotly_white",
         )
     else:
