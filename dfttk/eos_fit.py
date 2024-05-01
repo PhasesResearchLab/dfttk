@@ -1329,6 +1329,7 @@ def plot_ev(
                             name=f"{eos_fitting} fit",
                             line=dict(width=1.75, color= config_colors[config]),
                             legendgroup="data",
+                            showlegend=False
                         )
                     )
                 # plot the minimum energy data point for each config from the fitting equation
@@ -1364,6 +1365,7 @@ def plot_ev(
                                 name=f"{eos_fitting} min energy",
                                 marker=dict(color="black", size=10, symbol="cross"),
                                 legendgroup="minimum",
+                                showlegend=False
                             )
                         )
                     else:
@@ -1384,6 +1386,7 @@ def plot_ev(
                                 name=f"{eos_name} fit",
                                 line=dict(width=1),
                                 legendgroup="eos",
+                                showlegend=False
                             )
                         )
                     elif per_atom == True:
@@ -1397,6 +1400,7 @@ def plot_ev(
                                 name=f"{eos_name} fit",
                                 line=dict(width=1),
                                 legendgroup="eos",
+                                showlegend=False
                             )
                         )
                     else:
@@ -1418,7 +1422,8 @@ def plot_ev(
                                     name=f"{eos_name} min energy",
                                     marker=dict(color="black", size=8, symbol="cross"),
                                     legendgroup="minimum",
-                                )
+                                    showlegend=False
+                            )
                             )
                         elif per_atom == True:
                             fig.add_trace(
@@ -1435,7 +1440,8 @@ def plot_ev(
                                     name=f"{eos_name} min energy",
                                     marker=dict(color="black", size=8, symbol="cross"),
                                     legendgroup="minimum",
-                                )
+                                    showlegend=False
+                            )
                             )
                         else:
                             print("per_atom must be True or False")
