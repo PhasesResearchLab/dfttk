@@ -1518,13 +1518,13 @@ def plot_energy_difference(
                   show_fig=False)
     if convert_to_mev and not per_atom:
         fig.update_layout(title="Energy Difference vs Volume",
-                          yaxis_title=r"$\text{Energy Difference } (meV/atom)$")
+                          yaxis_title=r"$\text{Energy Difference } (meV)$")
     elif not convert_to_mev and not per_atom:
         fig.update_layout(title="Energy Difference vs Volume",
                           yaxis_title=r"$\text{Energy Difference } (eV)$")
     elif convert_to_mev and per_atom:
         fig.update_layout(title="Energy Difference vs Volume",
-                          yaxis_title=r"$\text{Energy Difference } (meV)$")
+                          yaxis_title=r"$\text{Energy Difference } (meV/atom)$")
     elif not convert_to_mev and per_atom:
         fig.update_layout(title="Energy Difference vs Volume",
                           yaxis_title=r"$\text{Energy Difference } (eV/atom)$")
