@@ -1517,17 +1517,17 @@ def plot_energy_difference(
                   per_atom=per_atom,
                   show_fig=False)
     if convert_to_mev and not per_atom:
-        fig.update_layout(title="Energy Difference vs Volume",
-                          yaxis_title=r"$\text{Energy Difference } (meV)$")
+        fig.update_layout(title=dict(text="Energy Difference vs Volume", font=dict(size=18, color='rgb(0,0,0)')),
+                          yaxis_title=dict(text=r"$\text{Energy Difference } (meV)$", font=dict(size=18, color='rgb(0,0,0)')))
     elif not convert_to_mev and not per_atom:
-        fig.update_layout(title="Energy Difference vs Volume",
-                          yaxis_title=r"$\text{Energy Difference } (eV)$")
+        fig.update_layout(title=dict(text="Energy Difference vs Volume", font=dict(size=18, color='rgb(0,0,0)')),
+                          yaxis_title=dict(text=r"$\text{Energy Difference } (eV)$", font=dict(size=18, color='rgb(0,0,0)')))
     elif convert_to_mev and per_atom:
-        fig.update_layout(title="Energy Difference vs Volume",
-                          yaxis_title=r"$\text{Energy Difference } (meV/atom)$")
+        fig.update_layout(title=dict(text="Energy Difference vs Volume", font=dict(size=18, color='rgb(0,0,0)')),
+                          yaxis_title=dict(text=r"$\text{Energy Difference } (meV/atom)$", font=dict(size=18, color='rgb(0,0,0)')))
     elif not convert_to_mev and per_atom:
-        fig.update_layout(title="Energy Difference vs Volume",
-                          yaxis_title=r"$\text{Energy Difference } (eV/atom)$")
+        fig.update_layout(title=dict(text="Energy Difference vs Volume", font=dict(size=18, color='rgb(0,0,0)')),
+                          yaxis_title=dict(text=r"$\text{Energy Difference } (eV/atom)$"), font=dict(size=18, color='rgb(0,0,0)'))
     if show_fig:
         fig.show()
     return fig
