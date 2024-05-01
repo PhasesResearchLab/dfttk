@@ -1287,16 +1287,14 @@ def plot_ev(
         )
     if per_atom == False:
         fig.update_layout(
-            title=dict(text="E-V",font=dict(size=24, color= 'rgb(0,0,0)')),
-            xaxis_title=dict(text=r"$\text{Volume } (Å^3)$", font=dict(size=18, color= 'rgb(0,0,0)')),
-            yaxis_title=dict(text=r"$\text{Energy } (eV)$", font=dict(size=18, color= 'rgb(0,0,0)')),
+            xaxis_title=dict(text=r"$\text{Volume } (\text{Å}^3)$", font=dict(color= 'rgb(0,0,0)')),
+            yaxis_title=dict(text=r"$\text{Energy (eV)}$", font=dict(color= 'rgb(0,0,0)')),
             template="plotly_white",
         )
     elif per_atom == True:
         fig.update_layout(
-            title=dict(text="E-V",font=dict(size=24, color= 'rgb(0,0,0)')),
-            xaxis_title=dict(text=r"$\text{Volume } (Å^3/atom)$", font=dict(size=18, color= 'rgb(0,0,0)')),
-            yaxis_title=dict(text=r"$\text{Energy }Energy (eV/atom)$", font=dict(size=18, color= 'rgb(0,0,0)')),
+            xaxis_title=dict(text=r"$\text{Volume } (\text{Å}^3 \text{/atom)}$", font=dict(color= 'rgb(0,0,0)')),
+            yaxis_title=dict(text=r"$\text{Energy (eV/atom)}$", font=dict(color= 'rgb(0,0,0)')),
             template="plotly_white",
         )
     else:
@@ -1459,7 +1457,8 @@ def plot_ev(
                             mirror='allticks',  # add ticks to top/right axes
                             tickwidth=2.4,
                             tickcolor='black',
-                            showgrid=False
+                            showgrid=False,
+                            tickfont=dict(color='rgb(0,0,0)', size=16)
                             )
     fig.update_xaxes(showline=True,
                             showticklabels=True,
@@ -1469,8 +1468,10 @@ def plot_ev(
                             mirror='allticks',
                             tickwidth=2.4,
                             tickcolor='black',
-                            showgrid=False
+                            showgrid=False,
+                            tickfont=dict(color='rgb(0,0,0)', size=16)
                             )
+    
     if show_fig:
         fig.show()
     return fig
@@ -1517,17 +1518,13 @@ def plot_energy_difference(
                   per_atom=per_atom,
                   show_fig=False)
     if convert_to_mev and not per_atom:
-        fig.update_layout(title=dict(text="Energy Difference vs Volume", font=dict(size=18, color='rgb(0,0,0)')),
-                          yaxis_title=dict(text=r"$\text{Energy Difference } (meV)$", font=dict(size=18, color='rgb(0,0,0)')))
+        fig.update_layout(yaxis_title=dict(text=r"$\Delta \text{E (meV)}$", font=dict(color='rgb(0,0,0)')))
     elif not convert_to_mev and not per_atom:
-        fig.update_layout(title=dict(text="Energy Difference vs Volume", font=dict(size=18, color='rgb(0,0,0)')),
-                          yaxis_title=dict(text=r"$\text{Energy Difference } (eV)$", font=dict(size=18, color='rgb(0,0,0)')))
+        fig.update_layout(yaxis_title=dict(text=r"$\Delta \text{E (eV)}$", font=dict(color='rgb(0,0,0)')))
     elif convert_to_mev and per_atom:
-        fig.update_layout(title=dict(text="Energy Difference vs Volume", font=dict(size=18, color='rgb(0,0,0)')),
-                          yaxis_title=dict(text=r"$\text{Energy Difference } (meV/atom)$", font=dict(size=18, color='rgb(0,0,0)')))
+        fig.update_layout(yaxis_title=dict(text=r"$\Delta \text{E (meV/atom)}$", font=dict(color='rgb(0,0,0)')))
     elif not convert_to_mev and per_atom:
-        fig.update_layout(title=dict(text="Energy Difference vs Volume", font=dict(size=18, color='rgb(0,0,0)')),
-                          yaxis_title=dict(text=r"$\text{Energy Difference } (eV/atom)$"), font=dict(size=18, color='rgb(0,0,0)'))
+        fig.update_layout(yaxis_title=dict(text=r"$\Delta \text{E (eV/atom)}$"), font=dict(color='rgb(0,0,0)'))
     if show_fig:
         fig.show()
     return fig
