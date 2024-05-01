@@ -5,6 +5,7 @@ import json
 import shutil
 import numpy as np
 import pandas as pd
+from natsort import natsorted
 import matplotlib.pyplot as plt
 
 from custodian.custodian import Custodian
@@ -14,29 +15,23 @@ from pymatgen.io.vasp.inputs import Kpoints
 
 
 def extract_volume(path):
-    """Function to extract the last occurrence of volume from an OUTCAR file
+    """Extract the volume of a structure from a POSCAR/CONTCAR file
 
     Args:
-        path (str): the path to an OUTCAR file
+        path (str): the path to a POSCAR/CONTCAR file
 
     Returns:
-        float: the volume from an OUTCAR file
+        float: the structure volume
     """
 
-    with open(path, "r") as file:
-        file_name = os.path.basename(path)
-        assert file_name.startswith("OUTCAR"), "File name does not start with 'OUTCAR'"
-
-        lines = file.readlines()
-        for line in reversed(lines):
-            if "volume" in line:
-                volume = float(line.split()[-1])
-                break
+    structure = Structure.from_file(path)
+    volume = round(structure.volume, 6)
+    
     return volume
 
 
 def extract_pressure(path):
-    """Function to extract the last occurrence of pressure from an OUTCAR file
+    """Extract the last occurrence of pressure from an OUTCAR file
 
     Args:
         path (str): the path to an OUTCAR file
@@ -58,7 +53,7 @@ def extract_pressure(path):
 
 
 def extract_energy(path):
-    """Function to extract the final energy from an OSZICAR file
+    """Extract the final energy from an OSZICAR file
 
     Args:
         path (str): the path to an OSZICAR file
@@ -282,7 +277,7 @@ def extract_config_mv_data(path, ion_list, outcar_name="OUTCAR"):
 
 def extract_config_data(
     path, ion_list, outcar_name="OUTCAR", oszicar_name="OSZICAR", contcar_name="CONTCAR"
-):
+): 
     """
     !!!Warning!!! this function will soon be deprecated. Use extract_configuration_data() instead if possible.
 
@@ -468,7 +463,6 @@ def three_step_relaxation(
 
 
 # TODO: write tests for this function
-# TODO: write something to tell you when NELM is reached and in which folder
 def ev_curve_series(
     path,
     volumes,
@@ -526,27 +520,23 @@ def ev_curve_series(
             for folder in os.listdir(path)
             if os.path.isdir(folder) and folder.startswith("vol")
         ]
-
-        # TODO: This is assuming all the previous volumes succeeded. Do we need these try and except blocks?
+        vol_folders = natsorted(vol_folders)
+        
         volumes_started = []
         for vol_folder in vol_folders:
             try:
-                struct = Structure.from_file(
-                    os.path.join(path, vol_folder, "POSCAR.1relax")
-                )
+                volume_started = extract_volume(os.path.join(path, vol_folder, "POSCAR.1relax"))
             except Exception as e:
                 print(f"possible error: {e}, trying POSCAR")
                 try:
-                    struct = Structure.from_file(
-                        os.path.join(path, vol_folder, "POSCAR")
-                    )
+                    volume_started = extract_volume(os.path.join(path, vol_folder, "POSCAR"))
                 except Exception as e:
                     print(
                         f"Error: {e}. Could not extract volumes from POSCAR files. Do the files POSCAR.1relax or POSCAR exist in each volume folder?"
                     )
                     sys.exit(1)
-            volume_started = struct.volume
-            volumes_started.append(round(volume_started, 6))
+
+            volumes_started.append(volume_started)
             rounded_volumes_supplied = [round(volume, 6) for volume in volumes]
 
         if not volumes_started == rounded_volumes_supplied[: len(volumes_started)]:
