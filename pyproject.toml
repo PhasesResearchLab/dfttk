@@ -34,7 +34,8 @@ dependencies = [
     "matplotlib>=3.8.2",
     "plotly>=5.18.0",
     "scipy>=1.11.4",
-    "custodian>=2023.10.9"
+    "custodian>=2023.10.9",
+    "natsort>=8.4.0",
 ]
 
 keywords = ["VASP", "automation", "thermodynamics", "zentropy", "dfttk", "DFT", "custodian", "materials", "science"]
