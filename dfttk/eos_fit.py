@@ -1231,6 +1231,7 @@ def plot_ev(
     eos_fitting="BM4",
     highlight_minimum=True,
     per_atom=False,
+    title=None,
     show_fig=True,
     left_col="volume",
     right_col="energy",
@@ -1452,10 +1453,10 @@ def plot_ev(
                     f"Warning: eos_fitting '{eos_fitting}' not found in eos_df. Skipping."
                 )
     fig.update_layout(plot_bgcolor='white',
-                          width=660,
-                          height=600,
-                          margin=dict(l=80, r=30, t=80, b=80)
-                          )
+                            width=660,
+                            height=600,
+                            margin=dict(l=80, r=30, t=80, b=80)
+                            )
     fig.update_yaxes(showline=True,  # add line at x=0
                             linecolor='black',
                             linewidth=2.4,
@@ -1477,7 +1478,8 @@ def plot_ev(
                             showgrid=False,
                             tickfont=dict(color='rgb(0,0,0)', size=16)
                             )
-    
+    if title != None:
+        fig.update_layout(title=dict(text=title, font=dict(color='rgb(0,0,0)', size=24)))
     if show_fig:
         fig.show()
     return fig
@@ -1487,7 +1489,8 @@ def plot_energy_difference(
     reference_config,
     per_atom=False,
     show_fig=True,
-    convert_to_mev=False):
+    convert_to_mev=False,
+    title=None):
     """
     Takes a dataframe and plots the energy difference from a 
     reference configuration within the dataframe vs volume.
@@ -1531,6 +1534,10 @@ def plot_energy_difference(
         fig.update_layout(yaxis_title=dict(text=r"$\Delta \text{E (meV/atom)}$", font=dict(color='rgb(0,0,0)')))
     elif not convert_to_mev and per_atom:
         fig.update_layout(yaxis_title=dict(text=r"$\Delta \text{E (eV/atom)}$"), font=dict(color='rgb(0,0,0)'))
+        
+    if title != None:
+        fig.update_layout(title=dict(text=title, font=dict(color='rgb(0,0,0)', size=24)))
+
     if show_fig:
         fig.show()
     return fig
