@@ -1512,17 +1512,25 @@ def plot_energy_difference(
         energy_difference_df['energy'] *= 1000
     
     # plot energy difference vs volume
-    fig = plot_ev(energy_difference_df, eos_fitting=None, per_atom=per_atom, show_fig=False)
+    fig = plot_ev(energy_difference_df,
+                  eos_fitting=None,
+                  per_atom=per_atom,
+                  show_fig=False)
     if convert_to_mev and not per_atom:
-        fig.update_layout(title="Energy Difference vs Volume", yaxis_title=r"$\text{Energy Difference } (meV/atom)$")
+        fig.update_layout(title="Energy Difference vs Volume",
+                          yaxis_title=r"$\text{Energy Difference } (meV/atom)$")
     elif not convert_to_mev and not per_atom:
-        fig.update_layout(title="Energy Difference vs Volume", yaxis_title=r"$\text{Energy Difference } (eV)$")
+        fig.update_layout(title="Energy Difference vs Volume",
+                          yaxis_title=r"$\text{Energy Difference } (eV)$")
     elif convert_to_mev and per_atom:
-        fig.update_layout(title="Energy Difference vs Volume", yaxis_title=r"$\text{Energy Difference } (eV)$")
+        fig.update_layout(title="Energy Difference vs Volume",
+                          yaxis_title=r"$\text{Energy Difference } (meV)$")
     elif not convert_to_mev and per_atom:
-        fig.update_layout(title="Energy Difference vs Volume", yaxis_title=r"$\text{Energy Difference } (eV/atom)$")
+        fig.update_layout(title="Energy Difference vs Volume",
+                          yaxis_title=r"$\text{Energy Difference } (eV/atom)$")
     if show_fig:
-        fig.show()    
+        fig.show()
+    return fig
 
 def plot_config_energy(
     df, number_of_lowest_configs=5, show_fig=True, xmax=None, ymax=None
