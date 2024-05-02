@@ -20,6 +20,7 @@ import math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import distinctipy
 import plotly.express as px
 import plotly.graph_objects as go
 from scipy.optimize import fsolve
@@ -1201,11 +1202,10 @@ def plot_mv(df, show_fig=True):
     return fig
 
 
-def assign_colors_to_configs(df, cmap='rainbow', alpha=0.75):
-
-    cmap = plt.get_cmap(cmap)
+def assign_colors_to_configs(df, alpha=1):
+    
     unique_configs = df["config"].unique()
-    colors = [cmap(i / len(unique_configs)) for i in range(len(unique_configs))]
+    colors = distinctipy.get_colors(len(unique_configs))
     colors = [f'rgba({color[0]}, {color[1]}, {color[2]}, {alpha})' for color in colors]
     config_colors = {config: colors[i % len(colors)] for i, config in enumerate(unique_configs)}
     return config_colors
