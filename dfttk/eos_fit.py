@@ -1235,6 +1235,7 @@ def plot_ev(
     show_fig=True,
     left_col="volume",
     right_col="energy",
+    marker_alpha=1
 ):
     # determine the type of data and how to handle it.
     if isinstance(data, pd.DataFrame):
@@ -1257,7 +1258,7 @@ def plot_ev(
         eos_df = fit_to_all_eos(df)
 
     # assign colors and symbols
-    config_colors = assign_colors_to_configs(df)
+    config_colors = assign_colors_to_configs(df, alpha=marker_alpha)
     config_symbols = assign_marker_symbols_to_configs(df)
         
     # plot the data
@@ -1490,7 +1491,8 @@ def plot_energy_difference(
     per_atom=False,
     show_fig=True,
     convert_to_mev=False,
-    title=None):
+    title=None,
+    marker_alpha=1):
     """
     Takes a dataframe and plots the energy difference from a 
     reference configuration within the dataframe vs volume.
@@ -1525,7 +1527,8 @@ def plot_energy_difference(
     fig = plot_ev(energy_difference_df,
                   eos_fitting=None,
                   per_atom=per_atom,
-                  show_fig=False)
+                  show_fig=False,
+                  marker_alpha=marker_alpha)
     if convert_to_mev and not per_atom:
         fig.update_layout(yaxis_title=dict(text=r"$\Delta \text{E (meV)}$", font=dict(color='rgb(0,0,0)')))
     elif not convert_to_mev and not per_atom:
