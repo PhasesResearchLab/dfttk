@@ -615,7 +615,7 @@ def charge_density_difference(path, vasp_cmd, handlers, backup=False):
 
     reference_job = VaspJob(
         vasp_cmd=vasp_cmd,
-        final=True,
+        final=False,
         suffix=".reference",
         backup=backup,
         settings_override=[
