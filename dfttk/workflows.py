@@ -606,7 +606,7 @@ def charge_density_difference(path, vasp_cmd, handlers, backup=False):
     """    
     original_dir = os.getcwd()
     os.chdir(path)
-    os.makedir('charge_density_difference')
+    os.mkdir('charge_density_difference')
     shutil.copy2('POSCAR', 'charge_density_difference/POSCAR')
     shutil.copy2('POTCAR', 'charge_density_difference/POTCAR')
     shutil.copy2('INCAR', 'charge_density_difference/INCAR')
