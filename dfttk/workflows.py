@@ -656,7 +656,7 @@ def charge_density_difference(path, vasp_cmd, handlers, backup=False):
     )
     
     jobs = [reference_job, charge_density_job]
-    c = Custodian(handlers, job, max_errors=3)
+    c = Custodian(handlers, jobs, max_errors=3)
     c.run()
     
     os.chdir(original_dir)
