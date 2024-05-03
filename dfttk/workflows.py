@@ -728,6 +728,69 @@ def ev_curve_series(
         if os.path.exists(file_path):
             os.remove(file_path)
 
+def charge_density_reference(path, vasmp_cmd, handlers, backup=False):
+    
+        original_dir = os.getcwd()
+        os.chdir(path)
+        
+        reference_job = VaspJob(
+            vasp_cmd=vasp_cmd,
+            final=True,
+            suffix=".reference",
+            backup=backup,
+            settings_override=[
+            {
+                "dict": "INCAR",
+                "action": {
+                    "_set": {
+                        "EDIFF": "1E-6",
+                        "IBRION": -1,
+                        "NSW": 1,
+                        "ISIF": 2,
+                        "NELM": 1,
+                        "ISMEAR": -5,
+                        "SIGMA": 0.05,
+                        "LCHARG": True
+                    }
+                },
+            },
+            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
+        ],
+        )
+    
+        job = [reference_job]
+        c = Custodian(handlers, job, max_errors=3)
+        c.run()
+        
+        os.chdir(original_dir)
+
+def charge_density_difference(path, vasp_cmd, handlers, backup=False):
+
+    original_dir = os.getcwd()
+    os.chdir(path)
+    
+    reference_job = VaspJob(
+        vasp_cmd=vasp_cmd,
+        final=True,
+        suffix=".reference",
+        backup=backup
+    )
+    
+    charge_density_job = VaspJob(
+        vasp_cmd=vasp_cmd,
+        final=True,
+        suffix=".final",
+        backup=backup
+    )
+
+
+    jobs = [reference_job, charge_density_job]
+    c = Custodian(handlers, jobs, max_errors=3)
+    c.run()
+    
+    os.chdir(original_dir)
+
+
 
 def custodian_errors_location(path):
     vol_folders = [d for d in os.listdir(path) if d.startswith('vol')]
