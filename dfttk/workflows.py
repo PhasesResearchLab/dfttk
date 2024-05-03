@@ -659,7 +659,7 @@ def run_charge_density_reference(path, vasp_cmd, handlers, backup=False):
     os.chdir(original_dir)
     return None
         
-def charge_density_difference(path, vasp_cmd, handlers, backup=False):
+def run_charge_density(path, vasp_cmd, handlers, backup=False):
 
     original_dir = os.getcwd()
     os.chdir(path)
@@ -668,22 +668,32 @@ def charge_density_difference(path, vasp_cmd, handlers, backup=False):
         vasp_cmd=vasp_cmd,
         final=True,
         suffix=".reference",
-        backup=backup
-    )
-    
-    charge_density_job = VaspJob(
-        vasp_cmd=vasp_cmd,
-        final=True,
-        suffix=".final",
-        backup=backup
+        backup=backup,
+        settings_override=[
+        {
+            "dict": "INCAR",
+            "action": {
+                "_set": {
+                    "EDIFF": "1E-6",
+                    "IBRION": -1,
+                    "NSW": 1,
+                    "ISIF": 2,
+                    "NELM": 100,
+                    "ISMEAR": -5,
+                    "SIGMA": 0.05,
+                    "LCHARG": True
+                }
+            },
+        },
+        ],
     )
 
-
-    jobs = [reference_job, charge_density_job]
-    c = Custodian(handlers, jobs, max_errors=3)
+    job = [reference_job]
+    c = Custodian(handlers, job, max_errors=3)
     c.run()
     
     os.chdir(original_dir)
+    return None
 
 
 
