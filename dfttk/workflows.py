@@ -604,7 +604,8 @@ def charge_density_difference(path, vasp_cmd, handlers, backup=False):
         KPOINTS, POSCAR and POTCAR will be copied with a “.orig” appended. Defaults to True.
 
     Returns:
-        None
+        pymatgen.io.vasp.outputs.Chgcar: The charge density difference between the final electronic step and
+        a single step.
     """    
     original_dir = os.getcwd()
     os.chdir(path)
