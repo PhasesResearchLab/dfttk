@@ -582,9 +582,13 @@ def ev_curve_series(
                 last_vol_folder_path,
                 vasp_cmd,
                 handlers,
-                backup=False,
                 copy_magmom=copy_magmom,
+                backup=False,
+                default_settings=True,
+                settings_override_2relax=None,
+                settings_override_3static=None,
             )
+    
             last_vol_index = j + 1
 
         # If the job failed at the second step of three_step_relaxation, restart using the files from the first step
@@ -616,8 +620,11 @@ def ev_curve_series(
                 last_vol_folder_path,
                 vasp_cmd,
                 handlers,
-                backup=False,
                 copy_magmom=copy_magmom,
+                backup=False,
+                default_settings=True,
+                settings_override_2relax=None,
+                settings_override_3static=None,
             )
             last_vol_index = j + 1
 
