@@ -96,7 +96,7 @@ def write_ev(path):
     data = []
     for folder in folders:
         os.chdir(folder)
-        volume = extract_volume("OUTCAR.3static")
+        volume = extract_volume("CONTCAR.3static")
         energy = extract_energy("OSZICAR.3static")
         data.append([volume, energy])
         os.chdir("../")
@@ -128,7 +128,7 @@ def write_pv(path):
     data = []
     for folder in folders:
         os.chdir(folder)
-        volume = extract_volume("OUTCAR.3static")
+        volume = extract_volume("CONTCAR.3static")
         pressure = extract_pressure("OUTCAR.3static")
         data.append([volume, pressure])
         os.chdir("../")
@@ -199,7 +199,7 @@ def extract_tot_mag_data(ion_list, outcar_path="OUTCAR"):
     tot_data.reset_index(drop=True, inplace=True)
     return tot_data
 
-
+  
 def extract_configuration_data(
     path,
     ion_list=[1],
@@ -231,7 +231,7 @@ def extract_configuration_data(
 
         struct = Structure.from_file(contcar_path)
         number_of_atoms = len(struct.sites)
-        vol = extract_volume(outcar_path)
+        vol = extract_volume(contcar_path)
         energy = extract_energy(oszicar_path)
         if collect_mag_data == True:
             mag_data = extract_simple_mag_data(ion_list, outcar_path)
@@ -919,12 +919,13 @@ if __name__ == "__main__":
     # At the moment, have to run the tests from the src directory
     OUTCAR_path = "../test_data/FeSe/configurations/config_18/vol_1/OUTCAR.3static"
     OSZICAR_path = "../test_data/FeSe/configurations/config_18/vol_1/OSZICAR.3static"
+    CONTCAR_path = "../test_data/FeSe/configurations/config_18/vol_1/CONTCAR.3static"
 
-    volume = extract_volume(OUTCAR_path)
+    volume = extract_volume(CONTCAR_path)
     pressure = extract_pressure(OUTCAR_path)
     energy = extract_energy(OSZICAR_path)
 
-    assert extract_volume(OUTCAR_path) == 333.0
+    assert extract_volume(CONTCAR_path) == 333.0
     assert extract_pressure(OUTCAR_path) == -19.74
     assert extract_energy(OSZICAR_path) == -101.28406
 
