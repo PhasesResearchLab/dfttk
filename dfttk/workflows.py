@@ -12,6 +12,7 @@ from custodian.custodian import Custodian
 from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
+from pymatgen.io.vasp.outputs import Chgcar
 
 
 def extract_volume(path):
@@ -590,11 +591,12 @@ def ev_curve_series(
 
 def charge_density_difference(path, vasp_cmd, handlers, backup=False):            
     """
-    Runs a charge density difference calculation for a configuration in a given path.
+    Runs a charge density difference calculation for a configuration in a subdirectory of the given path.
+    called charge_density_difference. The charge density difference is calculated as the difference between
+    The charge density of the final electronic step and the charge density of a single step.
 
     Args:
-        path (str): The path where the calculation will be run, and contains the INCAR, POSCAR
-        KPOINTS, and POTCAR.
+        path (str): The path that contains the INCAR, POSCAR KPOINTS, and POTCAR.
         vasp_cmd (str): The command to run VASP.
         handlers (list): A list of error handlers that will be used during the calculation.
         Refer to custodian.vasp.handlers
@@ -665,8 +667,14 @@ def charge_density_difference(path, vasp_cmd, handlers, backup=False):
     c = Custodian(handlers, jobs, max_errors=3)
     c.run()
     
+    final = Chgcar.from_file('CHGCAR.charge_density')
+    reference = Chgcar.from_file('CHGCAR.reference')
+    difference = final - reference
+    difference.write_file('CHGCAR.difference')
+    
     os.chdir(original_dir)
-    return None
+
+    return difference
     
 
 
