@@ -1508,7 +1508,8 @@ def plot_energy_difference(
     convert_to_mev=False,
     title=None,
     marker_alpha=1,
-    cmap='plotly'):
+    cmap='plotly',
+    marker_size=10):
     """
     Takes a dataframe and plots the energy difference from a 
     reference configuration within the dataframe vs volume.
@@ -1544,8 +1545,10 @@ def plot_energy_difference(
                   eos_fitting=None,
                   per_atom=per_atom,
                   show_fig=False,
+                  title=title,
                   cmap=cmap,
-                  marker_alpha=marker_alpha)
+                  marker_alpha=marker_alpha,
+                  marker_size=marker_size)
     if convert_to_mev and not per_atom:
         fig.update_layout(yaxis_title=dict(text=r"$\Delta \text{E (meV)}$", font=dict(color='rgb(0,0,0)')))
     elif not convert_to_mev and not per_atom:
