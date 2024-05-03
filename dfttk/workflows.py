@@ -588,27 +588,25 @@ def ev_curve_series(
         if os.path.exists(file_path):
             os.remove(file_path)
 
-def run_charge_density_difference(path, vasp_cmd, handlers, backup=False):
-    
+def charge_density_difference(path, vasp_cmd, handlers, backup=False):            
+    """
+    Runs a charge density difference calculation for a configuration in a given path.
+
+    Args:
+        path (str): The path where the calculation will be run, and contains the INCAR, POSCAR
+        KPOINTS, and POTCAR.
+        vasp_cmd (str): The command to run VASP.
+        handlers (list): A list of error handlers that will be used during the calculation.
+        Refer to custodian.vasp.handlers
+        backup (bool, optional):  Whether to backup the initial input files. If True, the INCAR,
+        KPOINTS, POSCAR and POTCAR will be copied with a “.orig” appended. Defaults to True.
+
+    Returns:
+        None
+    """    
     original_dir = os.getcwd()
     os.chdir(path)
-    
-    path_charge_density = os.path.join(path,"charge_density_difference/charge_density")
-    path_reference = os.path.join(path,"charge_density_difference/charge_density_reference")
-    os.makedirs(path_charge_density)
-    os.makedirs(path_reference)
-    
-    shutil.copy('INCAR', os.join(path_charge_density, 'INCAR'))
-    shutil.copy('KPOINTS', os.join(path_charge_density, 'KPOINTS'))
-    shutil.copy('POSCAR', os.join(path_charge_density, 'POSCAR'))
-    shutil.copy('POTCAR', os.join(path_charge_density, 'POTCAR'))
-    
-    shutil.copy('INCAR', os.join(path_reference, 'INCAR'))
-    shutil.copy('KPOINTS', os.join(path_reference, 'KPOINTS'))
-    shutil.copy('POSCAR', os.join(path_reference, 'POSCAR'))
-    shutil.copy('POTCAR', os.join(path_reference, 'POTCAR'))
-                
-    
+
     reference_job = VaspJob(
         vasp_cmd=vasp_cmd,
         final=True,
@@ -636,7 +634,7 @@ def run_charge_density_difference(path, vasp_cmd, handlers, backup=False):
     charge_density_job = VaspJob(
         vasp_cmd=vasp_cmd,
         final=True,
-        suffix=".reference",
+        suffix=".charge_density",
         backup=backup,
         settings_override=[
         {
