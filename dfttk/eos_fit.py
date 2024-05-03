@@ -1202,11 +1202,24 @@ def plot_mv(df, show_fig=True):
     return fig
 
 
-def assign_colors_to_configs(df, alpha=1):
-    
+def assign_colors_to_configs(df, alpha=1, cmap='plotly'):
     unique_configs = df["config"].unique()
-    colors = get_colors(len(unique_configs))
-    colors = [f'rgba({color[0]}, {color[1]}, {color[2]}, {alpha})' for color in colors]
+
+    
+    if cmap == 'plotly':
+        colors = px.colors.qualitative.Plotly
+        colors = ['#636EFA', '#EF553B', '#00CC96',
+                  '#AB63FA', '#FFA15A', '#19D3F3',
+                  '#FF6692', '#B6E880', '#FF97FF',
+                  '#FECB52']
+        colors = [f'rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {alpha})' for color in colors]
+        
+    elif cmap == 'distinctipy':
+        colors = get_colors(len(unique_configs))
+        colors = [f'rgba({color[0]}, {color[1]}, {color[2]}, {alpha})' for color in colors]
+    else:
+        print("cmap must be 'plotly' or 'distinctipy'")
+
     config_colors = {config: colors[i % len(colors)] for i, config in enumerate(unique_configs)}
     return config_colors
 
@@ -1235,6 +1248,7 @@ def plot_ev(
     show_fig=True,
     left_col="volume",
     right_col="energy",
+    cmap='plotly',
     marker_alpha=1
 ):
     # determine the type of data and how to handle it.
@@ -1258,7 +1272,7 @@ def plot_ev(
         eos_df = fit_to_all_eos(df)
 
     # assign colors and symbols
-    config_colors = assign_colors_to_configs(df, alpha=marker_alpha)
+    config_colors = assign_colors_to_configs(df, alpha=marker_alpha, cmap=cmap)
     config_symbols = assign_marker_symbols_to_configs(df)
         
     # plot the data
@@ -1492,7 +1506,8 @@ def plot_energy_difference(
     show_fig=True,
     convert_to_mev=False,
     title=None,
-    marker_alpha=1):
+    marker_alpha=1,
+    cmap='plotly'):
     """
     Takes a dataframe and plots the energy difference from a 
     reference configuration within the dataframe vs volume.
@@ -1528,6 +1543,7 @@ def plot_energy_difference(
                   eos_fitting=None,
                   per_atom=per_atom,
                   show_fig=False,
+                  cmap=cmap,
                   marker_alpha=marker_alpha)
     if convert_to_mev and not per_atom:
         fig.update_layout(yaxis_title=dict(text=r"$\Delta \text{E (meV)}$", font=dict(color='rgb(0,0,0)')))
