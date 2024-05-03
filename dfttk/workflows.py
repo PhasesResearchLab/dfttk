@@ -588,42 +588,77 @@ def ev_curve_series(
         if os.path.exists(file_path):
             os.remove(file_path)
 
-def charge_density_reference(path, vasmp_cmd, handlers, backup=False):
+def run_charge_density_reference(path, vasmp_cmd, handlers, backup=False):
+    original_dir = os.getcwd()
+    os.chdir(path)
     
-        original_dir = os.getcwd()
-        os.chdir(path)
-        
-        reference_job = VaspJob(
-            vasp_cmd=vasp_cmd,
-            final=True,
-            suffix=".reference",
-            backup=backup,
-            settings_override=[
-            {
-                "dict": "INCAR",
-                "action": {
-                    "_set": {
-                        "EDIFF": "1E-6",
-                        "IBRION": -1,
-                        "NSW": 1,
-                        "ISIF": 2,
-                        "NELM": 1,
-                        "ISMEAR": -5,
-                        "SIGMA": 0.05,
-                        "LCHARG": True
-                    }
-                },
+    reference_job = VaspJob(
+        vasp_cmd=vasp_cmd,
+        final=True,
+        suffix=".reference",
+        backup=backup,
+        settings_override=[
+        {
+            "dict": "INCAR",
+            "action": {
+                "_set": {
+                    "EDIFF": "1E-6",
+                    "IBRION": -1,
+                    "NSW": 1,
+                    "ISIF": 2,
+                    "NELM": 1,
+                    "ISMEAR": -5,
+                    "SIGMA": 0.05,
+                    "LCHARG": True
+                }
             },
-            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
+        },
         ],
-        )
-    
-        job = [reference_job]
-        c = Custodian(handlers, job, max_errors=3)
-        c.run()
-        
-        os.chdir(original_dir)
+    )
 
+    job = [reference_job]
+    c = Custodian(handlers, job, max_errors=3)
+    c.run()
+    
+    os.chdir(original_dir)
+    return None
+        
+def run_charge_density_reference(path, vasp_cmd, handlers, backup=False):
+
+    original_dir = os.getcwd()
+    os.chdir(path)
+    
+    reference_job = VaspJob(
+        vasp_cmd=vasp_cmd,
+        final=True,
+        suffix=".reference",
+        backup=backup,
+        settings_override=[
+        {
+            "dict": "INCAR",
+            "action": {
+                "_set": {
+                    "EDIFF": "1E-6",
+                    "IBRION": -1,
+                    "NSW": 1,
+                    "ISIF": 2,
+                    "NELM": 1,
+                    "ISMEAR": -5,
+                    "SIGMA": 0.05,
+                    "LCHARG": True
+                }
+            },
+        },
+        ],
+    )
+
+    job = [reference_job]
+    c = Custodian(handlers, job, max_errors=3)
+    c.run()
+    
+    os.chdir(original_dir)
+    return None
+        
 def charge_density_difference(path, vasp_cmd, handlers, backup=False):
 
     original_dir = os.getcwd()
@@ -837,7 +872,7 @@ def kpoints_conv_test(
         if os.path.isfile(f"PROCAR.{kppa}"):
             os.remove(f"PROCAR.{kppa}")
     os.chdir(original_dir)
-    return
+    return None
 
 
 def calculate_kpoint_conv(path, kppa_list, plot=True):
