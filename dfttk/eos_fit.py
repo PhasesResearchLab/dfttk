@@ -1249,7 +1249,8 @@ def plot_ev(
     left_col="volume",
     right_col="energy",
     cmap='plotly',
-    marker_alpha=1
+    marker_alpha=1,
+    marker_size=10
 ):
     # determine the type of data and how to handle it.
     if isinstance(data, pd.DataFrame):
@@ -1293,7 +1294,7 @@ def plot_ev(
                 y=y,
                 mode="markers",
                 marker=dict(
-                    size=10,
+                    size=marker_size,
                     color=config_colors[config],
                     symbol=config_symbols[config]
                 ),
@@ -1361,7 +1362,7 @@ def plot_ev(
                                 y=[min_energy],
                                 mode="markers",
                                 name=f"{eos_fitting} min energy",
-                                marker=dict(color="black", size=10, symbol="cross"),
+                                marker=dict(color="black", size=marker_size, symbol="cross"),
                                 legendgroup="minimum",
                                 showlegend=False
                             )
@@ -1379,7 +1380,7 @@ def plot_ev(
                                 ],
                                 mode="markers",
                                 name=f"{eos_fitting} min energy",
-                                marker=dict(color="black", size=10, symbol="cross"),
+                                marker=dict(color="black", size=marker_size, symbol="cross"),
                                 legendgroup="minimum",
                                 showlegend=False
                             )
@@ -1436,7 +1437,7 @@ def plot_ev(
                                     y=[min_energy],
                                     mode="markers",
                                     name=f"{eos_name} min energy",
-                                    marker=dict(color="black", size=8, symbol="cross"),
+                                    marker=dict(color="black", size=marker_size, symbol="cross"),
                                     legendgroup="minimum",
                                     showlegend=False
                             )
@@ -1454,7 +1455,7 @@ def plot_ev(
                                     ],
                                     mode="markers",
                                     name=f"{eos_name} min energy",
-                                    marker=dict(color="black", size=8, symbol="cross"),
+                                    marker=dict(color="black", size=marker_size, symbol="cross"),
                                     legendgroup="minimum",
                                     showlegend=False
                             )
