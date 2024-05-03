@@ -588,9 +588,26 @@ def ev_curve_series(
         if os.path.exists(file_path):
             os.remove(file_path)
 
-def run_charge_density_reference(path, vasmp_cmd, handlers, backup=False):
+def run_charge_density_difference(path, vasp_cmd, handlers, backup=False):
+    
     original_dir = os.getcwd()
     os.chdir(path)
+    
+    path_charge_density = os.path.join(path,"charge_density_difference/charge_density")
+    path_reference = os.path.join(path,"charge_density_difference/charge_density_reference")
+    os.makedirs(path_charge_density)
+    os.makedirs(path_reference)
+    
+    shutil.copy('INCAR', os.join(path_charge_density, 'INCAR'))
+    shutil.copy('KPOINTS', os.join(path_charge_density, 'KPOINTS'))
+    shutil.copy('POSCAR', os.join(path_charge_density, 'POSCAR'))
+    shutil.copy('POTCAR', os.join(path_charge_density, 'POTCAR'))
+    
+    shutil.copy('INCAR', os.join(path_reference, 'INCAR'))
+    shutil.copy('KPOINTS', os.join(path_reference, 'KPOINTS'))
+    shutil.copy('POSCAR', os.join(path_reference, 'POSCAR'))
+    shutil.copy('POTCAR', os.join(path_reference, 'POTCAR'))
+                
     
     reference_job = VaspJob(
         vasp_cmd=vasp_cmd,
@@ -615,56 +632,8 @@ def run_charge_density_reference(path, vasmp_cmd, handlers, backup=False):
         },
         ],
     )
-
-    job = [reference_job]
-    c = Custodian(handlers, job, max_errors=3)
-    c.run()
     
-    os.chdir(original_dir)
-    return None
-        
-def run_charge_density_reference(path, vasp_cmd, handlers, backup=False):
-
-    original_dir = os.getcwd()
-    os.chdir(path)
-    
-    reference_job = VaspJob(
-        vasp_cmd=vasp_cmd,
-        final=True,
-        suffix=".reference",
-        backup=backup,
-        settings_override=[
-        {
-            "dict": "INCAR",
-            "action": {
-                "_set": {
-                    "EDIFF": "1E-6",
-                    "IBRION": -1,
-                    "NSW": 1,
-                    "ISIF": 2,
-                    "NELM": 1,
-                    "ISMEAR": -5,
-                    "SIGMA": 0.05,
-                    "LCHARG": True
-                }
-            },
-        },
-        ],
-    )
-
-    job = [reference_job]
-    c = Custodian(handlers, job, max_errors=3)
-    c.run()
-    
-    os.chdir(original_dir)
-    return None
-        
-def run_charge_density(path, vasp_cmd, handlers, backup=False):
-
-    original_dir = os.getcwd()
-    os.chdir(path)
-    
-    reference_job = VaspJob(
+    charge_density_job = VaspJob(
         vasp_cmd=vasp_cmd,
         final=True,
         suffix=".reference",
@@ -687,14 +656,14 @@ def run_charge_density(path, vasp_cmd, handlers, backup=False):
         },
         ],
     )
-
-    job = [reference_job]
+    
+    jobs = [reference_job, charge_density_job]
     c = Custodian(handlers, job, max_errors=3)
     c.run()
     
     os.chdir(original_dir)
     return None
-
+    
 
 
 def custodian_errors_location(path):
