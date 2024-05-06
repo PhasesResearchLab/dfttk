@@ -12,6 +12,7 @@ from custodian.custodian import Custodian
 from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
+from pymatgen.io.vasp.outputs import Chgcar
 
 
 def extract_volume(path):
@@ -588,6 +589,95 @@ def ev_curve_series(
         if os.path.exists(file_path):
             os.remove(file_path)
 
+def charge_density_difference(path, vasp_cmd, handlers, backup=False):            
+    """
+    Runs a charge density difference calculation for a configuration in a subdirectory of the given path.
+    called charge_density_difference. The charge density difference is calculated as the difference between
+    The charge density of the final electronic step and the charge density of a single step.
+
+    Args:
+        path (str): The path that contains the INCAR, POSCAR KPOINTS, and POTCAR.
+        vasp_cmd (str): The command to run VASP.
+        handlers (list): A list of error handlers that will be used during the calculation.
+        Refer to custodian.vasp.handlers
+        backup (bool, optional):  Whether to backup the initial input files. If True, the INCAR,
+        KPOINTS, POSCAR and POTCAR will be copied with a “.orig” appended. Defaults to True.
+
+    Returns:
+        pymatgen.io.vasp.outputs.Chgcar: The charge density difference between the final electronic step and
+        a single step.
+    """    
+    original_dir = os.getcwd()
+    os.chdir(path)
+    os.mkdir('charge_density_difference')
+    shutil.copy2('POSCAR', 'charge_density_difference/POSCAR')
+    shutil.copy2('POTCAR', 'charge_density_difference/POTCAR')
+    shutil.copy2('INCAR', 'charge_density_difference/INCAR')
+    shutil.copy2('KPOINTS', 'charge_density_difference/KPOINTS')
+    os.chdir('charge_density_difference')
+
+    reference_job = VaspJob(
+        vasp_cmd=vasp_cmd,
+        final=False,
+        suffix=".reference",
+        backup=backup,
+        settings_override=[
+        {
+            "dict": "INCAR",
+            "action": {
+                "_set": {
+                    "EDIFF": "1E-6",
+                    "IBRION": -1,
+                    "NSW": 1,
+                    "ISIF": 2,
+                    "NELM": 1,
+                    "ISMEAR": -5,
+                    "SIGMA": 0.05,
+                    "LCHARG": True
+                }
+            },
+        },
+        ],
+    )
+    
+    charge_density_job = VaspJob(
+        vasp_cmd=vasp_cmd,
+        final=True,
+        suffix=".charge_density",
+        backup=backup,
+        settings_override=[
+        {
+            "dict": "INCAR",
+            "action": {
+                "_set": {
+                    "EDIFF": "1E-6",
+                    "IBRION": -1,
+                    "NSW": 1,
+                    "ISIF": 2,
+                    "NELM": 100,
+                    "ISMEAR": -5,
+                    "SIGMA": 0.05,
+                    "LCHARG": True
+                }
+            },
+        },
+        ],
+    )
+    
+    jobs = [reference_job, charge_density_job]
+    c = Custodian(handlers, jobs, max_errors=3)
+    c.run()
+    
+    final = Chgcar.from_file('CHGCAR.charge_density')
+    reference = Chgcar.from_file('CHGCAR.reference')
+    difference = final - reference
+    difference.write_file('CHGCAR.difference')
+    
+    os.chdir(original_dir)
+
+    return difference
+    
+
 
 def custodian_errors_location(path):
     vol_folders = [d for d in os.listdir(path) if d.startswith('vol')]
@@ -774,7 +864,7 @@ def kpoints_conv_test(
         if os.path.isfile(f"PROCAR.{kppa}"):
             os.remove(f"PROCAR.{kppa}")
     os.chdir(original_dir)
-    return
+    return None
 
 
 def calculate_kpoint_conv(path, kppa_list, plot=True):
