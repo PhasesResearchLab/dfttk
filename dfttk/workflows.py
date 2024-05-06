@@ -201,6 +201,7 @@ def extract_tot_mag_data(ion_list, outcar_path="OUTCAR"):
     return tot_data
 
   
+#TODO:change path to a list of paths so that it can read multiple config folders automatically?
 def extract_configuration_data(
     path,
     ion_list=[1],
@@ -209,12 +210,29 @@ def extract_configuration_data(
     contcar_name="CONTCAR",
     collect_mag_data="False",
 ):
-    row_list = []
+    """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations 
+    run by ev_curve_series and returns a pandas DataFrame.
+
+    Args:
+        path (str): the path containing a config_* folder which contain vol_* folders
+        ion_list (list, optional): the list of ions for magnetization data. Defaults to [1].
+        outcar_name (str, optional): name of the OUTCAR file. Defaults to "OUTCAR".
+        oszicar_name (str, optional): name of the OSZICAR file. Defaults to "OSZICAR".
+        contcar_name (str, optional): name of the CONTCAR file. Defaults to "CONTCAR".
+        collect_mag_data (str, optional): if True, collect the magnetization data using extract_tot_mag_data.
+        Defaults to "False".
+
+    Returns:
+        pandas DataFrame: a pandas DataFrame containing the volume, configuration, energy, number of atoms, and 
+        magnetization data (if specified)
+    """
+    
     # Find the index where "config_" starts and add its length
     start = path.find("config_") + len("config_")
     config = path[start:]  # get the string following "config_"
+    
+    row_list = []
     for vol_dir in glob.glob(os.path.join(path, "vol_*")):
-
         outcar_path = os.path.join(vol_dir, outcar_name)
         if not os.path.isfile(outcar_path):
             print(f"Warning: File {outcar_path} does not exist. Skipping.")
@@ -235,7 +253,7 @@ def extract_configuration_data(
         vol = extract_volume(contcar_path)
         energy = extract_energy(oszicar_path)
         if collect_mag_data == True:
-            mag_data = extract_simple_mag_data(ion_list, outcar_path)
+            mag_data = extract_tot_mag_data(ion_list, outcar_path)
             row = {
                 "volume": vol,
                 "config": config,
