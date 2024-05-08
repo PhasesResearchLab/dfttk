@@ -1566,7 +1566,7 @@ def plot_energy_difference(
     # Plot a horizontal line a y=0
     fig.add_shape(
     type="line",
-    xref="x",   x
+    xref="x",
     yref="y",  
     x0=min(fig.data[0].x*0.95),  
     x1=max(fig.data[0].x*1.05),  
