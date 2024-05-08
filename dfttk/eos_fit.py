@@ -1296,8 +1296,7 @@ def plot_ev(
                 x = x / config_df["number_of_atoms"]
                 y = y / config_df["number_of_atoms"]
         else:
-            print("per_atom must be True or False")
-            sys.exit(1)
+            raise ValueError("per_atom must be True or False")
         
         fig.add_trace(
             go.Scatter(
@@ -1377,8 +1376,7 @@ def plot_ev(
                     pass
                 
                 else:
-                    print("highlight_minimum must be True or False")
-                    sys.exit(1)
+                    raise ValueError("highlight_minimum must be True or False")
             
             # TODO: Do we really need all?
             elif eos_fitting == "all":
