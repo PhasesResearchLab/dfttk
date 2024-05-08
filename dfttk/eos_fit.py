@@ -16,6 +16,7 @@ Equations of State:
 """
 
 import os
+import sys
 import math
 import numpy as np
 import pandas as pd
@@ -27,6 +28,7 @@ from scipy.optimize import fsolve
 from scipy.optimize import leastsq
 
 
+#TODO: remove index from the results
 def mBM4(volume, energy):
     eos_index = 1
     volume_range = np.linspace(min(volume), max(volume), 1000)
@@ -894,6 +896,7 @@ def morse(volume, energy):
     return results, volume_range, energy_eos, pressure_eos
 
 
+#TODO: tidy up the dataframe formatting
 def fit_to_all_eos(df):
     eos_df = pd.DataFrame(
         columns=[
@@ -914,13 +917,13 @@ def fit_to_all_eos(df):
         energies = config_df["energy"].values
         number_of_atoms = config_df["number_of_atoms"].values
 
-        for eos_func in eos_functions:
-            results, volume_range, energy_eos, pressure_eos = eos_func(
+        for eos_function in eos_functions:
+            results, volume_range, energy_eos, pressure_eos = eos_function(
                 volumes, energies
             )
             energy_eos = energy_eos[1:]
             pressure_eos = pressure_eos[1:]
-            eos_name = eos_func.__name__
+            eos_name = eos_function.__name__
             eos_df = pd.concat(
                 [
                     eos_df,
@@ -952,27 +955,26 @@ def fit_to_all_eos(df):
     return eos_df
 
 
-"""
-The input_files should be a list of strings containing the file names of the input files
-
-the name of each input files should end in'_x' where x is the config_name ex:
-    str_0, str_1, str_2, ...
-    volume_energy_0, volume_energy_1, volume_energy_2, ...
-
-The contents of the input files should be organized as two columns separated by a space
-and not contain any headers ex:
-    1.0 2.0
-    2.0 3.0
-    3.0 4.0
-    ...
-the data reader is np.loadtxt()
-
-left_col is the type of data in the left column ex: 'volume'
-right_col is the type of data in the right column ex: 'energy'
-"""
-
-
+#TODO: review
 def convert_input_files_to_df(input_files, left_col, right_col):
+    """
+    The input_files should be a list of strings containing the file names of the input files
+
+    the name of each input files should end in'_x' where x is the config_name ex:
+        str_0, str_1, str_2, ...
+        volume_energy_0, volume_energy_1, volume_energy_2, ...
+
+    The contents of the input files should be organized as two columns separated by a space
+    and not contain any headers ex:
+        1.0 2.0
+        2.0 3.0
+        3.0 4.0
+        ...
+    the data reader is np.loadtxt()
+
+    left_col is the type of data in the left column ex: 'volume'
+    right_col is the type of data in the right column ex: 'energy'
+    """
     df = pd.DataFrame(columns=["config", left_col, right_col])
     for input_file in input_files:
         config = os.path.splitext(os.path.basename(input_file))[0]
@@ -990,18 +992,17 @@ def convert_input_files_to_df(input_files, left_col, right_col):
     return df
 
 
-"""
-the selection_dict should be a dictionary with the following format:
+# TODO: review
+def select_data(df, selection_dict):
+    """
+    the selection_dict should be a dictionary with the following format:
     selection_dict = {10: [0,1,2,3],
                         11: [0,1,2,3],
                         12: [0,1,2,3],
                         ...}
-where the keys are the config # and the values are the volumes 0=lowest
-volume, 1=second lowest volume, etc.
-"""
-
-
-def select_data(df, selection_dict):
+    where the keys are the config # and the values are the volumes 0=lowest
+    volume, 1=second lowest volume, etc.
+    """
     # first rank the volumes from lowest to highest
     df["volume_rank"] = df.groupby("config")["volume"].rank(method="dense").astype(int)
     print(df)
@@ -1018,22 +1019,19 @@ def select_data(df, selection_dict):
     return selected_data
 
 
-"""
-data may be a single pandas data frame or a list of pandas data frames
-data may also be a list of input_file names as strings ex:
-    ['str_0', 'str_1', 'str_2', ...]
-
-Not sure if a list of dataframe will actually work. the function simply
-concats them all together
-"""
-
-"""
-df is a data frame with columns ['config', '# of ion', 'volume', 'tot']
-breaks if missing these columns
-"""
-
-
 def plot_mv(df, show_fig=True):
+    """
+    data may be a single pandas data frame or a list of pandas data frames
+    data may also be a list of input_file names as strings ex:
+        ['str_0', 'str_1', 'str_2', ...]
+
+    Not sure if a list of dataframe will actually work. the function simply
+    concats them all together # TODO: test this
+    
+    df is a data frame with columns ['config', '# of ion', 'volume', 'tot']
+    breaks if missing these columns
+    """
+    
     fig = px.line(
         df,
         x="volume",
@@ -1205,7 +1203,6 @@ def plot_mv(df, show_fig=True):
 def assign_colors_to_configs(df, alpha=1, cmap='plotly'):
     unique_configs = df["config"].unique()
 
-    
     if cmap == 'plotly':
         colors = px.colors.qualitative.Plotly
         colors = ['#636EFA', '#EF553B', '#00CC96',
@@ -1239,6 +1236,7 @@ def assign_marker_symbols_to_configs(df):
     config_symbols = {config: symbols[i % len(symbols)] for i, config in enumerate(unique_configs)}
     return config_symbols
     
+    
 def plot_ev(
     data,
     eos_fitting="BM4",
@@ -1252,42 +1250,54 @@ def plot_ev(
     marker_alpha=1,
     marker_size=10
 ):
-    # determine the type of data and how to handle it.
+    
+    # Check if data is a pandas DataFrame or a list of pandas DataFrames
     if isinstance(data, pd.DataFrame):
         df = data
+    
+    # Check if each element of the list is the same type as the zeroth element    
     elif isinstance(data, list) and all(
-        type(elem) == type(data[0]) for elem in data
-    ):  # check if each elem of the list is the same type as the zeroth element
+        type(element) == type(data[0]) for element in data
+    ):  
         if isinstance(data[0], pd.DataFrame):
             df = pd.concat(data, ignore_index=True)
         elif isinstance(data[0], str):
             df = convert_input_files_to_df(data, left_col, right_col)
-            print(df)
+
     else:
         raise ValueError(
-            "data must be a pandas DataFrame or a list of pandas DataFrames or a list of input_file names as strings"
+            "data must be a pandas DataFrame, list of pandas DataFrames, or a list of input_file names as strings"
         )
 
-    # create a data frame with the eos fits for each config
+    # Create a data frame with the eos fits for each config
     if eos_fitting != None:
         eos_df = fit_to_all_eos(df)
 
-    # assign colors and symbols
+    # Assign colors and symbols
     config_colors = assign_colors_to_configs(df, alpha=marker_alpha, cmap=cmap)
     config_symbols = assign_marker_symbols_to_configs(df)
         
-    # plot the data
+    # Plot the data
     fig = go.Figure()
+    fig.update_layout(
+        font=dict(
+            family="Devaju Sans", 
+        )
+    )
+    
     for config in df["config"].unique():
         config_df = df[df["config"] == config]
-        if per_atom == False:
+        
+        if isinstance(per_atom, bool):
             x = config_df["volume"]
             y = config_df["energy"]
-        elif per_atom == True:
-            x = config_df["volume"] / config_df["number_of_atoms"]
-            y = config_df["energy"] / config_df["number_of_atoms"]
+
+            if per_atom:
+                x = x / config_df["number_of_atoms"]
+                y = y / config_df["number_of_atoms"]
         else:
-            print("per_atom must be True or False")
+            raise ValueError("per_atom must be True or False")
+        
         fig.add_trace(
             go.Scatter(
                 x=x,
@@ -1302,98 +1312,77 @@ def plot_ev(
                 name=f"Config {config}",
             )
         )
-    if per_atom == False:
-        fig.update_layout(
-            xaxis_title=dict(text=r"$\text{Volume } (\text{Å}^3)$", font=dict(color= 'rgb(0,0,0)')),
-            yaxis_title=dict(text=r"$\text{Energy (eV)}$", font=dict(color= 'rgb(0,0,0)')),
-            template="plotly_white",
-        )
-    elif per_atom == True:
-        fig.update_layout(
-            xaxis_title=dict(text=r"$\text{Volume } (\text{Å}^3 \text{/atom)}$", font=dict(color= 'rgb(0,0,0)')),
-            yaxis_title=dict(text=r"$\text{Energy (eV/atom)}$", font=dict(color= 'rgb(0,0,0)')),
-            template="plotly_white",
-        )
-    else:
-        print("per_atom must be True or False")
 
-    # loop over configs in the eos data frame and plot the eos fits
+    if isinstance(per_atom, bool):
+        atom_suffix = "/atom" if per_atom else ""
+        fig.update_xaxes(title=dict(text=f"Volume (Å<sup>3</sup>{atom_suffix})", font=dict(size=22, color='rgb(0,0,0)')))
+        fig.update_yaxes(title=dict(text=f"Energy (eV{atom_suffix})", font=dict(size=22, color='rgb(0,0,0)')))
+    
+    # Loop over configs in the eos data frame and plot the eos fits
     if eos_fitting != None:
         for config in eos_df["config"].unique():
             eos_config_df = eos_df[eos_df["config"] == config]
             if eos_fitting in eos_config_df["eos_name"].unique():
                 eos_name_df = eos_config_df[eos_config_df["eos_name"] == eos_fitting]
-                if per_atom == False:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=eos_name_df["volumes"].values[0],
-                            y=eos_name_df["energies"].values[0],
-                            mode="lines",
-                            name=f"{eos_fitting} fit",
-                            line=dict(width=1.75, color= config_colors[config]),
-                            legendgroup="data",
-                            showlegend=False
-                        )
+                
+                x = eos_name_df["volumes"].values[0]
+                y = eos_name_df["energies"].values[0]
+
+                if per_atom:
+                    num_atoms = eos_name_df["number_of_atoms"].values[0][0]
+                    x = x / num_atoms
+                    y = y / num_atoms
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=x,
+                        y=y,
+                        mode="lines",
+                        name=f"{eos_fitting} fit",
+                        line=dict(width=1.75, color=config_colors[config]),
+                        legendgroup="data",
+                        showlegend=False
                     )
-                elif per_atom == True:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=eos_name_df["volumes"].values[0]
-                            / eos_name_df["number_of_atoms"].values[0][0],
-                            y=eos_name_df["energies"].values[0]
-                            / eos_name_df["number_of_atoms"].values[0][0],
-                            mode="lines",
-                            name=f"{eos_fitting} fit",
-                            line=dict(width=1.75, color= config_colors[config]),
-                            legendgroup="data",
-                            showlegend=False
-                        )
-                    )
-                # plot the minimum energy data point for each config from the fitting equation
+                )
+                
+                # Plot the equilibrium energy and volume for each config
                 if highlight_minimum == True:
                     min_energy = min(eos_name_df["energies"].values[0])
                     volume_at_min_energy = eos_name_df["volumes"].values[0][
                         np.where(eos_name_df["energies"].values[0] == min_energy)[0][0]
                     ]
-                    if per_atom == False:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=[volume_at_min_energy],
-                                y=[min_energy],
-                                mode="markers",
-                                name=f"{eos_fitting} min energy",
-                                marker=dict(color="black", size=marker_size, symbol="cross"),
-                                legendgroup="minimum",
-                                showlegend=False
-                            )
+                    
+                    x = volume_at_min_energy
+                    y = min_energy
+
+                    if per_atom:
+                        num_atoms = eos_name_df["number_of_atoms"].values[0][0]
+                        x = x / num_atoms
+                        y = y / num_atoms
+
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[x],
+                            y=[y],
+                            mode="markers",
+                            name=f"{eos_fitting} min energy",
+                            marker=dict(color="black", size=marker_size, symbol="cross"),
+                            legendgroup="minimum",
+                            showlegend=False
                         )
-                    elif per_atom == True:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=[
-                                    volume_at_min_energy
-                                    / eos_name_df["number_of_atoms"].values[0][0]
-                                ],
-                                y=[
-                                    min_energy
-                                    / eos_name_df["number_of_atoms"].values[0][0]
-                                ],
-                                mode="markers",
-                                name=f"{eos_fitting} min energy",
-                                marker=dict(color="black", size=marker_size, symbol="cross"),
-                                legendgroup="minimum",
-                                showlegend=False
-                            )
-                        )
-                    else:
-                        print("per_atom must be True or False")
+                    )
+                        
                 elif highlight_minimum == False:
                     pass
+                
                 else:
-                    print("highlight_minimum must be True or False")
+                    raise ValueError("highlight_minimum must be True or False")
+            
+            # TODO: Do we really need all?
             elif eos_fitting == "all":
                 for eos_name in eos_config_df["eos_name"].unique():
                     eos_name_df = eos_config_df[eos_config_df["eos_name"] == eos_name]
+                    
                     if per_atom == False:
                         fig.add_trace(
                             go.Scatter(
@@ -1406,6 +1395,7 @@ def plot_ev(
                                 showlegend=False
                             )
                         )
+                        
                     elif per_atom == True:
                         fig.add_trace(
                             go.Scatter(
@@ -1420,9 +1410,8 @@ def plot_ev(
                                 showlegend=False
                             )
                         )
-                    else:
-                        print("per_atom must be True or False")
-                    # plot the minimum energy data point for each config from the fitting equation
+
+                    # Plot the minimum energy data point for each config from the fitting equation
                     if highlight_minimum == True:
                         min_energy = min(eos_name_df["energies"].values[0])
                         volume_at_min_energy = eos_name_df["volumes"].values[0][
@@ -1460,45 +1449,50 @@ def plot_ev(
                                     showlegend=False
                             )
                             )
-                        else:
-                            print("per_atom must be True or False")
+
             elif eos_fitting == None:
                 pass
+            
             else:
                 print(
                     f"Warning: eos_fitting '{eos_fitting}' not found in eos_df. Skipping."
                 )
-    fig.update_layout(plot_bgcolor='white',
-                            width=660,
-                            height=600,
-                            margin=dict(l=80, r=30, t=80, b=80)
-                            )
-    fig.update_yaxes(showline=True,  # add line at x=0
-                            linecolor='black',
-                            linewidth=2.4,
-                            ticks='inside',
-                            mirror='allticks',  # add ticks to top/right axes
-                            tickwidth=2.4,
-                            tickcolor='black',
-                            showgrid=False,
-                            tickfont=dict(color='rgb(0,0,0)', size=16)
-                            )
-    fig.update_xaxes(showline=True,
-                            showticklabels=True,
-                            linecolor='black',
-                            linewidth=2.4,
-                            ticks='inside',
-                            mirror='allticks',
-                            tickwidth=2.4,
-                            tickcolor='black',
-                            showgrid=False,
-                            tickfont=dict(color='rgb(0,0,0)', size=16)
-                            )
+                sys.exit(1)
+    
+    axis_params = dict(
+        showline=True,
+        linecolor='black',
+        linewidth=1,
+        ticks='outside',
+        mirror='allticks',
+        tickwidth=1,
+        tickcolor='black',
+        showgrid=False,
+        tickfont=dict(color='rgb(0,0,0)', size=20)
+    )
+
+    fig.update_layout(
+        plot_bgcolor='white',
+        width=840,
+        height=600,
+        legend=dict(
+            font=dict(
+                size=20, 
+                color="black"
+            )
+        ),
+        xaxis=axis_params,
+        yaxis=axis_params
+    )
+    
     if title != None:
-        fig.update_layout(title=dict(text=title, font=dict(color='rgb(0,0,0)', size=24)))
+        fig.update_layout(title=dict(text=title, x=0.5, font=dict(color='rgb(0,0,0)', size=30)))
+        
     if show_fig:
         fig.show()
+        
     return fig
+
 
 def plot_energy_difference(
     df,
@@ -1510,12 +1504,14 @@ def plot_energy_difference(
     marker_alpha=1,
     cmap='plotly',
     marker_size=10):
+    
     """
     Takes a dataframe and plots the energy difference from a 
     reference configuration within the dataframe vs volume.
     
     Utilizes plot_ev() for the actual plotting.
     """
+    
     df_list = []
     for config in df['config'].unique():
         df_list.append(df[df['config'] == config].reset_index(drop=True))
@@ -1535,8 +1531,8 @@ def plot_energy_difference(
         print(f"Warning: Missing volumes for configurations: {missing_volumes}")
         
     energy_difference_df = pd.concat(df_list)
-    
-    # convert to meV
+    energy_difference_df = energy_difference_df[energy_difference_df['config'] != reference_config]
+
     if convert_to_mev == True:
         energy_difference_df['energy'] *= 1000
     
@@ -1549,21 +1545,40 @@ def plot_energy_difference(
                   cmap=cmap,
                   marker_alpha=marker_alpha,
                   marker_size=marker_size)
-    if convert_to_mev and not per_atom:
-        fig.update_layout(yaxis_title=dict(text=r"$\Delta \text{E (meV)}$", font=dict(color='rgb(0,0,0)')))
-    elif not convert_to_mev and not per_atom:
-        fig.update_layout(yaxis_title=dict(text=r"$\Delta \text{E (eV)}$", font=dict(color='rgb(0,0,0)')))
-    elif convert_to_mev and per_atom:
-        fig.update_layout(yaxis_title=dict(text=r"$\Delta \text{E (meV/atom)}$", font=dict(color='rgb(0,0,0)')))
-    elif not convert_to_mev and per_atom:
-        fig.update_layout(yaxis_title=dict(text=r"$\Delta \text{E (eV/atom)}$"), font=dict(color='rgb(0,0,0)'))
-        
-    if title != None:
-        fig.update_layout(title=dict(text=title, font=dict(color='rgb(0,0,0)', size=24)))
+    
+    fig.update_layout(
+    font=dict(
+    family="Devaju Sans", 
+    )
+    )
+    
+    unit = "meV" if convert_to_mev else "eV"
+    per_atom_suffix = "/atom" if per_atom else ""
+    title_text = f"ΔEnergy ({unit}{per_atom_suffix})"
 
+    fig.update_yaxes(title=dict(text=title_text, font=dict(size=22, color='rgb(0,0,0)')))
+    
     if show_fig:
         fig.show()
+    
+    # Plot a horizontal line a y=0
+    fig.add_shape(
+    type="line",
+    xref="x",
+    yref="y",  
+    x0=min(fig.data[0].x*0.95),  
+    x1=max(fig.data[0].x*1.05),  
+    y0=0, 
+    y1=0,  
+    line=dict(
+        color="black",
+        width=2,
+        dash="dash",
+    ),
+    )
+    
     return fig
+
 
 def plot_config_energy(
     df, number_of_lowest_configs=5, show_fig=True, xmax=None, ymax=None
