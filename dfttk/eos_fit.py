@@ -1531,7 +1531,6 @@ def plot_energy_difference(
         print(f"Warning: Missing volumes for configurations: {missing_volumes}")
         
     energy_difference_df = pd.concat(df_list)
-    energy_difference_df = energy_difference_df[energy_difference_df['config'] != reference_config]
 
     if convert_to_mev == True:
         energy_difference_df['energy'] *= 1000
