@@ -1500,6 +1500,7 @@ def plot_energy_difference(
     per_atom=False,
     show_fig=True,
     convert_to_mev=False,
+    volume_precision=0.0001,
     title=None,
     marker_alpha=1,
     cmap='plotly',
@@ -1523,7 +1524,7 @@ def plot_energy_difference(
     for df_el in df_list:
         for i, row in df_el.iterrows():
             try:
-                reference_energy = reference_df[reference_df['volume'] == row['volume']]['energy'].values[0]
+                reference_energy = reference_df[np.isclose(reference_df['volume'], row['volume'], atol=volume_precision)]['energy'].values[0]
                 df_el.at[i, 'energy'] = row['energy'] - reference_energy
             except Exception as e:
                 missing_volumes.append((row['config'],row['volume']))
