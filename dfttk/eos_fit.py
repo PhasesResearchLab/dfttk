@@ -3,7 +3,7 @@ This EOS fitting code is based on the following paper:
 Shun-Li Shang et al., Computational Materials Science, 47, 4, (2010).
 https://doi.org/10.1016/j.commatsci.2009.12.006
 
-Equations of State:
+It includes the following equations of state:
 1:  4-parameter (Teter-Shang) mBM4   1
 2:  5-parameter (Teter-Shang) mBM5   2
 3:  4-parameter               BM4    3
@@ -21,16 +21,28 @@ import math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from distinctipy import get_colors
 import plotly.express as px
 import plotly.graph_objects as go
+
+from distinctipy import get_colors
 from scipy.optimize import fsolve
 from scipy.optimize import leastsq
 
 
-#TODO: remove index from the results
+"""The EOS functions mBM4, mBM5, BM4, BM5, Log4, Log5, Mur, Vinet, and Morse are used to fit the energy-volume data 
+and return the EOS parameters. 
+
+    Args:
+        volume (numpy.array): volumes to be fitted
+        energy (numpy.array): energies to be fitted
+
+    Returns:
+        results (numpy.array): EOS parameters
+        volume_range (numpy.array): The range of volumes used for the fitting
+        energy_eos (numpy.array): The fitted energies of the equation of state.
+        pressure_eos (numpy.array): The resulting pressures from the fitted equation of state.
+    """    
 def mBM4(volume, energy):
-    eos_index = 1
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     AA = np.vstack(
@@ -104,8 +116,7 @@ def mBM4(volume, energy):
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
     )
-    results = np.concatenate(([eos_index], eos_parameters, fitting_error * (10**4)))
-    np.set_printoptions(precision=4, suppress=True)
+    eos_parameters = np.concatenate((eos_parameters, fitting_error * (10**4)))
 
     pressure_eos = (
         (4 * e) / (3 * volume_range ** (7 / 3))
@@ -113,21 +124,18 @@ def mBM4(volume, energy):
         + (2 * c) / (3 * volume_range ** (5 / 3))
         + b / (3 * volume_range ** (4 / 3))
     ) * 160.2176621
-    energy_eos = np.concatenate(([eos_index], energy_eos))
-    pressure_eos = np.concatenate(([eos_index], pressure_eos))
 
-    # Used for eos_index = 7 and 8
+    # Used for Murnaghan and Vinet EOS
     xini = [
         eos_parameters[0],
         eos_parameters[1],
         eos_parameters[3] / 160.2176621,
         eos_parameters[4],
     ]
-    return results, volume_range, energy_eos, pressure_eos
+    return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
 def mBM5(volume, energy):
-    eos_index = 2
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     AA = np.vstack(
@@ -205,8 +213,7 @@ def mBM5(volume, energy):
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
     )
-    results = np.concatenate(([eos_index], *eos_parameters, fitting_error * (10**4)))
-    np.set_printoptions(precision=4, suppress=True)
+    eos_parameters = np.concatenate((*eos_parameters, fitting_error * (10**4)))
 
     pressure_eos = (
         (4 * e) / (3 * volume_range ** (7 / 3))
@@ -214,14 +221,11 @@ def mBM5(volume, energy):
         + (2 * c) / (3 * volume_range ** (5 / 3))
         + b / (3 * volume_range ** (4 / 3))
     ) * 160.2176621
-    energy_eos = np.concatenate(([eos_index], energy_eos))
-    pressure_eos = np.concatenate(([eos_index], pressure_eos))
 
-    return results, volume_range, energy_eos, pressure_eos
+    return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
 def BM4(volume, energy):
-    eos_index = 3
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     AA = np.vstack(
@@ -297,9 +301,7 @@ def BM4(volume, energy):
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
     )
-
-    results = np.concatenate(([eos_index], eos_parameters, fitting_error * (10**4)))
-    np.set_printoptions(precision=4, suppress=True)
+    eos_parameters = np.concatenate((eos_parameters, fitting_error * (10**4)))
 
     pressure_eos = (
         (8 * e) / (3 * volume_range ** (11 / 3))
@@ -307,14 +309,11 @@ def BM4(volume, energy):
         + (4 * c) / (3 * volume_range ** (7 / 3))
         + (2 * b) / (3 * volume_range ** (5 / 3))
     ) * 160.2176621
-    energy_eos = np.concatenate(([eos_index], energy_eos))
-    pressure_eos = np.concatenate(([eos_index], pressure_eos))
 
-    return results, volume_range, energy_eos, pressure_eos
+    return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
 def BM5(volume, energy):
-    eos_index = 4
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     AA = np.vstack(
@@ -391,8 +390,7 @@ def BM5(volume, energy):
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
     )
-    results = np.concatenate(([eos_index], *eos_parameters, fitting_error * (10**4)))
-    np.set_printoptions(precision=4, suppress=True)
+    eos_parameters = np.concatenate((*eos_parameters, fitting_error * (10**4)))
 
     pressure_eos = (
         (8 * e) / (3 * volume_range ** (11 / 3))
@@ -400,14 +398,11 @@ def BM5(volume, energy):
         + (4 * c) / (3 * volume_range ** (7 / 3))
         + (2 * b) / (3 * volume_range ** (5 / 3))
     ) * 160.2176621
-    energy_eos = np.concatenate(([eos_index], energy_eos))
-    pressure_eos = np.concatenate(([eos_index], pressure_eos))
 
-    return results, volume_range, energy_eos, pressure_eos
+    return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
 def LOG4(volume, energy):
-    eos_index = 5
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     AA = np.vstack(
@@ -526,8 +521,7 @@ def LOG4(volume, energy):
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
     )
-    results = np.concatenate(([eos_index], eos_parameters, fitting_error * (10**4)))
-    np.set_printoptions(precision=4, suppress=True)
+    eos_parameters = np.concatenate((eos_parameters, fitting_error * (10**4)))
 
     pressure_eos = (
         -(
@@ -540,14 +534,11 @@ def LOG4(volume, energy):
             / volume_range
         )
     ) * 160.2176621
-    energy_eos = np.concatenate(([eos_index], energy_eos))
-    pressure_eos = np.concatenate(([eos_index], pressure_eos))
 
-    return results, volume_range, energy_eos, pressure_eos
+    return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
 def LOG5(volume, energy):
-    eos_index = 6
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     AA = np.vstack(
@@ -667,8 +658,7 @@ def LOG5(volume, energy):
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
     )
-    results = np.concatenate(([eos_index], eos_parameters, fitting_error * (10**4)))
-    np.set_printoptions(precision=4, suppress=True)
+    eos_parameters = np.concatenate((eos_parameters, fitting_error * (10**4)))
 
     pressure_eos = (
         -(
@@ -681,10 +671,8 @@ def LOG5(volume, energy):
             / volume_range
         )
     ) * 160.2176621
-    energy_eos = np.concatenate(([eos_index], energy_eos))
-    pressure_eos = np.concatenate(([eos_index], pressure_eos))
 
-    return results, volume_range, energy_eos, pressure_eos
+    return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
 def murnaghan_eq(xini, Data):
@@ -703,15 +691,13 @@ def murnaghan_eq(xini, Data):
 
 
 def murnaghan(volume, energy):
-    eos_index = 7
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
-    volume = volume
     Data = np.vstack((volume, energy))
     Data = Data.T
 
-    [results, volume_range, energy_eos, pressure_eos] = mBM4(volume, energy)
-    xini = [results[1], results[2], results[4] / 160.2176621, results[5]]
+    [eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(volume, energy)
+    xini = [eos_parameters[0], eos_parameters[1], eos_parameters[3] / 160.2176621, eos_parameters[4]]
     [xout, resnorm] = leastsq(murnaghan_eq, xini, Data)
 
     V = xout[0]
@@ -735,14 +721,11 @@ def murnaghan(volume, energy):
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
     )
-    results = np.concatenate(([eos_index], eos_parameters, fitting_error * (10**4)))
-    np.set_printoptions(precision=4, suppress=True)
+    eos_parameters = np.concatenate((eos_parameters, fitting_error * (10**4)))
 
     pressure_eos = 160.2176621 * (B * (-1 + (V / volume_range) ** bp)) / bp
-    energy_eos = np.concatenate(([eos_index], energy_eos))
-    pressure_eos = np.concatenate(([eos_index], pressure_eos))
 
-    return results, volume_range, energy_eos, pressure_eos
+    return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
 def vinet_eq(xini, Data):
@@ -765,14 +748,13 @@ def vinet_eq(xini, Data):
 
 
 def vinet(volume, energy):
-    eos_index = 8
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     Data = np.vstack((volume, energy))
     Data = Data.T
 
-    [results, volume_range, energy_eos, pressure_eos] = mBM4(volume, energy)
-    xini = [results[1], results[2], results[4] / 160.2176621, results[5]]
+    [eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(volume, energy)
+    xini = [eos_parameters[0], eos_parameters[1], eos_parameters[3] / 160.2176621, eos_parameters[4]]
     [xout, resnorm] = leastsq(vinet_eq, xini, Data)
     V = xout[0]
     E0 = xout[1]
@@ -805,8 +787,7 @@ def vinet(volume, energy):
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
     )
-    results = np.concatenate(([eos_index], eos_parameters, fitting_error * (10**4)))
-    np.set_printoptions(precision=4, suppress=True)
+    eos_parameters = np.concatenate((eos_parameters, fitting_error * (10**4)))
 
     pressure_eos = (
         160.2176621
@@ -816,10 +797,8 @@ def vinet(volume, energy):
             * (volume_range / V) ** (2 / 3)
         )
     )
-    energy_eos = np.concatenate(([eos_index], energy_eos))
-    pressure_eos = np.concatenate(([eos_index], pressure_eos))
 
-    return results, volume_range, energy_eos, pressure_eos
+    return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
 def morse_eq(xini, Data):
@@ -843,14 +822,13 @@ def morse_eq(xini, Data):
 
 
 def morse(volume, energy):
-    eos_index = 9
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     Data = np.vstack((volume, energy))
     Data = Data.T
 
-    [results, volume_range, energy_eos, pressure_eos] = mBM4(volume, energy)
-    xini = [results[1], results[2], results[4] / 160.2176621, results[5]]
+    [eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(volume, energy)
+    xini = [eos_parameters[0], eos_parameters[1], eos_parameters[3] / 160.2176621, eos_parameters[4]]
     [xout, resnorm] = leastsq(morse_eq, xini, Data)
     V = xout[0]
     E0 = xout[1]
@@ -878,8 +856,7 @@ def morse(volume, energy):
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
     )
-    results = np.concatenate(([eos_index], eos_parameters, fitting_error * (10**4)))
-    np.set_printoptions(precision=4, suppress=True)
+    eos_parameters = np.concatenate((eos_parameters, fitting_error * (10**4)))
 
     pressure_eos = (
         -160.2176621
@@ -890,19 +867,31 @@ def morse(volume, energy):
         )
         / (3 * volume_range ** (2 / 3))
     )
-    energy_eos = np.concatenate(([eos_index], energy_eos))
-    pressure_eos = np.concatenate(([eos_index], pressure_eos))
 
-    return results, volume_range, energy_eos, pressure_eos
+    return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
-#TODO: tidy up the dataframe formatting
 def fit_to_all_eos(df):
+    """Fits the volume and energies of configurations to all EOS functions and returns the results in a dataframe.
+
+    Args:
+        df (pandas.DataFrame): Dataframe frome workflows.extract_configuration_data that contains the volumes, 
+        energies, and number of atoms of each configuration. 
+
+    Returns:
+        eos_df (pandas.DataFrame): contains all columns.
+        eos_parameters_df (pandas.DataFrame): only contains the EOS parameters. 
+    """    
+    
     eos_df = pd.DataFrame(
         columns=[
             "config",
-            "eos_name",
-            "results",
+            "EOS",
+            "V (Å³)",
+            "E (eV)",
+            "B (GPa)",
+            "B'",
+            "fitting error (× 1e-4)",
             "volumes",
             "energies",
             "pressures",
@@ -918,12 +907,11 @@ def fit_to_all_eos(df):
         number_of_atoms = config_df["number_of_atoms"].values
 
         for eos_function in eos_functions:
-            results, volume_range, energy_eos, pressure_eos = eos_function(
+            eos_parameters, volume_range, energy_eos, pressure_eos = eos_function(
                 volumes, energies
             )
-            energy_eos = energy_eos[1:]
-            pressure_eos = pressure_eos[1:]
             eos_name = eos_function.__name__
+            
             eos_df = pd.concat(
                 [
                     eos_df,
@@ -932,7 +920,11 @@ def fit_to_all_eos(df):
                             [
                                 config,
                                 eos_name,
-                                results,
+                                eos_parameters[0],
+                                eos_parameters[1],
+                                eos_parameters[3],
+                                eos_parameters[4],
+                                eos_parameters[5],
                                 volume_range,
                                 energy_eos,
                                 pressure_eos,
@@ -941,8 +933,12 @@ def fit_to_all_eos(df):
                         ],
                         columns=[
                             "config",
-                            "eos_name",
-                            "results",
+                            "EOS",
+                            "V (Å³)",
+                            "E (eV)",
+                            "B (GPa)",
+                            "B'",
+                            "fitting error (× 1e-4)",
                             "volumes",
                             "energies",
                             "pressures",
@@ -950,9 +946,13 @@ def fit_to_all_eos(df):
                         ],
                     ),
                 ],
+                
                 ignore_index=True,
             )
-    return eos_df
+
+    eos_parameters_df = eos_df.drop(columns=["volumes", "energies", "pressures", "number_of_atoms"])
+    
+    return eos_df, eos_parameters_df
 
 
 #TODO: review
@@ -1019,6 +1019,7 @@ def select_data(df, selection_dict):
     return selected_data
 
 
+# TODO: review
 def plot_mv(df, show_fig=True):
     """
     data may be a single pandas data frame or a list of pandas data frames
@@ -1220,6 +1221,7 @@ def assign_colors_to_configs(df, alpha=1, cmap='plotly'):
     config_colors = {config: colors[i % len(colors)] for i, config in enumerate(unique_configs)}
     return config_colors
 
+
 def assign_marker_symbols_to_configs(df):
     unique_configs = df["config"].unique()
     symbols = ['circle', 'square', 'diamond', 'x',
@@ -1250,6 +1252,26 @@ def plot_ev(
     marker_alpha=1,
     marker_size=10
 ):
+    """_summary_
+
+    Args:
+        data (pandas.DataFrame, list of pandas.DataFrame, or list of str): Data must be a pandas 
+        DataFrame, list of pandas DataFrames, or a list of input_file names as strings containing the 
+        volumes, energies, and number of atoms of each configuration. 
+        eos_fitting (str, optional): EOS name. Defaults to "BM4".
+        highlight_minimum (bool, optional): Defaults to True.
+        per_atom (bool, optional):Defaults to False.
+        title (_type_, optional): Defaults to None.
+        show_fig (bool, optional): Defaults to True.
+        left_col (str, optional): Defaults to "volume".
+        right_col (str, optional): Defaults to "energy".
+        cmap (str, optional): Defaults to 'plotly'.
+        marker_alpha (int, optional): Defaults to 1.
+        marker_size (int, optional): Defaults to 10.
+
+    Returns:
+        fig (plotly.graph_objs._figure.Figure): A Plotly figure.
+    """    
     
     # Check if data is a pandas DataFrame or a list of pandas DataFrames
     if isinstance(data, pd.DataFrame):
@@ -1271,7 +1293,7 @@ def plot_ev(
 
     # Create a data frame with the eos fits for each config
     if eos_fitting != None:
-        eos_df = fit_to_all_eos(df)
+        eos_df, _ = fit_to_all_eos(df)
 
     # Assign colors and symbols
     config_colors = assign_colors_to_configs(df, alpha=marker_alpha, cmap=cmap)
@@ -1322,8 +1344,8 @@ def plot_ev(
     if eos_fitting != None:
         for config in eos_df["config"].unique():
             eos_config_df = eos_df[eos_df["config"] == config]
-            if eos_fitting in eos_config_df["eos_name"].unique():
-                eos_name_df = eos_config_df[eos_config_df["eos_name"] == eos_fitting]
+            if eos_fitting in eos_config_df["EOS"].unique():
+                eos_name_df = eos_config_df[eos_config_df["EOS"] == eos_fitting]
                 
                 x = eos_name_df["volumes"].values[0]
                 y = eos_name_df["energies"].values[0]
@@ -1380,8 +1402,8 @@ def plot_ev(
             
             # TODO: Do we really need all?
             elif eos_fitting == "all":
-                for eos_name in eos_config_df["eos_name"].unique():
-                    eos_name_df = eos_config_df[eos_config_df["eos_name"] == eos_name]
+                for eos_name in eos_config_df["EOS"].unique():
+                    eos_name_df = eos_config_df[eos_config_df["EOS"] == eos_name]
                     
                     if per_atom == False:
                         fig.add_trace(
@@ -1506,12 +1528,24 @@ def plot_energy_difference(
     cmap='plotly',
     marker_size=10):
     
-    """
-    Takes a dataframe and plots the energy difference from a 
-    reference configuration within the dataframe vs volume.
-    
-    Utilizes plot_ev() for the actual plotting.
-    """
+    """Takes a dataframe and plots the energy difference with respect to a reference configuration 
+    as a function of volume. Utilizes plot_ev() for the actual plotting.
+
+    Args:
+        df (pandas.DataFrame): dataframe containing the volumes, energies, and number of atoms of each 
+        configuration.
+        reference_config (str): name of the configuration to be used as the reference state
+        per_atom (bool, optional): Defaults to False.
+        show_fig (bool, optional): Defaults to True.
+        convert_to_mev (bool, optional): Defaults to False.
+        title (_type_, optional): Defaults to None.
+        marker_alpha (int, optional): Defaults to 1.
+        cmap (str, optional): Defaults to 'plotly'.
+        marker_size (int, optional): Defaults to 10.
+
+    Returns:
+        fig (plotly.graph_objs._figure.Figure): A Plotly figure.
+    """    
     
     df_list = []
     for config in df['config'].unique():
@@ -1532,7 +1566,6 @@ def plot_energy_difference(
         print(f"Warning: Missing volumes for configurations: {missing_volumes}")
         
     energy_difference_df = pd.concat(df_list)
-    energy_difference_df = energy_difference_df[energy_difference_df['config'] != reference_config]
 
     if convert_to_mev == True:
         energy_difference_df['energy'] *= 1000
@@ -1581,6 +1614,7 @@ def plot_energy_difference(
     return fig
 
 
+# TODO: review
 def plot_config_energy(
     df, number_of_lowest_configs=5, show_fig=True, xmax=None, ymax=None
 ):
@@ -1663,6 +1697,7 @@ def plot_config_energy(
     return fig
 
 
+#TODO: review
 def plot_energy_histogram(df, nbins=None, show_fig=True):
     try:
         new_df = df.drop("# of ion", axis=1)
