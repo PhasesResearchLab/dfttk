@@ -26,9 +26,11 @@ import plotly.graph_objects as go
 
 from distinctipy import get_colors
 from scipy.optimize import fsolve
+from scipy.optimize import curve_fit
 from scipy.optimize import leastsq
 
 
+#TODO: replace all EOS with scipy equivalent functions
 """The EOS functions mBM4, mBM5, BM4, BM5, Log4, Log5, Mur, Vinet, and Morse are used to fit the energy-volume data 
 and return the EOS parameters. 
 
@@ -85,13 +87,6 @@ def mBM4(volume, energy):
     )
     V = -V / b**3
 
-    P = (
-        (4 * e) / (3 * V ** (7 / 3))
-        + d / V**2
-        + (2 * c) / (3 * V ** (5 / 3))
-        + b / (3 * V ** (4 / 3))
-    )
-    P = P * 160.2176621
     B = (
         (28 * e) / (9 * V ** (10 / 3))
         + (2 * d) / V**3
@@ -111,7 +106,7 @@ def mBM4(volume, energy):
     ) / (2 * (14 * e + 9 * d * V ** (1 / 3) + 5 * c * V ** (2 / 3) + 2 * b * V) ** 3)
     B2P = B2P / 160.2176621
     E0 = a + b * V ** (-1 / 3) + c * V ** (-2 / 3) + d * V ** (-1) + e * V ** (-4 / 3)
-    eos_parameters = [V, E0, P, B, BP, B2P]
+    eos_parameters = [V, E0, B, BP, B2P]
 
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
@@ -129,8 +124,8 @@ def mBM4(volume, energy):
     xini = [
         eos_parameters[0],
         eos_parameters[1],
-        eos_parameters[3] / 160.2176621,
-        eos_parameters[4],
+        eos_parameters[2] / 160.2176621,
+        eos_parameters[3],
     ]
     return eos_parameters, volume_range, energy_eos, pressure_eos
 
@@ -182,13 +177,6 @@ def mBM5(volume, energy):
         * 160.2176621
     )
     V = fsolve(func, np.mean(volume))
-    P = (
-        (4 * e) / (3 * V ** (7 / 3))
-        + d / V**2
-        + (2 * c) / (3 * V ** (5 / 3))
-        + b / (3 * V ** (4 / 3))
-    )
-    P = P * 160.2176621
     B = (
         (28 * e) / (9 * V ** (10 / 3))
         + (2 * d) / V**3
@@ -208,7 +196,7 @@ def mBM5(volume, energy):
     ) / (2 * (14 * e + 9 * d * V ** (1 / 3) + 5 * c * V ** (2 / 3) + 2 * b * V) ** 3)
     B2P = B2P / 160.2176621
     E0 = a + b * V ** (-1 / 3) + c * V ** (-2 / 3) + d * V ** (-1) + e * V ** (-4 / 3)
-    eos_parameters = [V, E0, P, B, BP, B2P]
+    eos_parameters = [V, E0, B, BP, B2P]
 
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
@@ -271,13 +259,7 @@ def BM4(volume, energy):
             / b**3
         )
     )
-    P = (
-        (8 * e) / (3 * V ** (11 / 3))
-        + (2 * d) / V**3
-        + (4 * c) / (3 * V ** (7 / 3))
-        + (2 * b) / (3 * V ** (5 / 3))
-    )
-    P = P * 160.2176621
+    
     B = (
         2 * (44 * e + 27 * d * V ** (2 / 3) + 14 * c * V ** (4 / 3) + 5 * b * V**2)
     ) / (9 * V ** (11 / 3))
@@ -296,7 +278,7 @@ def BM4(volume, energy):
     ) / (44 * e + 27 * d * V ** (2 / 3) + 14 * c * V ** (4 / 3) + 5 * b * V**2) ** 3
     B2P = B2P / 160.2176621
     E0 = a + e / V ** (8 / 3) + d / V**2 + c / V ** (4 / 3) + b / V ** (2 / 3)
-    eos_parameters = [V, E0, P, B, BP, B2P]
+    eos_parameters = [V, E0, B, BP, B2P]
 
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
@@ -360,13 +342,7 @@ def BM5(volume, energy):
         * 160.2176621
     )
     V = fsolve(func, np.mean(volume))
-    P = (
-        (8 * e) / (3 * V ** (11 / 3))
-        + (2 * d) / V**3
-        + (4 * c) / (3 * V ** (7 / 3))
-        + (2 * b) / (3 * V ** (5 / 3))
-    )
-    P = P * 160.2176621
+    
     B = (
         2 * (44 * e + 27 * d * V ** (2 / 3) + 14 * c * V ** (4 / 3) + 5 * b * V**2)
     ) / (9 * V ** (11 / 3))
@@ -385,7 +361,7 @@ def BM5(volume, energy):
     ) / (44 * e + 27 * d * V ** (2 / 3) + 14 * c * V ** (4 / 3) + 5 * b * V**2) ** 3
     B2P = B2P / 160.2176621
     E0 = a + e / V ** (8 / 3) + d / V**2 + c / V ** (4 / 3) + b / V ** (2 / 3)
-    eos_parameters = [V, E0, P, B, BP, B2P]
+    eos_parameters = [V, E0, B, BP, B2P]
 
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
@@ -454,12 +430,7 @@ def LOG4(volume, energy):
     )
     V = fsolve(func, np.mean(volume))
     V = np.mean(V)
-    P = -(
-        (b + 2 * c * math.log(V) + 3 * d * math.log(V) ** 2 + 4 * e * math.log(V) ** 3)
-        / V
-    )
-    P = np.mean(P)
-    P = P * 160.2176621
+    
     B = -(
         (
             b
@@ -516,7 +487,7 @@ def LOG4(volume, energy):
         + d * math.log(V) ** 3
         + e * math.log(V) ** 4
     )
-    eos_parameters = [V, E0, P, B, BP, B2P]
+    eos_parameters = [V, E0, B, BP, B2P]
 
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
@@ -591,12 +562,7 @@ def LOG5(volume, energy):
     )
     V = fsolve(func, np.mean(volume))
     V = np.mean(V)
-    P = -(
-        (b + 2 * c * math.log(V) + 3 * d * math.log(V) ** 2 + 4 * e * math.log(V) ** 3)
-        / V
-    )
-    P = np.mean(P)
-    P = P * 160.2176621
+
     B = -(
         (
             b
@@ -653,7 +619,7 @@ def LOG5(volume, energy):
         + d * math.log(V) ** 3
         + e * math.log(V) ** 4
     )
-    eos_parameters = [V, E0, P, B, BP, B2P]
+    eos_parameters = [V, E0, B, BP, B2P]
 
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
@@ -697,7 +663,7 @@ def murnaghan(volume, energy):
     Data = Data.T
 
     [eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(volume, energy)
-    xini = [eos_parameters[0], eos_parameters[1], eos_parameters[3] / 160.2176621, eos_parameters[4]]
+    xini = [eos_parameters[0], eos_parameters[1], eos_parameters[2] / 160.2176621, eos_parameters[3]]
     [xout, resnorm] = leastsq(murnaghan_eq, xini, Data)
 
     V = xout[0]
@@ -716,7 +682,7 @@ def murnaghan(volume, energy):
         + (B * (1 + (V / volume) ** bp / (-1 + bp)) * volume) / bp
     )
     energy_difference = energy_eos_points - energy
-    eos_parameters = [V, E0, 0, B * 160.2176621, bp, 0]
+    eos_parameters = [V, E0, B * 160.2176621, bp, 0]
 
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
@@ -754,7 +720,7 @@ def vinet(volume, energy):
     Data = Data.T
 
     [eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(volume, energy)
-    xini = [eos_parameters[0], eos_parameters[1], eos_parameters[3] / 160.2176621, eos_parameters[4]]
+    xini = [eos_parameters[0], eos_parameters[1], eos_parameters[2] / 160.2176621, eos_parameters[3]]
     [xout, resnorm] = leastsq(vinet_eq, xini, Data)
     V = xout[0]
     E0 = xout[1]
@@ -782,7 +748,7 @@ def vinet(volume, energy):
     energy_difference = energy_eos_points - energy
 
     b2p = (19 - 18 * bp - 9 * bp**2) / (36 * B)
-    eos_parameters = [V, E0, 0, B * 160.2176621, bp, b2p / 160.2176621]
+    eos_parameters = [V, E0, B * 160.2176621, bp, b2p / 160.2176621]
 
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
@@ -828,7 +794,7 @@ def morse(volume, energy):
     Data = Data.T
 
     [eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(volume, energy)
-    xini = [eos_parameters[0], eos_parameters[1], eos_parameters[3] / 160.2176621, eos_parameters[4]]
+    xini = [eos_parameters[0], eos_parameters[1], eos_parameters[2] / 160.2176621, eos_parameters[3]]
     [xout, resnorm] = leastsq(morse_eq, xini, Data)
     V = xout[0]
     E0 = xout[1]
@@ -851,7 +817,7 @@ def morse(volume, energy):
     energy_difference = energy_eos_points - energy
 
     b2p = (5 - 5 * bp - 2 * bp**2) / (9 * B)
-    eos_parameters = [V, E0, 0, B * 160.2176621, bp, b2p / 160.2176621]
+    eos_parameters = [V, E0, B * 160.2176621, bp, b2p / 160.2176621]
 
     fitting_error = np.array(
         [math.sqrt(sum((energy_difference / energy) ** 2 / len(energy)))]
@@ -922,9 +888,9 @@ def fit_to_all_eos(df):
                                 eos_name,
                                 eos_parameters[0],
                                 eos_parameters[1],
+                                eos_parameters[2],
                                 eos_parameters[3],
                                 eos_parameters[4],
-                                eos_parameters[5],
                                 volume_range,
                                 energy_eos,
                                 pressure_eos,
