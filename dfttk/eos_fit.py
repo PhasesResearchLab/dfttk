@@ -4,15 +4,15 @@ Shun-Li Shang et al., Computational Materials Science, 47, 4, (2010).
 https://doi.org/10.1016/j.commatsci.2009.12.006
 
 It includes the following equations of state:
-1:  4-parameter (Teter-Shang) mBM4   1
-2:  5-parameter (Teter-Shang) mBM5   2
-3:  4-parameter               BM4    3
-4:  5-parameter               BM5    4
-5:  4-parameter Natural       Log4   5
-6:  5-parameter Natural       Log5   6
-7:  4-parameter Murnaghan     Mur    7
-8:  4-parameter Vinet         Vinet  8
-9:  4-parameter Morse         Morse  9
+1:  4-parameter (Teter-Shang) mBM4 
+2:  5-parameter (Teter-Shang) mBM5  
+3:  4-parameter               BM4   
+4:  5-parameter               BM5   
+5:  4-parameter Natural       Log4  
+6:  5-parameter Natural       Log5  
+7:  4-parameter Murnaghan     Mur   
+8:  4-parameter Vinet         Vinet 
+9:  4-parameter Morse         Morse 
 """
 
 import os
@@ -30,7 +30,7 @@ from scipy.optimize import curve_fit
 from scipy.optimize import leastsq
 
 # TODO: See if you can simplify the code even further, especially the last three functions.
-
+# TODO: Make explicit what the conversion factor is for the pressure.
 # mBM4 EOS Functions
 def mBM4_equation(volume, a, b, c, d):
     energy = (
@@ -600,22 +600,9 @@ def fit_to_all_eos(df):
         eos_parameters_df (pandas.DataFrame): only contains the EOS parameters.
     """
 
-    eos_df = pd.DataFrame(
-        columns=[
-            "config",
-            "EOS",
-            "V0",
-            "E0",
-            "B",
-            "BP",
-            "volumes",
-            "energies",
-            "pressures",
-            "number_of_atoms",
-        ]
-    )
     eos_functions = [mBM4, mBM5, BM4, BM5, LOG4, LOG5, murnaghan, vinet, morse]
-
+    dataframes = []
+    
     for config in df["config"].unique():
         config_df = df[df["config"] == config]
         volumes = config_df["volume"].values
@@ -628,41 +615,38 @@ def fit_to_all_eos(df):
             )
             eos_name = eos_function.__name__
 
-            eos_df = pd.concat(
+            dataframes.append(
+            pd.DataFrame(
                 [
-                    eos_df,
-                    pd.DataFrame(
-                        [
-                            [
-                                config,
-                                eos_name,
-                                eos_parameters[0],
-                                eos_parameters[1],
-                                eos_parameters[2],
-                                eos_parameters[3],
-                                volume_range,
-                                energy_eos,
-                                pressure_eos,
-                                number_of_atoms,
-                            ]
-                        ],
-                        columns=[
-                            "config",
-                            "EOS",
-                            "V0",
-                            "E0",
-                            "B",
-                            "BP",
-                            "volumes",
-                            "energies",
-                            "pressures",
-                            "number_of_atoms",
-                        ],
-                    ),
+                    [
+                        config,
+                        eos_name,
+                        eos_parameters[0],
+                        eos_parameters[1],
+                        eos_parameters[2],
+                        eos_parameters[3],
+                        volume_range,
+                        energy_eos,
+                        pressure_eos,
+                        number_of_atoms,
+                    ]
                 ],
-                ignore_index=True,
+                columns=[
+                    "config",
+                    "EOS",
+                    "V0",
+                    "E0",
+                    "B",
+                    "BP",
+                    "volumes",
+                    "energies",
+                    "pressures",
+                    "number_of_atoms",
+                ],
             )
-
+            )
+            
+    eos_df = pd.concat(dataframes, ignore_index=True)
     eos_parameters_df = eos_df.drop(
         columns=["volumes", "energies", "pressures", "number_of_atoms"]
     )
