@@ -453,7 +453,7 @@ def LOG5_eos_parameters(volume_range, a, b, c, d, e):
 
 
 def LOG5(volume, energy):
-    a, b, c, d, e = curve_fit(LOG5_equation, volume, energy, , p0 = [100, 100, 100, 100, 100])[0]
+    a, b, c, d, e = curve_fit(LOG5_equation, volume, energy, p0 = [100, 100, 100, 100, 100])[0]
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     energy_eos = LOG5_equation(volume_range, a, b, c, d, e)
