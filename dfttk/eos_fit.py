@@ -29,22 +29,9 @@ from scipy.optimize import fsolve
 from scipy.optimize import curve_fit
 from scipy.optimize import leastsq
 
+# TODO: See if you can simplify the code even further, especially the last three functions.
 
-"""The EOS functions mBM4, mBM5, BM4, BM5, Log4, Log5, Mur, Vinet, and Morse are used to fit the energy-volume data 
-and return the EOS parameters. 
-
-    Args:
-        volume (numpy.array): volumes to be fitted
-        energy (numpy.array): energies to be fitted
-
-    Returns:
-        results (numpy.array): EOS parameters
-        volume_range (numpy.array): The range of volumes used for the fitting
-        energy_eos (numpy.array): The fitted energies of the equation of state.
-        pressure_eos (numpy.array): The resulting pressures from the fitted equation of state.
-    """
-
-
+# mBM4 EOS Functions
 def mBM4_equation(volume, a, b, c, d):
     energy = (
         a + b * (volume) ** (-1 / 3) + c * (volume) ** (-2 / 3) + d * (volume) ** (-1)
@@ -102,6 +89,7 @@ def mBM4(volume, energy):
     return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
+# mBM5 EOS Functions
 def mBM5_equation(volume, a, b, c, d, e):
     energy = (
         a
@@ -114,26 +102,17 @@ def mBM5_equation(volume, a, b, c, d, e):
 
 
 def mBM5_derivative(volume, b, c, d, e):
-    energy = (
+    energy_derivative = (
         b * (-1 / 3) * (volume) ** (-4 / 3)
         + c * (-2 / 3) * (volume) ** (-5 / 3)
         + d * (-1) * (volume) ** (-2)
         + e * (-4 / 3) * (volume) ** (-7 / 3)
     )
-    return energy
+    return energy_derivative
 
 
 def mBM5_eos_parameters(volume_range, a, b, c, d, e):
-    function = (
-        lambda volume_range: (
-            (4 * e) / (3 * volume_range ** (7 / 3))
-            + d / volume_range**2
-            + (2 * c) / (3 * volume_range ** (5 / 3))
-            + b / (3 * volume_range ** (4 / 3))
-        )
-        * 160.2176621
-    )
-    V0 = fsolve(function, np.mean(volume_range))[0]
+    V0 = fsolve(mBM5_derivative, np.mean(volume_range), args=(b, c, d, e))[0]
     E0 = mBM5_equation(V0, a, b, c, d, e)
     B = (
         (28 * e) / (9 * V0 ** (10 / 3))
@@ -171,6 +150,7 @@ def mBM5(volume, energy):
     return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
+# BM4 EOS Functions
 def BM4_equation(volume, a, b, c, d):
     energy = (
         a + b * volume ** (-2 / 3) + c * (volume) ** (-4 / 3) + d * (volume) ** (-2)
@@ -231,6 +211,7 @@ def BM4(volume, energy):
     return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
+# BM5 EOS Functions
 def BM5_equation(volume, a, b, c, d, e):
     energy = (
         a
@@ -243,27 +224,17 @@ def BM5_equation(volume, a, b, c, d, e):
 
 
 def BM5_derivative(volume, b, c, d, e):
-    energy = (
+    energy_derivative = (
         b * (-2 / 3) * (volume) ** (-5 / 3)
         + c * (-4 / 3) * (volume) ** (-7 / 3)
         + d * (-2) * (volume) ** (-3)
         + e * (-8 / 3) * (volume) ** (-11 / 3)
     )
-    return energy
+    return energy_derivative
 
 
 def BM5_eos_parameters(volume_range, a, b, c, d, e):
-    function = (
-        lambda volume_range: (
-            (8 * e) / (3 * volume_range ** (11 / 3))
-            + (2 * d) / volume_range**3
-            + (4 * c) / (3 * volume_range ** (7 / 3))
-            + (2 * b) / (3 * volume_range ** (5 / 3))
-        )
-        * 160.2176621
-    )
-
-    V0 = fsolve(function, np.mean(volume_range))[0]
+    V0 = fsolve(BM5_derivative, np.mean(volume_range), args=(b, c, d, e))[0]
     E0 = BM5_equation(V0, a, b, c, d, e)
     B = (
         2 * (44 * e + 27 * d * V0 ** (2 / 3) + 14 * c * V0 ** (4 / 3) + 5 * b * V0 ** 2)
@@ -300,32 +271,19 @@ def BM5(volume, energy):
     return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
+# LOG4 EOS Functions
 def LOG4_equation(volume, a, b, c, d):
     energy = a + b * np.log(volume) + c * np.log(volume) ** 2 + d * np.log(volume) ** 3
     return energy
 
 
 def LOG4_derivative(volume, b, c, d):
-    energy = (b + 2 * c * np.log(volume) + 3 * d * np.log(volume) ** 2) / volume
-    return energy
+    energy_derivative = (b + 2 * c * np.log(volume) + 3 * d * np.log(volume) ** 2) / volume
+    return energy_derivative
 
 
 def LOG4_eos_parameters(volume_range, a, b, c, d):
-    function = (
-        lambda volume_range: (
-            -(
-                (
-                    b
-                    + 2 * c * math.log(volume_range)
-                    + 3 * d * math.log(volume_range) ** 2
-                )
-                / volume_range
-            )
-        )
-        * 160.2176621
-    )
-
-    V0 = fsolve(function, np.mean(volume_range))[0]
+    V0 = fsolve(LOG4_derivative, np.mean(volume_range), args=(b, c, d))[0]
     E0 = LOG4_equation(V0, a, b, c, d)
     B = -(
         (b - 2 * c + 2 * (c - 3 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2) / V0
@@ -362,6 +320,7 @@ def LOG4(volume, energy):
     return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
+# LOG5 EOS Functions
 def LOG5_equation(volume, a, b, c, d, e):
     energy = (
         a
@@ -384,22 +343,7 @@ def LOG5_derivative(volume, b, c, d, e):
 
 
 def LOG5_eos_parameters(volume_range, a, b, c, d, e):
-    function = (
-        lambda volume_range: (
-            -(
-                (
-                    b
-                    + 2 * c * math.log(volume_range)
-                    + 3 * d * math.log(volume_range) ** 2
-                    + 4 * e * math.log(volume_range) ** 3
-                )
-                / volume_range
-            )
-        )
-        * 160.2176621
-    )
-
-    V0 = fsolve(function, np.mean(volume_range))[0]
+    V0 = fsolve(LOG5_derivative, np.mean(volume_range), args=(b, c, d, e))[0]
     E0 = LOG5_equation(V0, a, b, c, d, e)
 
     B = -(
@@ -464,7 +408,8 @@ def LOG5(volume, energy):
     return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
-def murnaghan_eq(xini, Data):
+# Murnaghan EOS Functions
+def murnaghan_equation(xini, Data):
     V = xini[0]
     E0 = xini[1]
     B = xini[2]
@@ -492,7 +437,7 @@ def murnaghan(volume, energy):
         eos_parameters[2] / 160.2176621,
         eos_parameters[3],
     ]
-    [xout, resnorm] = leastsq(murnaghan_eq, xini, Data)
+    [xout, resnorm] = leastsq(murnaghan_equation, xini, Data)
 
     V = xout[0]
     E0 = xout[1]
@@ -512,7 +457,8 @@ def murnaghan(volume, energy):
     return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
-def vinet_eq(xini, Data):
+# Vinet EOS Functions
+def vinet_equation(xini, Data):
     V = xini[0]
     E0 = xini[1]
     B = xini[2]
@@ -544,7 +490,7 @@ def vinet(volume, energy):
         eos_parameters[2] / 160.2176621,
         eos_parameters[3],
     ]
-    [xout, resnorm] = leastsq(vinet_eq, xini, Data)
+    [xout, resnorm] = leastsq(vinet_equation, xini, Data)
     V = xout[0]
     E0 = xout[1]
     B = xout[2]
@@ -575,7 +521,8 @@ def vinet(volume, energy):
     return eos_parameters, volume_range, energy_eos, pressure_eos
 
 
-def morse_eq(xini, Data):
+# Morse EOS Functions
+def morse_equation(xini, Data):
     V = xini[0]
     E0 = xini[1]
     B = xini[2]
@@ -608,7 +555,7 @@ def morse(volume, energy):
         eos_parameters[2] / 160.2176621,
         eos_parameters[3],
     ]
-    [xout, resnorm] = leastsq(morse_eq, xini, Data)
+    [xout, resnorm] = leastsq(morse_equation, xini, Data)
     V = xout[0]
     E0 = xout[1]
     B = xout[2]
