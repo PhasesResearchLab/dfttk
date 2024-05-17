@@ -251,6 +251,8 @@ def extract_configuration_data(
         number_of_atoms = len(struct.sites)
         vol = extract_volume(contcar_path)
         energy = extract_energy(oszicar_path)
+        energy_per_atom = energy / number_of_atoms
+        vol_per_atom = vol / number_of_atoms
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(outcar_path)
             total_magnetic_moment = mag_data['tot'].sum()
@@ -260,9 +262,11 @@ def extract_configuration_data(
                 afm = False
             
             row = {
-                "volume": vol,
                 "config": config,
+                "volume": vol,
+                "volume/atom": vol_per_atom,
                 "energy": energy,
+                "energy/atom": energy_per_atom,
                 "number_of_atoms": number_of_atoms,
                 "total_magnetic_moment": total_magnetic_moment,
                 "afm": afm,
@@ -270,9 +274,11 @@ def extract_configuration_data(
             }
         else:
             row = {
-                "volume": vol,
                 "config": config,
+                "volume": vol,
+                "volume/atom": vol_per_atom,
                 "energy": energy,
+                "energy/atom": energy_per_atom,
                 "number_of_atoms": number_of_atoms,
             }
         row_list.append(row)
