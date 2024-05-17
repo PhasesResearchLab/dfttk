@@ -209,6 +209,7 @@ def extract_configuration_data(
     oszicar_name="OSZICAR",
     contcar_name="CONTCAR",
     collect_mag_data="False",
+    magmom_tolerance=0
 ):
     """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations 
     run by ev_curve_series and returns a pandas DataFrame.
@@ -254,12 +255,20 @@ def extract_configuration_data(
         energy = extract_energy(oszicar_path)
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(ion_list, outcar_path)
+            total_magnetic_moment = mag_data['tot'].sum()
+            if np.isclose(total_magnetic_moment, 0,  atol=magmom_tolerance) == True:
+                afm = True
+            else:
+                afm = False
+            
             row = {
                 "volume": vol,
                 "config": config,
                 "energy": energy,
                 "number_of_atoms": number_of_atoms,
-                "mag_data": mag_data,
+                "total_magnetic_moment": total_magnetic_moment,
+                "afm": afm,
+                "mag_data": mag_data
             }
         else:
             row = {
