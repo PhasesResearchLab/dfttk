@@ -181,11 +181,11 @@ def extract_mag_data(outcar_path="OUTCAR"):
         return df
 
 
-def extract_tot_mag_data(ion_list, outcar_path="OUTCAR"):
+#TODO just get mag data for all the ions
+def extract_tot_mag_data(outcar_path="OUTCAR"):
     """Returns only the 'tot' magnetization of the last step for each specified ion.
 
     Args:
-        ion_list (list): The ion_list should be a list of integers ex: [1, 2, 3, 4].
         outcar_path (str, optional): Path to an OUTCAR file. Defaults to "OUTCAR".
 
     Returns:
@@ -194,9 +194,7 @@ def extract_tot_mag_data(ion_list, outcar_path="OUTCAR"):
 
     all_mag_data = extract_mag_data(outcar_path)
     last_step_data = all_mag_data[all_mag_data["step"] == all_mag_data["step"].max()]
-    tot_data = last_step_data[last_step_data["# of ion"].isin(ion_list)][
-        ["# of ion", "tot"]
-    ]
+    tot_data = last_step_data[["# of ion", "tot"]]
     tot_data.reset_index(drop=True, inplace=True)
     return tot_data
 
@@ -208,7 +206,6 @@ def extract_configuration_data(
     oszicar_name: str ='OSZICAR.3static',
     contcar_name: str ='CONTCAR.3static', 
     collect_mag_data: bool = False,
-    ion_list: list[int] = [1],
     magmom_tolerance: float = 0
 ):
     """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations 
@@ -221,7 +218,6 @@ def extract_configuration_data(
         contcar_name: name of the CONTCAR file. Defaults to "CONTCAR".
         collect_mag_data: if True, collect the magnetization data using extract_tot_mag_data. Defaults to
         False.
-        ion_list: specifies the ions to collect magnetization data for -- corresponds to '# of ion' in the
         OUTCAR. Defaults to [1].
         magmom_tolerance: the tolerance for the total magnetic moment to be considered zero. Defaults to 0.
 
@@ -256,7 +252,7 @@ def extract_configuration_data(
         vol = extract_volume(contcar_path)
         energy = extract_energy(oszicar_path)
         if collect_mag_data == True:
-            mag_data = extract_tot_mag_data(ion_list, outcar_path)
+            mag_data = extract_tot_mag_data(outcar_path)
             total_magnetic_moment = mag_data['tot'].sum()
             if np.isclose(total_magnetic_moment, 0,  atol=magmom_tolerance) == True:
                 afm = True
@@ -290,7 +286,6 @@ def recursive_extract_configuration_data(
     oszicar_name: str ='OSZICAR',
     contcar_name: str ='CONTCAR', 
     collect_mag_data: bool = False,
-    ion_list: list[int] = [1],
     magmom_tolerance: float = 0
     ):
     """convenience function to extract configuration data from multiple config directories.
@@ -303,7 +298,6 @@ def recursive_extract_configuration_data(
         contcar_name: name of the CONTCAR file. Defaults to "CONTCAR".
         collect_mag_data: if True, collect the magnetization data using extract_tot_mag_data. Defaults to
         False.
-        ion_list: specifies the ions to collect magnetization data for -- corresponds to '# of ion' in the
         OUTCAR. Defaults to [1].
         magmom_tolerance: the tolerance for the total magnetic moment to be considered zero. Defaults to 0.
         
