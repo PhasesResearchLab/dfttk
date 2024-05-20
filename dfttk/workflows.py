@@ -210,13 +210,13 @@ def determine_magnetic_ordering(df: pd.DataFrame, magmom_tolerance: float = 0):
 
     if (df['tot'] == 0).all():
         return 'NM'
-    elif np.isclose(df['tot'].sum(), 0,  atol=0) == True:
+    elif np.isclose(df['tot'].sum(), 0,  atol=magmom_tolerance) == True:
         return 'AFM'
     elif (df['tot'] >= 0).all() or (df['tot'] <= 0).all():
         return 'FM'
     elif (df['tot'] > 0).sum() == (df['tot'] < 0).sum():
         return 'FiM'
-    else :
+    else:
         return 'SF'
 
   
