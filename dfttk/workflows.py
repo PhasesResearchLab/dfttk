@@ -203,6 +203,8 @@ def determine_magnetic_ordering(df: pd.DataFrame, magmom_tolerance: float = 0):
 
     Args:
         df (pandas DataFrame): a pandas DataFrame containing the magnetization data
+        magmom_tolerance (float, optional): the tolerance for the total magnetic moment to be considered
+        zero. Defaults to 0.
 
     Returns:
         str: the magnetic ordering of the structure
@@ -276,17 +278,7 @@ def extract_configuration_data(
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(outcar_path)
             total_magnetic_moment = mag_data['tot'].sum()
-            
-            if (mag_data['tot'] == 0).all():
-                magnetic_ordering = 'NM'
-            elif np.isclose(total_magnetic_moment, 0,  atol=magmom_tolerance) == True:
-                magnetic_ordering = 'AFM'
-            elif (mag_data['tot'] >= 0).all() or (mag_data['tot'] <= 0).all():
-                magnetic_ordering = 'FM'
-            elif (mag_data['tot'] > 0).sum() == (mag_data['tot'] < 0).sum():
-                magnetic_ordering = 'FiM'
-            else :
-                magnetic_ordering = 'SF'
+            magnetic_ordering = determine_magnetic_ordering(mag_data)
             
             row = {
                 "config": config,
