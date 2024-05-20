@@ -198,6 +198,27 @@ def extract_tot_mag_data(outcar_path="OUTCAR"):
     tot_data.reset_index(drop=True, inplace=True)
     return tot_data
 
+def determine_magnetic_ordering(df: pd.DataFrame, magmom_tolerance: float = 0):
+    """Determines the magnetic ordering of a structure from the magnetization data in a pandas DataFrame.
+
+    Args:
+        df (pandas DataFrame): a pandas DataFrame containing the magnetization data
+
+    Returns:
+        str: the magnetic ordering of the structure
+    """
+
+    if (df['tot'] == 0).all():
+        return 'NM'
+    elif np.isclose(df['tot'].sum(), 0,  atol=0) == True:
+        return 'AFM'
+    elif (df['tot'] >= 0).all() or (df['tot'] <= 0).all():
+        return 'FM'
+    elif (df['tot'] > 0).sum() == (df['tot'] < 0).sum():
+        return 'FiM'
+    else :
+        return 'SF'
+
   
 def extract_configuration_data(
     path: list[str],
@@ -320,7 +341,8 @@ def recursive_extract_configuration_data(
             config_df = extract_configuration_data(
                 config_dir, outcar_name=outcar_name, 
                 oszicar_name=oszicar_name, contcar_name=contcar_name, 
-                collect_mag_data=collect_mag_data)
+                collect_mag_data=collect_mag_data,
+                magmom_tolerance=magmom_tolerance)
             df_list.append(config_df)
         except Exception as e:
             print(f'Error in {config_dir}: {e}')
