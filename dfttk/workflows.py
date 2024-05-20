@@ -181,11 +181,11 @@ def extract_mag_data(outcar_path="OUTCAR"):
         return df
 
 
-def extract_tot_mag_data(ion_list, outcar_path="OUTCAR"):
+#TODO just get mag data for all the ions
+def extract_tot_mag_data(outcar_path="OUTCAR"):
     """Returns only the 'tot' magnetization of the last step for each specified ion.
 
     Args:
-        ion_list (list): The ion_list should be a list of integers ex: [1, 2, 3, 4].
         outcar_path (str, optional): Path to an OUTCAR file. Defaults to "OUTCAR".
 
     Returns:
@@ -194,33 +194,31 @@ def extract_tot_mag_data(ion_list, outcar_path="OUTCAR"):
 
     all_mag_data = extract_mag_data(outcar_path)
     last_step_data = all_mag_data[all_mag_data["step"] == all_mag_data["step"].max()]
-    tot_data = last_step_data[last_step_data["# of ion"].isin(ion_list)][
-        ["# of ion", "tot"]
-    ]
+    tot_data = last_step_data[["# of ion", "tot"]]
     tot_data.reset_index(drop=True, inplace=True)
     return tot_data
 
-
-# TODO:change path to a list of paths so that it can read multiple config folders automatically?
+  
 def extract_configuration_data(
-    path,
-    ion_list=[1],
-    outcar_name="OUTCAR",
-    oszicar_name="OSZICAR",
-    contcar_name="CONTCAR",
-    collect_mag_data="False",
+    path: list[str],
+    outcar_name: str ='OUTCAR.3static',
+    oszicar_name: str ='OSZICAR.3static',
+    contcar_name: str ='CONTCAR.3static', 
+    collect_mag_data: bool = False,
+    magmom_tolerance: float = 0
 ):
     """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations
     run by ev_curve_series and returns a pandas DataFrame.
 
     Args:
-        path (str): the path containing a config_* folder which contain vol_* folders
-        ion_list (list, optional): the list of ions for magnetization data. Defaults to [1].
-        outcar_name (str, optional): name of the OUTCAR file. Defaults to "OUTCAR".
-        oszicar_name (str, optional): name of the OSZICAR file. Defaults to "OSZICAR".
-        contcar_name (str, optional): name of the CONTCAR file. Defaults to "CONTCAR".
-        collect_mag_data (str, optional): if True, collect the magnetization data using extract_tot_mag_data.
-        Defaults to "False".
+        path: the path containing a config_* folder which contain vol_* folders
+        outcar_name: name of the OUTCAR file. Defaults to "OUTCAR".
+        oszicar_name: name of the OSZICAR file. Defaults to "OSZICAR".
+        contcar_name: name of the CONTCAR file. Defaults to "CONTCAR".
+        collect_mag_data: if True, collect the magnetization data using extract_tot_mag_data. Defaults to
+        False.
+        OUTCAR. Defaults to [1].
+        magmom_tolerance: the tolerance for the total magnetic moment to be considered zero. Defaults to 0.
 
     Returns:
         pandas DataFrame: a pandas DataFrame containing the volume, configuration, energy, number of atoms, and
@@ -252,26 +250,83 @@ def extract_configuration_data(
         number_of_atoms = len(struct.sites)
         vol = extract_volume(contcar_path)
         energy = extract_energy(oszicar_path)
+        energy_per_atom = energy / number_of_atoms
+        vol_per_atom = vol / number_of_atoms
         if collect_mag_data == True:
-            mag_data = extract_tot_mag_data(ion_list, outcar_path)
+            mag_data = extract_tot_mag_data(outcar_path)
+            total_magnetic_moment = mag_data['tot'].sum()
+            
+            if (mag_data['tot'] == 0).all():
+                magnetic_ordering = 'NM'
+            elif np.isclose(total_magnetic_moment, 0,  atol=magmom_tolerance) == True:
+                magnetic_ordering = 'AFM'
+            elif (mag_data['tot'] >= 0).all() or (mag_data['tot'] <= 0).all():
+                magnetic_ordering = 'FM'
+            elif (mag_data['tot'] > 0).sum() == (mag_data['tot'] < 0).sum():
+                magnetic_ordering = 'FiM'
+            else :
+                magnetic_ordering = 'SF'
+            
             row = {
-                "volume": vol,
                 "config": config,
+                "volume": vol,
+                "volume/atom": vol_per_atom,
                 "energy": energy,
+                "energy/atom": energy_per_atom,
                 "number_of_atoms": number_of_atoms,
-                "mag_data": mag_data,
+                "total_magnetic_moment": total_magnetic_moment,
+                "magnetic_ordering": magnetic_ordering,
+                "mag_data": mag_data
             }
         else:
             row = {
-                "volume": vol,
                 "config": config,
+                "volume": vol,
+                "volume/atom": vol_per_atom,
                 "energy": energy,
+                "energy/atom": energy_per_atom,
                 "number_of_atoms": number_of_atoms,
             }
         row_list.append(row)
     df = pd.DataFrame(row_list)
     return df
 
+
+def recursive_extract_configuration_data(
+    config_dirs: list[str],
+    outcar_name: str ='OUTCAR',
+    oszicar_name: str ='OSZICAR',
+    contcar_name: str ='CONTCAR', 
+    collect_mag_data: bool = False,
+    magmom_tolerance: float = 0
+    ):
+    """convenience function to extract configuration data from multiple config directories.
+    Runs extract_configuration_data for each config directory in a list.
+
+    Args:
+        config_dirs: list of paths to config directories that will be passed to extract_configuration_data()
+        outcar_name: name of the OUTCAR file. Defaults to "OUTCAR".
+        oszicar_name: name of the OSZICAR file. Defaults to "OSZICAR".
+        contcar_name: name of the CONTCAR file. Defaults to "CONTCAR".
+        collect_mag_data: if True, collect the magnetization data using extract_tot_mag_data. Defaults to
+        False.
+        OUTCAR. Defaults to [1].
+        magmom_tolerance: the tolerance for the total magnetic moment to be considered zero. Defaults to 0.
+        
+    """
+    df_list = []
+    for config_dir in config_dirs:
+        try:
+            config_df = extract_configuration_data(
+                config_dir, outcar_name=outcar_name, 
+                oszicar_name=oszicar_name, contcar_name=contcar_name, 
+                collect_mag_data=collect_mag_data)
+            df_list.append(config_df)
+        except Exception as e:
+            print(f'Error in {config_dir}: {e}')
+    df = pd.concat(df_list, ignore_index=True)
+    return df
+    
 
 def three_step_relaxation(
     path,
