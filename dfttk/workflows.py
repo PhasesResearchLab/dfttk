@@ -199,7 +199,6 @@ def extract_tot_mag_data(outcar_path="OUTCAR"):
     return tot_data
 
   
-#TODO:change path to a list of paths so that it can read multiple config folders automatically?
 def extract_configuration_data(
     path: list[str],
     outcar_name: str ='OUTCAR.3static',
@@ -256,10 +255,17 @@ def extract_configuration_data(
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(outcar_path)
             total_magnetic_moment = mag_data['tot'].sum()
-            if np.isclose(total_magnetic_moment, 0,  atol=magmom_tolerance) == True:
-                afm = True
-            else:
-                afm = False
+            
+            if (mag_data['tot'] == 0).all():
+                magnetic_ordering = 'nonmagnetic'
+            elif np.isclose(total_magnetic_moment, 0,  atol=magmom_tolerance) == True:
+                magnetic_ordering = 'antiferromagnetic'
+            elif (mag_data['tot'] >= 0).all() or (mag_data['tot'] <= 0).all():
+                magnetic_ordering = 'ferromagnetic'
+            elif (mag_data['tot'] > 0).sum() == (mag_data['tot'] < 0).sum():
+                magnetic_ordering = 'ferrimagnetic'
+            else :
+                magnetic_ordering = 'spin-flipping'
             
             row = {
                 "config": config,
@@ -269,7 +275,7 @@ def extract_configuration_data(
                 "energy/atom": energy_per_atom,
                 "number_of_atoms": number_of_atoms,
                 "total_magnetic_moment": total_magnetic_moment,
-                "afm": afm,
+                "magnetic_ordering": magnetic_ordering,
                 "mag_data": mag_data
             }
         else:
