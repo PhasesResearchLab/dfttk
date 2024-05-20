@@ -27,7 +27,7 @@ def extract_volume(path):
 
     structure = Structure.from_file(path)
     volume = round(structure.volume, 6)
-    
+
     return volume
 
 
@@ -149,12 +149,12 @@ def extract_mag_data(outcar_path="OUTCAR"):
 
     Returns:
         <class 'pandas.core.frame.DataFrame'>: a pandas DataFrame containing the magnetization data
-    """    
-    
+    """
+
     if not os.path.isfile(outcar_path):
         print(f"Warning: File {outcar_path} does not exist. Skipping.")
         return None
-    
+
     with open(outcar_path, "r") as file:
         data = []
         step = 0
@@ -190,7 +190,7 @@ def extract_tot_mag_data(outcar_path="OUTCAR"):
 
     Returns:
         <class 'pandas.core.frame.DataFrame'>: a pandas DataFrame containing the 'tot' magnetization data
-    """    
+    """
 
     all_mag_data = extract_mag_data(outcar_path)
     last_step_data = all_mag_data[all_mag_data["step"] == all_mag_data["step"].max()]
@@ -207,7 +207,7 @@ def extract_configuration_data(
     collect_mag_data: bool = False,
     magmom_tolerance: float = 0
 ):
-    """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations 
+    """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations
     run by ev_curve_series and returns a pandas DataFrame.
 
     Args:
@@ -221,14 +221,14 @@ def extract_configuration_data(
         magmom_tolerance: the tolerance for the total magnetic moment to be considered zero. Defaults to 0.
 
     Returns:
-        pandas DataFrame: a pandas DataFrame containing the volume, configuration, energy, number of atoms, and 
+        pandas DataFrame: a pandas DataFrame containing the volume, configuration, energy, number of atoms, and
         magnetization data (if specified)
     """
-    
+
     # Find the index where "config_" starts and add its length
     start = path.find("config_") + len("config_")
     config = path[start:]  # get the string following "config_"
-    
+
     row_list = []
     for vol_dir in glob.glob(os.path.join(path, "vol_*")):
         outcar_path = os.path.join(vol_dir, outcar_name)
@@ -459,15 +459,19 @@ def ev_curve_series(
             if os.path.isdir(folder) and folder.startswith("vol")
         ]
         vol_folders = natsorted(vol_folders)
-        
+
         volumes_started = []
         for vol_folder in vol_folders:
             try:
-                volume_started = extract_volume(os.path.join(path, vol_folder, "POSCAR.1relax"))
+                volume_started = extract_volume(
+                    os.path.join(path, vol_folder, "POSCAR.1relax")
+                )
             except Exception as e:
                 print(f"possible error: {e}, trying POSCAR")
                 try:
-                    volume_started = extract_volume(os.path.join(path, vol_folder, "POSCAR"))
+                    volume_started = extract_volume(
+                        os.path.join(path, vol_folder, "POSCAR")
+                    )
                 except Exception as e:
                     print(
                         f"Error: {e}. Could not extract volumes from POSCAR files. Do the files POSCAR.1relax or POSCAR exist in each volume folder?"
@@ -526,7 +530,7 @@ def ev_curve_series(
                 settings_override_2relax=None,
                 settings_override_3static=None,
             )
-    
+
             last_vol_index = j + 1
 
         # If the job failed at the second step of three_step_relaxation, restart using the files from the first step
@@ -634,7 +638,7 @@ def ev_curve_series(
                     os.remove(file_path)
                 elif restarting and i == last_vol_index:
                     pass
-                
+
         poscar = os.path.join(vol_folder_path, "POSCAR")
         struct = Structure.from_file(poscar)
         struct.scale_lattice(vol)
@@ -662,7 +666,8 @@ def ev_curve_series(
         if os.path.exists(file_path):
             os.remove(file_path)
 
-def charge_density_difference(path, vasp_cmd, handlers, backup=False):            
+
+def charge_density_difference(path, vasp_cmd, handlers, backup=False):
     """
     Runs a charge density difference calculation for a configuration in a subdirectory of the given path.
     called charge_density_difference. The charge density difference is calculated as the difference between
@@ -679,15 +684,15 @@ def charge_density_difference(path, vasp_cmd, handlers, backup=False):
     Returns:
         pymatgen.io.vasp.outputs.Chgcar: The charge density difference between the final electronic step and
         a single step.
-    """    
+    """
     original_dir = os.getcwd()
     os.chdir(path)
-    os.mkdir('charge_density_difference')
-    shutil.copy2('POSCAR', 'charge_density_difference/POSCAR')
-    shutil.copy2('POTCAR', 'charge_density_difference/POTCAR')
-    shutil.copy2('INCAR', 'charge_density_difference/INCAR')
-    shutil.copy2('KPOINTS', 'charge_density_difference/KPOINTS')
-    os.chdir('charge_density_difference')
+    os.mkdir("charge_density_difference")
+    shutil.copy2("POSCAR", "charge_density_difference/POSCAR")
+    shutil.copy2("POTCAR", "charge_density_difference/POTCAR")
+    shutil.copy2("INCAR", "charge_density_difference/INCAR")
+    shutil.copy2("KPOINTS", "charge_density_difference/KPOINTS")
+    os.chdir("charge_density_difference")
 
     reference_job = VaspJob(
         vasp_cmd=vasp_cmd,
@@ -695,85 +700,89 @@ def charge_density_difference(path, vasp_cmd, handlers, backup=False):
         suffix=".reference",
         backup=backup,
         settings_override=[
-        {
-            "dict": "INCAR",
-            "action": {
-                "_set": {
-                    "EDIFF": "1E-6",
-                    "IBRION": -1,
-                    "NSW": 1,
-                    "ISIF": 2,
-                    "NELM": 1,
-                    "ISMEAR": -5,
-                    "SIGMA": 0.05,
-                    "LCHARG": True
-                }
+            {
+                "dict": "INCAR",
+                "action": {
+                    "_set": {
+                        "EDIFF": "1E-6",
+                        "IBRION": -1,
+                        "NSW": 1,
+                        "ISIF": 2,
+                        "NELM": 1,
+                        "ISMEAR": -5,
+                        "SIGMA": 0.05,
+                        "LCHARG": True,
+                    }
+                },
             },
-        },
         ],
     )
-    
+
     charge_density_job = VaspJob(
         vasp_cmd=vasp_cmd,
         final=True,
         suffix=".charge_density",
         backup=backup,
         settings_override=[
-        {
-            "dict": "INCAR",
-            "action": {
-                "_set": {
-                    "EDIFF": "1E-6",
-                    "IBRION": -1,
-                    "NSW": 1,
-                    "ISIF": 2,
-                    "NELM": 100,
-                    "ISMEAR": -5,
-                    "SIGMA": 0.05,
-                    "LCHARG": True
-                }
+            {
+                "dict": "INCAR",
+                "action": {
+                    "_set": {
+                        "EDIFF": "1E-6",
+                        "IBRION": -1,
+                        "NSW": 1,
+                        "ISIF": 2,
+                        "NELM": 100,
+                        "ISMEAR": -5,
+                        "SIGMA": 0.05,
+                        "LCHARG": True,
+                    }
+                },
             },
-        },
         ],
     )
-    
+
     jobs = [reference_job, charge_density_job]
     c = Custodian(handlers, jobs, max_errors=3)
     c.run()
-    
-    final = Chgcar.from_file('CHGCAR.charge_density')
-    reference = Chgcar.from_file('CHGCAR.reference')
+
+    final = Chgcar.from_file("CHGCAR.charge_density")
+    reference = Chgcar.from_file("CHGCAR.reference")
     difference = final - reference
-    difference.write_file('CHGCAR.difference')
-    
+    difference.write_file("CHGCAR.difference")
+
     os.chdir(original_dir)
 
     return difference
-    
 
 
 def custodian_errors_location(path):
-    vol_folders = [d for d in os.listdir(path) if d.startswith('vol')]
+    vol_folders = [d for d in os.listdir(path) if d.startswith("vol")]
     for vol_folder in vol_folders:
-        error_folders = [f for f in os.listdir(os.path.join(path, vol_folder)) if f.startswith('error')]
+        error_folders = [
+            f
+            for f in os.listdir(os.path.join(path, vol_folder))
+            if f.startswith("error")
+        ]
         if len(error_folders) > 0:
-            print(f'In {vol_folder} there are error folders: {error_folders}')
-    
-def NELM_reached(path):    
-    start_dir = path  
+            print(f"In {vol_folder} there are error folders: {error_folders}")
+
+
+def NELM_reached(path):
+    start_dir = path
     target_line = "The electronic self-consistency was not achieved in the given"
     for dirpath, dirs, files in os.walk(start_dir):
         for filename in files:
             filepath = os.path.join(dirpath, filename)
-            with open(filepath, 'r', errors='ignore') as file:
+            with open(filepath, "r", errors="ignore") as file:
                 for line in file:
                     if target_line in line:
-                        print(f'{filepath} has reached NELM.')
+                        print(f"{filepath} has reached NELM.")
                         break
-                    
+
+
 # TODO: add a way to override the default settings
 def run_phonons(vasp_cmd, handlers, copy_magmom=False, backup=False):
-
 
     step1 = VaspJob(
         vasp_cmd=vasp_cmd,
@@ -799,6 +808,8 @@ def run_phonons(vasp_cmd, handlers, copy_magmom=False, backup=False):
                         "NSW": 1,
                         "ISIF": 0,
                         "POTIM": 0.015,
+                        "ISYM": 2,
+                        "NCORE": 1,
                     }
                 },
             },
@@ -811,7 +822,29 @@ def run_phonons(vasp_cmd, handlers, copy_magmom=False, backup=False):
     c.run()
 
 
-def phonons_parallel(path, phonon_volumes, supercell_size, kppa, sbatch_command):
+def phonons_parallel(path, phonon_volumes, supercell_size, kppa, run_file):
+
+    # Create a new run_file to run the phonon calculations
+    script_name = sys.argv[0]
+    with open(script_name, "r") as file:
+        script_contents = file.read()
+        script_contents = "\n".join(
+            [
+                line
+                for line in script_contents.split("\n")
+                if "workflows.phonons_parallel" not in line
+            ]
+        )
+
+    with open(run_file, "r") as file:
+        run_file_contents = file.read()
+
+    new_run_file = run_file_contents + "\n"
+    new_run_file += "\n"
+    new_run_file += "python << END_OF_PYTHON\n"
+    new_run_file += script_contents
+    new_run_file += "workflows.run_phonons(vasp_cmd, handlers)\n"
+    new_run_file += "END_OF_PYTHON\n"
 
     # Copy files to phonon folders
     vol_folders = [
@@ -823,10 +856,8 @@ def phonons_parallel(path, phonon_volumes, supercell_size, kppa, sbatch_command)
     ev_volumes_finished = []
     ev_folder_names = []
     for vol_folder in vol_folders:
-        structure = Structure.from_file(
-            os.path.join(path, vol_folder, "CONTCAR.3static")
-        )
-        ev_volumes_finished.append(round(structure.volume, 6))
+        structure_path = os.path.join(path, vol_folder, "CONTCAR.3static")
+        ev_volumes_finished.append(extract_volume(structure_path))
         ev_folder_names.append(vol_folder)
 
     ev_volumes_and_folders_finished = [
@@ -858,10 +889,6 @@ def phonons_parallel(path, phonon_volumes, supercell_size, kppa, sbatch_command)
             file_dest = os.path.join(path, f"phonon_{phonon_folder}", dest_name)
             if os.path.isfile(file_source):
                 shutil.copy2(file_source, file_dest)
-            shutil.copy2(
-                os.path.join(path, sbatch_command),
-                os.path.join(path, f"phonon_{phonon_folder}", sbatch_command),
-            )
 
     # Create a supercell and write the KPOINTS file
     for phonon_volume, phonon_folder in phonon_volumes_and_folders:
@@ -878,7 +905,9 @@ def phonons_parallel(path, phonon_volumes, supercell_size, kppa, sbatch_command)
     # Run the phonon calculations in parallel
     for phonon_volume, phonon_folder in phonon_volumes_and_folders:
         os.chdir(os.path.join(path, f"phonon_{phonon_folder}"))
-        os.system(sbatch_command)
+        with open("run_phonons", "w") as file:
+            file.write(new_run_file)
+        os.system("sbatch run_phonons")
         os.chdir(path)
 
 
