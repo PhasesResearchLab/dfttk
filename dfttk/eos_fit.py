@@ -30,7 +30,7 @@ from scipy.optimize import curve_fit
 from scipy.optimize import leastsq
 
 # Conversion factor
-ev_per_cubic_angstrom_to_gpa = 160.21766208 # 1 eV/Å^3  = 160.21766208 GPa
+EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208 # 1 eV/Å^3  = 160.21766208 GPa
 
 # TODO: See if you can simplify the code even further, especially the last three functions.
 # mBM4 EOS Functions
@@ -63,7 +63,7 @@ def mBM4_eos_parameters(a, b, c, d):
     B = (
         (2 * d) / V0 ** 3 + (10 * c) / (9 * V0 ** (8 / 3)) + (4 * b) / (9 * V0 ** (7 / 3))
     ) * V0
-    B = B * ev_per_cubic_angstrom_to_gpa
+    B = B * EV_PER_CUBIC_ANGSTROM_TO_GPA
     BP = (54 * d * V0 ** (1 / 3) + 25 * c * V0 ** (2 / 3) + 8 * b * V0) / (
         27 * d * V0 ** (1 / 3) + 15 * c * V0 ** (2 / 3) + 6 * b * V0
     )
@@ -74,7 +74,7 @@ def mBM4_eos_parameters(a, b, c, d):
             + 2 * V0 ** (1 / 3) * (5 * c * (b * V0))
         )
     ) / (2 * (9 * d * V0 ** (1 / 3) + 5 * c * V0 ** (2 / 3) + 2 * b * V0) ** 3)
-    B2P = B2P / ev_per_cubic_angstrom_to_gpa
+    B2P = B2P / EV_PER_CUBIC_ANGSTROM_TO_GPA
 
     return V0, E0, B, BP, B2P
 
@@ -84,7 +84,7 @@ def mBM4(volume, energy):
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     energy_eos = mBM4_equation(volume_range, a, b, c, d)
-    pressure_eos = -1 * ev_per_cubic_angstrom_to_gpa * mBM4_derivative(volume_range, b, c, d)
+    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * mBM4_derivative(volume_range, b, c, d)
     V0, E0, B, BP, B2P = mBM4_eos_parameters(a, b, c, d)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, 0])
@@ -123,7 +123,7 @@ def mBM5_eos_parameters(volume_range, a, b, c, d, e):
         + (10 * c) / (9 * V0 ** (8 / 3))
         + (4 * b) / (9 * V0 ** (7 / 3))
     ) * V0
-    B = B * ev_per_cubic_angstrom_to_gpa
+    B = B * EV_PER_CUBIC_ANGSTROM_TO_GPA
     BP = (98 * e + 54 * d * V0 ** (1 / 3) + 25 * c * V0 ** (2 / 3) + 8 * b * V0) / (
         42 * e + 27 * d * V0 ** (1 / 3) + 15 * c * V0 ** (2 / 3) + 6 * b * V0
     )
@@ -136,7 +136,7 @@ def mBM5_eos_parameters(volume_range, a, b, c, d, e):
             * (126 * b * e * V0 ** (1 / 3) + 5 * c * (28 * e + b * V0))
         )
     ) / (2 * (14 * e + 9 * d * V0 ** (1 / 3) + 5 * c * V0 ** (2 / 3) + 2 * b * V0) ** 3)
-    B2P = B2P / ev_per_cubic_angstrom_to_gpa
+    B2P = B2P / EV_PER_CUBIC_ANGSTROM_TO_GPA
 
     return V0, E0, B, BP, B2P
 
@@ -146,7 +146,7 @@ def mBM5(volume, energy):
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     energy_eos = mBM5_equation(volume_range, a, b, c, d, e)
-    pressure_eos = -1 * ev_per_cubic_angstrom_to_gpa * mBM5_derivative(volume_range, b, c, d, e)
+    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * mBM5_derivative(volume_range, b, c, d, e)
     V0, E0, B, BP, B2P = mBM5_eos_parameters(volume_range, a, b, c, d, e)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, e])
@@ -186,7 +186,7 @@ def BM4_eos_parameters(a, b, c, d):
     B = (2 * (27 * d * V0 ** (2 / 3) + 14 * c * V0 ** (4 / 3) + 5 * b * V0 ** 2)) / (
         9 * V0 ** (11 / 3)
     )
-    B = B * ev_per_cubic_angstrom_to_gpa
+    B = B * EV_PER_CUBIC_ANGSTROM_TO_GPA
     BP = (243 * d * V0 ** (2 / 3) + 98 * c * V0 ** (4 / 3) + 25 * b * V0 ** 2) / (
         81 * d * V0 ** (2 / 3) + 42 * c * V0 ** (4 / 3) + 15 * b * V0 ** 2
     )
@@ -198,7 +198,7 @@ def BM4_eos_parameters(a, b, c, d):
             + V0 ** (2 / 3) * (7 * c * (5 * b * V0 ** 2))
         )
     ) / (27 * d * V0 ** (2 / 3) + 14 * c * V0 ** (4 / 3) + 5 * b * V0 ** 2) ** 3
-    B2P = B2P / ev_per_cubic_angstrom_to_gpa
+    B2P = B2P / EV_PER_CUBIC_ANGSTROM_TO_GPA
 
     return V0, E0, B, BP, B2P
 
@@ -208,7 +208,7 @@ def BM4(volume, energy):
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     energy_eos = BM4_equation(volume_range, a, b, c, d)
-    pressure_eos = -1 * ev_per_cubic_angstrom_to_gpa * BM4_derivative(volume_range, b, c, d)
+    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * BM4_derivative(volume_range, b, c, d)
     V0, E0, B, BP, B2P = BM4_eos_parameters(a, b, c, d)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, 0])
@@ -244,7 +244,7 @@ def BM5_eos_parameters(volume_range, a, b, c, d, e):
     B = (
         2 * (44 * e + 27 * d * V0 ** (2 / 3) + 14 * c * V0 ** (4 / 3) + 5 * b * V0 ** 2)
     ) / (9 * V0 ** (11 / 3))
-    B = B * ev_per_cubic_angstrom_to_gpa
+    B = B * EV_PER_CUBIC_ANGSTROM_TO_GPA
     BP = (
         484 * e + 243 * d * V0 ** (2 / 3) + 98 * c * V0 ** (4 / 3) + 25 * b * V0 ** 2
     ) / (132 * e + 81 * d * V0 ** (2 / 3) + 42 * c * V0 ** (4 / 3) + 15 * b * V0 ** 2)
@@ -259,7 +259,7 @@ def BM5_eos_parameters(volume_range, a, b, c, d, e):
     ) / (
         44 * e + 27 * d * V0 ** (2 / 3) + 14 * c * V0 ** (4 / 3) + 5 * b * V0 ** 2
     ) ** 3
-    B2P = B2P / ev_per_cubic_angstrom_to_gpa
+    B2P = B2P / EV_PER_CUBIC_ANGSTROM_TO_GPA
 
     return V0, E0, B, BP, B2P
 
@@ -269,7 +269,7 @@ def BM5(volume, energy):
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     energy_eos = BM5_equation(volume_range, a, b, c, d, e)
-    pressure_eos = -1 * ev_per_cubic_angstrom_to_gpa * BM5_derivative(volume_range, b, c, d, e)
+    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * BM5_derivative(volume_range, b, c, d, e)
     V0, E0, B, BP, B2P = BM5_eos_parameters(volume_range, a, b, c, d, e)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, e])
@@ -294,7 +294,7 @@ def LOG4_eos_parameters(volume_range, a, b, c, d):
     B = -(
         (b - 2 * c + 2 * (c - 3 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2) / V0
     )
-    B = B * ev_per_cubic_angstrom_to_gpa
+    B = B * EV_PER_CUBIC_ANGSTROM_TO_GPA
     BP = (
         b - 4 * c + 6 * d + 2 * (c - 6 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2
     ) / (b - 2 * c + 2 * (c - 3 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2)
@@ -310,7 +310,7 @@ def LOG4_eos_parameters(volume_range, a, b, c, d):
             + 9 * d ** 2 * math.log(V0) ** 2
         )
     ) / (b - 2 * c + 2 * (c - 3 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2) ** 3
-    B2P = B2P / ev_per_cubic_angstrom_to_gpa
+    B2P = B2P / EV_PER_CUBIC_ANGSTROM_TO_GPA
     return V0, E0, B, BP, B2P
 
 
@@ -319,7 +319,7 @@ def LOG4(volume, energy):
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     energy_eos = LOG4_equation(volume_range, a, b, c, d)
-    pressure_eos = -1 * ev_per_cubic_angstrom_to_gpa * LOG4_derivative(volume_range, b, c, d)
+    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * LOG4_derivative(volume_range, b, c, d)
     V0, E0, B, BP, B2P = LOG4_eos_parameters(volume_range, a, b, c, d)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, 0])
@@ -363,7 +363,7 @@ def LOG5_eos_parameters(volume_range, a, b, c, d, e):
         )
         / V0
     )
-    B = B * ev_per_cubic_angstrom_to_gpa
+    B = B * EV_PER_CUBIC_ANGSTROM_TO_GPA
     BP = (
         b
         - 4 * c
@@ -399,7 +399,7 @@ def LOG5_eos_parameters(volume_range, a, b, c, d, e):
         + 3 * (d - 4 * e) * math.log(V0) ** 2
         + 4 * e * math.log(V0) ** 3
     ) ** 3
-    B2P = B2P / ev_per_cubic_angstrom_to_gpa
+    B2P = B2P / EV_PER_CUBIC_ANGSTROM_TO_GPA
     return V0, E0, B, BP, B2P
 
 
@@ -408,7 +408,7 @@ def LOG5(volume, energy):
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     energy_eos = LOG5_equation(volume_range, a, b, c, d, e)
-    pressure_eos = -1 * ev_per_cubic_angstrom_to_gpa * LOG5_derivative(volume_range, b, c, d, e)
+    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * LOG5_derivative(volume_range, b, c, d, e)
     V0, E0, B, BP, B2P = LOG5_eos_parameters(volume_range, a, b, c, d, e)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, e])
@@ -438,16 +438,16 @@ def murnaghan(volume, energy):
     initial_guess = [
         eos_parameters[0],
         eos_parameters[1],
-        eos_parameters[2] / ev_per_cubic_angstrom_to_gpa,
+        eos_parameters[2] / EV_PER_CUBIC_ANGSTROM_TO_GPA,
         eos_parameters[3],
     ]
 
     V0, E0, B, BP = curve_fit(murnaghan_equation, volume, energy, p0=initial_guess)[0]
     
     energy_eos = murnaghan_equation(volume_range, V0, E0, B, BP)
-    eos_parameters = np.array([V0, E0, B * ev_per_cubic_angstrom_to_gpa, BP, 0])
+    eos_parameters = np.array([V0, E0, B * EV_PER_CUBIC_ANGSTROM_TO_GPA, BP, 0])
     eos_constants = np.array([0, 0, 0, 0, 0])
-    pressure_eos = -1 * ev_per_cubic_angstrom_to_gpa * murnaghan_derivative(volume_range, V0, B, BP)
+    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * murnaghan_derivative(volume_range, V0, B, BP)
 
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
@@ -482,7 +482,7 @@ def vinet(volume, energy):
     xini = [
         eos_parameters[0],
         eos_parameters[1],
-        eos_parameters[2] / ev_per_cubic_angstrom_to_gpa,
+        eos_parameters[2] / EV_PER_CUBIC_ANGSTROM_TO_GPA,
         eos_parameters[3],
     ]
     [xout, resnorm] = leastsq(vinet_equation, xini, Data)
@@ -502,11 +502,11 @@ def vinet(volume, energy):
     )
 
     b2p = (19 - 18 * bp - 9 * bp**2) / (36 * B)
-    eos_parameters = np.array([V, E0, B * ev_per_cubic_angstrom_to_gpa, bp, b2p / ev_per_cubic_angstrom_to_gpa])
+    eos_parameters = np.array([V, E0, B * EV_PER_CUBIC_ANGSTROM_TO_GPA, bp, b2p / EV_PER_CUBIC_ANGSTROM_TO_GPA])
     eos_constants = np.array([0, 0, 0, 0, 0])
     
     pressure_eos = (
-        ev_per_cubic_angstrom_to_gpa
+        EV_PER_CUBIC_ANGSTROM_TO_GPA
         * (-3 * B * (-1 + (volume_range / V) ** (1 / 3)))
         / (
             np.exp((3 * (-1 + bp) * (-1 + (volume_range / V) ** (1 / 3))) / 2)
@@ -548,7 +548,7 @@ def morse(volume, energy):
     xini = [
         eos_parameters[0],
         eos_parameters[1],
-        eos_parameters[2] / ev_per_cubic_angstrom_to_gpa,
+        eos_parameters[2] / EV_PER_CUBIC_ANGSTROM_TO_GPA,
         eos_parameters[3],
     ]
     [xout, resnorm] = leastsq(morse_equation, xini, Data)
@@ -569,11 +569,11 @@ def morse(volume, energy):
     )
 
     b2p = (5 - 5 * bp - 2 * bp**2) / (9 * B)
-    eos_parameters = np.array([V, E0, B * ev_per_cubic_angstrom_to_gpa, bp, b2p / ev_per_cubic_angstrom_to_gpa])
+    eos_parameters = np.array([V, E0, B * EV_PER_CUBIC_ANGSTROM_TO_GPA, bp, b2p / EV_PER_CUBIC_ANGSTROM_TO_GPA])
     eos_constants = np.array([0, 0, 0, 0, 0])
     
     pressure_eos = (
-        -ev_per_cubic_angstrom_to_gpa
+        -EV_PER_CUBIC_ANGSTROM_TO_GPA
         * (
             d
             * np.exp(d * volume_range ** (1 / 3))
