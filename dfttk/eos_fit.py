@@ -417,51 +417,37 @@ def LOG5(volume, energy):
 
 
 # Murnaghan EOS Functions
-def murnaghan_equation(xini, Data):
-    V = xini[0]
-    E0 = xini[1]
-    B = xini[2]
-    bp = xini[3]
-    volume_range = Data[:, 0]
-    y = Data[:, 1]
-    eng = (
+def murnaghan_equation(volume, V0, E0, B, BP):
+    energy = (
         E0
-        - (B * V) / (-1 + bp)
-        + (B * (1 + (V / volume_range) ** bp / (-1 + bp)) * volume_range) / bp
+        - (B * V0) / (BP - 1)
+        + (B * volume / BP ) * (1 + (V0 / volume) ** BP / (BP - 1))
     )
-    return eng - y
+    return energy
+
+
+def murnaghan_derivative(volume, V0, B, BP):
+    energy_derivative = (B / BP) * (1 - (V0 / volume) ** BP)
+    return energy_derivative
 
 
 def murnaghan(volume, energy):
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
-    Data = np.vstack((volume, energy))
-    Data = Data.T
-
     [eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(volume, energy)
-    xini = [
+    initial_guess = [
         eos_parameters[0],
         eos_parameters[1],
         eos_parameters[2] / ev_per_cubic_angstrom_to_gpa,
         eos_parameters[3],
     ]
-    [xout, resnorm] = leastsq(murnaghan_equation, xini, Data)
 
-    V = xout[0]
-    E0 = xout[1]
-    B = xout[2]
-    bp = xout[3]
-
-    energy_eos = (
-        E0
-        - (B * V) / (-1 + bp)
-        + (B * (1 + (V / volume_range) ** bp / (-1 + bp)) * volume_range) / bp
-    )
-
-    eos_parameters = np.array([V, E0, B * ev_per_cubic_angstrom_to_gpa, bp, 0])
-    eos_constants = np.array([0, 0, 0, 0, 0])
+    V0, E0, B, BP = curve_fit(murnaghan_equation, volume, energy, p0=initial_guess)[0]
     
-    pressure_eos = ev_per_cubic_angstrom_to_gpa * (B * (-1 + (V / volume_range) ** bp)) / bp
+    energy_eos = murnaghan_equation(volume_range, V0, E0, B, BP)
+    eos_parameters = np.array([V0, E0, B * ev_per_cubic_angstrom_to_gpa, BP, 0])
+    eos_constants = np.array([0, 0, 0, 0, 0])
+    pressure_eos = -1 * ev_per_cubic_angstrom_to_gpa * murnaghan_derivative(volume_range, V0, B, BP)
 
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
