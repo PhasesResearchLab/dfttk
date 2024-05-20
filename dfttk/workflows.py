@@ -257,15 +257,15 @@ def extract_configuration_data(
             total_magnetic_moment = mag_data['tot'].sum()
             
             if (mag_data['tot'] == 0).all():
-                magnetic_ordering = 'nonmagnetic'
+                magnetic_ordering = 'NM'
             elif np.isclose(total_magnetic_moment, 0,  atol=magmom_tolerance) == True:
-                magnetic_ordering = 'antiferromagnetic'
+                magnetic_ordering = 'AFM'
             elif (mag_data['tot'] >= 0).all() or (mag_data['tot'] <= 0).all():
-                magnetic_ordering = 'ferromagnetic'
+                magnetic_ordering = 'FM'
             elif (mag_data['tot'] > 0).sum() == (mag_data['tot'] < 0).sum():
-                magnetic_ordering = 'ferrimagnetic'
+                magnetic_ordering = 'FiM'
             else :
-                magnetic_ordering = 'spin-flipping'
+                magnetic_ordering = 'SF'
             
             row = {
                 "config": config,
