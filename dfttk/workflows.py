@@ -198,25 +198,27 @@ def extract_tot_mag_data(outcar_path="OUTCAR"):
     tot_data.reset_index(drop=True, inplace=True)
     return tot_data
 
-def determine_magnetic_ordering(df: pd.DataFrame, magmom_tolerance: float = 0):
+def determine_magnetic_ordering(df: pd.DataFrame, magmom_tolerance: float = 1e-12, total_magnetic_moment_tolerance: float = 1e-12):
     """Determines the magnetic ordering of a structure from the magnetization data in a pandas DataFrame.
 
     Args:
         df (pandas DataFrame): a pandas DataFrame containing the magnetization data
-        magmom_tolerance (float, optional): the tolerance for the total magnetic moment to be considered
-        zero. Defaults to 0.
+        magmom_tolerance (float, optional): the tolerance for the total magnetic moment on each atom to be considered
+        zero.
+        Total_magmom_tolerance (float, optional) the tolerance for the sum of the total magnentic moments for each atom.
+        Defaults to 1e-12 to handle floating point errors.
 
     Returns:
         str: the magnetic ordering of the structure
     """
 
-    if (df['tot'] == 0).all():
+    if (np.isclose(df['tot'], 0, atol=magmom_tolerance)).all():
         return 'NM'
-    elif np.isclose(df['tot'].sum(), 0,  atol=magmom_tolerance) == True:
+    elif np.isclose(df['tot'].sum(), 0, atol=total_magnetic_moment_tolerance) == True:
         return 'AFM'
-    elif (df['tot'] >= 0).all() or (df['tot'] <= 0).all():
+    elif (df['tot'] >= 0 + magmom_tolerance).all() or (df['tot'] <= 0 - magmom_tolerance).all():
         return 'FM'
-    elif (df['tot'] > 0).sum() == (df['tot'] < 0).sum():
+    elif (df['tot'] > 0 + magmom_tolerance).sum() == (df['tot'] < 0 - magmom_tolerance).sum():
         return 'FiM'
     else:
         return 'SF'
@@ -229,7 +231,7 @@ def extract_configuration_data(
     contcar_name: str ='CONTCAR.3static', 
     collect_mag_data: bool = False,
     magmom_tolerance: float = 0
-):
+    ):
     """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations
     run by ev_curve_series and returns a pandas DataFrame.
 
