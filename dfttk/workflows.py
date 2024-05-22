@@ -165,19 +165,24 @@ def extract_mag_data(outcar_path="OUTCAR"):
             if "magnetization (x)" in line:
                 found_mag_data = True
                 step += 1
+            elif found_mag_data and not data_start and "# of ion" in line:
+                headers = line.split()
+                headers.pop(0)  # '#'
+                headers.pop(0)  # 'of'
+                headers.pop(0)  # 'ion'
+                headers.insert(0, '# of ion')
             elif found_mag_data and not data_start and "----" in line:
                 data_start = True
             elif data_start and "----" not in line:
                 ion = int(line.split()[0])
-                s = float(line.split()[1])
-                p = float(line.split()[2])
-                d = float(line.split()[3])
-                tot = float(line.split()[4])
-                data.append((step, ion, s, p, d, tot))
+                data_line = line.split()[1:]
+                data_line = [float(data) for data in data_line]
+                data.append((step, ion, *data_line))
             elif data_start and "----" in line:
                 data_start = False
                 found_mag_data = False
-        df = pd.DataFrame(data, columns=["step", "# of ion", "s", "p", "d", "tot"])
+        columns = ["step"] + headers
+        df = pd.DataFrame(data, columns=columns)
         return df
 
 
@@ -429,7 +434,7 @@ def ev_curve_series(
     default_settings=True,
     settings_override_2relax=None,
     settings_override_3static=None,
-):
+    ):
     """This function runs a series of three_step_relaxation calculations for a list of volumes. It starts with the first volume, then
        copies the relevant files to the next volume folder, scales the volume of the POSCAR accordingly, and so on.
 
