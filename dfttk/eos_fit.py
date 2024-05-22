@@ -752,9 +752,8 @@ def plot_mv(df, show_fig=True):
     """
     # Create a new dataframe where each 'mag_data' dataframe is associated with its corresponding 'volume' and 'config' values
     df_new = pd.concat([df_mag.assign(volume=v, config=c) for v, c, df_mag in zip(df['volume'], df['config'], df['mag_data'])])
-
     fig = px.line(
-        df_new.sort_values('volume'),
+        df_new.sort_values(['# of ion','volume',]),
         x="volume",
         y="tot",
         color="# of ion",
