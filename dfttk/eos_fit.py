@@ -1501,16 +1501,8 @@ def plot_config_energy(
     df, number_of_lowest_configs=5, show_fig=True, xmax=None, ymax=None
 ):
     new_df = df
-    try:
-        new_df = df.drop("# of ion", axis=1)
-        new_df = new_df.drop("tot", axis=1)
-        new_df = new_df.drop_duplicates()
-        new_df["energy_per_atom"] = new_df["energy"] / new_df["number_of_atoms"]
-        new_df = new_df.nsmallest(number_of_lowest_configs, "energy_per_atom").copy()
-    except Exception as e:
-        print("possible error. Could not strip magnetic data: ", e)
-        new_df["energy_per_atom"] = new_df["energy"] / new_df["number_of_atoms"]
-        new_df = df.nsmallest(number_of_lowest_configs, "energy_per_atom").copy()
+    new_df["energy_per_atom"] = new_df["energy"] / new_df["number_of_atoms"]
+    new_df = df.nsmallest(number_of_lowest_configs, "energy_per_atom").copy()
     new_df["energy_difference"] = (
         new_df["energy_per_atom"] - new_df["energy_per_atom"].min()
     ) * 1000
