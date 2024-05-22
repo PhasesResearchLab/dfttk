@@ -750,9 +750,11 @@ def plot_mv(df, show_fig=True):
     df is a data frame with columns ['config', '# of ion', 'volume', 'tot']
     breaks if missing these columns
     """
+    # Create a new dataframe where each 'mag_data' dataframe is associated with its corresponding 'volume' and 'config' values
+    df_new = pd.concat([df_mag.assign(volume=v, config=c) for v, c, df_mag in zip(df['volume'], df['config'], df['mag_data'])])
 
     fig = px.line(
-        df,
+        df_new.sort_values('volume'),
         x="volume",
         y="tot",
         color="# of ion",
@@ -761,7 +763,7 @@ def plot_mv(df, show_fig=True):
         template="plotly_white",
     )
     fig.update_layout(
-        title="Mag-V", xaxis_title="Volume [A^3]", yaxis_title="Magnetic Moment [mu_B]"
+        xaxis_title="Volume [A^3]", yaxis_title="Magnetic Moment [mu_B]"
     )
 
     fig.update_yaxes(nticks=10)
