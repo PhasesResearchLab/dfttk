@@ -1518,10 +1518,9 @@ def plot_config_energy(
             types_of_magnetic_ordering = new_df['magnetic_ordering'].unique()
         # add a new color column to new_df that corresponds to the magnetic ordering
         colors = px.colors.qualitative.Plotly.copy() # plotly colors
-        colors[0] = '#0000FF' # regular blue
-        colors[1] = '#FF0000' # regular red
-        colors[2] = '#19D3F3' # customize
-        colors[5] = '#00CC96' # customize
+        colors[0] = '#0000FF' # blue
+        colors[1] = '#FF0000' # red
+        colors[2] = '#9CDE1C' # custom green
         assignment = zip(types_of_magnetic_ordering, colors)
         new_df['color'] = new_df['magnetic_ordering'].map(dict(assignment))
         
