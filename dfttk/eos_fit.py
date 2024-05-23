@@ -1570,7 +1570,7 @@ def plot_config_energy(
             showgrid=False
         ),
         yaxis2=dict(
-            domain=[0.6, 0.95],
+            domain=[0.5, 0.95],
             anchor='x2',
             range=[0, ymaxs[1]],
             showline=True,
