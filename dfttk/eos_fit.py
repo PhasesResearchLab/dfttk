@@ -1498,19 +1498,22 @@ def plot_energy_difference(
 
 # TODO: review
 def plot_config_energy(
-    df, number_of_lowest_configs=5, show_fig=True, xmax=None, ymax=None
+    df, max_rank=5, show_fig=True, xmax=None, ymax=None, inset_max_rank=10
 ):
-    new_df = df
-    new_df["energy_per_atom"] = new_df["energy"] / new_df["number_of_atoms"]
-    new_df = df.nsmallest(number_of_lowest_configs, "energy_per_atom").copy()
-    new_df["energy_difference"] = (
-        new_df["energy_per_atom"] - new_df["energy_per_atom"].min()
-    ) * 1000
-    new_df = new_df.reset_index(drop=True)
-    new_df["rank"] = new_df["energy_difference"].rank(method="min") - 1
-    if xmax == None:
+    data = []
+    xmaxs = []
+    ymaxs = []
+    for i, el in enumerate([max_rank, inset_max_rank]):
+        new_df = df
+        new_df["energy_per_atom"] = new_df["energy"] / new_df["number_of_atoms"]
+        new_df = df.nsmallest(el +1, "energy_per_atom").copy()
+        new_df["energy_difference"] = (
+            new_df["energy_per_atom"] - new_df["energy_per_atom"].min()
+        ) * 1000
+        new_df = new_df.reset_index(drop=True)
+        new_df["rank"] = new_df["energy_difference"].rank(method="min") - 1
         xmax = new_df["rank"].max()
-    if ymax == None:
+        xmaxs.append(xmax)
         max_energy_difference = new_df["energy_difference"].max()
         # Get the order of magnitude of the max_energy_difference
         rounding_order_of_magnitude = 10 ** (len(str(int(max_energy_difference))) - 2)
@@ -1523,48 +1526,72 @@ def plot_config_energy(
 
         # Get the next multiple of order of magnitude with the second digit being 0
         ymax = ((ymax // rounding_order_of_magnitude) + 1) * rounding_order_of_magnitude
-    fig = px.scatter(
-        new_df, x="rank", y="energy_difference", color="config", template="plotly_white"
-    )
-    fig.update_traces(
-        marker=dict(size=5, symbol="cross-thin-open", color="blue"),
-        selector=dict(mode="markers"),
-    )
-    fig.update_layout(
-        title="Configuration Energy",
-        xaxis_title="Configuration",
-        yaxis_title="Energy difference (meV/atom)",
-    )
-    fig.update_layout(showlegend=False)
-    fig.update_layout(
-        title_text="Configuration Energy",
+        ymaxs.append(ymax)
+        if i == 0:
+            data.append(go.Scatter(x=new_df["rank"], y=new_df["energy_difference"], mode="markers"))
+        else:
+            data.append(go.Scatter(x=new_df["rank"], y=new_df["energy_difference"], xaxis='x2', yaxis='y2', mode="markers"))
+    layout = go.Layout(
+        xaxis=dict(
+            title="Energy rank",
+            range=[0, xmaxs[0]],
+            showline=True,
+            linecolor="black",
+            linewidth=2.4,
+            ticks="inside",
+            mirror="allticks",
+            tickwidth=2.4,
+            tickcolor="black",
+            showgrid=False
+        ),
+        yaxis=dict(
+            title="Energy difference (meV/atom)",
+            range=[0, ymaxs[0]],
+            showline=True,
+            linecolor="black",
+            linewidth=2.4,
+            ticks="inside",
+            mirror="allticks",
+            tickwidth=2.4,
+            tickcolor="black",
+            showgrid=False
+        ),
+        xaxis2=dict(
+            domain=[0.1, 0.5],
+            anchor='y2',
+            range=[0, inset_max_rank],
+            showline=True,
+            linecolor="black",
+            linewidth=2.4,
+            ticks="inside",
+            mirror="allticks",
+            tickwidth=2.4,
+            tickcolor="black",
+            showgrid=False
+        ),
+        yaxis2=dict(
+            domain=[0.6, 0.95],
+            anchor='x2',
+            range=[0, ymaxs[1]],
+            showline=True,
+            linecolor="black",
+            linewidth=2.4,
+            ticks="inside",
+            mirror="allticks",
+            tickwidth=2.4,
+            tickcolor="black",
+            showgrid=False
+        ),
         plot_bgcolor="white",
         width=600,
         height=600,
         margin=dict(l=80, r=30, t=80, b=80),
+        showlegend=False
     )
-    fig.update_yaxes(
-        range=[0, ymax],
-        showline=True,  # add line at x=0
-        linecolor="black",
-        linewidth=2.4,
-        ticks="inside",
-        mirror="allticks",  # add ticks to top/right axes
-        tickwidth=2.4,
-        tickcolor="black",
-        showgrid=False,
-    )
-    fig.update_xaxes(
-        range=[0, xmax],
-        showline=True,
-        showticklabels=True,
-        linecolor="black",
-        linewidth=2.4,
-        ticks="inside",
-        mirror="allticks",
-        tickwidth=2.4,
-        tickcolor="black",
-        showgrid=False,
+    fig = go.Figure(data=data, layout=layout)
+    fig.update_traces(
+        marker=dict(size=5, symbol="cross-thin-open", color="blue"),
+        selector=dict(mode="markers"),
     )
     if show_fig:
         fig.show()
