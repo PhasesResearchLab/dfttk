@@ -1527,10 +1527,24 @@ def plot_config_energy(
         # Get the next multiple of order of magnitude with the second digit being 0
         ymax = ((ymax // rounding_order_of_magnitude) + 1) * rounding_order_of_magnitude
         ymaxs.append(ymax)
+        
+        # add a new color column to new_df that corresponds to the magnetic ordering
+        colors = px.colors.qualitative.Plotly.copy() # plotly colors
+        colors[0] = '#0000FF' # customize
+        colors[2] = '#19D3F3' # customize
+        colors[5] = '#00CC96' # customize
+        types_of_magnetic_ordering = new_df['magnetic_ordering'].unique()
+        print(types_of_magnetic_ordering)
+        assignment = zip(types_of_magnetic_ordering, colors)
+        new_df['color'] = new_df['magnetic_ordering'].map(dict(assignment))
+        
+            
+        
         if i == 0:
             data.append(go.Scatter(x=new_df["rank"],
                                    y=new_df["energy_difference"],
                                    mode="markers",
+                                   marker=dict(size=6, symbol="cross-thin-open", color=new_df["color"]),
                                    hovertext=[f'config = {i}' for i in new_df["config"]]))
         else:
             data.append(go.Scatter(x=new_df["rank"],
@@ -1538,6 +1552,7 @@ def plot_config_energy(
                                    xaxis='x2',
                                    yaxis='y2',
                                    mode="markers",
+                                   marker=dict(size=6, symbol="cross-thin-open", color=new_df["color"]),
                                    hovertext=[f'config={i}' for i in new_df["config"]]))
     layout = go.Layout(
         font=dict(
@@ -1586,7 +1601,7 @@ def plot_config_energy(
             tickfont=dict(color="rgb(0,0,0)", size=20)
         ),
         yaxis2=dict(
-            domain=[0.5, 0.95],
+            domain=[0.55, 0.95],
             anchor='x2',
             range=[0, ymaxs[1]],
             showline=True,
@@ -1608,10 +1623,7 @@ def plot_config_energy(
     if show_inset==False:
         data.pop(1)
     fig = go.Figure(data=data, layout=layout)
-    fig.update_traces(
-        marker=dict(size=6, symbol="cross-thin-open", color="blue"),
-        selector=dict(mode="markers"),
-    )
+
     if show_fig:
         fig.show()
     return fig
