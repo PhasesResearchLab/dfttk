@@ -1533,7 +1533,8 @@ def plot_config_energy(
             print(types_of_magnetic_ordering)
         # add a new color column to new_df that corresponds to the magnetic ordering
         colors = px.colors.qualitative.Plotly.copy() # plotly colors
-        colors[0] = '#0000FF' # customize
+        colors[0] = '#0000FF' # regular blue
+        colors[1] = '#FF0000' # regular red
         colors[2] = '#19D3F3' # customize
         colors[5] = '#00CC96' # customize
         assignment = zip(types_of_magnetic_ordering, colors)
@@ -1545,7 +1546,7 @@ def plot_config_energy(
                 data.append(go.Scatter(x=single_mo_df["rank"],
                                     y=single_mo_df["energy_difference"],
                                     mode="markers",
-                                    marker=dict(size=6, symbol="cross-thin-open", color=single_mo_df["color"]),
+                                    marker=dict(size=7, symbol="cross-thin-open", color=single_mo_df["color"]),
                                     hovertext=[f'config={config}, <br>magnetic ordering={mo}'
                                                 for config, mo
                                                 in zip(single_mo_df['config'], single_mo_df['magnetic_ordering'])],
@@ -1557,7 +1558,7 @@ def plot_config_energy(
                                    xaxis='x2',
                                    yaxis='y2',
                                    mode="markers",
-                                   marker=dict(size=6, symbol="cross-thin-open", color=new_df["color"]),
+                                   marker=dict(size=7, symbol="cross-thin-open", color=new_df["color"]),
                                    hovertext=[f'config={config}, <br>magnetic ordering={mo}'
                                             for config, mo
                                             in zip(new_df['config'], new_df['magnetic_ordering'])],
