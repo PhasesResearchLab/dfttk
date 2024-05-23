@@ -1540,29 +1540,36 @@ def plot_config_energy(
                                    mode="markers",
                                    hovertext=[f'config={i}' for i in new_df["config"]]))
     layout = go.Layout(
+        font=dict(
+            family="Devaju Sans",
+            size=20,
+            color="black"
+        ),
         xaxis=dict(
             title="Energy rank",
             range=[0, xmaxs[0]],
             showline=True,
             linecolor="black",
-            linewidth=2.4,
-            ticks="inside",
+            linewidth=1,
+            ticks="outside",
             mirror="allticks",
-            tickwidth=2.4,
+            tickwidth=1,
             tickcolor="black",
-            showgrid=False
+            showgrid=False,
+            tickfont=dict(color="rgb(0,0,0)", size=20)
         ),
         yaxis=dict(
             title="Energy difference (meV/atom)",
             range=[0, ymaxs[0]],
             showline=True,
             linecolor="black",
-            linewidth=2.4,
-            ticks="inside",
+            linewidth=1,
+            ticks="outside",
             mirror="allticks",
-            tickwidth=2.4,
+            tickwidth=1,
             tickcolor="black",
-            showgrid=False
+            showgrid=False,
+            tickfont=dict(color="rgb(0,0,0)", size=20)
         ),
         xaxis2=dict(
             domain=[0.1, 0.5],
@@ -1570,12 +1577,13 @@ def plot_config_energy(
             range=[0, inset_max_rank],
             showline=True,
             linecolor="black",
-            linewidth=2.4,
-            ticks="inside",
+            linewidth=1,
+            ticks="outside",
             mirror="allticks",
-            tickwidth=2.4,
+            tickwidth=1,
             tickcolor="black",
-            showgrid=False
+            showgrid=False,
+            tickfont=dict(color="rgb(0,0,0)", size=20)
         ),
         yaxis2=dict(
             domain=[0.5, 0.95],
@@ -1583,22 +1591,23 @@ def plot_config_energy(
             range=[0, ymaxs[1]],
             showline=True,
             linecolor="black",
-            linewidth=2.4,
-            ticks="inside",
+            linewidth=1,
+            ticks="outside",
             mirror="allticks",
-            tickwidth=2.4,
+            tickwidth=1,
             tickcolor="black",
-            showgrid=False
+            showgrid=False,
+            tickfont=dict(color="rgb(0,0,0)", size=20)
         ),
         plot_bgcolor="white",
         width=600,
         height=600,
-        margin=dict(l=80, r=30, t=80, b=80),
+        margin=dict(l=80, r=30, t=30, b=80),
         showlegend=False
     )
     fig = go.Figure(data=data, layout=layout)
     fig.update_traces(
-        marker=dict(size=5, symbol="cross-thin-open", color="blue"),
+        marker=dict(size=6, symbol="cross-thin-open", color="blue"),
         selector=dict(mode="markers"),
     )
     if show_fig:
