@@ -1528,9 +1528,17 @@ def plot_config_energy(
         ymax = ((ymax // rounding_order_of_magnitude) + 1) * rounding_order_of_magnitude
         ymaxs.append(ymax)
         if i == 0:
-            data.append(go.Scatter(x=new_df["rank"], y=new_df["energy_difference"], mode="markers"))
+            data.append(go.Scatter(x=new_df["rank"],
+                                   y=new_df["energy_difference"],
+                                   mode="markers",
+                                   hovertext=[f'config = {i}' for i in new_df["config"]]))
         else:
-            data.append(go.Scatter(x=new_df["rank"], y=new_df["energy_difference"], xaxis='x2', yaxis='y2', mode="markers"))
+            data.append(go.Scatter(x=new_df["rank"],
+                                   y=new_df["energy_difference"],
+                                   xaxis='x2',
+                                   yaxis='y2',
+                                   mode="markers",
+                                   hovertext=[f'config={i}' for i in new_df["config"]]))
     layout = go.Layout(
         xaxis=dict(
             title="Energy rank",
