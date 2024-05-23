@@ -1498,11 +1498,9 @@ def plot_energy_difference(
 
 # TODO: review
 def plot_config_energy(
-    df, max_rank=5, show_fig=True, xmax=None, ymax=None, show_inset=True, inset_max_rank=10,
+    df, max_rank=5, show_fig=True, show_inset=True, inset_max_rank=10,
 ):
     data = []
-    xmaxs = []
-    ymaxs = []
     for i, el in enumerate([max_rank, inset_max_rank]):
         new_df = df
         new_df["energy_per_atom"] = new_df["energy"] / new_df["number_of_atoms"]
@@ -1512,21 +1510,9 @@ def plot_config_energy(
         ) * 1000
         new_df = new_df.reset_index(drop=True)
         new_df["rank"] = new_df["energy_difference"].rank(method="min") - 1
-        xmax = new_df["rank"].max()
-        xmaxs.append(xmax)
         max_energy_difference = new_df["energy_difference"].max()
         # Get the order of magnitude of the max_energy_difference
         rounding_order_of_magnitude = 10 ** (len(str(int(max_energy_difference))) - 2)
-
-        # Round up to the nearest order of magnitude
-        ymax = (
-            math.ceil(max_energy_difference / rounding_order_of_magnitude)
-            * rounding_order_of_magnitude
-        )
-
-        # Get the next multiple of order of magnitude with the second digit being 0
-        ymax = ((ymax // rounding_order_of_magnitude) + 1) * rounding_order_of_magnitude
-        ymaxs.append(ymax)
         
         if i==0:
             types_of_magnetic_ordering = new_df['magnetic_ordering'].unique()
@@ -1573,7 +1559,6 @@ def plot_config_energy(
         ),
         xaxis=dict(
             title="Energy rank",
-            range=[0, xmaxs[0]],
             showline=True,
             linecolor="black",
             linewidth=1,
@@ -1586,7 +1571,6 @@ def plot_config_energy(
         ),
         yaxis=dict(
             title="Energy difference (meV/atom)",
-            range=[0, ymaxs[0]],
             showline=True,
             linecolor="black",
             linewidth=1,
@@ -1600,7 +1584,6 @@ def plot_config_energy(
         xaxis2=dict(
             domain=[0.1, 0.5],
             anchor='y2',
-            range=[0, inset_max_rank],
             showline=True,
             linecolor="black",
             linewidth=1,
@@ -1614,7 +1597,6 @@ def plot_config_energy(
         yaxis2=dict(
             domain=[0.55, 0.95],
             anchor='x2',
-            range=[0, ymaxs[1]],
             showline=True,
             linecolor="black",
             linewidth=1,
