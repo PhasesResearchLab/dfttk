@@ -165,19 +165,24 @@ def extract_mag_data(outcar_path="OUTCAR"):
             if "magnetization (x)" in line:
                 found_mag_data = True
                 step += 1
+            elif found_mag_data and not data_start and "# of ion" in line:
+                headers = line.split()
+                headers.pop(0)  # '#'
+                headers.pop(0)  # 'of'
+                headers.pop(0)  # 'ion'
+                headers.insert(0, '# of ion')
             elif found_mag_data and not data_start and "----" in line:
                 data_start = True
             elif data_start and "----" not in line:
                 ion = int(line.split()[0])
-                s = float(line.split()[1])
-                p = float(line.split()[2])
-                d = float(line.split()[3])
-                tot = float(line.split()[4])
-                data.append((step, ion, s, p, d, tot))
+                data_line = line.split()[1:]
+                data_line = [float(data) for data in data_line]
+                data.append((step, ion, *data_line))
             elif data_start and "----" in line:
                 data_start = False
                 found_mag_data = False
-        df = pd.DataFrame(data, columns=["step", "# of ion", "s", "p", "d", "tot"])
+        columns = ["step"] + headers
+        df = pd.DataFrame(data, columns=columns)
         return df
 
 
@@ -198,6 +203,31 @@ def extract_tot_mag_data(outcar_path="OUTCAR"):
     tot_data.reset_index(drop=True, inplace=True)
     return tot_data
 
+def determine_magnetic_ordering(df: pd.DataFrame, magmom_tolerance: float = 1e-12, total_magnetic_moment_tolerance: float = 1e-12):
+    """Determines the magnetic ordering of a structure from the magnetization data in a pandas DataFrame.
+
+    Args:
+        df (pandas DataFrame): a pandas DataFrame containing the magnetization data
+        magmom_tolerance (float, optional): the tolerance for the total magnetic moment on each atom to be considered
+        zero.
+        Total_magmom_tolerance (float, optional) the tolerance for the sum of the total magnentic moments for each atom.
+        Defaults to 1e-12 to handle floating point errors.
+
+    Returns:
+        str: the magnetic ordering of the structure
+    """
+
+    if (np.isclose(df['tot'], 0, atol=magmom_tolerance)).all():
+        return 'NM'
+    elif np.isclose(df['tot'].sum(), 0, atol=total_magnetic_moment_tolerance) == True:
+        return 'AFM'
+    elif (df['tot'] >= 0 + magmom_tolerance).all() or (df['tot'] <= 0 - magmom_tolerance).all():
+        return 'FM'
+    elif (df['tot'] > 0 + magmom_tolerance).sum() == (df['tot'] < 0 - magmom_tolerance).sum():
+        return 'FiM'
+    else:
+        return 'SF'
+
   
 def extract_configuration_data(
     path: list[str],
@@ -206,7 +236,7 @@ def extract_configuration_data(
     contcar_name: str ='CONTCAR.3static', 
     collect_mag_data: bool = False,
     magmom_tolerance: float = 0
-):
+    ):
     """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations
     run by ev_curve_series and returns a pandas DataFrame.
 
@@ -255,17 +285,7 @@ def extract_configuration_data(
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(outcar_path)
             total_magnetic_moment = mag_data['tot'].sum()
-            
-            if (mag_data['tot'] == 0).all():
-                magnetic_ordering = 'NM'
-            elif np.isclose(total_magnetic_moment, 0,  atol=magmom_tolerance) == True:
-                magnetic_ordering = 'AFM'
-            elif (mag_data['tot'] >= 0).all() or (mag_data['tot'] <= 0).all():
-                magnetic_ordering = 'FM'
-            elif (mag_data['tot'] > 0).sum() == (mag_data['tot'] < 0).sum():
-                magnetic_ordering = 'FiM'
-            else :
-                magnetic_ordering = 'SF'
+            magnetic_ordering = determine_magnetic_ordering(mag_data)
             
             row = {
                 "config": config,
@@ -320,7 +340,8 @@ def recursive_extract_configuration_data(
             config_df = extract_configuration_data(
                 config_dir, outcar_name=outcar_name, 
                 oszicar_name=oszicar_name, contcar_name=contcar_name, 
-                collect_mag_data=collect_mag_data)
+                collect_mag_data=collect_mag_data,
+                magmom_tolerance=magmom_tolerance)
             df_list.append(config_df)
         except Exception as e:
             print(f'Error in {config_dir}: {e}')
@@ -413,7 +434,7 @@ def ev_curve_series(
     default_settings=True,
     settings_override_2relax=None,
     settings_override_3static=None,
-):
+    ):
     """This function runs a series of three_step_relaxation calculations for a list of volumes. It starts with the first volume, then
        copies the relevant files to the next volume folder, scales the volume of the POSCAR accordingly, and so on.
 
