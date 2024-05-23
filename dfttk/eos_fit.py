@@ -1498,7 +1498,7 @@ def plot_energy_difference(
 
 # TODO: review
 def plot_config_energy(
-    df, max_rank=5, show_fig=True, xmax=None, ymax=None, inset=True, inset_max_rank=10,
+    df, max_rank=5, show_fig=True, xmax=None, ymax=None, show_inset=True, inset_max_rank=10,
 ):
     data = []
     xmaxs = []
@@ -1605,7 +1605,7 @@ def plot_config_energy(
         margin=dict(l=80, r=30, t=30, b=80),
         showlegend=False
     )
-    if inset==False:
+    if show_inset==False:
         data.pop(1)
     fig = go.Figure(data=data, layout=layout)
     fig.update_traces(
