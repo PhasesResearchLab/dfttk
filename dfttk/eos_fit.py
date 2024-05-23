@@ -1632,7 +1632,8 @@ def plot_config_energy(
         showlegend=True
     )
     if show_inset==False:
-        data.pop(1)
+        for i in range(trace_number + 1, len(data)):
+            data.pop(i)
     fig = go.Figure(data=data, layout=layout)
 
     if show_fig:
