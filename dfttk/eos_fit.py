@@ -1530,7 +1530,6 @@ def plot_config_energy(
         
         if i==0:
             types_of_magnetic_ordering = new_df['magnetic_ordering'].unique()
-            print(types_of_magnetic_ordering)
         # add a new color column to new_df that corresponds to the magnetic ordering
         colors = px.colors.qualitative.Plotly.copy() # plotly colors
         colors[0] = '#0000FF' # regular blue
