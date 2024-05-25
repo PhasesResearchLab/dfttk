@@ -30,7 +30,8 @@ from scipy.optimize import curve_fit
 from scipy.optimize import leastsq
 
 # Conversion factor
-EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208 # 1 eV/Å^3  = 160.21766208 GPa
+EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
+
 
 # TODO: See if you can simplify the code even further, especially the last three functions.
 # mBM4 EOS Functions
@@ -61,7 +62,7 @@ def mBM4_eos_parameters(a, b, c, d):
     )
     E0 = mBM4_equation(V0, a, b, c, d)
     B = (
-        (2 * d) / V0 ** 3 + (10 * c) / (9 * V0 ** (8 / 3)) + (4 * b) / (9 * V0 ** (7 / 3))
+        (2 * d) / V0**3 + (10 * c) / (9 * V0 ** (8 / 3)) + (4 * b) / (9 * V0 ** (7 / 3))
     ) * V0
     B = B * EV_PER_CUBIC_ANGSTROM_TO_GPA
     BP = (54 * d * V0 ** (1 / 3) + 25 * c * V0 ** (2 / 3) + 8 * b * V0) / (
@@ -80,15 +81,17 @@ def mBM4_eos_parameters(a, b, c, d):
 
 
 def mBM4(volume, energy):
-    a, b, c, d = curve_fit(mBM4_equation, volume, energy, p0 = [100, 100, 100, 100])[0]
+    a, b, c, d = curve_fit(mBM4_equation, volume, energy, p0=[100, 100, 100, 100])[0]
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     energy_eos = mBM4_equation(volume_range, a, b, c, d)
-    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * mBM4_derivative(volume_range, b, c, d)
+    pressure_eos = (
+        -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * mBM4_derivative(volume_range, b, c, d)
+    )
     V0, E0, B, BP, B2P = mBM4_eos_parameters(a, b, c, d)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, 0])
-    
+
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
@@ -142,15 +145,19 @@ def mBM5_eos_parameters(volume_range, a, b, c, d, e):
 
 
 def mBM5(volume, energy):
-    a, b, c, d, e = curve_fit(mBM5_equation, volume, energy, p0 = [100, 100, 100, 100, 100])[0]
+    a, b, c, d, e = curve_fit(
+        mBM5_equation, volume, energy, p0=[100, 100, 100, 100, 100]
+    )[0]
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     energy_eos = mBM5_equation(volume_range, a, b, c, d, e)
-    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * mBM5_derivative(volume_range, b, c, d, e)
+    pressure_eos = (
+        -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * mBM5_derivative(volume_range, b, c, d, e)
+    )
     V0, E0, B, BP, B2P = mBM5_eos_parameters(volume_range, a, b, c, d, e)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, e])
-    
+
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
@@ -175,44 +182,46 @@ def BM4_eos_parameters(a, b, c, d):
     V0 = math.sqrt(
         -(
             (
-                4 * c ** 3
+                4 * c**3
                 - 9 * b * c * d
-                + math.sqrt((c ** 2 - 3 * b * d) * (4 * c ** 2 - 3 * b * d) ** 2)
+                + math.sqrt((c**2 - 3 * b * d) * (4 * c**2 - 3 * b * d) ** 2)
             )
-            / b ** 3
+            / b**3
         )
     )
     E0 = BM4_equation(V0, a, b, c, d)
-    B = (2 * (27 * d * V0 ** (2 / 3) + 14 * c * V0 ** (4 / 3) + 5 * b * V0 ** 2)) / (
+    B = (2 * (27 * d * V0 ** (2 / 3) + 14 * c * V0 ** (4 / 3) + 5 * b * V0**2)) / (
         9 * V0 ** (11 / 3)
     )
     B = B * EV_PER_CUBIC_ANGSTROM_TO_GPA
-    BP = (243 * d * V0 ** (2 / 3) + 98 * c * V0 ** (4 / 3) + 25 * b * V0 ** 2) / (
-        81 * d * V0 ** (2 / 3) + 42 * c * V0 ** (4 / 3) + 15 * b * V0 ** 2
+    BP = (243 * d * V0 ** (2 / 3) + 98 * c * V0 ** (4 / 3) + 25 * b * V0**2) / (
+        81 * d * V0 ** (2 / 3) + 42 * c * V0 ** (4 / 3) + 15 * b * V0**2
     )
     B2P = (
         4
         * V0 ** (13 / 3)
         * (
-            27 * d * (7 * c * V0 ** (4 / 3) + 10 * b * V0 ** 2)
-            + V0 ** (2 / 3) * (7 * c * (5 * b * V0 ** 2))
+            27 * d * (7 * c * V0 ** (4 / 3) + 10 * b * V0**2)
+            + V0 ** (2 / 3) * (7 * c * (5 * b * V0**2))
         )
-    ) / (27 * d * V0 ** (2 / 3) + 14 * c * V0 ** (4 / 3) + 5 * b * V0 ** 2) ** 3
+    ) / (27 * d * V0 ** (2 / 3) + 14 * c * V0 ** (4 / 3) + 5 * b * V0**2) ** 3
     B2P = B2P / EV_PER_CUBIC_ANGSTROM_TO_GPA
 
     return V0, E0, B, BP, B2P
 
 
 def BM4(volume, energy):
-    a, b, c, d = curve_fit(BM4_equation, volume, energy, p0 = [100, 100, 100, 100])[0]
+    a, b, c, d = curve_fit(BM4_equation, volume, energy, p0=[100, 100, 100, 100])[0]
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     energy_eos = BM4_equation(volume_range, a, b, c, d)
-    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * BM4_derivative(volume_range, b, c, d)
+    pressure_eos = (
+        -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * BM4_derivative(volume_range, b, c, d)
+    )
     V0, E0, B, BP, B2P = BM4_eos_parameters(a, b, c, d)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, 0])
-    
+
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
@@ -242,22 +251,22 @@ def BM5_eos_parameters(volume_range, a, b, c, d, e):
     V0 = fsolve(BM5_derivative, np.mean(volume_range), args=(b, c, d, e))[0]
     E0 = BM5_equation(V0, a, b, c, d, e)
     B = (
-        2 * (44 * e + 27 * d * V0 ** (2 / 3) + 14 * c * V0 ** (4 / 3) + 5 * b * V0 ** 2)
+        2 * (44 * e + 27 * d * V0 ** (2 / 3) + 14 * c * V0 ** (4 / 3) + 5 * b * V0**2)
     ) / (9 * V0 ** (11 / 3))
     B = B * EV_PER_CUBIC_ANGSTROM_TO_GPA
     BP = (
-        484 * e + 243 * d * V0 ** (2 / 3) + 98 * c * V0 ** (4 / 3) + 25 * b * V0 ** 2
-    ) / (132 * e + 81 * d * V0 ** (2 / 3) + 42 * c * V0 ** (4 / 3) + 15 * b * V0 ** 2)
+        484 * e + 243 * d * V0 ** (2 / 3) + 98 * c * V0 ** (4 / 3) + 25 * b * V0**2
+    ) / (132 * e + 81 * d * V0 ** (2 / 3) + 42 * c * V0 ** (4 / 3) + 15 * b * V0**2)
     B2P = (
         4
         * V0 ** (13 / 3)
         * (
-            27 * d * (22 * e + 7 * c * V0 ** (4 / 3) + 10 * b * V0 ** 2)
+            27 * d * (22 * e + 7 * c * V0 ** (4 / 3) + 10 * b * V0**2)
             + V0 ** (2 / 3)
-            * (990 * b * e * V0 ** (2 / 3) + 7 * c * (176 * e + 5 * b * V0 ** 2))
+            * (990 * b * e * V0 ** (2 / 3) + 7 * c * (176 * e + 5 * b * V0**2))
         )
     ) / (
-        44 * e + 27 * d * V0 ** (2 / 3) + 14 * c * V0 ** (4 / 3) + 5 * b * V0 ** 2
+        44 * e + 27 * d * V0 ** (2 / 3) + 14 * c * V0 ** (4 / 3) + 5 * b * V0**2
     ) ** 3
     B2P = B2P / EV_PER_CUBIC_ANGSTROM_TO_GPA
 
@@ -265,15 +274,19 @@ def BM5_eos_parameters(volume_range, a, b, c, d, e):
 
 
 def BM5(volume, energy):
-    a, b, c, d, e = curve_fit(BM5_equation, volume, energy, p0 = [100, 100, 100, 100, 100])[0]
+    a, b, c, d, e = curve_fit(
+        BM5_equation, volume, energy, p0=[100, 100, 100, 100, 100]
+    )[0]
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     energy_eos = BM5_equation(volume_range, a, b, c, d, e)
-    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * BM5_derivative(volume_range, b, c, d, e)
+    pressure_eos = (
+        -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * BM5_derivative(volume_range, b, c, d, e)
+    )
     V0, E0, B, BP, B2P = BM5_eos_parameters(volume_range, a, b, c, d, e)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, e])
-    
+
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
@@ -284,16 +297,16 @@ def LOG4_equation(volume, a, b, c, d):
 
 
 def LOG4_derivative(volume, b, c, d):
-    energy_derivative = (b + 2 * c * np.log(volume) + 3 * d * np.log(volume) ** 2) / volume
+    energy_derivative = (
+        b + 2 * c * np.log(volume) + 3 * d * np.log(volume) ** 2
+    ) / volume
     return energy_derivative
 
 
 def LOG4_eos_parameters(volume_range, a, b, c, d):
     V0 = fsolve(LOG4_derivative, np.mean(volume_range), args=(b, c, d))[0]
     E0 = LOG4_equation(V0, a, b, c, d)
-    B = -(
-        (b - 2 * c + 2 * (c - 3 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2) / V0
-    )
+    B = -((b - 2 * c + 2 * (c - 3 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2) / V0)
     B = B * EV_PER_CUBIC_ANGSTROM_TO_GPA
     BP = (
         b - 4 * c + 6 * d + 2 * (c - 6 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2
@@ -302,12 +315,12 @@ def LOG4_eos_parameters(volume_range, a, b, c, d):
         2
         * V0
         * (
-            2 * c ** 2
+            2 * c**2
             - 3 * b * d
-            + 18 * d ** 2
+            + 18 * d**2
             - 6 * c * d
-            + 6 * (c * d - 3 * d ** 2) * math.log(V0)
-            + 9 * d ** 2 * math.log(V0) ** 2
+            + 6 * (c * d - 3 * d**2) * math.log(V0)
+            + 9 * d**2 * math.log(V0) ** 2
         )
     ) / (b - 2 * c + 2 * (c - 3 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2) ** 3
     B2P = B2P / EV_PER_CUBIC_ANGSTROM_TO_GPA
@@ -315,15 +328,17 @@ def LOG4_eos_parameters(volume_range, a, b, c, d):
 
 
 def LOG4(volume, energy):
-    a, b, c, d = curve_fit(LOG4_equation, volume, energy, p0 = [100, 100, 100, 100])[0]
+    a, b, c, d = curve_fit(LOG4_equation, volume, energy, p0=[100, 100, 100, 100])[0]
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     energy_eos = LOG4_equation(volume_range, a, b, c, d)
-    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * LOG4_derivative(volume_range, b, c, d)
+    pressure_eos = (
+        -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * LOG4_derivative(volume_range, b, c, d)
+    )
     V0, E0, B, BP, B2P = LOG4_eos_parameters(volume_range, a, b, c, d)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, 0])
-    
+
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
@@ -382,15 +397,15 @@ def LOG5_eos_parameters(volume_range, a, b, c, d, e):
         2
         * V0
         * (
-            2 * c ** 2
+            2 * c**2
             - 3 * b * d
-            + 18 * d ** 2
+            + 18 * d**2
             + 12 * b * e
             - 6 * c * (d + 4 * e)
-            + 6 * (c * d - 3 * d ** 2 - 2 * b * e + 12 * d * e) * math.log(V0)
+            + 6 * (c * d - 3 * d**2 - 2 * b * e + 12 * d * e) * math.log(V0)
             + 9 * (d - 4 * e) ** 2 * math.log(V0) ** 2
             + 24 * (d - 4 * e) * e * math.log(V0) ** 3
-            + 24 * e ** 2 * math.log(V0) ** 4
+            + 24 * e**2 * math.log(V0) ** 4
         )
     ) / (
         b
@@ -404,15 +419,19 @@ def LOG5_eos_parameters(volume_range, a, b, c, d, e):
 
 
 def LOG5(volume, energy):
-    a, b, c, d, e = curve_fit(LOG5_equation, volume, energy, p0 = [100, 100, 100, 100, 100])[0]
+    a, b, c, d, e = curve_fit(
+        LOG5_equation, volume, energy, p0=[100, 100, 100, 100, 100]
+    )[0]
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     energy_eos = LOG5_equation(volume_range, a, b, c, d, e)
-    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * LOG5_derivative(volume_range, b, c, d, e)
+    pressure_eos = (
+        -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * LOG5_derivative(volume_range, b, c, d, e)
+    )
     V0, E0, B, BP, B2P = LOG5_eos_parameters(volume_range, a, b, c, d, e)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, e])
-    
+
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
@@ -421,7 +440,7 @@ def murnaghan_equation(volume, V0, E0, B, BP):
     energy = (
         E0
         - (B * V0) / (BP - 1)
-        + (B * volume / BP ) * (1 + (V0 / volume) ** BP / (BP - 1))
+        + (B * volume / BP) * (1 + (V0 / volume) ** BP / (BP - 1))
     )
     return energy
 
@@ -434,7 +453,9 @@ def murnaghan_derivative(volume, V0, B, BP):
 def murnaghan(volume, energy):
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
-    [eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(volume, energy)
+    [eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(
+        volume, energy
+    )
     initial_guess = [
         eos_parameters[0],
         eos_parameters[1],
@@ -443,149 +464,121 @@ def murnaghan(volume, energy):
     ]
 
     V0, E0, B, BP = curve_fit(murnaghan_equation, volume, energy, p0=initial_guess)[0]
-    
+
     energy_eos = murnaghan_equation(volume_range, V0, E0, B, BP)
     eos_parameters = np.array([V0, E0, B * EV_PER_CUBIC_ANGSTROM_TO_GPA, BP, 0])
     eos_constants = np.array([0, 0, 0, 0, 0])
-    pressure_eos = -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * murnaghan_derivative(volume_range, V0, B, BP)
+    pressure_eos = (
+        -1
+        * EV_PER_CUBIC_ANGSTROM_TO_GPA
+        * murnaghan_derivative(volume_range, V0, B, BP)
+    )
 
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
 # Vinet EOS Functions
-def vinet_equation(xini, Data):
-    V = xini[0]
-    E0 = xini[1]
-    B = xini[2]
-    bp = xini[3]
-    volume_range = Data[:, 0]
-    y = Data[:, 1]
-    eng = (
+def vinet_equation(volume, V0, E0, B, BP):
+    energy = (
         E0
-        + (4 * B * V) / (-1 + bp) ** 2
-        - (4 * B * V * (1 + (3 * (-1 + bp) * (-1 + (volume_range / V) ** (1 / 3))) / 2))
-        / (
-            (-1 + bp) ** 2
-            * np.exp((3 * (-1 + bp) * (-1 + (volume_range / V) ** (1 / 3))) / 2)
-        )
+        + (4 * B * V0) / (BP - 1) ** 2
+        - (4 * B * V0)
+        / (BP - 1) ** 2
+        * (1 - 3 / 2 * (BP - 1) * (1 - (volume / V0) ** (1 / 3)))
+        * (np.exp(3 / 2 * (BP - 1) * (1 - (volume / V0) ** (1 / 3))))
     )
-    return eng - y
+    return energy
+
+
+def vinet_derivative(volume, V0, B, BP):
+    energy_derivative = -(
+        3
+        * B
+        * (1 - (volume / V0) ** (1 / 3))
+        / ((volume / V0) ** (2 / 3))
+        * np.exp(3 / 2 * (BP - 1) * (1 - (volume / V0) ** (1 / 3)))
+    )
+    return energy_derivative
 
 
 def vinet(volume, energy):
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
-    Data = np.vstack((volume, energy))
-    Data = Data.T
-
-    [eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(volume, energy)
-    xini = [
+    [eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(
+        volume, energy
+    )
+    initial_guess = [
         eos_parameters[0],
         eos_parameters[1],
         eos_parameters[2] / EV_PER_CUBIC_ANGSTROM_TO_GPA,
         eos_parameters[3],
     ]
-    [xout, resnorm] = leastsq(vinet_equation, xini, Data)
-    V = xout[0]
-    E0 = xout[1]
-    B = xout[2]
-    bp = xout[3]
 
-    energy_eos = (
-        E0
-        + (4 * B * V) / (-1 + bp) ** 2
-        - (4 * B * V * (1 + (3 * (-1 + bp) * (-1 + (volume_range / V) ** (1 / 3))) / 2))
-        / (
-            (-1 + bp) ** 2
-            * np.exp((3 * (-1 + bp) * (-1 + (volume_range / V) ** (1 / 3))) / 2)
-        )
-    )
+    V0, E0, B, BP = curve_fit(vinet_equation, volume, energy, p0=initial_guess)[0]
 
-    b2p = (19 - 18 * bp - 9 * bp**2) / (36 * B)
-    eos_parameters = np.array([V, E0, B * EV_PER_CUBIC_ANGSTROM_TO_GPA, bp, b2p / EV_PER_CUBIC_ANGSTROM_TO_GPA])
+    energy_eos = vinet_equation(volume_range, V0, E0, B, BP)
+    B2P = (19 - 18 * BP - 9 * BP**2) / (36 * B)
+    eos_parameters = np.array([V0, E0, B * EV_PER_CUBIC_ANGSTROM_TO_GPA, BP, B2P])
     eos_constants = np.array([0, 0, 0, 0, 0])
-    
     pressure_eos = (
-        EV_PER_CUBIC_ANGSTROM_TO_GPA
-        * (-3 * B * (-1 + (volume_range / V) ** (1 / 3)))
-        / (
-            np.exp((3 * (-1 + bp) * (-1 + (volume_range / V) ** (1 / 3))) / 2)
-            * (volume_range / V) ** (2 / 3)
-        )
+        -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * vinet_derivative(volume_range, V0, B, BP)
     )
 
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
 # Morse EOS Functions
-def morse_equation(xini, Data):
-    V = xini[0]
-    E0 = xini[1]
-    B = xini[2]
-    bp = xini[3]
-
-    a = E0 + (9 * B * V) / (2 * (-1 + bp) ** 2)
-    b = (-9 * B * np.exp(-1 + bp) * V) / (-1 + bp) ** 2
-    c = (9 * B * np.exp(-2 + 2 * bp) * V) / (2 * (-1 + bp) ** 2)
-    d = (1 - bp) / V ** (1 / 3)
-    volume_range = Data[:, 0]
-    y = Data[:, 1]
-    eng = (
-        a
-        + b * np.exp(d * volume_range ** (1 / 3))
-        + c * np.exp(2 * d * volume_range ** (1 / 3))
+def morse_equation(volume, V0, E0, B, BP):
+    a = E0 + (9 * B * V0) / (2 * (BP - 1) ** 2)
+    b = (-9 * B * V0 * np.exp(BP - 1)) / (BP - 1) ** 2
+    c = (9 * B * V0 * np.exp(2 * BP - 2)) / (2 * (BP - 1) ** 2)
+    d = (1 - BP) / V0 ** (1 / 3)
+    energy = (
+        a + b * np.exp(d * volume ** (1 / 3)) + c * np.exp(2 * d * volume ** (1 / 3))
     )
-    return eng - y
+    return energy
+
+
+def morse_derivative(volume, b, c, d):
+    energy_derivative = b * d * np.exp(d * volume ** (1 / 3)) / (
+        3 * volume ** (2 / 3)
+    ) + 2 * c * d * np.exp(2 * d * volume ** (1 / 3)) / (3 * volume ** (2 / 3))
+    return energy_derivative
 
 
 def morse(volume, energy):
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
-    Data = np.vstack((volume, energy))
-    Data = Data.T
-
-    [eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(volume, energy)
-    xini = [
+    [eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(
+        volume, energy
+    )
+    initial_guess = [
         eos_parameters[0],
         eos_parameters[1],
         eos_parameters[2] / EV_PER_CUBIC_ANGSTROM_TO_GPA,
         eos_parameters[3],
     ]
-    [xout, resnorm] = leastsq(morse_equation, xini, Data)
-    V = xout[0]
-    E0 = xout[1]
-    B = xout[2]
-    bp = xout[3]
 
-    a = E0 + (9 * B * V) / (2 * (-1 + bp) ** 2)
-    b = (-9 * B * np.exp(-1 + bp) * V) / (-1 + bp) ** 2
-    c = (9 * B * np.exp(-2 + 2 * bp) * V) / (2 * (-1 + bp) ** 2)
-    d = (1 - bp) / V ** (1 / 3)
+    V0, E0, B, BP = curve_fit(morse_equation, volume, energy, p0=initial_guess)[0]
 
-    energy_eos = (
-        a
-        + b * np.exp(d * volume_range ** (1 / 3))
-        + c * np.exp(2 * d * volume_range ** (1 / 3))
-    )
+    energy_eos = morse_equation(volume_range, V0, E0, B, BP)
+    B2P = (5 - 5 * BP - 2 * BP**2) / (9 * B)
+    eos_parameters = np.array([V0, E0, B * EV_PER_CUBIC_ANGSTROM_TO_GPA, BP, B2P])
 
-    b2p = (5 - 5 * bp - 2 * bp**2) / (9 * B)
-    eos_parameters = np.array([V, E0, B * EV_PER_CUBIC_ANGSTROM_TO_GPA, bp, b2p / EV_PER_CUBIC_ANGSTROM_TO_GPA])
-    eos_constants = np.array([0, 0, 0, 0, 0])
-    
+    a = E0 + (9 * B * V0) / (2 * (BP - 1) ** 2)
+    b = (-9 * B * V0 * np.exp(BP - 1)) / (BP - 1) ** 2
+    c = (9 * B * V0 * np.exp(2 * BP - 2)) / (2 * (BP - 1) ** 2)
+    d = (1 - BP) / V0 ** (1 / 3)
+    eos_constants = np.array([a, b, c, d, 0])
+
     pressure_eos = (
-        -EV_PER_CUBIC_ANGSTROM_TO_GPA
-        * (
-            d
-            * np.exp(d * volume_range ** (1 / 3))
-            * (b + 2 * c * np.exp(d * volume_range ** (1 / 3)))
-        )
-        / (3 * volume_range ** (2 / 3))
+        -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * morse_derivative(volume_range, b, c, d)
     )
 
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
-# TODO: Change the arguments to include only the EOS functions you want to fit. 
+# TODO: Change the arguments to include only the EOS functions you want to fit.
 def fit_to_all_eos(df):
     """Fits the volume and energies of configurations to all EOS functions and returns the results in a dataframe.
 
@@ -600,7 +593,7 @@ def fit_to_all_eos(df):
 
     eos_functions = [mBM4, mBM5, BM4, BM5, LOG4, LOG5, murnaghan, vinet, morse]
     dataframes = []
-    
+
     for config in df["config"].unique():
         config_df = df[df["config"] == config]
         volumes = config_df["volume"].values
@@ -608,52 +601,52 @@ def fit_to_all_eos(df):
         number_of_atoms = config_df["number_of_atoms"].values
 
         for eos_function in eos_functions:
-            eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = eos_function(
-                volumes, energies
+            eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
+                eos_function(volumes, energies)
             )
             eos_name = eos_function.__name__
 
             dataframes.append(
-            pd.DataFrame(
-                [
+                pd.DataFrame(
                     [
-                        config,
-                        eos_name,
-                        eos_constants[0],
-                        eos_constants[1],
-                        eos_constants[2],
-                        eos_constants[3],
-                        eos_constants[4],
-                        eos_parameters[0],
-                        eos_parameters[1],
-                        eos_parameters[2],
-                        eos_parameters[3],
-                        volume_range,
-                        energy_eos,
-                        pressure_eos,
-                        number_of_atoms,
-                    ]
-                ],
-                columns=[
-                    "config",
-                    "EOS",
-                    "a",
-                    "b",
-                    "c",
-                    "d",
-                    "e",
-                    "V0",
-                    "E0",
-                    "B",
-                    "BP",
-                    "volumes",
-                    "energies",
-                    "pressures",
-                    "number_of_atoms",
-                ],
+                        [
+                            config,
+                            eos_name,
+                            eos_constants[0],
+                            eos_constants[1],
+                            eos_constants[2],
+                            eos_constants[3],
+                            eos_constants[4],
+                            eos_parameters[0],
+                            eos_parameters[1],
+                            eos_parameters[2],
+                            eos_parameters[3],
+                            volume_range,
+                            energy_eos,
+                            pressure_eos,
+                            number_of_atoms,
+                        ]
+                    ],
+                    columns=[
+                        "config",
+                        "EOS",
+                        "a",
+                        "b",
+                        "c",
+                        "d",
+                        "e",
+                        "V0",
+                        "E0",
+                        "B",
+                        "BP",
+                        "volumes",
+                        "energies",
+                        "pressures",
+                        "number_of_atoms",
+                    ],
+                )
             )
-            )
-            
+
     eos_df = pd.concat(dataframes, ignore_index=True)
     eos_parameters_df = eos_df.drop(
         columns=["volumes", "energies", "pressures", "number_of_atoms"]
@@ -661,7 +654,8 @@ def fit_to_all_eos(df):
 
     return eos_df, eos_parameters_df
 
-'''
+
+"""
 def find_common_tangent_volumes(initial_guess):
     
     eos_equations = [mBM4_equation, mBM5_equation, BM4_equation, BM5_equation, LOG4_equation, LOG5_equation]
@@ -671,7 +665,8 @@ def find_common_tangent_volumes(initial_guess):
     equation_1 = BM4_derivative_new(x1, b1, c1, d1) - BM4_derivative_new(x2, b2, c2, d2)
     equation_2 = ((BM4_new(x1, a1, b1, c1, d1) - BM4_new(x2, a2, b2, c2, d2)) / (x1 - x2)) - BM4_derivative_new(x1, b1, c1, d1)
     return (equation_1, equation_2)
-'''
+"""
+
 
 # TODO: review
 def convert_input_files_to_df(input_files, left_col, right_col):
@@ -751,9 +746,19 @@ def plot_mv(df, show_fig=True):
     breaks if missing these columns
     """
     # Create a new dataframe where each 'mag_data' dataframe is associated with its corresponding 'volume' and 'config' values
-    df_new = pd.concat([df_mag.assign(volume=v, config=c) for v, c, df_mag in zip(df['volume'], df['config'], df['mag_data'])])
+    df_new = pd.concat(
+        [
+            df_mag.assign(volume=v, config=c)
+            for v, c, df_mag in zip(df["volume"], df["config"], df["mag_data"])
+        ]
+    )
     fig = px.line(
-        df_new.sort_values(['# of ion','volume',]),
+        df_new.sort_values(
+            [
+                "# of ion",
+                "volume",
+            ]
+        ),
         x="volume",
         y="tot",
         color="# of ion",
@@ -761,9 +766,7 @@ def plot_mv(df, show_fig=True):
         hover_data=["config", "# of ion", "volume", "tot"],
         template="plotly_white",
     )
-    fig.update_layout(
-        xaxis_title="Volume [A^3]", yaxis_title="Magnetic Moment [mu_B]"
-    )
+    fig.update_layout(xaxis_title="Volume [A^3]", yaxis_title="Magnetic Moment [mu_B]")
 
     fig.update_yaxes(nticks=10)
     fig.update_xaxes(nticks=10)
@@ -1436,8 +1439,12 @@ def plot_energy_difference(
     for df_el in df_list:
         for i, row in df_el.iterrows():
             try:
-                reference_energy = reference_df[np.isclose(reference_df['volume'], row['volume'], atol=volume_precision)]['energy'].values[0]
-                df_el.at[i, 'energy'] = row['energy'] - reference_energy
+                reference_energy = reference_df[
+                    np.isclose(
+                        reference_df["volume"], row["volume"], atol=volume_precision
+                    )
+                ]["energy"].values[0]
+                df_el.at[i, "energy"] = row["energy"] - reference_energy
             except Exception as e:
                 missing_volumes.append((row["config"], row["volume"]))
     if missing_volumes:
@@ -1498,7 +1505,13 @@ def plot_energy_difference(
 
 # TODO: review
 def plot_config_energy(
-    df, max_rank=5, show_fig=True, xmax=None, ymax=None, show_inset=True, inset_max_rank=10,
+    df,
+    max_rank=5,
+    show_fig=True,
+    xmax=None,
+    ymax=None,
+    show_inset=True,
+    inset_max_rank=10,
 ):
     data = []
     xmaxs = []
@@ -1506,7 +1519,7 @@ def plot_config_energy(
     for i, el in enumerate([max_rank, inset_max_rank]):
         new_df = df
         new_df["energy_per_atom"] = new_df["energy"] / new_df["number_of_atoms"]
-        new_df = df.nsmallest(el +1, "energy_per_atom").copy()
+        new_df = df.nsmallest(el + 1, "energy_per_atom").copy()
         new_df["energy_difference"] = (
             new_df["energy_per_atom"] - new_df["energy_per_atom"].min()
         ) * 1000
@@ -1528,23 +1541,27 @@ def plot_config_energy(
         ymax = ((ymax // rounding_order_of_magnitude) + 1) * rounding_order_of_magnitude
         ymaxs.append(ymax)
         if i == 0:
-            data.append(go.Scatter(x=new_df["rank"],
-                                   y=new_df["energy_difference"],
-                                   mode="markers",
-                                   hovertext=[f'config = {i}' for i in new_df["config"]]))
+            data.append(
+                go.Scatter(
+                    x=new_df["rank"],
+                    y=new_df["energy_difference"],
+                    mode="markers",
+                    hovertext=[f"config = {i}" for i in new_df["config"]],
+                )
+            )
         else:
-            data.append(go.Scatter(x=new_df["rank"],
-                                   y=new_df["energy_difference"],
-                                   xaxis='x2',
-                                   yaxis='y2',
-                                   mode="markers",
-                                   hovertext=[f'config={i}' for i in new_df["config"]]))
+            data.append(
+                go.Scatter(
+                    x=new_df["rank"],
+                    y=new_df["energy_difference"],
+                    xaxis="x2",
+                    yaxis="y2",
+                    mode="markers",
+                    hovertext=[f"config={i}" for i in new_df["config"]],
+                )
+            )
     layout = go.Layout(
-        font=dict(
-            family="Devaju Sans",
-            size=20,
-            color="black"
-        ),
+        font=dict(family="Devaju Sans", size=20, color="black"),
         xaxis=dict(
             title="Energy rank",
             range=[0, xmaxs[0]],
@@ -1556,7 +1573,7 @@ def plot_config_energy(
             tickwidth=1,
             tickcolor="black",
             showgrid=False,
-            tickfont=dict(color="rgb(0,0,0)", size=20)
+            tickfont=dict(color="rgb(0,0,0)", size=20),
         ),
         yaxis=dict(
             title="Energy difference (meV/atom)",
@@ -1569,11 +1586,11 @@ def plot_config_energy(
             tickwidth=1,
             tickcolor="black",
             showgrid=False,
-            tickfont=dict(color="rgb(0,0,0)", size=20)
+            tickfont=dict(color="rgb(0,0,0)", size=20),
         ),
         xaxis2=dict(
             domain=[0.1, 0.5],
-            anchor='y2',
+            anchor="y2",
             range=[0, inset_max_rank],
             showline=True,
             linecolor="black",
@@ -1583,11 +1600,11 @@ def plot_config_energy(
             tickwidth=1,
             tickcolor="black",
             showgrid=False,
-            tickfont=dict(color="rgb(0,0,0)", size=20)
+            tickfont=dict(color="rgb(0,0,0)", size=20),
         ),
         yaxis2=dict(
             domain=[0.5, 0.95],
-            anchor='x2',
+            anchor="x2",
             range=[0, ymaxs[1]],
             showline=True,
             linecolor="black",
@@ -1597,15 +1614,15 @@ def plot_config_energy(
             tickwidth=1,
             tickcolor="black",
             showgrid=False,
-            tickfont=dict(color="rgb(0,0,0)", size=20)
+            tickfont=dict(color="rgb(0,0,0)", size=20),
         ),
         plot_bgcolor="white",
         width=600,
         height=600,
         margin=dict(l=80, r=30, t=30, b=80),
-        showlegend=False
+        showlegend=False,
     )
-    if show_inset==False:
+    if show_inset == False:
         data.pop(1)
     fig = go.Figure(data=data, layout=layout)
     fig.update_traces(
