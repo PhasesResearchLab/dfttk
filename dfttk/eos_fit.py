@@ -655,19 +655,6 @@ def fit_to_all_eos(df):
     return eos_df, eos_parameters_df
 
 
-"""
-def find_common_tangent_volumes(initial_guess):
-    
-    eos_equations = [mBM4_equation, mBM5_equation, BM4_equation, BM5_equation, LOG4_equation, LOG5_equation]
-    x1, x2 = initial_guess
-    x1 = float(x1)
-    x2 = float(x2)
-    equation_1 = BM4_derivative_new(x1, b1, c1, d1) - BM4_derivative_new(x2, b2, c2, d2)
-    equation_2 = ((BM4_new(x1, a1, b1, c1, d1) - BM4_new(x2, a2, b2, c2, d2)) / (x1 - x2)) - BM4_derivative_new(x1, b1, c1, d1)
-    return (equation_1, equation_2)
-"""
-
-
 # TODO: review
 def convert_input_files_to_df(input_files, left_col, right_col):
     """
