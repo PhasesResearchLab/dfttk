@@ -235,7 +235,8 @@ def extract_configuration_data(
     oszicar_name: str ='OSZICAR.3static',
     contcar_name: str ='CONTCAR.3static', 
     collect_mag_data: bool = False,
-    magmom_tolerance: float = 0
+    magmom_tolerance: float = 1e-12,
+    total_magnetic_moment_tolerance: float = 1e-12
     ):
     """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations
     run by ev_curve_series and returns a pandas DataFrame.
@@ -285,7 +286,10 @@ def extract_configuration_data(
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(outcar_path)
             total_magnetic_moment = mag_data['tot'].sum()
-            magnetic_ordering = determine_magnetic_ordering(mag_data)
+            magnetic_ordering = determine_magnetic_ordering(
+                mag_data,
+                magmom_tolerance=magmom_tolerance,
+                total_magnetic_moment_tolerance=total_magnetic_moment_tolerance)
             
             row = {
                 "config": config,
@@ -318,7 +322,8 @@ def recursive_extract_configuration_data(
     oszicar_name: str ='OSZICAR',
     contcar_name: str ='CONTCAR', 
     collect_mag_data: bool = False,
-    magmom_tolerance: float = 0
+    magmom_tolerance: float = 0,
+    total_magnetic_moment_tolerance: float = 1e-12
     ):
     """convenience function to extract configuration data from multiple config directories.
     Runs extract_configuration_data for each config directory in a list.
@@ -341,7 +346,8 @@ def recursive_extract_configuration_data(
                 config_dir, outcar_name=outcar_name, 
                 oszicar_name=oszicar_name, contcar_name=contcar_name, 
                 collect_mag_data=collect_mag_data,
-                magmom_tolerance=magmom_tolerance)
+                magmom_tolerance=magmom_tolerance,
+                total_magnetic_moment_tolerance=total_magnetic_moment_tolerance)
             df_list.append(config_df)
         except Exception as e:
             print(f'Error in {config_dir}: {e}')

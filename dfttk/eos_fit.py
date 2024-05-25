@@ -1505,17 +1505,9 @@ def plot_energy_difference(
 
 # TODO: review
 def plot_config_energy(
-    df,
-    max_rank=5,
-    show_fig=True,
-    xmax=None,
-    ymax=None,
-    show_inset=True,
-    inset_max_rank=10,
+    df, max_rank=10000, inset_max_rank=10, show_inset=True, show_fig=True
 ):
     data = []
-    xmaxs = []
-    ymaxs = []
     for i, el in enumerate([max_rank, inset_max_rank]):
         new_df = df
         new_df["energy_per_atom"] = new_df["energy"] / new_df["number_of_atoms"]
@@ -1525,46 +1517,50 @@ def plot_config_energy(
         ) * 1000
         new_df = new_df.reset_index(drop=True)
         new_df["rank"] = new_df["energy_difference"].rank(method="min") - 1
-        xmax = new_df["rank"].max()
-        xmaxs.append(xmax)
         max_energy_difference = new_df["energy_difference"].max()
         # Get the order of magnitude of the max_energy_difference
         rounding_order_of_magnitude = 10 ** (len(str(int(max_energy_difference))) - 2)
-
-        # Round up to the nearest order of magnitude
-        ymax = (
-            math.ceil(max_energy_difference / rounding_order_of_magnitude)
-            * rounding_order_of_magnitude
-        )
-
-        # Get the next multiple of order of magnitude with the second digit being 0
-        ymax = ((ymax // rounding_order_of_magnitude) + 1) * rounding_order_of_magnitude
-        ymaxs.append(ymax)
+        
+        if i==0:
+            types_of_magnetic_ordering = new_df['magnetic_ordering'].unique()
+        # add a new color column to new_df that corresponds to the magnetic ordering
+        colors = px.colors.qualitative.Plotly.copy() # plotly colors
+        colors[0] = '#0000FF' # blue
+        colors[1] = '#FF0000' # red
+        colors[2] = '#9CDE1C' # custom green
+        assignment = zip(types_of_magnetic_ordering, colors)
+        new_df['color'] = new_df['magnetic_ordering'].map(dict(assignment))
+        
         if i == 0:
-            data.append(
-                go.Scatter(
-                    x=new_df["rank"],
-                    y=new_df["energy_difference"],
-                    mode="markers",
-                    hovertext=[f"config = {i}" for i in new_df["config"]],
-                )
-            )
+            for trace_number, mo in enumerate(types_of_magnetic_ordering):
+                single_mo_df = new_df[new_df['magnetic_ordering'] == mo]
+                data.append(go.Scatter(x=single_mo_df["rank"],
+                                    y=single_mo_df["energy_difference"],
+                                    mode="markers",
+                                    marker=dict(size=7, symbol="cross-thin-open", color=single_mo_df["color"]),
+                                    hovertext=[f'config={config}, <br>magnetic ordering={mo}'
+                                                for config, mo
+                                                in zip(single_mo_df['config'], single_mo_df['magnetic_ordering'])],
+                                    name=mo
+                ))    
         else:
-            data.append(
-                go.Scatter(
-                    x=new_df["rank"],
-                    y=new_df["energy_difference"],
-                    xaxis="x2",
-                    yaxis="y2",
-                    mode="markers",
-                    hovertext=[f"config={i}" for i in new_df["config"]],
-                )
-            )
+            data.append(go.Scatter(x=new_df["rank"],
+                                   y=new_df["energy_difference"],
+                                   xaxis='x2',
+                                   yaxis='y2',
+                                   mode="markers",
+                                   marker=dict(size=7, symbol="cross-thin-open", color=new_df["color"]),
+                                   hovertext=[f'config={config}, <br>magnetic ordering={mo}'
+                                            for config, mo
+                                            in zip(new_df['config'], new_df['magnetic_ordering'])],
+                                   name=mo
+            ))
+    for el in data[trace_number+1:]:
+        el.showlegend = False #don't show legend for traces in inset data
     layout = go.Layout(
         font=dict(family="Devaju Sans", size=20, color="black"),
         xaxis=dict(
             title="Energy rank",
-            range=[0, xmaxs[0]],
             showline=True,
             linecolor="black",
             linewidth=1,
@@ -1577,7 +1573,6 @@ def plot_config_energy(
         ),
         yaxis=dict(
             title="Energy difference (meV/atom)",
-            range=[0, ymaxs[0]],
             showline=True,
             linecolor="black",
             linewidth=1,
@@ -1590,8 +1585,7 @@ def plot_config_energy(
         ),
         xaxis2=dict(
             domain=[0.1, 0.5],
-            anchor="y2",
-            range=[0, inset_max_rank],
+            anchor='y2',
             showline=True,
             linecolor="black",
             linewidth=1,
@@ -1603,9 +1597,8 @@ def plot_config_energy(
             tickfont=dict(color="rgb(0,0,0)", size=20),
         ),
         yaxis2=dict(
-            domain=[0.5, 0.95],
-            anchor="x2",
-            range=[0, ymaxs[1]],
+            domain=[0.55, 0.95],
+            anchor='x2',
             showline=True,
             linecolor="black",
             linewidth=1,
@@ -1617,18 +1610,16 @@ def plot_config_energy(
             tickfont=dict(color="rgb(0,0,0)", size=20),
         ),
         plot_bgcolor="white",
-        width=600,
+        width=680,
         height=600,
         margin=dict(l=80, r=30, t=30, b=80),
-        showlegend=False,
+        showlegend=True
     )
-    if show_inset == False:
-        data.pop(1)
+    if show_inset==False:
+        for i in range(trace_number + 1, len(data)):
+            data.pop(i)
     fig = go.Figure(data=data, layout=layout)
-    fig.update_traces(
-        marker=dict(size=6, symbol="cross-thin-open", color="blue"),
-        selector=dict(mode="markers"),
-    )
+
     if show_fig:
         fig.show()
     return fig
