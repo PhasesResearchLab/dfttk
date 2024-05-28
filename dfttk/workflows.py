@@ -938,6 +938,46 @@ def phonons_parallel(path, phonon_volumes, supercell_size, kppa, run_file):
         os.chdir(path)
 
 
+def process_phonon_dos_YPHON(path):
+    
+    # Go to each phonon folder and copy the CONTCAR, OUTCAR, and vasprun.xml files to the phonon_dos folder to be processed by YPHON
+    phonon_folders = [
+        folder
+        for folder in os.listdir(path)
+        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("phonon")
+    ]
+
+    for phonon_folder in phonon_folders:
+        os.chdir(os.path.join(path, phonon_folder))
+        if not os.path.exists("phonon_dos"):
+            os.makedirs("phonon_dos", exist_ok=True)
+        shutil.copy(os.path.join(path, phonon_folder, "CONTCAR.2phonons"), os.path.join(path, phonon_folder, "phonon_dos", "CONTCAR"))
+        shutil.copy(os.path.join(path, phonon_folder, "OUTCAR.2phonons"), os.path.join(path, phonon_folder, "phonon_dos", "OUTCAR"))
+        shutil.copy(os.path.join(path, phonon_folder, "vasprun.xml.2phonons"), os.path.join(path, phonon_folder, "phonon_dos", "vasprun.xml"))
+        
+        os.chdir(os.path.join(path, phonon_folder, "phonon_dos"))
+        index = phonon_folder.split("_")[1]
+        structure = Structure.from_file("CONTCAR")
+        number_of_atoms = structure.num_sites
+        volume = extract_volume("CONTCAR")
+        volume_per_atom = volume / number_of_atoms
+        
+        with open("volph_" + index, "w") as f:
+            f.write(str(volume_per_atom))
+        
+        # YPHON commands
+        os.system("vasp_fij")
+        os.system("Yphon <superfij.out")
+        
+        os.rename("vdos.out", "vdos_" + index)
+        os.chdir(path)
+        
+    os.makedirs("YPHON_results", exist_ok=True)
+    for phonon_folder in phonon_folders:
+        shutil.copy(os.path.join(path, phonon_folder, "phonon_dos", "vdos_" + phonon_folder.split("_")[1]), os.path.join(path, "YPHON_results", "vdos_" + phonon_folder.split("_")[1]))
+        shutil.copy(os.path.join(path, phonon_folder, "phonon_dos", "volph_" + phonon_folder.split("_")[1]), os.path.join(path, "YPHON_results", "volph_" + phonon_folder.split("_")[1]))
+
+
 def kpoints_conv_test(
     path, kppa_list, vasp_cmd, handlers, force_gamma=True, backup=False
 ):
