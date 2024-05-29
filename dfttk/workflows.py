@@ -616,6 +616,10 @@ def ev_curve_series(
         "PROCAR.2relax",
         "PROCAR.3static",
     ]
+    if keep_wavecar:
+        files_to_delete.remove("WAVECAR.3static")
+    if keep_chgcar:
+        files_to_delete.remove("CHGCAR.3static")
 
     # This starts the EV curve calculations in series. If restarting, skip the volumes that have already been completed.
     for i, vol in enumerate(volumes):
@@ -650,10 +654,6 @@ def ev_curve_series(
                 if os.path.isfile(file_source):
                     shutil.copy2(file_source, file_dest)
 
-            if keep_wavecar:
-                files_to_delete.remove("WAVECAR.3static")
-            if keep_chgcar:
-                files_to_delete.remove("CHGCAR.3static")
             paths_to_delete = []
 
             for file_name in files_to_delete:
