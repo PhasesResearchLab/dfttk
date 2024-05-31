@@ -187,14 +187,14 @@ def extract_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
 
 
 #TODO just get mag data for all the ions
-def extract_tot_mag_data(outcar_path="OUTCAR"):
+def extract_tot_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
     """Returns only the 'tot' magnetization of the last step for each specified ion.
 
     Args:
-        outcar_path (str, optional): Path to an OUTCAR file. Defaults to "OUTCAR".
+        outcar_path: Path to an OUTCAR file. Defaults to "OUTCAR".
 
     Returns:
-        <class 'pandas.core.frame.DataFrame'>: a pandas DataFrame containing the 'tot' magnetization data
+        a pandas DataFrame containing the 'tot' magnetization data
     """
 
     all_mag_data = extract_mag_data(outcar_path)
@@ -203,8 +203,13 @@ def extract_tot_mag_data(outcar_path="OUTCAR"):
     tot_data.reset_index(drop=True, inplace=True)
     return tot_data
 
-def determine_magnetic_ordering(df: pd.DataFrame, magmom_tolerance: float = 1e-12, total_magnetic_moment_tolerance: float = 1e-12):
+def determine_magnetic_ordering(
+    df: pd.DataFrame,
+    magmom_tolerance: float = 1e-12,
+    total_magnetic_moment_tolerance: float = 1e-12
+    ) -> str:
     """Determines the magnetic ordering of a structure from the magnetization data in a pandas DataFrame.
+    e.g. 'FM', 'AFM', 'FiM', 'NM', 'SF'
 
     Args:
         df (pandas DataFrame): a pandas DataFrame containing the magnetization data
@@ -214,7 +219,7 @@ def determine_magnetic_ordering(df: pd.DataFrame, magmom_tolerance: float = 1e-1
         Defaults to 1e-12 to handle floating point errors.
 
     Returns:
-        str: the magnetic ordering of the structure
+        The magnetic ordering of the structure
     """
 
     if (np.isclose(df['tot'], 0, atol=magmom_tolerance)).all():
@@ -237,7 +242,7 @@ def extract_configuration_data(
     collect_mag_data: bool = False,
     magmom_tolerance: float = 1e-12,
     total_magnetic_moment_tolerance: float = 1e-12
-    ):
+    ) -> pd.DataFrame:
     """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations
     run by ev_curve_series and returns a pandas DataFrame.
 
@@ -323,7 +328,7 @@ def recursive_extract_configuration_data(
     collect_mag_data: bool = False,
     magmom_tolerance: float = 0,
     total_magnetic_moment_tolerance: float = 1e-12
-    ):
+    ) -> pd.DataFrame:
     """convenience function to extract configuration data from multiple config directories.
     Runs extract_configuration_data for each config directory in a list.
 
@@ -355,27 +360,30 @@ def recursive_extract_configuration_data(
     
 
 def three_step_relaxation(
-    path,
-    vasp_cmd,
-    handlers,
-    copy_magmom=False,
-    backup=False,
-    default_settings=True,
-    settings_override_2relax=None,
-    settings_override_3static=None,
-):
+    path: str,
+    vasp_cmd: list[str],
+    handlers: list[str],
+    copy_magmom: bool = False,
+    backup: bool = False,
+    default_settings: bool = True,
+    settings_override_2relax: list = None,
+    settings_override_3static: list = None,
+) -> None:
     """This function runs a three-step relaxation (two consecutive relaxations followed by
        one static) for a given path using VASP. The path should contain the necessary VASP
        input files: POSCAR, POTCAR, INCAR, and KPOINTS.
 
     Args:
-        path (str): the path to the folder containing the VASP input files
-        vasp_cmd (list): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers (class 'list'): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        path: the path to the folder containing the VASP input files
+        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        copy_magmom: If True, copies the magmom from an OUTCAR file of one run to the INCAR
         file of the next run. Defaults to False.
-        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        backup: If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
+        default_settings: if True, uses the default settings for the relaxation and static steps.
+        settings_override_2relax: a list of settings for the second relaxation step
+        settings_override_3static: a list of settings for the static step
     """
 
     if default_settings:
@@ -428,18 +436,18 @@ def three_step_relaxation(
 
 # TODO: write tests for this function
 def ev_curve_series(
-    path,
-    volumes,
-    vasp_cmd,
-    handlers,
-    restarting=False,
-    keep_wavecar=False,
-    keep_chgcar=False,
-    copy_magmom=False,
-    default_settings=True,
-    settings_override_2relax=None,
-    settings_override_3static=None,
-    ):
+    path: str,
+    volumes: list[float],
+    vasp_cmd: list[str],
+    handlers: list[str],
+    restarting: bool = False,
+    keep_wavecar: bool = False,
+    keep_chgcar: bool = False,
+    copy_magmom: bool = False,
+    default_settings: bool = True,
+    settings_override_2relax: list = None,
+    settings_override_3static: list = None,
+    ) -> None:
     """This function runs a series of three_step_relaxation calculations for a list of volumes. It starts with the first volume, then
        copies the relevant files to the next volume folder, scales the volume of the POSCAR accordingly, and so on.
 
