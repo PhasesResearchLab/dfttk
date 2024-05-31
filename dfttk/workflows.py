@@ -15,14 +15,14 @@ from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Chgcar
 
 
-def extract_volume(path):
+def extract_volume(path: str) -> float:
     """Extract the volume of a structure from a POSCAR/CONTCAR file
 
     Args:
-        path (str): the path to a POSCAR/CONTCAR file
+        path: the path to a POSCAR/CONTCAR file
 
     Returns:
-        float: the structure volume
+        The the volume of the structure
     """
 
     structure = Structure.from_file(path)
