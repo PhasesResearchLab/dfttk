@@ -57,3 +57,11 @@ html_context = {
     "github_version": "documentation2",
     "conf_py_path": "/docs/",
 }
+
+def linkcode_resolve(domain, info):
+    if domain != 'py':
+        return None
+    if not info['module']:
+        return None
+    filename = info['module'].replace('.', '/')
+    return "https://github.com/lukeamyers/dfttk/tree/docs/%s.py" % filename
