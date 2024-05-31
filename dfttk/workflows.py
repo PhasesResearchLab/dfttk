@@ -1059,13 +1059,13 @@ def kpoints_conv_test(
     return None
 
 
-def calculate_kpoint_conv(path, kppa_list, plot=True):
+def calculate_kpoint_conv(path: str, kppa_list: list[str], plot: bool = True):
     """This function calculates the energy convergence with respect to k-point density and plots the results.
 
     Args:
-        path (str): the path to the folder containing the VASP input files
-        kppa_list (list): the list of k-point densities to run the calculations for
-        plot (bool, optional): If True, plots the results. Defaults to True.
+        path: the path to the folder containing the VASP input files
+        kppa_list: the list of k-point densities to run the calculations for
+        plot: If True, plots the results. Defaults to True.
     """
     original_dir = os.getcwd()
     kpoints_conv_dir = os.path.join(path, "kpoints_conv")
@@ -1099,15 +1099,21 @@ def calculate_kpoint_conv(path, kppa_list, plot=True):
     os.chdir(original_dir)
 
 
-def encut_conv_test(path, encut_list, vasp_cmd, handlers, backup=False):
+def encut_conv_test(
+    path: str,
+    encut_list:list[float],
+    vasp_cmd: list[str],
+    handlers: list[str],
+    backup: bool = False
+    ):
     """This function runs a series of VASP calculations with different ENCUT values for convergence testing.
 
     Args:
-        path (str): the path to the folder containing the VASP input files
-        encut_list (list): the list of ENCUT values to run the calculations for
-        vasp_cmd (list): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers (class 'list'): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        path: the path to the folder containing the VASP input files
+        encut_list: the list of ENCUT values to run the calculations for
+        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        backup: If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
     """
     original_dir = os.getcwd()
@@ -1152,13 +1158,13 @@ def encut_conv_test(path, encut_list, vasp_cmd, handlers, backup=False):
     os.chdir(original_dir)
 
 
-def calculate_encut_conv(path, encut_list, plot=True):
+def calculate_encut_conv(path: str, encut_list: str, plot: bool = True):
     """This function calculates the energy convergence with respect to ENCUT and plots the results.
 
     Args:
-        path (str): the path to the folder containing the VASP input files
-        encut_list (list): the list of ENCUT values to run the calculations for
-        plot (bool, optional): If True, plots the results. Defaults to True.
+        path: the path to the folder containing the VASP input files
+        encut_list: the list of ENCUT values to run the calculations for
+        plot: If True, plots the results. Defaults to True.
     """
     original_dir = os.getcwd()
     encut_conv_dir = os.path.join(path, "encut_conv")
