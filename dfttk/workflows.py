@@ -1202,6 +1202,7 @@ if __name__ == "__main__":
     print("This is a module for importing. It is not meant to be run directly.")
     print("But anyway, here are some tests!")
 
+    # TODO: move tests to tests folder
     # TODO: Change test_data to something more appropriate
     # TODO: Is there a better way to specify these paths?
     # At the moment, have to run the tests from the src directory
