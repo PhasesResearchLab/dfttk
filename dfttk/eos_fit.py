@@ -871,7 +871,7 @@ def assign_marker_symbols_to_configs(df: pd.DataFrame) -> dict:
 
 # TODO: highlight the actual minimum from the fitting
 def plot_ev(
-    data:,
+    data,
     eos_fitting="BM4",
     highlight_minimum=True,
     per_atom=False,
