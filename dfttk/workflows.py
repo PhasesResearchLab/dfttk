@@ -248,7 +248,6 @@ def extract_configuration_data(
         contcar_name: name of the CONTCAR file. Defaults to "CONTCAR".
         collect_mag_data: if True, collect the magnetization data using extract_tot_mag_data. Defaults to
         False.
-        OUTCAR. Defaults to [1].
         magmom_tolerance: the tolerance for the total magnetic moment to be considered zero. Defaults to 0.
 
     Returns:
