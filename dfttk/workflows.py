@@ -452,14 +452,14 @@ def ev_curve_series(
        copies the relevant files to the next volume folder, scales the volume of the POSCAR accordingly, and so on.
 
     Args:
-        path (str): the path to the folder containing the VASP input files
-        volumes (list): the list of volumes to run the calculations for
-        vasp_cmd (list): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers (class 'list'): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        restarting (bool, optional): for restarting failed jobs. Defaults to False.
-        keep_wavecar (bool, optional): if True, does not delete WAVECAR.3static. Defaults to False.
-        keep_chgcar (bool, optional): if True, does not delete CHGCAR.3static. Defaults to False.
-        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        path: the path to the folder containing the VASP input files
+        volumes: the list of volumes to run the calculations for
+        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        restarting: for restarting failed jobs. Defaults to False.
+        keep_wavecar: if True, does not delete WAVECAR.3static. Defaults to False.
+        keep_chgcar: if True, does not delete CHGCAR.3static. Defaults to False.
+        copy_magmom: If True, copies the magmom from an OUTCAR file of one run to the INCAR
         file of the next run. Defaults to False.
     """
 
