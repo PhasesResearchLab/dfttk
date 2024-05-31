@@ -31,14 +31,14 @@ def extract_volume(path: str) -> float:
     return volume
 
 
-def extract_pressure(path):
+def extract_pressure(path: str) -> float:
     """Extract the last occurrence of pressure from an OUTCAR file
 
     Args:
-        path (str): the path to an OUTCAR file
+        path: the path to an OUTCAR file
 
     Returns:
-        float: the pressure from an OUTCAR file
+        the pressure from an OUTCAR file
     """
 
     with open(path, "r") as file:
@@ -53,14 +53,14 @@ def extract_pressure(path):
     return pressure
 
 
-def extract_energy(path):
+def extract_energy(path: str) -> float:
     """Extract the final energy from an OSZICAR file
 
     Args:
-        path (str): the path to an OSZICAR file
+        path: the path to an OSZICAR file
 
     Returns:
-        float: the final energy from an OSZICAR file
+        The final energy from an OSZICAR file
     """
 
     with open(path, "r") as file:
@@ -77,7 +77,7 @@ def extract_energy(path):
     return energy
 
 
-def write_ev(path):
+def write_ev(path: str) -> None:
     """Function to write the volumes and energies obtained from ev_curve_series to a text file.
     The data will be obtained from vol_* folders.
 
@@ -109,7 +109,7 @@ def write_ev(path):
     os.chdir(original_dir)
 
 
-def write_pv(path):
+def write_pv(path: str) -> None:
     """Function to write the volumes and pressures obtained from ev_curve_series to a text file.
     The data will be obtained from vol_* folders.
 
@@ -141,14 +141,14 @@ def write_pv(path):
     os.chdir(original_dir)
 
 
-def extract_mag_data(outcar_path="OUTCAR"):
-    """Extracts the magnetization data from an OUTCAR file and returns a pandas DataFrame.
+def extract_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
+    """Extracts the magnetization data from an OUTCAR file and returns the data as a pandas DataFrame in the same format and headings as seen in the OUTCAR.
 
     Args:
-        outcar_path (str, optional): Path to an OUTCAR file. Defaults to "OUTCAR".
+        outcar_path: Path to an OUTCAR file. Defaults to "OUTCAR".
 
     Returns:
-        <class 'pandas.core.frame.DataFrame'>: a pandas DataFrame containing the magnetization data
+        Pandas DataFrame containing the magnetization data
     """
 
     if not os.path.isfile(outcar_path):
