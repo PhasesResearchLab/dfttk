@@ -587,16 +587,16 @@ def morse(volume, energy):
 
 
 # TODO: Change the arguments to include only the EOS functions you want to fit.
-def fit_to_all_eos(df):
+def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Fits the volume and energies of configurations to all EOS functions and returns the results in a dataframe.
 
     Args:
-        df (pandas.DataFrame): Dataframe frome workflows.extract_configuration_data that contains the volumes,
+        df: Dataframe frome workflows.extract_configuration_data that contains the volumes,
         energies, and number of atoms of each configuration.
 
     Returns:
-        eos_df (pandas.DataFrame): contains all columns.
-        eos_parameters_df (pandas.DataFrame): only contains the EOS parameters.
+        eos_df: contains all columns.
+        eos_parameters_df: only contains the EOS parameters.
     """
 
     eos_functions = [mBM4, mBM5, BM4, BM5, LOG4, LOG5, murnaghan, vinet, morse]
@@ -664,7 +664,7 @@ def fit_to_all_eos(df):
 
 
 # TODO: review
-def convert_input_files_to_df(input_files, left_col, right_col):
+def convert_input_files_to_df(input_files: list[str], left_col: str, right_col: str) -> pd.DataFrame:
     """
     The input_files should be a list of strings containing the file names of the input files
 
@@ -701,15 +701,18 @@ def convert_input_files_to_df(input_files, left_col, right_col):
 
 
 # TODO: review
-def select_data(df, selection_dict):
+def select_data(df: pd.DataFrame, selection_dict: dict) -> pd.DataFrame:
     """
+    Used to cherry pick data from a dataframe based on the config name and the volume rank
     the selection_dict should be a dictionary with the following format:
     selection_dict = {10: [0,1,2,3],
                         11: [0,1,2,3],
                         12: [0,1,2,3],
                         ...}
-    where the keys are the config # and the values are the volumes 0=lowest
+    where the keys are the config names and the values are the volumes 0=lowest
     volume, 1=second lowest volume, etc.
+    
+    
     """
     # first rank the volumes from lowest to highest
     df["volume_rank"] = df.groupby("config")["volume"].rank(method="dense").astype(int)
@@ -728,7 +731,7 @@ def select_data(df, selection_dict):
 
 
 # TODO: review
-def plot_mv(df, show_fig=True):
+def plot_mv(df: pd.DataFrame, show_fig: bool = True) -> go.Figure:
     """
     data may be a single pandas data frame or a list of pandas data frames
     data may also be a list of input_file names as strings ex:
@@ -782,7 +785,7 @@ def plot_mv(df, show_fig=True):
     return fig
 
 
-def assign_colors_to_configs(df, alpha=1, cmap="plotly"):
+def assign_colors_to_configs(df: pd.DataFrame, alpha: float = 1, cmap: str = "plotly") -> dict:
     unique_configs = df["config"].unique()
 
     if cmap == "plotly":
@@ -818,7 +821,7 @@ def assign_colors_to_configs(df, alpha=1, cmap="plotly"):
     return config_colors
 
 
-def assign_marker_symbols_to_configs(df):
+def assign_marker_symbols_to_configs(df: pd.DataFrame) -> dict:
     unique_configs = df["config"].unique()
     symbols = [
         "circle",
@@ -868,7 +871,7 @@ def assign_marker_symbols_to_configs(df):
 
 # TODO: highlight the actual minimum from the fitting
 def plot_ev(
-    data,
+    data:,
     eos_fitting="BM4",
     highlight_minimum=True,
     per_atom=False,
