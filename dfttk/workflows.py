@@ -701,22 +701,27 @@ def ev_curve_series(
             os.remove(file_path)
 
 
-def charge_density_difference(path, vasp_cmd, handlers, backup=False):
+def charge_density_difference(
+    path: str,
+    vasp_cmd: list[str],
+    handlers: list[str],
+    backup: bool = False
+    ) -> pymatgen.io.vasp.outputs.Chgcar:
     """
     Runs a charge density difference calculation for a configuration in a subdirectory of the given path.
     called charge_density_difference. The charge density difference is calculated as the difference between
     The charge density of the final electronic step and the charge density of a single step.
 
     Args:
-        path (str): The path that contains the INCAR, POSCAR KPOINTS, and POTCAR.
-        vasp_cmd (str): The command to run VASP.
-        handlers (list): A list of error handlers that will be used during the calculation.
+        path: The path that contains the INCAR, POSCAR KPOINTS, and POTCAR.
+        vasp_cmd: The command to run VASP.
+        handlers: A list of error handlers that will be used during the calculation.
         Refer to custodian.vasp.handlers
-        backup (bool, optional):  Whether to backup the initial input files. If True, the INCAR,
+        backup:  Whether to backup the initial input files. If True, the INCAR,
         KPOINTS, POSCAR and POTCAR will be copied with a “.orig” appended. Defaults to True.
 
     Returns:
-        pymatgen.io.vasp.outputs.Chgcar: The charge density difference between the final electronic step and
+        The charge density difference between the final electronic step and
         a single step.
     """
     original_dir = os.getcwd()
@@ -790,7 +795,7 @@ def charge_density_difference(path, vasp_cmd, handlers, backup=False):
     return difference
 
 
-def custodian_errors_location(path):
+def custodian_errors_location(path: str) -> None:
     vol_folders = [d for d in os.listdir(path) if d.startswith("vol")]
     for vol_folder in vol_folders:
         error_folders = [
@@ -802,7 +807,7 @@ def custodian_errors_location(path):
             print(f"In {vol_folder} there are error folders: {error_folders}")
 
 
-def NELM_reached(path):
+def NELM_reached(path: str) -> None:
     start_dir = path
     target_line = "The electronic self-consistency was not achieved in the given"
     for dirpath, dirs, files in os.walk(start_dir):
@@ -816,7 +821,7 @@ def NELM_reached(path):
 
 # TODO: add a way to restart the job if it has failed
 # TODO: add a way to override the default settings
-def run_phonons(vasp_cmd, handlers, copy_magmom=False, backup=False):
+def run_phonons(vasp_cmd: list[str], handlers: list[str], copy_magmom: bool = False, backup: bool = False):
 
     step1 = VaspJob(
         vasp_cmd=vasp_cmd,
@@ -856,7 +861,13 @@ def run_phonons(vasp_cmd, handlers, copy_magmom=False, backup=False):
     c.run()
 
 
-def phonons_parallel(path, phonon_volumes, supercell_size, kppa, run_file):
+def phonons_parallel(
+    path: str,
+    phonon_volumes: list[float],
+    supercell_size: list[int],
+    kppa: float,
+    run_file: str,
+    ) -> None:
 
     # Create a new run_file to run the phonon calculations
     script_name = sys.argv[0]
@@ -945,7 +956,7 @@ def phonons_parallel(path, phonon_volumes, supercell_size, kppa, run_file):
         os.chdir(path)
 
 
-def process_phonon_dos_YPHON(path):
+def process_phonon_dos_YPHON(path: str):
     
     # Go to each phonon folder and copy the CONTCAR, OUTCAR, and vasprun.xml files to the phonon_dos folder to be processed by YPHON
     phonon_folders = [
@@ -986,17 +997,22 @@ def process_phonon_dos_YPHON(path):
 
 
 def kpoints_conv_test(
-    path, kppa_list, vasp_cmd, handlers, force_gamma=True, backup=False
+    path: str,
+    kppa_list: list[float],
+    vasp_cmd: list[str],
+    handlers: list[str],
+    force_gamma: bool = True,
+    backup: bool = False
 ):
     """This function runs a series of VASP calculations with different k-point densities for convergence testing.
 
     Args:
-        path (str): the path to the folder containing the VASP input files
-        kppa_list (list): the list of k-point densities to run the calculations for
-        vasp_cmd (list): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers (class 'list'): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        force_gamma (bool, optional): If True, forces a gamma-centered mesh. Defaults to True.
-        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        path: the path to the folder containing the VASP input files
+        kppa_list: the list of k-point densities to run the calculations for
+        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        force_gamma: If True, forces a gamma-centered mesh. Defaults to True.
+        backup: If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
     """
 
