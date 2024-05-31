@@ -4,15 +4,25 @@ Shun-Li Shang et al., Computational Materials Science, 47, 4, (2010).
 https://doi.org/10.1016/j.commatsci.2009.12.006
 
 It includes the following equations of state:
+
 1:  4-parameter (Teter-Shang) mBM4 
+
 2:  5-parameter (Teter-Shang) mBM5  
+
 3:  4-parameter BM            BM4   
+
 4:  5-parameter BM            BM5   
+
 5:  4-parameter Natural       Log4  
+
 6:  5-parameter Natural       Log5  
+
 7:  4-parameter Murnaghan     Mur   
+
 8:  4-parameter Vinet         Vinet 
+
 9:  4-parameter Morse         Morse 
+
 """
 
 import os
