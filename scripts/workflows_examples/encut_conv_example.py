@@ -3,7 +3,7 @@ import os
 import numpy as np
 from custodian.vasp.handlers import VaspErrorHandler
 #sys.path.append('/storage/home/lam7027/bin/vasp-job-automation')
-import src.workflows as workflows
+import dfttk.workflows as workflows
 
 
 # Specify custodian handlers
@@ -14,7 +14,7 @@ handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]
 # Specify VASP command
 vasp_cmd = ["srun", "vasp_std"]
 
-kppa_list = [400, 800, 1200, 1600, 2000]
+encut_list = [200,300,400,500,600]
 
-workflows.kpoints_conv_test(os.getcwd(), kppa_list, vasp_cmd, handlers)
-workflows.calculate_kpoint_conv(os.getcwd(), kppa_list)
+workflows.encut_conv_test(os.getcwd(), encut_list, vasp_cmd, handlers)
+workflows.calculate_encut_conv(os.getcwd(), encut_list)
