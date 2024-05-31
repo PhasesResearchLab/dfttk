@@ -807,7 +807,7 @@ def NELM_reached(path):
                         print(f"{filepath} has reached NELM.")
                         break
 
-
+# TODO: add a way to restart the job if it has failed
 # TODO: add a way to override the default settings
 def run_phonons(vasp_cmd, handlers, copy_magmom=False, backup=False):
 
