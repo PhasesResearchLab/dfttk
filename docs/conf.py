@@ -8,7 +8,7 @@
 
 import os
 import sys
-sys.path.insert(o, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('.'))
 
 project = 'dfttk'
 copyright = '2024, Luke A. Myers, Nigel Lee En Hew'
