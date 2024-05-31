@@ -1,5 +1,6 @@
 """
 This EOS fitting code is based on the following paper:
+
 Shun-Li Shang et al., Computational Materials Science, 47, 4, (2010).
 https://doi.org/10.1016/j.commatsci.2009.12.006
 
