@@ -43,15 +43,15 @@ EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 # TODO: PV fitting
 # mBM4 EOS Functions
-def mBM4_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: float):
-    """calculates the energy according to the modified Birch-Murnaghan (mBM4) equation of state
+def mBM4_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: float) -> float | np.ndarray:
+    """Calculates the energy according to the modified Birch-Murnaghan 4-parameter (mBM4) equation of state of Teter-Shang.
 
     Args:
         volume: input volume(s)
-        a: a parameter
-        b: b parameter
-        c: c parameter
-        d: d parameter
+        a: a-parameter
+        b: b-parameter
+        c: c-parameter
+        d: d-parameter
 
     Returns:
         energy(s)
@@ -62,7 +62,7 @@ def mBM4_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: f
     return energy
 
 
-def mBM4_derivative(volume: float | np.ndarray, b: float, c: float, d: float):
+def mBM4_derivative(volume: float | np.ndarray, b: float, c: float, d: float) -> float | np.ndarray:
     energy = (
         b * (-1 / 3) * (volume) ** (-4 / 3)
         + c * (-2 / 3) * (volume) ** (-5 / 3)
@@ -116,7 +116,7 @@ def mBM4(volume: float | np.ndarray, energy: float | np.ndarray):
 
 
 # mBM5 EOS Functions
-def mBM5_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: float, e: float):
+def mBM5_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: float, e: float) -> float | np.ndarray:
     energy = (
         a
         + b * (volume) ** (-1 / 3)
@@ -127,7 +127,7 @@ def mBM5_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: f
     return energy
 
 
-def mBM5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e: float):
+def mBM5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e: float) -> float | np.ndarray:
     energy_derivative = (
         b * (-1 / 3) * (volume) ** (-4 / 3)
         + c * (-2 / 3) * (volume) ** (-5 / 3)
@@ -137,7 +137,7 @@ def mBM5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e:
     return energy_derivative
 
 
-def mBM5_eos_parameters(volume_range, a: float, b: float, c: float, d: float, e: float):
+def mBM5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float, e: float):
     V0 = fsolve(mBM5_derivative, np.mean(volume_range), args=(b, c, d, e))[0]
     E0 = mBM5_equation(V0, a, b, c, d, e)
     B = (
@@ -182,14 +182,14 @@ def mBM5(volume: float | np.ndarray, energy: float | np.ndarray):
 
 
 # BM4 EOS Functions
-def BM4_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: float):
+def BM4_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: float) -> float | np.ndarray:
     energy = (
         a + b * volume ** (-2 / 3) + c * (volume) ** (-4 / 3) + d * (volume) ** (-2)
     )
     return energy
 
 
-def BM4_derivative(volume: float | np.ndarray, b: float, c: float, d: float):
+def BM4_derivative(volume: float | np.ndarray, b: float, c: float, d: float) -> float | np.ndarray:
     energy = (
         b * (-2 / 3) * volume ** (-5 / 3)
         + c * (-4 / 3) * (volume) ** (-7 / 3)
@@ -246,7 +246,7 @@ def BM4(volume: float | np.ndarray, energy: float | np.ndarray):
 
 
 # BM5 EOS Functions
-def BM5_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: float, e: float):
+def BM5_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: float, e: float) -> float | np.ndarray:
     energy = (
         a
         + b * (volume) ** (-2 / 3)
@@ -257,7 +257,7 @@ def BM5_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: fl
     return energy
 
 
-def BM5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e: float):
+def BM5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e: float) -> float | np.ndarray:
     energy_derivative = (
         b * (-2 / 3) * (volume) ** (-5 / 3)
         + c * (-4 / 3) * (volume) ** (-7 / 3)
@@ -267,7 +267,7 @@ def BM5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e: 
     return energy_derivative
 
 
-def BM5_eos_parameters(volume_range, a: float, b: float, c: float, d: float, e: float):
+def BM5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float, e: float):
     V0 = fsolve(BM5_derivative, np.mean(volume_range), args=(b, c, d, e))[0]
     E0 = BM5_equation(V0, a, b, c, d, e)
     B = (
@@ -311,19 +311,19 @@ def BM5(volume: float | np.ndarray, energy: float | np.ndarray):
 
 
 # LOG4 EOS Functions
-def LOG4_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: float):
+def LOG4_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: float) -> float | np.ndarray:
     energy = a + b * np.log(volume) + c * np.log(volume) ** 2 + d * np.log(volume) ** 3
     return energy
 
 
-def LOG4_derivative(volume: float | np.ndarray, b: float, c: float, d: float):
+def LOG4_derivative(volume: float | np.ndarray, b: float, c: float, d: float) -> float | np.ndarray:
     energy_derivative = (
         b + 2 * c * np.log(volume) + 3 * d * np.log(volume) ** 2
     ) / volume
     return energy_derivative
 
 
-def LOG4_eos_parameters(volume_range, a: float, b: float, c: float, d: float):
+def LOG4_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float):
     V0 = fsolve(LOG4_derivative, np.mean(volume_range), args=(b, c, d))[0]
     E0 = LOG4_equation(V0, a, b, c, d)
     B = -((b - 2 * c + 2 * (c - 3 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2) / V0)
@@ -363,7 +363,7 @@ def LOG4(volume: float | np.ndarray, energy: float | np.ndarray):
 
 
 # LOG5 EOS Functions
-def LOG5_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: float, e: float):
+def LOG5_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: float, e: float) -> float | np.ndarray:
     energy = (
         a
         + b * np.log(volume)
@@ -374,7 +374,7 @@ def LOG5_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: f
     return energy
 
 
-def LOG5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e: float):
+def LOG5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e: float) -> float | np.ndarray:
     energy = (
         b
         + 2 * c * np.log(volume)
@@ -384,7 +384,7 @@ def LOG5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e:
     return energy
 
 
-def LOG5_eos_parameters(volume_range, a: float, b: float, c: float, d: float, e: float):
+def LOG5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float, e: float):
     V0 = fsolve(LOG5_derivative, np.mean(volume_range), args=(b, c, d, e))[0]
     E0 = LOG5_equation(V0, a, b, c, d, e)
 
@@ -456,7 +456,7 @@ def LOG5(volume: float | np.ndarray, energy: float | np.ndarray):
 
 
 # Murnaghan EOS Functions
-def murnaghan_equation(volume: float | np.ndarray, V0, E0, B, BP):
+def murnaghan_equation(volume: float | np.ndarray, V0, E0, B, BP) -> float | np.ndarray:
     energy = (
         E0
         - (B * V0) / (BP - 1)
@@ -465,7 +465,7 @@ def murnaghan_equation(volume: float | np.ndarray, V0, E0, B, BP):
     return energy
 
 
-def murnaghan_derivative(volume: float | np.ndarray, V0, B, BP):
+def murnaghan_derivative(volume: float | np.ndarray, V0, B, BP) -> float | np.ndarray:
     energy_derivative = (B / BP) * (1 - (V0 / volume) ** BP)
     return energy_derivative
 
@@ -498,7 +498,7 @@ def murnaghan(volume: float | np.ndarray, energy: float | np.ndarray):
 
 
 # Vinet EOS Functions
-def vinet_equation(volume: float | np.ndarray, V0, E0, B, BP):
+def vinet_equation(volume: float | np.ndarray, V0, E0, B, BP) -> float | np.ndarray:
     energy = (
         E0
         + (4 * B * V0) / (BP - 1) ** 2
@@ -510,7 +510,7 @@ def vinet_equation(volume: float | np.ndarray, V0, E0, B, BP):
     return energy
 
 
-def vinet_derivative(volume: float | np.ndarray, V0, B, BP):
+def vinet_derivative(volume: float | np.ndarray, V0, B, BP) -> float | np.ndarray:
     energy_derivative = -(
         3
         * B
@@ -548,7 +548,7 @@ def vinet(volume: float | np.ndarray, energy: float | np.ndarray):
 
 
 # Morse EOS Functions
-def morse_equation(volume: float | np.ndarray, V0, E0, B, BP):
+def morse_equation(volume: float | np.ndarray, V0, E0, B, BP) -> float | np.ndarray:
     a = E0 + (9 * B * V0) / (2 * (BP - 1) ** 2)
     b = (-9 * B * V0 * np.exp(BP - 1)) / (BP - 1) ** 2
     c = (9 * B * V0 * np.exp(2 * BP - 2)) / (2 * (BP - 1) ** 2)
@@ -559,7 +559,7 @@ def morse_equation(volume: float | np.ndarray, V0, E0, B, BP):
     return energy
 
 
-def morse_derivative(volume: float | np.ndarray, b: float, c: float, d: float):
+def morse_derivative(volume: float | np.ndarray, b: float, c: float, d: float) -> float | np.ndarray:
     energy_derivative = b * d * np.exp(d * volume ** (1 / 3)) / (
         3 * volume ** (2 / 3)
     ) + 2 * c * d * np.exp(2 * d * volume ** (1 / 3)) / (3 * volume ** (2 / 3))
