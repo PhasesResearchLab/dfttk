@@ -71,7 +71,7 @@ def mBM4_derivative(volume: float | np.ndarray, b: float, c: float, d: float) ->
     return energy
 
 
-def mBM4_eos_parameters(a: float, b: float, c: float, d: float):
+def mBM4_eos_parameters(a: float, b: float, c: float, d: float) -> tuple[float, float, float, float, float]:
     V0 = (
         -(
             4 * c**3
@@ -137,7 +137,7 @@ def mBM5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e:
     return energy_derivative
 
 
-def mBM5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float, e: float):
+def mBM5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float, e: float) -> tuple[float, float, float, float, float]:
     V0 = fsolve(mBM5_derivative, np.mean(volume_range), args=(b, c, d, e))[0]
     E0 = mBM5_equation(V0, a, b, c, d, e)
     B = (
@@ -198,7 +198,7 @@ def BM4_derivative(volume: float | np.ndarray, b: float, c: float, d: float) -> 
     return energy
 
 
-def BM4_eos_parameters(a: float, b: float, c: float, d: float):
+def BM4_eos_parameters(a: float, b: float, c: float, d: float) -> tuple[float, float, float, float, float]:
     V0 = math.sqrt(
         -(
             (
@@ -267,7 +267,7 @@ def BM5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e: 
     return energy_derivative
 
 
-def BM5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float, e: float):
+def BM5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float, e: float) -> tuple[float, float, float, float, float]:
     V0 = fsolve(BM5_derivative, np.mean(volume_range), args=(b, c, d, e))[0]
     E0 = BM5_equation(V0, a, b, c, d, e)
     B = (
@@ -323,7 +323,7 @@ def LOG4_derivative(volume: float | np.ndarray, b: float, c: float, d: float) ->
     return energy_derivative
 
 
-def LOG4_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float):
+def LOG4_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float) -> tuple[float, float, float, float, float]:
     V0 = fsolve(LOG4_derivative, np.mean(volume_range), args=(b, c, d))[0]
     E0 = LOG4_equation(V0, a, b, c, d)
     B = -((b - 2 * c + 2 * (c - 3 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2) / V0)
@@ -384,7 +384,7 @@ def LOG5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e:
     return energy
 
 
-def LOG5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float, e: float):
+def LOG5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float, e: float) -> tuple[float, float, float, float, float]:
     V0 = fsolve(LOG5_derivative, np.mean(volume_range), args=(b, c, d, e))[0]
     E0 = LOG5_equation(V0, a, b, c, d, e)
 
