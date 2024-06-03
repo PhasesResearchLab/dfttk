@@ -100,7 +100,7 @@ def mBM4_eos_parameters(a: float, b: float, c: float, d: float) -> tuple[float, 
     return V0, E0, B, BP, B2P
 
 
-def mBM4(volume: float | np.ndarray, energy: float | np.ndarray):
+def mBM4(volume: float | np.ndarray, energy: float | np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     a, b, c, d = curve_fit(mBM4_equation, volume, energy, p0=[100, 100, 100, 100])[0]
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
@@ -164,7 +164,7 @@ def mBM5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, 
     return V0, E0, B, BP, B2P
 
 
-def mBM5(volume: float | np.ndarray, energy: float | np.ndarray):
+def mBM5(volume: float | np.ndarray, energy: float | np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     a, b, c, d, e = curve_fit(
         mBM5_equation, volume, energy, p0=[100, 100, 100, 100, 100]
     )[0]
@@ -230,7 +230,7 @@ def BM4_eos_parameters(a: float, b: float, c: float, d: float) -> tuple[float, f
     return V0, E0, B, BP, B2P
 
 
-def BM4(volume: float | np.ndarray, energy: float | np.ndarray):
+def BM4(volume: float | np.ndarray, energy: float | np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     a, b, c, d = curve_fit(BM4_equation, volume, energy, p0=[100, 100, 100, 100])[0]
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
@@ -293,7 +293,7 @@ def BM5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d
     return V0, E0, B, BP, B2P
 
 
-def BM5(volume: float | np.ndarray, energy: float | np.ndarray):
+def BM5(volume: float | np.ndarray, energy: float | np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     a, b, c, d, e = curve_fit(
         BM5_equation, volume, energy, p0=[100, 100, 100, 100, 100]
     )[0]
@@ -347,7 +347,7 @@ def LOG4_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, 
     return V0, E0, B, BP, B2P
 
 
-def LOG4(volume: float | np.ndarray, energy: float | np.ndarray):
+def LOG4(volume: float | np.ndarray, energy: float | np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     a, b, c, d = curve_fit(LOG4_equation, volume, energy, p0=[100, 100, 100, 100])[0]
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
@@ -438,7 +438,7 @@ def LOG5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, 
     return V0, E0, B, BP, B2P
 
 
-def LOG5(volume: float | np.ndarray, energy: float | np.ndarray):
+def LOG5(volume: float | np.ndarray, energy: float | np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     a, b, c, d, e = curve_fit(
         LOG5_equation, volume, energy, p0=[100, 100, 100, 100, 100]
     )[0]
@@ -470,7 +470,7 @@ def murnaghan_derivative(volume: float | np.ndarray, V0, B, BP) -> float | np.nd
     return energy_derivative
 
 
-def murnaghan(volume: float | np.ndarray, energy: float | np.ndarray):
+def murnaghan(volume: float | np.ndarray, energy: float | np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     [eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(
@@ -521,7 +521,7 @@ def vinet_derivative(volume: float | np.ndarray, V0, B, BP) -> float | np.ndarra
     return energy_derivative
 
 
-def vinet(volume: float | np.ndarray, energy: float | np.ndarray):
+def vinet(volume: float | np.ndarray, energy: float | np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     [eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(
@@ -566,7 +566,7 @@ def morse_derivative(volume: float | np.ndarray, b: float, c: float, d: float) -
     return energy_derivative
 
 
-def morse(volume: float | np.ndarray, energy: float | np.ndarray):
+def morse(volume: float | np.ndarray, energy: float | np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
     [eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(
@@ -603,12 +603,10 @@ def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Fits the volume and energies of configurations to all EOS functions and returns the results in a dataframe.
 
     Args:
-        df: Dataframe frome workflows.extract_configuration_data that contains the volumes,
-        energies, and number of atoms of each configuration.
+        df: Dataframe with headers ['config', 'volume', 'energy', 'number_of_atoms'].
 
     Returns:
-        eos_df: contains all columns.
-        eos_parameters_df: only contains the EOS parameters.
+        tuple(eos_df, eos_parameters_df)
     """
 
     eos_functions = [mBM4, mBM5, BM4, BM5, LOG4, LOG5, murnaghan, vinet, morse]
