@@ -706,7 +706,7 @@ def charge_density_difference(
     vasp_cmd: list[str],
     handlers: list[str],
     backup: bool = False
-    ) -> pymatgen.io.vasp.outputs.Chgcar:
+    ):
     """
     Runs a charge density difference calculation for a configuration in a subdirectory of the given path.
     called charge_density_difference. The charge density difference is calculated as the difference between
