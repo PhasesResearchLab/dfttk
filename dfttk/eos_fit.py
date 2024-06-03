@@ -43,14 +43,14 @@ EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 # TODO: PV fitting
 # mBM4 EOS Functions
-def mBM4_equation(volume, a, b, c, d):
+def mBM4_equation(volume: float | np.ndarray, a, b, c, d):
     energy = (
         a + b * (volume) ** (-1 / 3) + c * (volume) ** (-2 / 3) + d * (volume) ** (-1)
     )
     return energy
 
 
-def mBM4_derivative(volume, b, c, d):
+def mBM4_derivative(volume: float | np.ndarray, b, c, d):
     energy = (
         b * (-1 / 3) * (volume) ** (-4 / 3)
         + c * (-2 / 3) * (volume) ** (-5 / 3)
