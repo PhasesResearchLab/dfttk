@@ -4,26 +4,15 @@ This EOS fitting code is based on the following paper:
 Shun-Li Shang et al., Computational Materials Science, 47, 4, (2010).
 https://doi.org/10.1016/j.commatsci.2009.12.006
 
-It includes the following equations of state:
-
-1:  4-parameter (Teter-Shang) mBM4 
-
-2:  5-parameter (Teter-Shang) mBM5  
-
-3:  4-parameter BM            BM4   
-
-4:  5-parameter BM            BM5   
-
-5:  4-parameter Natural       Log4  
-
-6:  5-parameter Natural       Log5  
-
-7:  4-parameter Murnaghan     Mur   
-
-8:  4-parameter Vinet         Vinet 
-
-9:  4-parameter Morse         Morse 
-
+It includes the following equations of state: 4-parameter Teter-Shang modified Birch-Murnaghan (mBM4),
+5-parameter Teter-Shang modified Birch-Murnaghan (mBM5),
+4-parameter Birch-Murnaghan (BM4),
+5-parameter Birch-Murnaghan (BM5),
+4-parameter Natural (Log4),
+5-parameter Natural (Log5),
+4-parameter Murnaghan,
+4-parameter Vinet,
+and 4-parameter Morse.
 """
 
 import os
