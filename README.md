@@ -13,19 +13,19 @@ These workflows are based on Custodian and PyMongo is used to store the results 
 ## Installation
 It is recommended to first set up a virtual environment using Conda:
 
-    conda create -n vasp-job-automation python=3.11      
-    conda activate vasp-job-automation
+    conda create -n dfttk python=3.12      
+    conda activate dfttk
 
 Clone the main brach of the repository:
     
-    git clone https://<your_username>:<your_personal_access_token>@github.com/lukeamyers/vasp-job-automation.git
+    git clone https://github.com/lukeamyers/dfttk.git
 
 Or clone a specific branch:
     
-    git clone -b <branch_name> https://<your_username>:<your_personal_access_token>@github.com/lukeamyers/vasp-job-automation.git
+    git clone -b <branch_name> https://github.com/lukeamyers/dfttk.git
 
-  Then move to `vasp-job-automation` directory and install in editable (`-e`) mode.
+  Then move to `dfttk` directory and install in editable (`-e`) mode.
 
-    cd vasp-job-automation
+    cd dfttk
     pip install -e .
 
