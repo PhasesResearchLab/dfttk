@@ -10,8 +10,6 @@ authors = [
   { name="Nigel Lee En Hew", email="njh5724@psu.edu"}
 ]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -26,7 +24,7 @@ classifiers = [
 ]
 readme = "README.md"
 
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "pymatgen>=2024.2.20",
     "numpy>=1.26",
