@@ -1266,7 +1266,11 @@ def plot_energy_difference(
 
 # TODO: review
 def plot_config_energy(
-    df, max_rank=10000, inset_max_rank=10, show_inset=True, show_fig=True
+    df,
+    max_rank=10000,
+    inset_max_rank=10,
+    show_inset=True,
+    show_fig=True
 ):
     data = []
     for i, el in enumerate([max_rank, inset_max_rank]):
