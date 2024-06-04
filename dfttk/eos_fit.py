@@ -53,12 +53,21 @@ def mBM4_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: f
 
 
 def mBM4_derivative(volume: float | np.ndarray, b: float, c: float, d: float) -> float | np.ndarray:
-    energy = (
+    energy_derivative = (
         b * (-1 / 3) * (volume) ** (-4 / 3)
         + c * (-2 / 3) * (volume) ** (-5 / 3)
         + d * (-1) * (volume) ** (-2)
     )
-    return energy
+    return energy_derivative
+
+
+def mBM4_derivative2(volume, b, c, d):
+    energy_derivative2 = (
+        b * (4 / 9) * (volume) ** (-7 / 3)
+        + c * (10 / 9) * (volume) ** (-8 / 3)
+        + d * (2) * (volume) ** (-3)
+    )
+    return energy_derivative2
 
 
 def mBM4_eos_parameters(a: float, b: float, c: float, d: float) -> tuple[float, float, float, float, float]:
@@ -195,7 +204,7 @@ def BM4_derivative(volume: float | np.ndarray, b: float, c: float, d: float) -> 
         + c * (-4 / 3) * (volume) ** (-7 / 3)
         + d * (-2) * (volume) ** (-3)
     )
-    return energy_derivative
+    return energy
 
 
 def BM4_derivative2(volume, b, c, d):
