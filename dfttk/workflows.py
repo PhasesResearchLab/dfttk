@@ -15,14 +15,14 @@ from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Chgcar
 
 
-def extract_volume(path):
+def extract_volume(path: str) -> float:
     """Extract the volume of a structure from a POSCAR/CONTCAR file
 
     Args:
-        path (str): the path to a POSCAR/CONTCAR file
+        path: the path to a POSCAR/CONTCAR file
 
     Returns:
-        float: the structure volume
+        The the volume of the structure
     """
 
     structure = Structure.from_file(path)
@@ -31,14 +31,14 @@ def extract_volume(path):
     return volume
 
 
-def extract_pressure(path):
+def extract_pressure(path: str) -> float:
     """Extract the last occurrence of pressure from an OUTCAR file
 
     Args:
-        path (str): the path to an OUTCAR file
+        path: the path to an OUTCAR file
 
     Returns:
-        float: the pressure from an OUTCAR file
+        the pressure from an OUTCAR file
     """
 
     with open(path, "r") as file:
@@ -53,14 +53,14 @@ def extract_pressure(path):
     return pressure
 
 
-def extract_energy(path):
+def extract_energy(path: str) -> float:
     """Extract the final energy from an OSZICAR file
 
     Args:
-        path (str): the path to an OSZICAR file
+        path: the path to an OSZICAR file
 
     Returns:
-        float: the final energy from an OSZICAR file
+        The final energy from an OSZICAR file
     """
 
     with open(path, "r") as file:
@@ -77,7 +77,7 @@ def extract_energy(path):
     return energy
 
 
-def write_ev(path):
+def write_ev(path: str) -> None:
     """Function to write the volumes and energies obtained from ev_curve_series to a text file.
     The data will be obtained from vol_* folders.
 
@@ -109,7 +109,7 @@ def write_ev(path):
     os.chdir(original_dir)
 
 
-def write_pv(path):
+def write_pv(path: str) -> None:
     """Function to write the volumes and pressures obtained from ev_curve_series to a text file.
     The data will be obtained from vol_* folders.
 
@@ -141,14 +141,14 @@ def write_pv(path):
     os.chdir(original_dir)
 
 
-def extract_mag_data(outcar_path="OUTCAR"):
-    """Extracts the magnetization data from an OUTCAR file and returns a pandas DataFrame.
+def extract_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
+    """Extracts the magnetization data from an OUTCAR file and returns the data as a pandas DataFrame in the same format and headings as seen in the OUTCAR.
 
     Args:
-        outcar_path (str, optional): Path to an OUTCAR file. Defaults to "OUTCAR".
+        outcar_path: Path to an OUTCAR file. Defaults to "OUTCAR".
 
     Returns:
-        <class 'pandas.core.frame.DataFrame'>: a pandas DataFrame containing the magnetization data
+        Pandas DataFrame containing the magnetization data
     """
 
     if not os.path.isfile(outcar_path):
@@ -187,14 +187,14 @@ def extract_mag_data(outcar_path="OUTCAR"):
 
 
 #TODO just get mag data for all the ions
-def extract_tot_mag_data(outcar_path="OUTCAR"):
+def extract_tot_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
     """Returns only the 'tot' magnetization of the last step for each specified ion.
 
     Args:
-        outcar_path (str, optional): Path to an OUTCAR file. Defaults to "OUTCAR".
+        outcar_path: Path to an OUTCAR file. Defaults to "OUTCAR".
 
     Returns:
-        <class 'pandas.core.frame.DataFrame'>: a pandas DataFrame containing the 'tot' magnetization data
+        a pandas DataFrame containing the 'tot' magnetization data
     """
 
     all_mag_data = extract_mag_data(outcar_path)
@@ -203,8 +203,13 @@ def extract_tot_mag_data(outcar_path="OUTCAR"):
     tot_data.reset_index(drop=True, inplace=True)
     return tot_data
 
-def determine_magnetic_ordering(df: pd.DataFrame, magmom_tolerance: float = 1e-12, total_magnetic_moment_tolerance: float = 1e-12):
+def determine_magnetic_ordering(
+    df: pd.DataFrame,
+    magmom_tolerance: float = 1e-12,
+    total_magnetic_moment_tolerance: float = 1e-12
+    ) -> str:
     """Determines the magnetic ordering of a structure from the magnetization data in a pandas DataFrame.
+    e.g. 'FM', 'AFM', 'FiM', 'NM', 'SF'
 
     Args:
         df (pandas DataFrame): a pandas DataFrame containing the magnetization data
@@ -214,7 +219,7 @@ def determine_magnetic_ordering(df: pd.DataFrame, magmom_tolerance: float = 1e-1
         Defaults to 1e-12 to handle floating point errors.
 
     Returns:
-        str: the magnetic ordering of the structure
+        The magnetic ordering of the structure
     """
 
     if (np.isclose(df['tot'], 0, atol=magmom_tolerance)).all():
@@ -237,7 +242,7 @@ def extract_configuration_data(
     collect_mag_data: bool = False,
     magmom_tolerance: float = 1e-12,
     total_magnetic_moment_tolerance: float = 1e-12
-    ):
+    ) -> pd.DataFrame:
     """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations
     run by ev_curve_series and returns a pandas DataFrame.
 
@@ -323,7 +328,7 @@ def recursive_extract_configuration_data(
     collect_mag_data: bool = False,
     magmom_tolerance: float = 0,
     total_magnetic_moment_tolerance: float = 1e-12
-    ):
+    ) -> pd.DataFrame:
     """convenience function to extract configuration data from multiple config directories.
     Runs extract_configuration_data for each config directory in a list.
 
@@ -355,27 +360,30 @@ def recursive_extract_configuration_data(
     
 
 def three_step_relaxation(
-    path,
-    vasp_cmd,
-    handlers,
-    copy_magmom=False,
-    backup=False,
-    default_settings=True,
-    settings_override_2relax=None,
-    settings_override_3static=None,
-):
+    path: str,
+    vasp_cmd: list[str],
+    handlers: list[str],
+    copy_magmom: bool = False,
+    backup: bool = False,
+    default_settings: bool = True,
+    settings_override_2relax: list = None,
+    settings_override_3static: list = None,
+) -> None:
     """This function runs a three-step relaxation (two consecutive relaxations followed by
        one static) for a given path using VASP. The path should contain the necessary VASP
        input files: POSCAR, POTCAR, INCAR, and KPOINTS.
 
     Args:
-        path (str): the path to the folder containing the VASP input files
-        vasp_cmd (list): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers (class 'list'): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        path: the path to the folder containing the VASP input files
+        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        copy_magmom: If True, copies the magmom from an OUTCAR file of one run to the INCAR
         file of the next run. Defaults to False.
-        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        backup: If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
+        default_settings: if True, uses the default settings for the relaxation and static steps.
+        settings_override_2relax: a list of settings for the second relaxation step
+        settings_override_3static: a list of settings for the static step
     """
 
     if default_settings:
@@ -428,30 +436,30 @@ def three_step_relaxation(
 
 # TODO: write tests for this function
 def ev_curve_series(
-    path,
-    volumes,
-    vasp_cmd,
-    handlers,
-    restarting=False,
-    keep_wavecar=False,
-    keep_chgcar=False,
-    copy_magmom=False,
-    default_settings=True,
-    settings_override_2relax=None,
-    settings_override_3static=None,
-    ):
+    path: str,
+    volumes: list[float],
+    vasp_cmd: list[str],
+    handlers: list[str],
+    restarting: bool = False,
+    keep_wavecar: bool = False,
+    keep_chgcar: bool = False,
+    copy_magmom: bool = False,
+    default_settings: bool = True,
+    settings_override_2relax: list = None,
+    settings_override_3static: list = None,
+    ) -> None:
     """This function runs a series of three_step_relaxation calculations for a list of volumes. It starts with the first volume, then
        copies the relevant files to the next volume folder, scales the volume of the POSCAR accordingly, and so on.
 
     Args:
-        path (str): the path to the folder containing the VASP input files
-        volumes (list): the list of volumes to run the calculations for
-        vasp_cmd (list): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers (class 'list'): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        restarting (bool, optional): for restarting failed jobs. Defaults to False.
-        keep_wavecar (bool, optional): if True, does not delete WAVECAR.3static. Defaults to False.
-        keep_chgcar (bool, optional): if True, does not delete CHGCAR.3static. Defaults to False.
-        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        path: the path to the folder containing the VASP input files
+        volumes: the list of volumes to run the calculations for
+        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        restarting: for restarting failed jobs. Defaults to False.
+        keep_wavecar: if True, does not delete WAVECAR.3static. Defaults to False.
+        keep_chgcar: if True, does not delete CHGCAR.3static. Defaults to False.
+        copy_magmom: If True, copies the magmom from an OUTCAR file of one run to the INCAR
         file of the next run. Defaults to False.
     """
 
@@ -693,22 +701,27 @@ def ev_curve_series(
             os.remove(file_path)
 
 
-def charge_density_difference(path, vasp_cmd, handlers, backup=False):
+def charge_density_difference(
+    path: str,
+    vasp_cmd: list[str],
+    handlers: list[str],
+    backup: bool = False
+    ):
     """
     Runs a charge density difference calculation for a configuration in a subdirectory of the given path.
     called charge_density_difference. The charge density difference is calculated as the difference between
     The charge density of the final electronic step and the charge density of a single step.
 
     Args:
-        path (str): The path that contains the INCAR, POSCAR KPOINTS, and POTCAR.
-        vasp_cmd (str): The command to run VASP.
-        handlers (list): A list of error handlers that will be used during the calculation.
+        path: The path that contains the INCAR, POSCAR KPOINTS, and POTCAR.
+        vasp_cmd: The command to run VASP.
+        handlers: A list of error handlers that will be used during the calculation.
         Refer to custodian.vasp.handlers
-        backup (bool, optional):  Whether to backup the initial input files. If True, the INCAR,
+        backup:  Whether to backup the initial input files. If True, the INCAR,
         KPOINTS, POSCAR and POTCAR will be copied with a “.orig” appended. Defaults to True.
 
     Returns:
-        pymatgen.io.vasp.outputs.Chgcar: The charge density difference between the final electronic step and
+        The charge density difference between the final electronic step and
         a single step.
     """
     original_dir = os.getcwd()
@@ -782,7 +795,7 @@ def charge_density_difference(path, vasp_cmd, handlers, backup=False):
     return difference
 
 
-def custodian_errors_location(path):
+def custodian_errors_location(path: str) -> None:
     vol_folders = [d for d in os.listdir(path) if d.startswith("vol")]
     for vol_folder in vol_folders:
         error_folders = [
@@ -794,7 +807,7 @@ def custodian_errors_location(path):
             print(f"In {vol_folder} there are error folders: {error_folders}")
 
 
-def NELM_reached(path):
+def NELM_reached(path: str) -> None:
     start_dir = path
     target_line = "The electronic self-consistency was not achieved in the given"
     for dirpath, dirs, files in os.walk(start_dir):
@@ -808,7 +821,7 @@ def NELM_reached(path):
 
 # TODO: add a way to restart the job if it has failed
 # TODO: add a way to override the default settings
-def run_phonons(vasp_cmd, handlers, copy_magmom=False, backup=False):
+def run_phonons(vasp_cmd: list[str], handlers: list[str], copy_magmom: bool = False, backup: bool = False):
 
     step1 = VaspJob(
         vasp_cmd=vasp_cmd,
@@ -848,7 +861,13 @@ def run_phonons(vasp_cmd, handlers, copy_magmom=False, backup=False):
     c.run()
 
 
-def phonons_parallel(path, phonon_volumes, supercell_size, kppa, run_file):
+def phonons_parallel(
+    path: str,
+    phonon_volumes: list[float],
+    supercell_size: list[int],
+    kppa: float,
+    run_file: str,
+    ) -> None:
 
     # Create a new run_file to run the phonon calculations
     script_name = sys.argv[0]
@@ -937,7 +956,7 @@ def phonons_parallel(path, phonon_volumes, supercell_size, kppa, run_file):
         os.chdir(path)
 
 
-def process_phonon_dos_YPHON(path):
+def process_phonon_dos_YPHON(path: str):
     
     # Go to each phonon folder and copy the CONTCAR, OUTCAR, and vasprun.xml files to the phonon_dos folder to be processed by YPHON
     phonon_folders = [
@@ -978,17 +997,22 @@ def process_phonon_dos_YPHON(path):
 
 
 def kpoints_conv_test(
-    path, kppa_list, vasp_cmd, handlers, force_gamma=True, backup=False
+    path: str,
+    kppa_list: list[float],
+    vasp_cmd: list[str],
+    handlers: list[str],
+    force_gamma: bool = True,
+    backup: bool = False
 ):
     """This function runs a series of VASP calculations with different k-point densities for convergence testing.
 
     Args:
-        path (str): the path to the folder containing the VASP input files
-        kppa_list (list): the list of k-point densities to run the calculations for
-        vasp_cmd (list): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers (class 'list'): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        force_gamma (bool, optional): If True, forces a gamma-centered mesh. Defaults to True.
-        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        path: the path to the folder containing the VASP input files
+        kppa_list: the list of k-point densities to run the calculations for
+        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        force_gamma: If True, forces a gamma-centered mesh. Defaults to True.
+        backup: If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
     """
 
@@ -1035,13 +1059,13 @@ def kpoints_conv_test(
     return None
 
 
-def calculate_kpoint_conv(path, kppa_list, plot=True):
+def calculate_kpoint_conv(path: str, kppa_list: list[str], plot: bool = True):
     """This function calculates the energy convergence with respect to k-point density and plots the results.
 
     Args:
-        path (str): the path to the folder containing the VASP input files
-        kppa_list (list): the list of k-point densities to run the calculations for
-        plot (bool, optional): If True, plots the results. Defaults to True.
+        path: the path to the folder containing the VASP input files
+        kppa_list: the list of k-point densities to run the calculations for
+        plot: If True, plots the results. Defaults to True.
     """
     original_dir = os.getcwd()
     kpoints_conv_dir = os.path.join(path, "kpoints_conv")
@@ -1075,15 +1099,21 @@ def calculate_kpoint_conv(path, kppa_list, plot=True):
     os.chdir(original_dir)
 
 
-def encut_conv_test(path, encut_list, vasp_cmd, handlers, backup=False):
+def encut_conv_test(
+    path: str,
+    encut_list:list[float],
+    vasp_cmd: list[str],
+    handlers: list[str],
+    backup: bool = False
+    ):
     """This function runs a series of VASP calculations with different ENCUT values for convergence testing.
 
     Args:
-        path (str): the path to the folder containing the VASP input files
-        encut_list (list): the list of ENCUT values to run the calculations for
-        vasp_cmd (list): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers (class 'list'): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        path: the path to the folder containing the VASP input files
+        encut_list: the list of ENCUT values to run the calculations for
+        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        backup: If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
     """
     original_dir = os.getcwd()
@@ -1128,13 +1158,13 @@ def encut_conv_test(path, encut_list, vasp_cmd, handlers, backup=False):
     os.chdir(original_dir)
 
 
-def calculate_encut_conv(path, encut_list, plot=True):
+def calculate_encut_conv(path: str, encut_list: str, plot: bool = True):
     """This function calculates the energy convergence with respect to ENCUT and plots the results.
 
     Args:
-        path (str): the path to the folder containing the VASP input files
-        encut_list (list): the list of ENCUT values to run the calculations for
-        plot (bool, optional): If True, plots the results. Defaults to True.
+        path: the path to the folder containing the VASP input files
+        encut_list: the list of ENCUT values to run the calculations for
+        plot: If True, plots the results. Defaults to True.
     """
     original_dir = os.getcwd()
     encut_conv_dir = os.path.join(path, "encut_conv")
@@ -1172,6 +1202,7 @@ if __name__ == "__main__":
     print("This is a module for importing. It is not meant to be run directly.")
     print("But anyway, here are some tests!")
 
+    # TODO: move tests to tests folder
     # TODO: Change test_data to something more appropriate
     # TODO: Is there a better way to specify these paths?
     # At the moment, have to run the tests from the src directory
