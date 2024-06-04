@@ -30,6 +30,7 @@ from scipy.optimize import curve_fit
 # Conversion factor
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
+
 # TODO: PV fitting
 # mBM4 EOS Functions
 def mBM4_equation(volume, a, b, c, d):
@@ -40,12 +41,21 @@ def mBM4_equation(volume, a, b, c, d):
 
 
 def mBM4_derivative(volume, b, c, d):
-    energy = (
+    energy_derivative = (
         b * (-1 / 3) * (volume) ** (-4 / 3)
         + c * (-2 / 3) * (volume) ** (-5 / 3)
         + d * (-1) * (volume) ** (-2)
     )
-    return energy
+    return energy_derivative
+
+
+def mBM4_derivative2(volume, b, c, d):
+    energy_derivative2 = (
+        b * (4 / 9) * (volume) ** (-7 / 3)
+        + c * (10 / 9) * (volume) ** (-8 / 3)
+        + d * (2) * (volume) ** (-3)
+    )
+    return energy_derivative2
 
 
 def mBM4_eos_parameters(a, b, c, d):
@@ -114,6 +124,16 @@ def mBM5_derivative(volume, b, c, d, e):
     return energy_derivative
 
 
+def mBM5_derivative2(volume, b, c, d, e):
+    energy_derivative2 = (
+        b * (4 / 9) * (volume) ** (-7 / 3)
+        + c * (10 / 9) * (volume) ** (-8 / 3)
+        + d * (2) * (volume) ** (-3)
+        + e * (28 / 9) * (volume) ** (-10 / 3)
+    )
+    return energy_derivative2
+
+
 def mBM5_eos_parameters(volume_range, a, b, c, d, e):
     V0 = fsolve(mBM5_derivative, np.mean(volume_range), args=(b, c, d, e))[0]
     E0 = mBM5_equation(V0, a, b, c, d, e)
@@ -167,12 +187,21 @@ def BM4_equation(volume, a, b, c, d):
 
 
 def BM4_derivative(volume, b, c, d):
-    energy = (
+    energy_derivative = (
         b * (-2 / 3) * volume ** (-5 / 3)
         + c * (-4 / 3) * (volume) ** (-7 / 3)
         + d * (-2) * (volume) ** (-3)
     )
-    return energy
+    return energy_derivative
+
+
+def BM4_derivative2(volume, b, c, d):
+    energy_derivative2 = (
+        b * (10 / 9) * volume ** (-8 / 3)
+        + c * (28 / 9) * (volume) ** (-10 / 3)
+        + d * (6) * (volume) ** (-4)
+    )
+    return energy_derivative2
 
 
 def BM4_eos_parameters(a, b, c, d):
@@ -244,6 +273,16 @@ def BM5_derivative(volume, b, c, d, e):
     return energy_derivative
 
 
+def BM5_derivative2(volume, b, c, d, e):
+    energy_derivative2 = (
+        b * (10 / 9) * volume ** (-8 / 3)
+        + c * (28 / 9) * (volume) ** (-10 / 3)
+        + d * (6) * (volume) ** (-4)
+        + e * (88 / 9) * (volume) ** (-14 / 3)
+    )
+    return energy_derivative2
+
+
 def BM5_eos_parameters(volume_range, a, b, c, d, e):
     V0 = fsolve(BM5_derivative, np.mean(volume_range), args=(b, c, d, e))[0]
     E0 = BM5_equation(V0, a, b, c, d, e)
@@ -298,6 +337,16 @@ def LOG4_derivative(volume, b, c, d):
         b + 2 * c * np.log(volume) + 3 * d * np.log(volume) ** 2
     ) / volume
     return energy_derivative
+
+
+# Continue here! Double check!
+def LOG4_derivative2(volume, b, c, d):
+    energy_derivative2 = (
+        -b / (volume**2)
+        - 2 * c * (np.log(volume) - 1) / (volume**2)
+        - (3 * d * (np.log(volume) - 2) * np.log(volume)) / (volume**2)
+    )
+    return energy_derivative2
 
 
 def LOG4_eos_parameters(volume_range, a, b, c, d):
@@ -854,6 +903,7 @@ def assign_marker_symbols_to_configs(df):
         config: symbols[i % len(symbols)] for i, config in enumerate(unique_configs)
     }
     return config_symbols
+
 
 # TODO: highlight the actual minimum from the fitting
 def plot_ev(
