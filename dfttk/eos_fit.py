@@ -61,7 +61,7 @@ def mBM4_derivative(volume: float | np.ndarray, b: float, c: float, d: float) ->
     return energy_derivative
 
 
-def mBM4_derivative2(volume, b, c, d):
+def mBM4_derivative2(volume: float | np.ndarray, b: float, c: float, d: float) -> float | np.ndarray:
     energy_derivative2 = (
         b * (4 / 9) * (volume) ** (-7 / 3)
         + c * (10 / 9) * (volume) ** (-8 / 3)
@@ -136,7 +136,7 @@ def mBM5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e:
     return energy_derivative
 
 
-def mBM5_derivative2(volume, b, c, d, e):
+def mBM5_derivative2(volume: float | np.ndarray, b: float, c: float, d: float, e: float) -> float | np.ndarray:
     energy_derivative2 = (
         b * (4 / 9) * (volume) ** (-7 / 3)
         + c * (10 / 9) * (volume) ** (-8 / 3)
@@ -207,7 +207,7 @@ def BM4_derivative(volume: float | np.ndarray, b: float, c: float, d: float) -> 
     return energy
 
 
-def BM4_derivative2(volume, b, c, d):
+def BM4_derivative2(volume: float | np.ndarray, b: float, c: float, d: float) -> float | np.ndarray:
     energy_derivative2 = (
         b * (10 / 9) * volume ** (-8 / 3)
         + c * (28 / 9) * (volume) ** (-10 / 3)
@@ -285,7 +285,7 @@ def BM5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e: 
     return energy_derivative
 
 
-def BM5_derivative2(volume, b, c, d, e):
+def BM5_derivative2(volume: float | np.ndarray, b: float, c: float, d: float, e: float) -> float | np.ndarray:
     energy_derivative2 = (
         b * (10 / 9) * volume ** (-8 / 3)
         + c * (28 / 9) * (volume) ** (-10 / 3)
@@ -351,8 +351,7 @@ def LOG4_derivative(volume: float | np.ndarray, b: float, c: float, d: float) ->
     return energy_derivative
 
 
-# Continue here! Double check!
-def LOG4_derivative2(volume, b, c, d):
+def LOG4_derivative2(volume: float | np.ndarray, b: float, c: float, d: float) -> float | np.ndarray:
     energy_derivative2 = (
         -b / (volume**2)
         - 2 * c * (np.log(volume) - 1) / (volume**2)
@@ -420,6 +419,16 @@ def LOG5_derivative(volume: float | np.ndarray, b: float, c: float, d: float, e:
         + 4 * e * np.log(volume) ** 3
     ) / volume
     return energy
+
+
+def LOG5_derivative2(volume: float | np.ndarray, b: float, c: float, d: float, e: float) -> float | np.ndarray:
+    energy_derivative2 = (
+        -b / (volume**2)
+        - 2 * c * (np.log(volume) - 1) / (volume**2)
+        - (3 * d * (np.log(volume) - 2) * np.log(volume)) / (volume**2)
+        - 4 * e * (np.log(volume) - 3) * np.log(volume) ** 2 / (volume**2)
+    )
+    return energy_derivative2
 
 
 def LOG5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float, e: float) -> tuple[float, float, float, float, float]:
