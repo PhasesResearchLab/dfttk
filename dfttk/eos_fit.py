@@ -868,7 +868,7 @@ def assign_marker_symbols_to_configs(df: pd.DataFrame) -> dict:
     }
     return config_symbols
 
-# TODO: highlight the actual minimum from the fitting
+# TODO: Remove "config" from the legend in the plot
 def plot_ev(
     data,
     eos_fitting="BM4",
