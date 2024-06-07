@@ -271,19 +271,35 @@ def determine_uniqueness(path: str,
             if not structure_found:
                 raise FileNotFoundError(f"Could not make magnetic structure for config in {config_dir_path}")    
     equivalence_dict = {config: [] for config in struct_dict.keys()}
-    for config, magnetic_structure in itertools.islice(
-        struct_dict.items(),
-        len(struct_dict) - 1
-        ):
-            analyzer = CMSA(magnetic_structure)
-            for remaining_config, remaining_magnetic_structure in itertools.islice(
-                struct_dict.items(),
-                struct_dict.index(config) + 1,
-                len(struct_dict)
-                ):
-                if analyzer.matches_ordering(remaining_magnetic_structure):
-                    equivalence_dict[config].append(remaining_config)
+    items = struct_dict.items()
+    for i, (config, magnetic_structure) in enumerate(items):
+        analyzer = CMSA(magnetic_structure)
+        for remaining_config, remaining_magnetic_structure in itertools.islice(
+            items,
+            i+1,
+            len(struct_dict)
+            ):
+            if analyzer.matches_ordering(remaining_magnetic_structure):
+                equivalence_dict[config].append(remaining_config)
+                equivalence_dict[remaining_config].append(config)
     return equivalence_dict
+
+
+
+
+    # for config, magnetic_structure in itertools.islice(
+    #     items,
+    #     len(struct_dict) - 1
+    #     ):
+    #         analyzer = CMSA(magnetic_structure)
+    #         for remaining_config, remaining_magnetic_structure in itertools.islice(
+    #             items,
+                
+    #             len(struct_dict)
+    #             ):
+    #             if analyzer.matches_ordering(remaining_magnetic_structure):
+    #                 equivalence_dict[config].append(remaining_config)
+    # return equivalence_dict
                             
 
     
