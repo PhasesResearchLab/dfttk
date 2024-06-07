@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from natsort import natsorted
 import matplotlib.pyplot as plt
+import itertools
 
 from custodian.custodian import Custodian
 from custodian.vasp.jobs import VaspJob
@@ -249,7 +250,7 @@ def determine_uniqueness(path: str,
                          contcar_name: str ='CONTCAR',
                          outcar_name: str = 'OUTCAR'
 ) -> bool:
-    structure_list = []
+    struct_dict = {}
     for config_dir in os.listdir(path):
         config_dir_path = os.path.join(path, config_dir)
         if os.path.isdir(config_dir_path) and config_dir.startswith("config_"):
@@ -261,19 +262,28 @@ def determine_uniqueness(path: str,
                             os.path.join(subdir_path, contcar_name),
                             os.path.join(subdir_path, outcar_name)
                         )
-                        config_list.append(magnetic_structure)
+                        config = config_dir.split("config_")[1]
+                        struct_dict[config] = magnetic_structure
                         structure_found = True
                         break
                     except FileNotFoundError as e:
                         print(f"missing CONTCAR/OUTCAR in {subdir_path}: {e}. Did you use the correct CONTCAR/OUTCAR name?")
             if not structure_found:
-                raise FileNotFoundError(f"Could make magnetic structure for config in {config_dir_path}")    
-    for i in range(len(config_list)-1):
-            analyzer = CMSA(config_list[i])
-            for j in range(i+1, len(config_list)):
-                if analyzer.matches_ordering(config_list[j]):
-                    return False
-                    
+                raise FileNotFoundError(f"Could not make magnetic structure for config in {config_dir_path}")    
+    equivalence_dict = {config: [] for config in struct_dict.keys()}
+    for config, magnetic_structure in itertools.islice(
+        struct_dict.items(),
+        len(struct_dict) - 1
+        ):
+            analyzer = CMSA(magnetic_structure)
+            for remaining_config, remaining_magnetic_structure in itertools.islice(
+                struct_dict.items(),
+                struct_dict.index(config) + 1,
+                len(struct_dict)
+                ):
+                if analyzer.matches_ordering(remaining_magnetic_structure):
+                    equivalence_dict[config].append(remaining_config)
+    return equivalence_dict
                             
 
     
