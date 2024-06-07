@@ -13,6 +13,7 @@ from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Chgcar
+from pymatgen.analysis.magnetism.analyzer import CollinearMagneticStructureAnalyzer as CMSA
 
 
 def extract_volume(path: str) -> float:
@@ -208,13 +209,12 @@ def determine_magnetic_ordering(
     magmom_tolerance: float = 1e-12,
     total_magnetic_moment_tolerance: float = 1e-12
     ) -> str:
-    """Determines the magnetic ordering of a structure from the magnetization data in a pandas DataFrame.
-    e.g. 'FM', 'AFM', 'FiM', 'NM', 'SF'
+    """Determines the magnetic ordering of a structure from the magnetization 
+    data in a pandas DataFrame. e.g. 'FM', 'AFM', 'FiM', 'NM', 'SF'
 
     Args:
         df (pandas DataFrame): a pandas DataFrame containing the magnetization data
-        magmom_tolerance (float, optional): the tolerance for the total magnetic moment on each atom to be considered
-        zero.
+        magmom_tolerance (float, optional): the tolerance for the total magnetic moment on each atom to be considered zero.
         Total_magmom_tolerance (float, optional) the tolerance for the sum of the total magnentic moments for each atom.
         Defaults to 1e-12 to handle floating point errors.
 
@@ -233,7 +233,50 @@ def determine_magnetic_ordering(
     else:
         return 'SF'
 
-  
+def get_magnetic_structure(poscar: str, outcar: str) -> Structure:
+    """
+    Combines the magmom data from the outcar with the structure from the poscar
+    to return a pymatgen magnetic Structures object (e.g. Structures with
+    associated magmom tags).
+    """
+    structure = Structure.from_file(poscar)
+    mag_data = extract_tot_mag_data(outcar)
+    structure.add_site_property("magmom", mag_data["tot"])
+    return structure
+
+#TODO: make this magnetic/non-magnetic agnostic
+def determine_uniqueness(path: str,
+                         contcar_name: str ='CONTCAR',
+                         outcar_name: str = 'OUTCAR'
+) -> bool:
+    structure_list = []
+    for config_dir in os.listdir(path):
+        config_dir_path = os.path.join(path, config_dir)
+        if os.path.isdir(config_dir_path) and config_dir.startswith("config_"):
+            for subdir in os.listdir(config_dir_path):
+                subdir_path = os.path.join(config_dir_path, subdir)
+                if os.path.isdir(subdir_path) and subdir.startswith("vol_"):
+                    try:
+                        magnetic_structure = get_magnetic_structure(
+                            os.path.join(subdir_path, contcar_name),
+                            os.path.join(subdir_path, outcar_name)
+                        )
+                        config_list.append(magnetic_structure)
+                        structure_found = True
+                        break
+                    except FileNotFoundError as e:
+                        print(f"missing CONTCAR/OUTCAR in {subdir_path}: {e}. Did you use the correct CONTCAR/OUTCAR name?")
+            if not structure_found:
+                raise FileNotFoundError(f"Could make magnetic structure for config in {config_dir_path}")    
+    for i in range(len(config_list)-1):
+            analyzer = CMSA(config_list[i])
+            for j in range(i+1, len(config_list)):
+                if analyzer.matches_ordering(config_list[j]):
+                    return False
+                    
+                            
+
+    
 def extract_configuration_data(
     path: list[str],
     outcar_name: str ='OUTCAR.3static',
