@@ -934,8 +934,8 @@ def assign_marker_symbols_to_configs(df: pd.DataFrame) -> dict:
     }
     return config_symbols
 
-
-# TODO: highlight the actual minimum from the fitting
+# TODO: Remove "config" from the legend in the plot
+# TODO: highlight exact fitted function minimum using V0 and E0. 
 def plot_ev(
     data,
     eos_fitting="BM4",
@@ -1333,7 +1333,12 @@ def plot_energy_difference(
 
 # TODO: review
 def plot_config_energy(
-    df, max_rank=10000, inset_max_rank=10, show_inset=True, show_fig=True
+    df,
+    max_rank=10000,
+    inset_max_rank=10,
+    show_inset=True,
+    color_assignment=None,
+    show_fig=True
 ):
     data = []
     for i, el in enumerate([max_rank, inset_max_rank]):
@@ -1353,10 +1358,11 @@ def plot_config_energy(
             types_of_magnetic_ordering = new_df["magnetic_ordering"].unique()
         # add a new color column to new_df that corresponds to the magnetic ordering
         colors = px.colors.qualitative.Plotly.copy()  # plotly colors
-        colors[0] = "#0000FF"  # blue
-        colors[1] = "#FF0000"  # red
-        colors[2] = "#9CDE1C"  # custom green
-        assignment = zip(types_of_magnetic_ordering, colors)
+        print(types_of_magnetic_ordering)
+        if color_assignment == None:
+            assignment = zip(types_of_magnetic_ordering, colors)
+        else:
+            assignment = color_assignment
         new_df["color"] = new_df["magnetic_ordering"].map(dict(assignment))
 
         if i == 0:
