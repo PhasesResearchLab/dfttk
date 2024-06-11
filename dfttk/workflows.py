@@ -298,9 +298,9 @@ def extract_configuration_data(
             row = {
                 "config": config,
                 "volume": vol,
-                "volume/atom": vol_per_atom,
+                "volume_per_atom": vol_per_atom,
                 "energy": energy,
-                "energy/atom": energy_per_atom,
+                "energy_per_atom": energy_per_atom,
                 "number_of_atoms": number_of_atoms,
                 "total_magnetic_moment": total_magnetic_moment,
                 "magnetic_ordering": magnetic_ordering,
@@ -310,9 +310,9 @@ def extract_configuration_data(
             row = {
                 "config": config,
                 "volume": vol,
-                "volume/atom": vol_per_atom,
+                "volume_per_atom": vol_per_atom,
                 "energy": energy,
-                "energy/atom": energy_per_atom,
+                "energy_per_atom": energy_per_atom,
                 "number_of_atoms": number_of_atoms,
             }
         row_list.append(row)
