@@ -584,8 +584,11 @@ def vinet(volume: float | np.ndarray, energy: float | np.ndarray) -> tuple[np.nd
     V0, E0, B, BP = curve_fit(vinet_equation, volume, energy, p0=initial_guess)[0]
 
     energy_eos = vinet_equation(volume_range, V0, E0, B, BP)
+    
     B2P = (19 - 18 * BP - 9 * BP**2) / (36 * B)
-    eos_parameters = np.array([V0, E0, B * EV_PER_CUBIC_ANGSTROM_TO_GPA, BP, B2P])
+    B2P = B2P / EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B = B * EV_PER_CUBIC_ANGSTROM_TO_GPA
+    eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([0, 0, 0, 0, 0])
     pressure_eos = (
         -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * vinet_derivative(volume_range, V0, B, BP)
@@ -629,8 +632,11 @@ def morse(volume: float | np.ndarray, energy: float | np.ndarray) -> tuple[np.nd
     V0, E0, B, BP = curve_fit(morse_equation, volume, energy, p0=initial_guess)[0]
 
     energy_eos = morse_equation(volume_range, V0, E0, B, BP)
+    
     B2P = (5 - 5 * BP - 2 * BP**2) / (9 * B)
-    eos_parameters = np.array([V0, E0, B * EV_PER_CUBIC_ANGSTROM_TO_GPA, BP, B2P])
+    B2P = B2P / EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B = B * EV_PER_CUBIC_ANGSTROM_TO_GPA
+    eos_parameters = np.array([V0, E0, B, BP, B2P])
 
     a = E0 + (9 * B * V0) / (2 * (BP - 1) ** 2)
     b = (-9 * B * V0 * np.exp(BP - 1)) / (BP - 1) ** 2
@@ -686,6 +692,7 @@ def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
                             eos_parameters[1],
                             eos_parameters[2],
                             eos_parameters[3],
+                            eos_parameters[4],
                             volume_range,
                             energy_eos,
                             pressure_eos,
@@ -704,6 +711,7 @@ def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
                         "E0",
                         "B",
                         "BP",
+                        "B2P",
                         "volumes",
                         "energies",
                         "pressures",
