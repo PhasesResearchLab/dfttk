@@ -235,10 +235,16 @@ def determine_magnetic_ordering(
         return 'SF'
 
 def get_magnetic_structure(poscar: str, outcar: str) -> Structure:
-    """
-    Combines the magmom data from the outcar with the structure from the poscar
+    """Combines the magmom data from the outcar with the structure from the poscar
     to return a pymatgen magnetic Structures object (e.g. Structures with
     associated magmom tags).
+
+    Args:
+        poscar (str): name of the POSCAR file
+        outcar (str): name of the OUTCAR file
+
+    Returns:
+        Structure: pymatgen Structure object with magmom tags
     """
     structure = Structure.from_file(poscar)
     mag_data = extract_tot_mag_data(outcar)
