@@ -246,10 +246,24 @@ def get_magnetic_structure(poscar: str, outcar: str) -> Structure:
     return structure
 
 #TODO: make this magnetic/non-magnetic agnostic
-def determine_uniqueness(path: str,
+def equivalent_orderings(path: str,
                          contcar_name: str ='CONTCAR',
                          outcar_name: str = 'OUTCAR'
 ) -> bool:
+    """finds equivalent magnetic orderings for a set of configurations in a path
+    Works rather slow. Needs to be optimized. 350 configurations takes about 10 minutes.
+
+    Args:
+        path: Path to "configurations" folder
+        contcar_name: name of the CONTCAR file. Defaults to 'CONTCAR'.
+        outcar_name: name of the OUTCAR file. Defaults to 'OUTCAR'.
+
+    Raises:
+        FileNotFoundError: if the contcar/outcar files are not found for a config
+
+    Returns:
+        a dictionary where the keys are the configurations and the values are lists of configurations with matching magnetic ordering
+    """    
     struct_dict = {}
     for config_dir in os.listdir(path):
         config_dir_path = os.path.join(path, config_dir)
