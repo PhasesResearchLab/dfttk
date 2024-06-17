@@ -8,6 +8,7 @@ import pandas as pd
 from natsort import natsorted
 import matplotlib.pyplot as plt
 import itertools
+import numbers
 
 from custodian.custodian import Custodian
 from custodian.vasp.jobs import VaspJob
@@ -205,6 +206,35 @@ def extract_tot_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
     tot_data.reset_index(drop=True, inplace=True)
     return tot_data
 
+def parse_magmom_line(line: str) -> pd.DataFrame:
+    # Remove "MAGMOM = " from the line and split it into parts
+    parts = line.replace("MAGMOM = ", "").split()
+    magmoms = []
+    for part in parts:
+        if '*' in part:
+            count, value = part.split('*')
+            magmoms.extend([float(value)] * int(count))
+        else:
+            magmoms.append(float(part))
+
+    number_of_ion = list(range(1, len(magmoms) + 1))
+    df = pd.DataFrame({'# of ion': number_of_ion, 'magmom': magmoms})
+    return df
+
+def extract_input_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
+    if not os.path.isfile(outcar_path):
+        print(f"Warning: File {outcar_path} does not exist. Skipping.")
+        return None
+
+    with open(outcar_path, "r") as file:
+        lines = file.readlines()
+        for line in lines:
+            caps_line = line.upper()
+            if "MAGMOM" in line:
+                pass
+                
+
+
 def determine_magnetic_ordering(
     df: pd.DataFrame,
     magmom_tolerance: float = 1e-12,
@@ -321,7 +351,17 @@ def equivalent_orderings(path: str,
     #                 equivalence_dict[config].append(remaining_config)
     # return equivalence_dict
                             
-
+def determine_significant_spin_change(
+    outcar: str = "OUTCAR",
+    magmom_tol: float = 0.5
+) -> bool:
+    
+    if isinstance(magmom_tol, numbers.Real):
+        input = extract_input_mag_data(outcar)
+    elif isinstance(magmom_tol, dict):
+        tolerance_dict = magmom_tol
+    else:
+        raise ValueError("magmom_tol must be a real number (float, int, etc) or a dictionary")
     
 def extract_configuration_data(
     path: list[str],
