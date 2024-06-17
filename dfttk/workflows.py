@@ -376,8 +376,6 @@ def significant_spin_change(
     for index, row in output_magmoms.iterrows():
         if row['tot'] < min_df['tot'][index] or row['tot'] > max_df['tot'][index]:
             return True
-    print(input_magmoms)
-    print(max_df)
     return False
     
 
