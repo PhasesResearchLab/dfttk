@@ -202,7 +202,7 @@ def extract_tot_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
 
     all_mag_data = extract_mag_data(outcar_path)
     last_step_data = all_mag_data[all_mag_data["step"] == all_mag_data["step"].max()]
-    tot_data = last_step_data[["#_of_ion", "tot"]]
+    tot_data = last_step_data[["# of ion", "tot"]]
     tot_data.reset_index(drop=True, inplace=True)
     return tot_data
 
@@ -358,11 +358,13 @@ def significant_spin_change(
     magmom_tol: float = 0.5
 ) -> bool:
     
-    input = extract_input_mag_data(outcar)
+    input_magmoms = extract_input_mag_data(outcar)
+    output_magmoms = extract_tot_mag_data(outcar)
+    
     if isinstance(magmom_tol, numbers.Real):
         magmom_tol = abs(magmom_tol)
-        min_df = input.copy()
-        max_df = input.copy()
+        min_df = input_magmoms.copy()
+        max_df = input_magmoms.copy()
         min_df['tot'] = min_df['tot'] - magmom_tol
         max_df['tot'] = max_df['tot'] + magmom_tol
     elif isinstance(magmom_tol, dict):
@@ -371,9 +373,11 @@ def significant_spin_change(
         pass
     else:
         raise ValueError("magmom_tol must be a real number (float, int, etc) or a dictionary")
-    for index, row in input.iterrows():
+    for index, row in output_magmoms.iterrows():
         if row['tot'] < min_df['tot'][index] or row['tot'] > max_df['tot'][index]:
             return True
+    print(input_magmoms)
+    print(max_df)
     return False
     
 
