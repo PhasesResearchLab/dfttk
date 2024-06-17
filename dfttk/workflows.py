@@ -352,16 +352,18 @@ def equivalent_orderings(path: str,
     #                 equivalence_dict[config].append(remaining_config)
     # return equivalence_dict
                             
-def determine_significant_spin_change(
+def significant_spin_change(
     outcar: str = "OUTCAR",
     magmom_tol: float = 0.5
 ) -> bool:
     
     input = extract_input_mag_data(outcar)
-    
     if isinstance(magmom_tol, numbers.Real):
-        min_df = input['#_of_ion']
-        min_df['tot'] = 
+        magmom_tol = abs(magmom_tol)
+        min_df = input.copy()
+        max_df = input.copy()
+        min_df['tot'] = min_df['tot'] - magmom_tol
+        max_df['tot'] = max_df['tot'] + magmom_tol
     elif isinstance(magmom_tol, dict):
         tolerance_dict = magmom_tol
     elif isinstance(magmom_tol, tuple):
@@ -369,6 +371,12 @@ def determine_significant_spin_change(
     else:
         raise ValueError("magmom_tol must be a real number (float, int, etc) or a dictionary")
 
+    print(min_df)
+    for index, row in input.iterrows():
+        if row['tot'] < min_df['tot'][index] or row['tot'] > max_df['tot'][index]:
+            return True
+    return False
+    
 
 
 def extract_configuration_data(
