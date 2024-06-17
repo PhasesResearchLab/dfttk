@@ -202,7 +202,7 @@ def extract_tot_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
 
     all_mag_data = extract_mag_data(outcar_path)
     last_step_data = all_mag_data[all_mag_data["step"] == all_mag_data["step"].max()]
-    tot_data = last_step_data[["# of ion", "tot"]]
+    tot_data = last_step_data[["#_of_ion", "tot"]]
     tot_data.reset_index(drop=True, inplace=True)
     return tot_data
 
@@ -218,7 +218,7 @@ def parse_magmom_line(line: str) -> pd.DataFrame:
             magmoms.append(float(part))
 
     number_of_ion = list(range(1, len(magmoms) + 1))
-    df = pd.DataFrame({'# of ion': number_of_ion, 'magmom': magmoms})
+    df = pd.DataFrame({'#_of_ion': number_of_ion, 'tot': magmoms})
     return df
 
 def extract_input_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
@@ -357,13 +357,20 @@ def determine_significant_spin_change(
     magmom_tol: float = 0.5
 ) -> bool:
     
+    input = extract_input_mag_data(outcar)
+    
     if isinstance(magmom_tol, numbers.Real):
-        input = extract_input_mag_data(outcar)
+        min_df = input['#_of_ion']
+        min_df['tot'] = 
     elif isinstance(magmom_tol, dict):
         tolerance_dict = magmom_tol
+    elif isinstance(magmom_tol, tuple):
+        pass
     else:
         raise ValueError("magmom_tol must be a real number (float, int, etc) or a dictionary")
-    
+
+
+
 def extract_configuration_data(
     path: list[str],
     outcar_name: str ='OUTCAR.3static',
