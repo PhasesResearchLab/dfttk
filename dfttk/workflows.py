@@ -352,7 +352,9 @@ def equivalent_orderings(path: str,
     #                 equivalence_dict[config].append(remaining_config)
     # return equivalence_dict
 
-#TODO: support specify min and max for each ion (dict) and min/max (tuple) for magmom_tol                             
+#TODO: support specify min and max for each ion (dict) and min/max (tuple) for
+# magmom_tol. it may be beneficial to have a range of acceptable values instead
+# a tolerance.
 def significant_spin_change(
     outcar: str = "OUTCAR",
     magmom_tol: float = 0.5
