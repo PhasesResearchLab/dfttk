@@ -173,7 +173,7 @@ def extract_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
                 headers.pop(0)  # '#'
                 headers.pop(0)  # 'of'
                 headers.pop(0)  # 'ion'
-                headers.insert(0, '# of ion')
+                headers.insert(0, '#_of_ion')
             elif found_mag_data and not data_start and "----" in line:
                 data_start = True
             elif data_start and "----" not in line:
@@ -202,7 +202,7 @@ def extract_tot_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
 
     all_mag_data = extract_mag_data(outcar_path)
     last_step_data = all_mag_data[all_mag_data["step"] == all_mag_data["step"].max()]
-    tot_data = last_step_data[["# of ion", "tot"]]
+    tot_data = last_step_data[["#_of_ion", "tot"]]
     tot_data.reset_index(drop=True, inplace=True)
     return tot_data
 
