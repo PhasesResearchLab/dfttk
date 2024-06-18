@@ -355,7 +355,22 @@ def equivalent_orderings(path: str,
                 equivalence_dict[remaining_config].append(config)
     return equivalence_dict
 
-
+def remove_equivalent_orderings(
+    df: pd.DataFrame,
+    equivalence_dict: dict
+) -> pd.DataFrame:
+    remove_list = []
+    sorted_df = df.sort_values(by='energy_per_atom')
+    for index, row in sorted_df.iterrows():
+        if row['config'] in remove_list:
+            continue
+        elif equivalence_dict[row['config']] == []:
+            continue
+        else:
+            remove_list.extend(equivalence_dict[row['config']])
+    
+    #keep rows that are not in the remove_list
+    df = df[~df['config'].isin(remove_list)]
 
 #TODO: support specify min and max for each ion (dict) and min/max (tuple) for
 # magmom_tol. it may be beneficial to have a range of acceptable values instead
