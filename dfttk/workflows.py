@@ -207,6 +207,14 @@ def extract_tot_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
     return tot_data
 
 def parse_magmom_line(line: str) -> pd.DataFrame:
+    """reads vasp formatted MAGMOM line from an INCAR or OUTCAR
+
+    Args:
+        line: string containing vasp formatted MAGMOM line
+
+    Returns:
+        pd.DataFrame: with columns '#_of_ion' and 'tot' containing the input magnetic moments for each atom.
+    """    
     # Remove "MAGMOM = " from the line and split it into parts
     parts = line.replace("MAGMOM = ", "").split()
     magmoms = []
@@ -223,6 +231,7 @@ def parse_magmom_line(line: str) -> pd.DataFrame:
 
 def extract_input_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
     """reads the first line of the OUTCAR that contains "MAGMOM", which should be the input magnetic moments for each atom.
+    Also works for INCARs
 
     Args:
         outcar_path: path to the OUTCAR. Defaults to "OUTCAR".
