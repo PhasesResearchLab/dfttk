@@ -370,7 +370,7 @@ def remove_equivalent_orderings(
             remove_list.extend(equivalence_dict[row['config']])
     
     #keep rows that are not in the remove_list
-    df = df[~df['config'].isin(remove_list)]
+    return df[~df['config'].isin(remove_list)]
 
 #TODO: support specify min and max for each ion (dict) and min/max (tuple) for
 # magmom_tol. it may be beneficial to have a range of acceptable values instead
