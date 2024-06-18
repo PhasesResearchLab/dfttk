@@ -391,8 +391,8 @@ def significant_magmom_change(
     Returns:
         bool: True if at least one of the atoms in the struct has a resulting magnetic moment that is significantly different from the input.
     """    
-    input_magmoms = extract_input_mag_data(outcar)
-    output_magmoms = extract_tot_mag_data(outcar)
+    input_magmoms = extract_input_mag_data(outcar_path)
+    output_magmoms = extract_tot_mag_data(outcar_path)
     
     if isinstance(magmom_tol, numbers.Real):
         magmom_tol = abs(magmom_tol)
