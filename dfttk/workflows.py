@@ -222,6 +222,17 @@ def parse_magmom_line(line: str) -> pd.DataFrame:
     return df
 
 def extract_input_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
+    """reads the first line of the OUTCAR that contains "MAGMOM", which should be the input magnetic moments for each atom.
+
+    Args:
+        outcar_path: path to the OUTCAR. Defaults to "OUTCAR".
+
+    Raises:
+        ValueError: if there is no line that contains MAGMOM. (non magnetic calculation)
+
+    Returns:
+        pd.DataFrame: with columns '#_of_ion' and 'tot' containing the input magnetic moments for each atom.
+    """    
     if not os.path.isfile(outcar_path):
         print(f"Warning: File {outcar_path} does not exist. Skipping.")
         return None
@@ -355,11 +366,22 @@ def equivalent_orderings(path: str,
 #TODO: support specify min and max for each ion (dict) and min/max (tuple) for
 # magmom_tol. it may be beneficial to have a range of acceptable values instead
 # a tolerance.
-def significant_spin_change(
-    outcar: str = "OUTCAR",
+def significant_magmom_change(
+    outcar_path: str = "OUTCAR",
     magmom_tol: float = 0.5
 ) -> bool:
-    
+    """determines if the resulting magnetic moment is significantly different from the input magnetic moment for any of the atoms.
+
+    Args:
+        outcar: Path to the OUTCAR. Defaults to "OUTCAR".
+        magmom_tol: tolerance for change in magnetic moment for each atom. Defaults to 0.5.
+
+    Raises:
+        ValueError: if the magmom_tol is not a real number (float, int, etc).
+
+    Returns:
+        bool: True if at least one of the atoms in the struct has a resulting magnetic moment that is significantly different from the input.
+    """    
     input_magmoms = extract_input_mag_data(outcar)
     output_magmoms = extract_tot_mag_data(outcar)
     
