@@ -382,7 +382,7 @@ def significant_magmom_change(
     """determines if the resulting magnetic moment is significantly different from the input magnetic moment for any of the atoms.
 
     Args:
-        outcar: Path to the OUTCAR. Defaults to "OUTCAR".
+        outcar_path: Path to the OUTCAR. Defaults to "OUTCAR".
         magmom_tol: tolerance for change in magnetic moment for each atom. Defaults to 0.5.
 
     Raises:
