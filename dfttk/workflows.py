@@ -1234,7 +1234,3 @@ def calculate_encut_conv(path: str, encut_list: str, plot: bool = True):
         plt.tight_layout()
         plt.savefig("encut_conv.png", dpi=300)
     os.chdir(original_dir)
-
-
-if __name__ == "__main__":
-    pass
