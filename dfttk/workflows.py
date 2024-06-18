@@ -357,21 +357,6 @@ def equivalent_orderings(path: str,
 
 
 
-
-    # for config, magnetic_structure in itertools.islice(
-    #     items,
-    #     len(struct_dict) - 1
-    #     ):
-    #         analyzer = CMSA(magnetic_structure)
-    #         for remaining_config, remaining_magnetic_structure in itertools.islice(
-    #             items,
-                
-    #             len(struct_dict)
-    #             ):
-    #             if analyzer.matches_ordering(remaining_magnetic_structure):
-    #                 equivalence_dict[config].append(remaining_config)
-    # return equivalence_dict
-
 #TODO: support specify min and max for each ion (dict) and min/max (tuple) for
 # magmom_tol. it may be beneficial to have a range of acceptable values instead
 # a tolerance.
