@@ -1,8 +1,12 @@
-import os
-import sys
+# Standard library imports
 import glob
 import json
+import os
 import shutil
+import sys
+
+# Related third party imports
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from natsort import natsorted
@@ -10,6 +14,7 @@ import matplotlib.pyplot as plt
 import itertools
 import numbers
 
+# Local application/library specific imports
 from custodian.custodian import Custodian
 from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
@@ -189,7 +194,7 @@ def extract_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
         return df
 
 
-#TODO just get mag data for all the ions
+# TODO just get mag data for all the ions
 def extract_tot_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
     """Returns only the 'tot' magnetization of the last step for each specified ion.
 
@@ -260,7 +265,7 @@ def determine_magnetic_ordering(
     df: pd.DataFrame,
     magmom_tolerance: float = 1e-12,
     total_magnetic_moment_tolerance: float = 1e-12
-    ) -> str:
+) -> str:
     """Determines the magnetic ordering of a structure from the magnetization 
     data in a pandas DataFrame. e.g. 'FM', 'AFM', 'FiM', 'NM', 'SF'
 
@@ -274,16 +279,20 @@ def determine_magnetic_ordering(
         The magnetic ordering of the structure
     """
 
-    if (np.isclose(df['tot'], 0, atol=magmom_tolerance)).all():
-        return 'NM'
-    elif np.isclose(df['tot'].sum(), 0, atol=total_magnetic_moment_tolerance) == True:
-        return 'AFM'
-    elif (df['tot'] >= 0 + magmom_tolerance).all() or (df['tot'] <= 0 - magmom_tolerance).all():
-        return 'FM'
-    elif (df['tot'] > 0 + magmom_tolerance).sum() == (df['tot'] < 0 - magmom_tolerance).sum():
-        return 'FiM'
+    if (np.isclose(df["tot"], 0, atol=magmom_tolerance)).all():
+        return "NM"
+    elif np.isclose(df["tot"].sum(), 0, atol=total_magnetic_moment_tolerance) == True:
+        return "AFM"
+    elif (df["tot"] >= 0 + magmom_tolerance).all() or (
+        df["tot"] <= 0 - magmom_tolerance
+    ).all():
+        return "FM"
+    elif (df["tot"] > 0 + magmom_tolerance).sum() == (
+        df["tot"] < 0 - magmom_tolerance
+    ).sum():
+        return "FiM"
     else:
-        return 'SF'
+        return "SF"
 
 def get_magnetic_structure(poscar: str, outcar: str) -> Structure:
     """Combines the magmom data from the outcar with the structure from the poscar
@@ -415,13 +424,13 @@ def significant_magmom_change(
 
 def extract_configuration_data(
     path: list[str],
-    outcar_name: str ='OUTCAR.3static',
-    oszicar_name: str ='OSZICAR.3static',
-    contcar_name: str ='CONTCAR.3static', 
+    outcar_name: str = "OUTCAR.3static",
+    oszicar_name: str = "OSZICAR.3static",
+    contcar_name: str = "CONTCAR.3static",
     collect_mag_data: bool = False,
     magmom_tolerance: float = 1e-12,
-    total_magnetic_moment_tolerance: float = 1e-12
-    ) -> pd.DataFrame:
+    total_magnetic_moment_tolerance: float = 1e-12,
+) -> pd.DataFrame:
     """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations
     run by ev_curve_series and returns a pandas DataFrame.
 
@@ -468,12 +477,13 @@ def extract_configuration_data(
         vol_per_atom = vol / number_of_atoms
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(outcar_path)
-            total_magnetic_moment = mag_data['tot'].sum()
+            total_magnetic_moment = mag_data["tot"].sum()
             magnetic_ordering = determine_magnetic_ordering(
                 mag_data,
                 magmom_tolerance=magmom_tolerance,
-                total_magnetic_moment_tolerance=total_magnetic_moment_tolerance)
-            
+                total_magnetic_moment_tolerance=total_magnetic_moment_tolerance,
+            )
+
             row = {
                 "config": config,
                 "volume": vol,
@@ -483,7 +493,7 @@ def extract_configuration_data(
                 "number_of_atoms": number_of_atoms,
                 "total_magnetic_moment": total_magnetic_moment,
                 "magnetic_ordering": magnetic_ordering,
-                "mag_data": mag_data
+                "mag_data": mag_data,
             }
         else:
             row = {
@@ -501,13 +511,13 @@ def extract_configuration_data(
 
 def recursive_extract_configuration_data(
     config_dirs: list[str],
-    outcar_name: str ='OUTCAR',
-    oszicar_name: str ='OSZICAR',
-    contcar_name: str ='CONTCAR', 
+    outcar_name: str = "OUTCAR",
+    oszicar_name: str = "OSZICAR",
+    contcar_name: str = "CONTCAR",
     collect_mag_data: bool = False,
     magmom_tolerance: float = 0,
-    total_magnetic_moment_tolerance: float = 1e-12
-    ) -> pd.DataFrame:
+    total_magnetic_moment_tolerance: float = 1e-12,
+) -> pd.DataFrame:
     """convenience function to extract configuration data from multiple config directories.
     Runs extract_configuration_data for each config directory in a list.
 
@@ -520,23 +530,26 @@ def recursive_extract_configuration_data(
         False.
         OUTCAR. Defaults to [1].
         magmom_tolerance: the tolerance for the total magnetic moment to be considered zero. Defaults to 0.
-        
+
     """
     df_list = []
     for config_dir in config_dirs:
         try:
             config_df = extract_configuration_data(
-                config_dir, outcar_name=outcar_name, 
-                oszicar_name=oszicar_name, contcar_name=contcar_name, 
+                config_dir,
+                outcar_name=outcar_name,
+                oszicar_name=oszicar_name,
+                contcar_name=contcar_name,
                 collect_mag_data=collect_mag_data,
                 magmom_tolerance=magmom_tolerance,
-                total_magnetic_moment_tolerance=total_magnetic_moment_tolerance)
+                total_magnetic_moment_tolerance=total_magnetic_moment_tolerance,
+            )
             df_list.append(config_df)
         except Exception as e:
-            print(f'Error in {config_dir}: {e}')
+            print(f"Error in {config_dir}: {e}")
     df = pd.concat(df_list, ignore_index=True)
     return df
-    
+
 
 def three_step_relaxation(
     path: str,
@@ -626,7 +639,7 @@ def ev_curve_series(
     default_settings: bool = True,
     settings_override_2relax: list = None,
     settings_override_3static: list = None,
-    ) -> None:
+) -> None:
     """This function runs a series of three_step_relaxation calculations for a list of volumes. It starts with the first volume, then
        copies the relevant files to the next volume folder, scales the volume of the POSCAR accordingly, and so on.
 
@@ -881,11 +894,8 @@ def ev_curve_series(
 
 
 def charge_density_difference(
-    path: str,
-    vasp_cmd: list[str],
-    handlers: list[str],
-    backup: bool = False
-    ):
+    path: str, vasp_cmd: list[str], handlers: list[str], backup: bool = False
+):
     """
     Runs a charge density difference calculation for a configuration in a subdirectory of the given path.
     called charge_density_difference. The charge density difference is calculated as the difference between
@@ -998,9 +1008,15 @@ def NELM_reached(path: str) -> None:
                         print(f"{filepath} has reached NELM.")
                         break
 
+
 # TODO: add a way to restart the job if it has failed
 # TODO: add a way to override the default settings
-def run_phonons(vasp_cmd: list[str], handlers: list[str], copy_magmom: bool = False, backup: bool = False):
+def run_phonons(
+    vasp_cmd: list[str],
+    handlers: list[str],
+    copy_magmom: bool = False,
+    backup: bool = False,
+):
 
     step1 = VaspJob(
         vasp_cmd=vasp_cmd,
@@ -1046,7 +1062,7 @@ def phonons_parallel(
     supercell_size: list[int],
     kppa: float,
     run_file: str,
-    ) -> None:
+) -> None:
 
     # Create a new run_file to run the phonon calculations
     script_name = sys.argv[0]
@@ -1136,7 +1152,7 @@ def phonons_parallel(
 
 
 def process_phonon_dos_YPHON(path: str):
-    
+
     # Go to each phonon folder and copy the CONTCAR, OUTCAR, and vasprun.xml files to the phonon_dos folder to be processed by YPHON
     phonon_folders = [
         folder
@@ -1148,31 +1164,53 @@ def process_phonon_dos_YPHON(path: str):
         os.chdir(os.path.join(path, phonon_folder))
         if not os.path.exists("phonon_dos"):
             os.makedirs("phonon_dos", exist_ok=True)
-        shutil.copy(os.path.join(path, phonon_folder, "CONTCAR.2phonons"), os.path.join(path, phonon_folder, "phonon_dos", "CONTCAR"))
-        shutil.copy(os.path.join(path, phonon_folder, "OUTCAR.2phonons"), os.path.join(path, phonon_folder, "phonon_dos", "OUTCAR"))
-        shutil.copy(os.path.join(path, phonon_folder, "vasprun.xml.2phonons"), os.path.join(path, phonon_folder, "phonon_dos", "vasprun.xml"))
-        
+        shutil.copy(
+            os.path.join(path, phonon_folder, "CONTCAR.2phonons"),
+            os.path.join(path, phonon_folder, "phonon_dos", "CONTCAR"),
+        )
+        shutil.copy(
+            os.path.join(path, phonon_folder, "OUTCAR.2phonons"),
+            os.path.join(path, phonon_folder, "phonon_dos", "OUTCAR"),
+        )
+        shutil.copy(
+            os.path.join(path, phonon_folder, "vasprun.xml.2phonons"),
+            os.path.join(path, phonon_folder, "phonon_dos", "vasprun.xml"),
+        )
+
         os.chdir(os.path.join(path, phonon_folder, "phonon_dos"))
         index = phonon_folder.split("_")[1]
         structure = Structure.from_file("CONTCAR")
         number_of_atoms = structure.num_sites
         volume = extract_volume("CONTCAR")
         volume_per_atom = volume / number_of_atoms
-        
+
         with open("volph_" + index, "w") as f:
             f.write(str(volume_per_atom))
-        
+
         # YPHON commands
         os.system("vasp_fij")
         os.system("Yphon <superfij.out")
-        
+
         os.rename("vdos.out", "vdos_" + index)
         os.chdir(path)
-        
+
     os.makedirs("YPHON_results", exist_ok=True)
     for phonon_folder in phonon_folders:
-        shutil.copy(os.path.join(path, phonon_folder, "phonon_dos", "vdos_" + phonon_folder.split("_")[1]), os.path.join(path, "YPHON_results", "vdos_" + phonon_folder.split("_")[1]))
-        shutil.copy(os.path.join(path, phonon_folder, "phonon_dos", "volph_" + phonon_folder.split("_")[1]), os.path.join(path, "YPHON_results", "volph_" + phonon_folder.split("_")[1]))
+        shutil.copy(
+            os.path.join(
+                path, phonon_folder, "phonon_dos", "vdos_" + phonon_folder.split("_")[1]
+            ),
+            os.path.join(path, "YPHON_results", "vdos_" + phonon_folder.split("_")[1]),
+        )
+        shutil.copy(
+            os.path.join(
+                path,
+                phonon_folder,
+                "phonon_dos",
+                "volph_" + phonon_folder.split("_")[1],
+            ),
+            os.path.join(path, "YPHON_results", "volph_" + phonon_folder.split("_")[1]),
+        )
 
 
 def kpoints_conv_test(
@@ -1181,7 +1219,7 @@ def kpoints_conv_test(
     vasp_cmd: list[str],
     handlers: list[str],
     force_gamma: bool = True,
-    backup: bool = False
+    backup: bool = False,
 ):
     """This function runs a series of VASP calculations with different k-point densities for convergence testing.
 
@@ -1280,11 +1318,11 @@ def calculate_kpoint_conv(path: str, kppa_list: list[str], plot: bool = True):
 
 def encut_conv_test(
     path: str,
-    encut_list:list[float],
+    encut_list: list[float],
     vasp_cmd: list[str],
     handlers: list[str],
-    backup: bool = False
-    ):
+    backup: bool = False,
+):
     """This function runs a series of VASP calculations with different ENCUT values for convergence testing.
 
     Args:
@@ -1375,57 +1413,3 @@ def calculate_encut_conv(path: str, encut_list: str, plot: bool = True):
         plt.tight_layout()
         plt.savefig("encut_conv.png", dpi=300)
     os.chdir(original_dir)
-
-
-if __name__ == "__main__":
-    print("This is a module for importing. It is not meant to be run directly.")
-    print("But anyway, here are some tests!")
-
-    # TODO: move tests to tests folder
-    # TODO: Change test_data to something more appropriate
-    # TODO: Is there a better way to specify these paths?
-    # At the moment, have to run the tests from the src directory
-    OUTCAR_path = "../test_data/FeSe/configurations/config_18/vol_1/OUTCAR.3static"
-    OSZICAR_path = "../test_data/FeSe/configurations/config_18/vol_1/OSZICAR.3static"
-    CONTCAR_path = "../test_data/FeSe/configurations/config_18/vol_1/CONTCAR.3static"
-
-    volume = extract_volume(CONTCAR_path)
-    pressure = extract_pressure(OUTCAR_path)
-    energy = extract_energy(OSZICAR_path)
-
-    assert extract_volume(CONTCAR_path) == 333.0
-    assert extract_pressure(OUTCAR_path) == -19.74
-    assert extract_energy(OSZICAR_path) == -101.28406
-
-    path = "../test_data/FeSe/configurations/config_18"
-    write_ev(path)
-    data = np.loadtxt(os.path.join(path, "volume_energy.txt"))
-    expected_data = np.array(
-        [
-            [298.0, -101.64358],
-            [305.0, -101.58832],
-            [312.0, -101.52038],
-            [319.0, -101.44049],
-            [326.0, -101.36327],
-            [333.0, -101.28406],
-        ]
-    )
-
-    assert np.array_equal(data, expected_data), "Data does not match expected values"
-
-    write_pv(path)
-    data = np.loadtxt(os.path.join(path, "volume_pressure.txt"))
-    expected_data = np.array(
-        [
-            [298.0, -10.74],
-            [305.0, -18.71],
-            [312.0, -14.49],
-            [319.0, -19.19],
-            [326.0, -29.42],
-            [333.0, -19.74],
-        ]
-    )
-
-    assert np.array_equal(data, expected_data), "Data does not match expected values"
-
-    print("Tests passed")
