@@ -400,10 +400,10 @@ def significant_magmom_change(
         max_df = input_magmoms.copy()
         min_df['tot'] = min_df['tot'] - magmom_tol
         max_df['tot'] = max_df['tot'] + magmom_tol
-    elif isinstance(magmom_tol, dict):
-        pass
-    elif isinstance(magmom_tol, tuple):
-        pass
+    # elif isinstance(magmom_tol, dict):
+    #     pass
+    # elif isinstance(magmom_tol, tuple):
+    #     pass
     else:
         raise ValueError("magmom_tol must be a real number (float, int, etc) or a dictionary")
     for index, row in output_magmoms.iterrows():
