@@ -942,6 +942,7 @@ def phonons_parallel(
         ("CONTCAR.3static", "POSCAR"),
         ("INCAR.2relax", "INCAR"),
         ("POTCAR", "POTCAR"),
+        ("WAVECAR.3static", "WAVECAR"),
     ]
 
     for phonon_volume, phonon_folder in phonon_volumes_and_folders:
