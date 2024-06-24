@@ -1,5 +1,4 @@
 # Standard library imports
-import glob
 import json
 import os
 import shutil
@@ -11,8 +10,6 @@ import numpy as np
 import pandas as pd
 from natsort import natsorted
 import matplotlib.pyplot as plt
-import itertools
-import numbers
 
 # Local application/library specific imports
 from custodian.custodian import Custodian
@@ -25,7 +22,6 @@ from pymatgen.analysis.magnetism.analyzer import CollinearMagneticStructureAnaly
 # DFTTK imports
 from dfttk.data_extraction import extract_volume
 from dfttk.data_extraction import extract_energy
-
 
 def three_step_relaxation(
     path: str,
