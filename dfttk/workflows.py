@@ -27,7 +27,6 @@ from dfttk.data_extraction import extract_volume
 from dfttk.data_extraction import extract_energy
 
 
-
 def three_step_relaxation(
     path: str,
     vasp_cmd: list[str],
