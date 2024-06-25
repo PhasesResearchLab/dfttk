@@ -225,8 +225,8 @@ def ev_curve_series(
                 copy_magmom=copy_magmom,
                 backup=False,
                 default_settings=True,
-                settings_override_2relax=None,
-                settings_override_3static=None,
+                settings_override_2relax=settings_override_2relax,
+                settings_override_3static=settings_override_3static,
             )
 
             last_vol_index = j + 1
@@ -263,8 +263,8 @@ def ev_curve_series(
                 copy_magmom=copy_magmom,
                 backup=False,
                 default_settings=True,
-                settings_override_2relax=None,
-                settings_override_3static=None,
+                settings_override_2relax=settings_override_2relax,
+                settings_override_3static=settings_override_3static,
             )
             last_vol_index = j + 1
 
