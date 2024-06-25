@@ -13,8 +13,8 @@ from dfttk.data_extraction import (
     extract_volume,
     extract_energy,
     extract_tot_mag_data,
-    determine_magnetic_ordering
 )
+from dfttk.magnetism import determine_magnetic_ordering
 
 def extract_configuration_data(
     path: list[str],
