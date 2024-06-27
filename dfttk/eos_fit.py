@@ -15,23 +15,22 @@ It includes the following equations of state: 4-parameter Teter-Shang modified B
 and 4-parameter Morse.
 """
 
+# Standard library imports
 import os
 import sys
-import math
+
+# Related third party imports
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-
 from distinctipy import get_colors
-from scipy.optimize import fsolve
-from scipy.optimize import curve_fit
+from scipy.optimize import fsolve, curve_fit
 
 # Conversion factor
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 
-# TODO: PV fitting
 # mBM4 EOS Functions
 def mBM4_equation(volume: float | np.ndarray, a: float, b: float, c: float, d: float) -> float | np.ndarray:
     """Calculates the energy according to the modified Birch-Murnaghan 4-parameter (mBM4) equation of state of Teter-Shang.
@@ -217,12 +216,12 @@ def BM4_derivative2(volume: float | np.ndarray, b: float, c: float, d: float) ->
 
 
 def BM4_eos_parameters(a: float, b: float, c: float, d: float) -> tuple[float, float, float, float, float]:
-    V0 = math.sqrt(
+    V0 = np.sqrt(
         -(
             (
                 4 * c**3
                 - 9 * b * c * d
-                + math.sqrt((c**2 - 3 * b * d) * (4 * c**2 - 3 * b * d) ** 2)
+                + np.sqrt((c**2 - 3 * b * d) * (4 * c**2 - 3 * b * d) ** 2)
             )
             / b**3
         )
@@ -363,11 +362,11 @@ def LOG4_derivative2(volume: float | np.ndarray, b: float, c: float, d: float) -
 def LOG4_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, d: float) -> tuple[float, float, float, float, float]:
     V0 = fsolve(LOG4_derivative, np.mean(volume_range), args=(b, c, d))[0]
     E0 = LOG4_equation(V0, a, b, c, d)
-    B = -((b - 2 * c + 2 * (c - 3 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2) / V0)
+    B = -((b - 2 * c + 2 * (c - 3 * d) * np.log(V0) + 3 * d * np.log(V0) ** 2) / V0)
     B = B * EV_PER_CUBIC_ANGSTROM_TO_GPA
     BP = (
-        b - 4 * c + 6 * d + 2 * (c - 6 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2
-    ) / (b - 2 * c + 2 * (c - 3 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2)
+        b - 4 * c + 6 * d + 2 * (c - 6 * d) * np.log(V0) + 3 * d * np.log(V0) ** 2
+    ) / (b - 2 * c + 2 * (c - 3 * d) * np.log(V0) + 3 * d * np.log(V0) ** 2)
     B2P = (
         2
         * V0
@@ -376,10 +375,10 @@ def LOG4_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, 
             - 3 * b * d
             + 18 * d**2
             - 6 * c * d
-            + 6 * (c * d - 3 * d**2) * math.log(V0)
-            + 9 * d**2 * math.log(V0) ** 2
+            + 6 * (c * d - 3 * d**2) * np.log(V0)
+            + 9 * d**2 * np.log(V0) ** 2
         )
-    ) / (b - 2 * c + 2 * (c - 3 * d) * math.log(V0) + 3 * d * math.log(V0) ** 2) ** 3
+    ) / (b - 2 * c + 2 * (c - 3 * d) * np.log(V0) + 3 * d * np.log(V0) ** 2) ** 3
     B2P = B2P / EV_PER_CUBIC_ANGSTROM_TO_GPA
     return V0, E0, B, BP, B2P
 
@@ -426,7 +425,7 @@ def LOG5_derivative2(volume: float | np.ndarray, b: float, c: float, d: float, e
         -b / (volume**2)
         - 2 * c * (np.log(volume) - 1) / (volume**2)
         - (3 * d * (np.log(volume) - 2) * np.log(volume)) / (volume**2)
-        - 4 * e * (np.log(volume) - 3) * np.log(volume) ** 2 / (volume**2)
+        - (4 * e * (np.log(volume) - 3) * np.log(volume) ** 2) / (volume**2)
     )
     return energy_derivative2
 
@@ -439,9 +438,9 @@ def LOG5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, 
         (
             b
             - 2 * c
-            + 2 * (c - 3 * d) * math.log(V0)
-            + 3 * (d - 4 * e) * math.log(V0) ** 2
-            + 4 * e * math.log(V0) ** 3
+            + 2 * (c - 3 * d) * np.log(V0)
+            + 3 * (d - 4 * e) * np.log(V0) ** 2
+            + 4 * e * np.log(V0) ** 3
         )
         / V0
     )
@@ -450,15 +449,15 @@ def LOG5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, 
         b
         - 4 * c
         + 6 * d
-        + 2 * (c - 6 * d + 12 * e) * math.log(V0)
-        + 3 * (d - 8 * e) * math.log(V0) ** 2
-        + 4 * e * math.log(V0) ** 3
+        + 2 * (c - 6 * d + 12 * e) * np.log(V0)
+        + 3 * (d - 8 * e) * np.log(V0) ** 2
+        + 4 * e * np.log(V0) ** 3
     ) / (
         b
         - 2 * c
-        + 2 * (c - 3 * d) * math.log(V0)
-        + 3 * (d - 4 * e) * math.log(V0) ** 2
-        + 4 * e * math.log(V0) ** 3
+        + 2 * (c - 3 * d) * np.log(V0)
+        + 3 * (d - 4 * e) * np.log(V0) ** 2
+        + 4 * e * np.log(V0) ** 3
     )
     B2P = (
         2
@@ -469,17 +468,17 @@ def LOG5_eos_parameters(volume_range: np.ndarray, a: float, b: float, c: float, 
             + 18 * d**2
             + 12 * b * e
             - 6 * c * (d + 4 * e)
-            + 6 * (c * d - 3 * d**2 - 2 * b * e + 12 * d * e) * math.log(V0)
-            + 9 * (d - 4 * e) ** 2 * math.log(V0) ** 2
-            + 24 * (d - 4 * e) * e * math.log(V0) ** 3
-            + 24 * e**2 * math.log(V0) ** 4
+            + 6 * (c * d - 3 * d**2 - 2 * b * e + 12 * d * e) * np.log(V0)
+            + 9 * (d - 4 * e) ** 2 * np.log(V0) ** 2
+            + 24 * (d - 4 * e) * e * np.log(V0) ** 3
+            + 24 * e**2 * np.log(V0) ** 4
         )
     ) / (
         b
         - 2 * c
-        + 2 * (c - 3 * d) * math.log(V0)
-        + 3 * (d - 4 * e) * math.log(V0) ** 2
-        + 4 * e * math.log(V0) ** 3
+        + 2 * (c - 3 * d) * np.log(V0)
+        + 3 * (d - 4 * e) * np.log(V0) ** 2
+        + 4 * e * np.log(V0) ** 3
     ) ** 3
     B2P = B2P / EV_PER_CUBIC_ANGSTROM_TO_GPA
     return V0, E0, B, BP, B2P
