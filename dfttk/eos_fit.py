@@ -1569,7 +1569,7 @@ def plot_ev(
                     symbol=config_symbols[config],
                 ),
                 legendgroup="EOS",
-                name=f"Config {config}",
+                name=f"{config}",
             )
         )
 
