@@ -27,7 +27,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "pymatgen>=2024.2.20",
-    "numpy>=1.26",
+    "numpy>=1.26,<2.0.0",
     "pandas>=2.1.4",
     "matplotlib>=3.8.2",
     "plotly>=5.18.0",
