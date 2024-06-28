@@ -1475,7 +1475,6 @@ def assign_marker_symbols_to_configs(df: pd.DataFrame) -> dict:
     return config_symbols
 
 
-# TODO: Remove "config" from the legend in the plot
 # TODO: highlight exact fitted function minimum using V0 and E0.
 def plot_ev(
     data,
