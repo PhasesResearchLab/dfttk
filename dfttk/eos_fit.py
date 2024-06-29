@@ -1849,9 +1849,6 @@ def plot_energy_difference(
         title=dict(text=title_text, font=dict(size=22, color="rgb(0,0,0)"))
     )
 
-    if show_fig:
-        fig.show()
-
     # Plot a horizontal line a y=0
     fig.add_shape(
         type="line",
@@ -1867,7 +1864,9 @@ def plot_energy_difference(
             dash="dash",
         ),
     )
-
+    if show_fig:
+        fig.show()
+        
     return fig
 
 
