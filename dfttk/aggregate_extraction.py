@@ -7,6 +7,7 @@ import pandas as pd
 
 # Local application/library specific imports
 from pymatgen.core.structure import Structure
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 # DFTTK imports
 from dfttk.data_extraction import (
@@ -15,6 +16,7 @@ from dfttk.data_extraction import (
     extract_tot_mag_data,
 )
 from dfttk.magnetism import determine_magnetic_ordering
+
 
 def extract_configuration_data(
     path: list[str],
@@ -69,6 +71,7 @@ def extract_configuration_data(
         energy = extract_energy(oszicar_path)
         energy_per_atom = energy / number_of_atoms
         vol_per_atom = vol / number_of_atoms
+        space_group = SpacegroupAnalyzer(struct).get_space_group_symbol()
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(outcar_path)
             total_magnetic_moment = mag_data["tot"].sum()
@@ -80,11 +83,11 @@ def extract_configuration_data(
 
             row = {
                 "config": config,
+                "number_of_atoms": number_of_atoms,
                 "volume": vol,
                 "volume_per_atom": vol_per_atom,
                 "energy": energy,
                 "energy_per_atom": energy_per_atom,
-                "number_of_atoms": number_of_atoms,
                 "total_magnetic_moment": total_magnetic_moment,
                 "magnetic_ordering": magnetic_ordering,
                 "mag_data": mag_data,
@@ -92,15 +95,17 @@ def extract_configuration_data(
         else:
             row = {
                 "config": config,
+                "number_of_atoms": number_of_atoms,
                 "volume": vol,
                 "volume_per_atom": vol_per_atom,
                 "energy": energy,
                 "energy_per_atom": energy_per_atom,
-                "number_of_atoms": number_of_atoms,
+                "space_group": space_group,
             }
         row_list.append(row)
     df = pd.DataFrame(row_list)
     return df
+
 
 def recursive_extract_configuration_data(
     config_dirs: list[str],
@@ -113,7 +118,7 @@ def recursive_extract_configuration_data(
 ) -> pd.DataFrame:
     """convenience function to extract configuration data from multiple config directories.
     Runs extract_configuration_data for each config directory in a list.
-
+ 
     Args:
         config_dirs: list of paths to config directories that will be passed to extract_configuration_data()
         outcar_name: name of the OUTCAR file. Defaults to "OUTCAR".
@@ -121,7 +126,6 @@ def recursive_extract_configuration_data(
         contcar_name: name of the CONTCAR file. Defaults to "CONTCAR".
         collect_mag_data: if True, collect the magnetization data using extract_tot_mag_data. Defaults to
         False.
-        OUTCAR. Defaults to [1].
         magmom_tolerance: the tolerance for the total magnetic moment to be considered zero. Defaults to 0.
 
     """
