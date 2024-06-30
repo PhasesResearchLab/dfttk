@@ -7,6 +7,8 @@ from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Poscar
 
+from dfttk.data_extraction import extract_input_mag_data
+
 def write_to_file(filename, lines):
     with open(filename, 'w') as file:
         file.writelines(lines)
@@ -116,8 +118,16 @@ def make_incars(magmoms, incar='INCAR', configurations_directory='configurations
                     raise ValueError(f'Error: {count} atoms found in line {line} in file {str_file}')
         mag_mom_string = ' '.join(mag_mom_list)
         shutil.copy(incar, incar_to)
-        with open(incar_to, 'a') as file:
-            file.write('\nMAGMOM = %s' % mag_mom_string)
+        # Read the file and store lines in a list, excluding lines starting with 'MAGMOM'
+        with open(incar_to, 'r') as file:
+            lines = [line for line in file if not line.startswith('MAGMOM')]
+
+            # Append the new 'MAGMOM' line to the list
+            lines.append('\nMAGMOM = %s' % mag_mom_string)
+
+        # Write the modified list back to the file
+        with open(incar_to, 'w') as file:
+           file.writelines(lines)
 
 
 
@@ -158,7 +168,7 @@ def create_submit_scripts(configurations_directory='configurations', submit_scri
                 else:
                     file.write(line)
 
-
+# similar to parse_magmom in data_extraction.py
 def read_magmom_line(incar_file):
     with open(incar_file, 'r') as file:
         for line in file:
@@ -179,7 +189,8 @@ def rearrage_sites_and_magmoms(config_dir):
     incar_file = os.path.join(config_dir, 'INCAR')
     poscar_file = os.path.join(config_dir, 'POSCAR')
     struct = Structure.from_file(poscar_file) # read poscar
-    orig_magmoms = read_magmom_line(incar_file) # read magmom from incar
+    orig_magmom_df = extract_input_mag_data(incar_file) # read magmom from incar
+    orig_magmoms = orig_magmom_df['tot'].tolist() # get the magmoms
     struct.add_site_property("magmom", orig_magmoms) # add magmom to structure
     struct = struct.get_sorted_structure() # sort structure with the magmoms
     rearranged_magmoms = struct.site_properties['magmom'] # get the rearranged magmoms
