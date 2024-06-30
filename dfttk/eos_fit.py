@@ -1620,8 +1620,8 @@ def plot_ev(
                         np.where(eos_name_df["energies"].values[0] == min_energy)[0][0]
                     ]
 
-                    x = volume_at_min_energy
-                    y = min_energy
+                    x = eos_name_df["V0"].values[0]
+                    y = eos_name_df["E0"].values[0]
 
                     if per_atom:
                         num_atoms = eos_name_df["number_of_atoms"].values[0][0]
@@ -1870,7 +1870,6 @@ def plot_energy_difference(
     return fig
 
 
-# TODO: review
 def plot_config_energy(
     df,
     max_rank=10000,
@@ -2017,7 +2016,6 @@ def plot_config_energy(
     return fig
 
 
-# TODO: review
 def plot_energy_histogram(df, nbins=None, show_fig=True):
     try:
         new_df = df.drop("# of ion", axis=1)
