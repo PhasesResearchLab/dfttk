@@ -350,18 +350,6 @@ def create_submit_scripts(configurations_directory='configurations', submit_scri
                 else:
                     file.write(line)
 
-# similar to parse_magmom in data_extraction.py. I may have already replaced this.
-def read_magmom_line(incar_file):
-    with open(incar_file, 'r') as file:
-        for line in file:
-            if line.startswith('MAGMOM ='):
-                magmom_line = line.strip()
-                numeric_part = magmom_line.split('=')[1].strip()
-                numeric_list = numeric_part.split()
-                numeric_values = [int(value) for value in numeric_list]
-                return numeric_values
-    return None
-
 """
 this function is a patch to rearrange the sites and magmoms in the POSCAR and
 INCAR files. If the sites are not grouped by specie, VASP will look for more
