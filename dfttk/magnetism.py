@@ -189,6 +189,7 @@ def significant_magmom_change(
 TODO: Clean all functions in this section. Some may not be needed, may be
 rewritten, or belong elsewhere. Some functions may be improved using pymatgen.
 In particular the pyatgens structure enumerator instead of ATAT.
+A lot is not worth messing with as it will be replaced by pymatgen stuff.
 """
 
 def write_to_file(filename, lines):
@@ -218,10 +219,6 @@ def parse(ywoutput, directory='strs'):
 def convert_strs_to_poscars(directory='strs', configurations_directory='configurations'):
     # Get a list of files in the specified directory
     str_files = [filename for filename in os.listdir(directory) if filename.startswith('str')]
-
-    # Create the configurations directory if it doesn't exist
-    if not os.path.exists(configurations_directory):
-        os.makedirs(configurations_directory)
 
     for structure_from in str_files:
         output_directory = os.path.join(configurations_directory, 'config_' + structure_from[4:])
@@ -271,7 +268,6 @@ def count_atoms(strs_dir='strs'):
 
 def remove_spin_up_less_than_down(atom_count_df, atom_up, atom_down): #takes the dataframe from count_atoms and removes all files where the number of spin up atoms is less than the number of spin down
     for index, row in atom_count_df.iterrows():
-        parity = [] #when the number of spin up atoms is equal to the number of spin down atoms we need to keep one of the files but not the other. This list keeps track of whether we have kept a parity file or not.
         if row[atom_up] < row[atom_down]:
             os.remove(f'strs/str.{row["file_number"]}')
 
@@ -335,6 +331,8 @@ def make_kpoints(kppa, force_gamma=False, configurations_directory='configuratio
 function that creates a submit script for each configuration directory. It
 also changes the job name to be the same as the configuration name. that is,
 everything after config_ in the directory name.
+
+# TODO: generalize this function (if needed). move it to a more general location.
 """
 def create_submit_scripts(configurations_directory='configurations', submit_script='submit.sh'):
     config_dirs = [dir for dir in os.listdir(configurations_directory) if os.path.isdir(os.path.join(configurations_directory, dir))]
@@ -355,7 +353,7 @@ this function is a patch to rearrange the sites and magmoms in the POSCAR and
 INCAR files. If the sites are not grouped by specie, VASP will look for more
 potentials than supplied/necessary.
 """
-def rearrage_sites_and_magmoms(config_dir):
+def rearrange_sites_and_magmoms(config_dir):
     incar_file = os.path.join(config_dir, 'INCAR')
     poscar_file = os.path.join(config_dir, 'POSCAR')
     struct = Structure.from_file(poscar_file) # read poscar
@@ -481,8 +479,37 @@ def set_up_ev_from_fixed_volume_calculations(df, path_to_fixed_volume_configurat
             print(f"Error processing configuration '{config}': {str(e)}")    
     return None
 
-def generate_magnetic_configs():
-    pass
+def generate_magnetic_configs(
+    path,
+    incar,
+    potcar,
+    yw_output,
+    magmoms,
+    dummy_species_pairs,
+):
+    strs_dir = os.path.join(path, 'strs')
+    parse(yw_output, strs_dir)
+    atom_count_df = count_atoms(strs_dir)
+    for up_down_pair in dummy_species_pairs:
+        remove_spin_up_less_than_down(
+            atom_count_df,
+            up_down_pair[0],
+            up_down_pair[1]
+        )
+    configurations_dir = os.path.join(path, 'configurations')
+    if not os.path.exists(configurations_dir):
+        os.makedirs(configurations_dir)
+    else:
+        raise FileExistsError(
+            f"Directory {configurations_dir} already exists. "
+            "Please remove it and try again."
+        )
+    convert_strs_to_poscars(strs_dir, configurations_dir)
+    make_incars(magmoms, incar, configurations_dir, strs_dir)
+    for dir in os.listdir(configurations_dir):
+        shutil.copy(potcar, os.path.join(configurations_dir, dir, 'POTCAR'))
+        rearrange_sites_and_magmoms(os.path.join(configurations_dir, dir))
+    
 """
 End of section
 """
