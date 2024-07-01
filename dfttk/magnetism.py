@@ -522,12 +522,10 @@ def run_newgenYW(
     )
     cwd = os.getcwd()
     os.chdir(os.path.join(path, 'atat_stuff'))
-    subprocess.run(args)
+    with open('YWoutput', 'w') as outfile:
+        subprocess.run(args, stdout=outfile)
+    os.chdir(cwd)
 
-
-    
-    
-    
     
     
     
