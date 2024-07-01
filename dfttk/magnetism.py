@@ -525,9 +525,6 @@ def run_newgenstrYW(
     with open('YWoutput', 'w') as outfile:
         subprocess.run(args, stdout=outfile)
     os.chdir(cwd)
-
-    
-    
     
 def generate_magnetic_configs(
     path,
