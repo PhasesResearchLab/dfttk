@@ -7,6 +7,7 @@ import shutil
 import subprocess
 
 
+
 # Related third party imports
 import numpy as np
 import pandas as pd
@@ -20,6 +21,7 @@ from pymatgen.analysis.magnetism.analyzer import \
     CollinearMagneticStructureAnalyzer as CMSA
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Poscar
+
 
 # DFTTK imports
 from dfttk.data_extraction import (
@@ -482,6 +484,36 @@ def set_up_ev_from_fixed_volume_calculations(df, path_to_fixed_volume_configurat
             print(f"Error processing configuration '{config}': {str(e)}")    
     return None
 
+def write_structure_to_lat_in(
+    structure,
+    filename="lat.in",
+    replace_atoms:dict = {}):
+
+    # Open the file for writing
+    with open(filename, 'w') as file:
+        # Write an euclidean coordinate system
+        file.write('1 1 1 90 90 90\n')
+        # Write the lattice vectors
+        for vec in structure.lattice.matrix:
+            file.write(f"{vec[0]} {vec[1]} {vec[2]}\n")
+        
+        # Write the atomic positions and types
+        for site in structure.sites:
+            specie = site.specie.symbol  # Get the species symbol
+            coords = site.frac_coords  # Get fractional coordinates
+            if specie in replace_atoms:
+                specie = replace_atoms[specie]
+            file.write(f"{coords[0]} {coords[1]} {coords[2]} {specie}\n")
+
+
+
+
+    
+    
+    
+    
+    
+    
 def generate_magnetic_configs(
     path,
     incar,
