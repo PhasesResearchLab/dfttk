@@ -3,12 +3,10 @@ import json
 import os
 import shutil
 import sys
-import subprocess
 
 # Related third party imports
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 from natsort import natsorted
 import matplotlib.pyplot as plt
 
