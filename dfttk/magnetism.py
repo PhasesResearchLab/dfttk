@@ -271,11 +271,11 @@ def count_atoms(strs_dir='strs'):
     df = df.fillna(0) 
     return df
 
-def remove_spin_up_less_than_down(atom_count_df, atom_up, atom_down): #takes the dataframe from count_atoms and removes all files where the number of spin up atoms is less than the number of spin down
+def remove_spin_up_less_than_down(strs_path, atom_count_df, atom_up, atom_down): #takes the dataframe from count_atoms and removes all files where the number of spin up atoms is less than the number of spin down
     for index, row in atom_count_df.iterrows():
         if row[atom_up] < row[atom_down]:
-            os.remove(f'strs/str.{row["file_number"]}')
-
+            file_path = os.path.join(strs_path, f'str.{row["file_number"]}')
+            os.remove(file_path)
 
 """
 magmoms is a dictionary that looks like:
@@ -505,7 +505,7 @@ def write_structure_to_lat_in(
                 specie = replace_atoms[specie]
             file.write(f"{coords[0]} {coords[1]} {coords[2]} {specie}\n")
 
-def run_newgenYW(
+def run_newgenstrYW(
     args:list,
     path:str,
     poscar_name:str='POSCAR',
@@ -531,12 +531,20 @@ def run_newgenYW(
     
 def generate_magnetic_configs(
     path,
-    incar,
-    potcar,
-    yw_output,
+    incar_name,
+    poscar_name,
+    potcar_name,
     magmoms,
     dummy_species_pairs,
+    replace_atoms,
     submit_script,
+    newgenstrYW_args= [
+        "newgenstrYW",
+        "-sig",
+        "16",
+        "-l",
+        "lat.in"
+    ],
 ):
     """_summary_
 
@@ -544,7 +552,6 @@ def generate_magnetic_configs(
         path (_type_): _description_
         incar (_type_): _description_
         potcar (_type_): _description_
-        yw_output (_type_): _description_
         magmoms (_type_): _description_
         dummy_species_pairs (_type_): _description_
         submit_script (_type_): _description_
@@ -552,12 +559,27 @@ def generate_magnetic_configs(
 
     Raises:
         FileExistsError: _description_
-    """    
-    strs_dir = os.path.join(path, 'strs')
+    """
+    incar = os.path.join(path, incar_name)
+    poscar = os.path.join(path, poscar_name)
+    potcar = os.path.join(path, potcar_name)
+    
+    run_newgenstrYW(
+        newgenstrYW_args,
+        path,
+        poscar_name=poscar_name,
+        replace_atoms=replace_atoms
+    )
+    
+    yw_output = os.path.join(path, 'atat_stuff', 'YWoutput')
+    strs_path = os.path.join(path, 'atat_stuff', 'strs')
+    
+    strs_dir = os.path.join(path, 'atat_stuff', 'strs')
     parse(yw_output, strs_dir)
     atom_count_df = count_atoms(strs_dir)
     for up_down_pair in dummy_species_pairs:
         remove_spin_up_less_than_down(
+            strs_path,
             atom_count_df,
             up_down_pair[0],
             up_down_pair[1]
