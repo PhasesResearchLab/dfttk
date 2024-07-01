@@ -887,34 +887,3 @@ def calculate_encut_conv(path: str, encut_list: str, plot: bool = True):
         plt.tight_layout()
         plt.savefig("encut_conv.png", dpi=300)
     os.chdir(original_dir)
-
-def run_configurations(
-    args: list[str],
-    configurations_dir:str = 'configurations'
-) -> None:
-    """
-    Executes subprocess.run in each configuration directory. NOT RECOMMENED.
-    This function does not use custodian, and so doesn't have proper error
-    handling. However, if you wish to avoid the use of custodian, have at it.
-    Args:
-        args: args of subprocess.run()
-        configurations_dir: path to configurations directory containing config_x folders. Defaults to 'configurations'.
-    """   
-    # Change to the configurations directory
-    cwd = os.getcwd()
-    try:
-        os.chdir(configurations_dir)
-        
-        # Get a list of directories starting with 'config_', sorted naturally
-        dirs = [d for d in os.listdir('.') if os.path.isdir(d) and d.startswith('config_')]
-        dirs = natsorted(dirs)
-        
-        # Iterate through each directory and run 'args
-        for dir in dirs:
-            os.chdir(dir)
-            subprocess.run(args)
-            os.chdir('..')
-    except Exception as e:  # Catch all exceptions and print an error message
-        print(f"An error occurred: {e}")
-    finally:
-        os.chdir(cwd)  # Restore the original working directory
