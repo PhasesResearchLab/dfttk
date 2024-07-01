@@ -535,9 +535,6 @@ def generate_magnetic_configs(
         submit_script=submit_script
     )
 
-# make a single step relaxation in custodian instead. 
-
-
 """
 End of section
 """
