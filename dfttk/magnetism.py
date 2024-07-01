@@ -4,10 +4,13 @@ import sys
 import itertools
 import numbers
 import shutil
+import subprocess
+
 
 # Related third party imports
 import numpy as np
 import pandas as pd
+from natsort import natsorted
 
 
 # Local application/library specific imports
@@ -486,7 +489,23 @@ def generate_magnetic_configs(
     yw_output,
     magmoms,
     dummy_species_pairs,
+    submit_script,
 ):
+    """_summary_
+
+    Args:
+        path (_type_): _description_
+        incar (_type_): _description_
+        potcar (_type_): _description_
+        yw_output (_type_): _description_
+        magmoms (_type_): _description_
+        dummy_species_pairs (_type_): _description_
+        submit_script (_type_): _description_
+        scale_volume (_type_): _description_
+
+    Raises:
+        FileExistsError: _description_
+    """    
     strs_dir = os.path.join(path, 'strs')
     parse(yw_output, strs_dir)
     atom_count_df = count_atoms(strs_dir)
@@ -509,7 +528,16 @@ def generate_magnetic_configs(
     for dir in os.listdir(configurations_dir):
         shutil.copy(potcar, os.path.join(configurations_dir, dir, 'POTCAR'))
         rearrange_sites_and_magmoms(os.path.join(configurations_dir, dir))
-    
+    scale_poscars(10, configurations_dir)
+    make_kpoints(600, configurations_dir)
+    create_submit_scripts(
+        configurations_directory=configurations_dir,
+        submit_script=submit_script
+    )
+
+# make a single step relaxation in custodian instead. 
+
+
 """
 End of section
 """
