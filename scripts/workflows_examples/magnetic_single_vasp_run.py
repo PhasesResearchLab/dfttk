@@ -7,24 +7,34 @@ from pymatgen.core.structure import Structure
 from dfttk.workflows import run_configurations
 
 path = '/storage/home/lam7027/scratch/Fe'
-incar = '/storage/home/lam7027/scratch/Fe/INCAR'
-potcar = '/storage/home/lam7027/scratch/Fe/POTCAR'
-yw_output = '/storage/home/lam7027/scratch/Fe/atat_stuff/YWoutput'
+incar_name = 'INCAR'
+poscar_name = 'POSCAR'
+potcar_name = 'POTCAR'
 magmoms = {
     'Fe+': '5',
     'Fe-': '-5',
 }
 dummy_species_pairs = [('Fe+', 'Fe-')]
+replace_atoms = {'Fe': 'Fe+,Fe-'}
 submit_script='run_vasp'
+newgenstrYW_args= [
+    "newgenstrYW",
+    "-sig",
+    "16",
+    "-l",
+    "lat.in"
+]
 
 magnetism.generate_magnetic_configs(
     path=path,
-    incar=incar,
-    potcar=potcar,
-    yw_output=yw_output,
+    incar_name=incar_name,
+    poscar_name=poscar_name,
+    potcar_name=potcar_name,
     magmoms=magmoms,
     dummy_species_pairs=dummy_species_pairs,
-    submit_script='run_vasp'
+    replace_atoms=replace_atoms,
+    submit_script='run_vasp',
+    newgenstrYW_args=newgenstrYW_args
 )
 
 magnetism.scale_poscars(12, os.path.join(path, 'configurations'))
