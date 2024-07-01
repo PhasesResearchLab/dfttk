@@ -1407,8 +1407,6 @@ def plot_ev(
     per_atom=False,
     title=None,
     show_fig=True,
-    left_col="volume",
-    right_col="energy",
     cmap="plotly",
     marker_alpha=1,
     marker_size=10,
@@ -1417,8 +1415,7 @@ def plot_ev(
 
     Args:
         data (pandas.DataFrame, list of pandas.DataFrame, or list of str): Data must be a pandas
-        DataFrame, list of pandas DataFrames, or a list of input_file names as strings containing the
-        volumes, energies, and number of atoms of each configuration.
+        DataFrame or a list of pandas DataFrames.
         eos_fitting (str, optional): EOS name. Defaults to "BM4".
         highlight_minimum (bool, optional): Defaults to True.
         per_atom (bool, optional):Defaults to False.
@@ -1444,9 +1441,6 @@ def plot_ev(
     ):
         if isinstance(data[0], pd.DataFrame):
             df = pd.concat(data, ignore_index=True)
-        # TODO: delete
-        elif isinstance(data[0], str):
-            df = convert_input_files_to_df(data, left_col, right_col)
 
     else:
         raise ValueError(
