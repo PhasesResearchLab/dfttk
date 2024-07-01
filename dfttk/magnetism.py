@@ -505,7 +505,24 @@ def write_structure_to_lat_in(
                 specie = replace_atoms[specie]
             file.write(f"{coords[0]} {coords[1]} {coords[2]} {specie}\n")
 
-
+def run_newgenYW(
+    args:list,
+    path:str,
+    poscar_name:str='POSCAR',
+    replace_atoms:dict = {}):
+    
+    os.mkdir(os.path.join(path, 'atat_stuff'))
+    poscar_file = os.path.join(path, poscar_name)
+    struct = Structure.from_file(poscar_file)
+    latin = os.path.join(path, 'atat_stuff', 'lat.in')
+    write_structure_to_lat_in(
+        struct,
+        filename=latin,
+        replace_atoms=replace_atoms
+    )
+    cwd = os.getcwd()
+    os.chdir(os.path.join(path, 'atat_stuff'))
+    subprocess.run(args)
 
 
     
