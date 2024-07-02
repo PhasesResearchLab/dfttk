@@ -1,3 +1,7 @@
+'''
+Workflows to automate VASP calculations using custodian.
+'''
+
 # Standard library imports
 import json
 import os
@@ -5,11 +9,9 @@ import shutil
 import sys
 
 # Related third party imports
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-from natsort import natsorted
 import matplotlib.pyplot as plt
+from natsort import natsorted
 
 # Local application/library specific imports
 from custodian.custodian import Custodian
@@ -17,11 +19,11 @@ from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Chgcar
-from pymatgen.analysis.magnetism.analyzer import CollinearMagneticStructureAnalyzer as CMSA
 
 # DFTTK imports
 from dfttk.data_extraction import extract_volume
 from dfttk.data_extraction import extract_energy
+
 
 def three_step_relaxation(
     path: str,
@@ -688,9 +690,20 @@ def process_phonon_dos_YPHON(path: str):
 
 def kpoints_conv_test(
     path: str,
-    kppa_list: list[float],
     vasp_cmd: list[str],
     handlers: list[str],
+    kppa_list: list[float] = [
+        1000,
+        2000,
+        3000,
+        4000,
+        5000,
+        6000,
+        7000,
+        8000,
+        9000,
+        10000,
+    ],
     force_gamma: bool = True,
     backup: bool = False,
 ):
@@ -746,17 +759,18 @@ def kpoints_conv_test(
         if os.path.isfile(f"PROCAR.{kppa}"):
             os.remove(f"PROCAR.{kppa}")
     os.chdir(original_dir)
-    return None
+
+    calculate_kpoint_conv(path, kppa_list)
 
 
-def calculate_kpoint_conv(path: str, kppa_list: list[str], plot: bool = True):
+def calculate_kpoint_conv(path: str, kppa_list: list[str]):
     """This function calculates the energy convergence with respect to k-point density and plots the results.
 
     Args:
         path: the path to the folder containing the VASP input files
         kppa_list: the list of k-point densities to run the calculations for
-        plot: If True, plots the results. Defaults to True.
     """
+
     original_dir = os.getcwd()
     kpoints_conv_dir = os.path.join(path, "kpoints_conv")
 
@@ -774,38 +788,51 @@ def calculate_kpoint_conv(path: str, kppa_list: list[str], plot: bool = True):
     os.chdir(path)
     np.savetxt("kppa_energy.txt", sorted_data, fmt="%f")
 
-    if plot:
-        fig, axis = plt.subplots(1, 2, figsize=(12, 6))
-        axis[0].plot(sorted_data[:, 0], sorted_data[:, 1], marker="o")
-        axis[0].set_xlabel("k-point density")
-        axis[0].set_ylabel("Energy (eV)")
-        axis[1].plot(sorted_data[:, 0], sorted_data[:, 2], marker="o")
-        axis[1].axhline(y=1, color="black", linestyle="--")
-        axis[1].axhline(y=-1, color="black", linestyle="--")
-        axis[1].set_xlabel("k-point density")
-        axis[1].set_ylabel("ΔEnergy (meV/atom)")
-        plt.tight_layout()
-        plt.savefig("kpoint_conv.png", dpi=300)
+    fig, axis = plt.subplots(1, 2, figsize=(12, 6))
+    axis[0].plot(sorted_data[:, 0], sorted_data[:, 1], marker="o")
+    axis[0].set_xlabel("k-point density")
+    axis[0].set_ylabel("Energy (eV)")
+    axis[1].plot(sorted_data[:, 0], sorted_data[:, 2], marker="o")
+    axis[1].axhline(y=1, color="black", linestyle="--")
+    axis[1].axhline(y=-1, color="black", linestyle="--")
+    axis[1].set_xlabel("k-point density")
+    axis[1].set_ylabel("ΔEnergy (meV/atom)")
+    plt.tight_layout()
+    plt.savefig("kpoint_conv.png", dpi=300)
     os.chdir(original_dir)
 
 
 def encut_conv_test(
     path: str,
-    encut_list: list[float],
     vasp_cmd: list[str],
     handlers: list[str],
+    encut_list: list[int] = [
+        270,
+        320,
+        370,
+        420,
+        470,
+        520,
+        570,
+        620,
+        670,
+        720,
+        770,
+        820,
+    ],
     backup: bool = False,
 ):
-    """This function runs a series of VASP calculations with different ENCUT values for convergence testing.
+    """Runs a series of VASP calculations with different ENCUT values for convergence testing.
 
     Args:
-        path: the path to the folder containing the VASP input files
-        encut_list: the list of ENCUT values to run the calculations for
-        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        backup: If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
-        .orig. Defaults to False.
+        path (str): path to the folder containing the VASP input files
+        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        encut_list (list[int], optional): list of ENCUT values to run the calculations for.
+        Defaults to [270, 320 , 370, 420, 470, 520, 570, 620, 670, 720, 770, 820].
+        backup (bool, optional):If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with .orig. Defaults to False.
     """
+
     original_dir = os.getcwd()
     encut_conv_dir = os.path.join(path, "encut_conv")
     os.makedirs(encut_conv_dir)
@@ -847,15 +874,17 @@ def encut_conv_test(
             os.remove(f"PROCAR.{encut}")
     os.chdir(original_dir)
 
+    calculate_encut_conv(path, encut_list)
 
-def calculate_encut_conv(path: str, encut_list: str, plot: bool = True):
-    """This function calculates the energy convergence with respect to ENCUT and plots the results.
+
+def calculate_encut_conv(path: str, encut_list: str):
+    """Calculates the energy convergence with respect to ENCUT and plots the results.
 
     Args:
-        path: the path to the folder containing the VASP input files
-        encut_list: the list of ENCUT values to run the calculations for
-        plot: If True, plots the results. Defaults to True.
+        path (str): path to the folder containing the VASP input files
+        encut_list (str): list of ENCUT values to run the calculations for
     """
+
     original_dir = os.getcwd()
     encut_conv_dir = os.path.join(path, "encut_conv")
 
@@ -873,16 +902,15 @@ def calculate_encut_conv(path: str, encut_list: str, plot: bool = True):
     os.chdir(path)
     np.savetxt("encut_energy.txt", sorted_data, fmt="%f")
 
-    if plot:
-        fig, axis = plt.subplots(1, 2, figsize=(12, 6))
-        axis[0].plot(sorted_data[:, 0], sorted_data[:, 1], marker="o")
-        axis[0].set_xlabel("ENCUT (eV)")
-        axis[0].set_ylabel("Energy (eV)")
-        axis[1].plot(sorted_data[:, 0], sorted_data[:, 2], marker="o")
-        axis[1].axhline(y=1, color="black", linestyle="--")
-        axis[1].axhline(y=-1, color="black", linestyle="--")
-        axis[1].set_xlabel("ENCUT")
-        axis[1].set_ylabel("ΔEnergy (meV/atom)")
-        plt.tight_layout()
-        plt.savefig("encut_conv.png", dpi=300)
+    fig, axis = plt.subplots(1, 2, figsize=(12, 6))
+    axis[0].plot(sorted_data[:, 0], sorted_data[:, 1], marker="o")
+    axis[0].set_xlabel("ENCUT (eV)")
+    axis[0].set_ylabel("Energy (eV)")
+    axis[1].plot(sorted_data[:, 0], sorted_data[:, 2], marker="o")
+    axis[1].axhline(y=1, color="black", linestyle="--")
+    axis[1].axhline(y=-1, color="black", linestyle="--")
+    axis[1].set_xlabel("ENCUT")
+    axis[1].set_ylabel("ΔEnergy (meV/atom)")
+    plt.tight_layout()
+    plt.savefig("encut_conv.png", dpi=300)
     os.chdir(original_dir)
