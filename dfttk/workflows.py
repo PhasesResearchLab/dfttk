@@ -703,8 +703,6 @@ def kpoints_conv_test(
         8000,
         9000,
         10000,
-        110000,
-        120000,
     ],
     force_gamma: bool = True,
     backup: bool = False,
