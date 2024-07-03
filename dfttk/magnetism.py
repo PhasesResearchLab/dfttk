@@ -594,7 +594,6 @@ def generate_magnetic_configs(
     for dir in os.listdir(configurations_dir):
         shutil.copy(potcar, os.path.join(configurations_dir, dir, 'POTCAR'))
         rearrange_sites_and_magmoms(os.path.join(configurations_dir, dir))
-    scale_poscars(10, configurations_dir)
     make_kpoints(600, configurations_dir)
     create_submit_scripts(
         configurations_directory=configurations_dir,
