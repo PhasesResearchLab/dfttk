@@ -1,6 +1,6 @@
-'''
+"""
 Workflows to automate VASP calculations using custodian.
-'''
+"""
 
 # Standard library imports
 import json
@@ -35,21 +35,20 @@ def three_step_relaxation(
     settings_override_2relax: list = None,
     settings_override_3static: list = None,
 ) -> None:
-    """This function runs a three-step relaxation (two consecutive relaxations followed by
-       one static) for a given path using VASP. The path should contain the necessary VASP
-       input files: POSCAR, POTCAR, INCAR, and KPOINTS.
+    """Runs a three-step relaxation - two consecutive relaxations followed by
+       one static.
 
     Args:
-        path: the path to the folder containing the VASP input files
-        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        copy_magmom: If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        path (str): path to the folder containing the VASP input files
+        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
         file of the next run. Defaults to False.
-        backup: If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
-        default_settings: if True, uses the default settings for the relaxation and static steps.
-        settings_override_2relax: a list of settings for the second relaxation step
-        settings_override_3static: a list of settings for the static step
+        default_settings (bool, optional): if True, uses the default settings for the relaxation and static steps. Defaults to True.
+        settings_override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
+        settings_override_3static (list, optional): override settings for the final static step. Defaults to None.
     """
 
     if default_settings:
@@ -100,7 +99,6 @@ def three_step_relaxation(
     os.chdir(original_dir)
 
 
-# TODO: write tests for this function
 def ev_curve_series(
     path: str,
     volumes: list[float],
@@ -114,19 +112,21 @@ def ev_curve_series(
     settings_override_2relax: list = None,
     settings_override_3static: list = None,
 ) -> None:
-    """This function runs a series of three_step_relaxation calculations for a list of volumes. It starts with the first volume, then
-       copies the relevant files to the next volume folder, scales the volume of the POSCAR accordingly, and so on.
+    """Runs a series of three_step_relaxation calculations for a list of volumes.
 
     Args:
-        path: the path to the folder containing the VASP input files
-        volumes: the list of volumes to run the calculations for
-        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        restarting: for restarting failed jobs. Defaults to False.
-        keep_wavecar: if True, does not delete WAVECAR.3static. Defaults to False.
-        keep_chgcar: if True, does not delete CHGCAR.3static. Defaults to False.
-        copy_magmom: If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        path (str): path to the folder containing the VASP input files.
+        volumes (list[float]): list of volumes
+        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        restarting (bool, optional): for restarting failed jobs. Defaults to False.
+        keep_wavecar (bool, optional): if True, does not delete WAVECAR.3static. Defaults to False.
+        keep_chgcar (bool, optional): if True, does not delete CHGCAR.3static. Defaults to False.
+        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
         file of the next run. Defaults to False.
+        default_settings (bool, optional): Use the default settings for three_step_relaxation. Defaults to True.
+        settings_override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
+        settings_override_3static (list, optional): override settings for the final static step. Defaults to None.
     """
 
     # Writes a params.json file to keep track of the parameters used
@@ -366,10 +366,11 @@ def ev_curve_series(
         if os.path.exists(file_path):
             os.remove(file_path)
 
-
+# TODO: What is the return type?
 def charge_density_difference(
     path: str, vasp_cmd: list[str], handlers: list[str], backup: bool = False
 ):
+    
     """
     Runs a charge density difference calculation for a configuration in a subdirectory of the given path.
     called charge_density_difference. The charge density difference is calculated as the difference between
