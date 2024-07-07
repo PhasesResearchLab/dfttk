@@ -366,28 +366,25 @@ def ev_curve_series(
         if os.path.exists(file_path):
             os.remove(file_path)
 
+
 # TODO: What is the return type?
 def charge_density_difference(
     path: str, vasp_cmd: list[str], handlers: list[str], backup: bool = False
 ):
-    
-    """
-    Runs a charge density difference calculation for a configuration in a subdirectory of the given path.
-    called charge_density_difference. The charge density difference is calculated as the difference between
-    The charge density of the final electronic step and the charge density of a single step.
+    """Runs a charge density difference calculation. The charge_density_difference is calculated as the difference between the
+    charge density of the final electronic step and the charge density of a single step.
 
     Args:
-        path: The path that contains the INCAR, POSCAR KPOINTS, and POTCAR.
-        vasp_cmd: The command to run VASP.
-        handlers: A list of error handlers that will be used during the calculation.
-        Refer to custodian.vasp.handlers
-        backup:  Whether to backup the initial input files. If True, the INCAR,
-        KPOINTS, POSCAR and POTCAR will be copied with a “.orig” appended. Defaults to True.
+        path (str): path that contains the VASP input files.
+        vasp_cmd (list[str]):  VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        backup (bool, optional): If True, the starting INCAR, KPOINTS, POSCAR and POTCAR files will be copied with a “.orig”
+        appended. Defaults to False.
 
     Returns:
-        The charge density difference between the final electronic step and
-        a single step.
+        _type_: The charge density difference between the final electronic step and a single step.
     """
+
     original_dir = os.getcwd()
     os.chdir(path)
     os.mkdir("charge_density_difference")
@@ -460,6 +457,12 @@ def charge_density_difference(
 
 
 def custodian_errors_location(path: str) -> None:
+    """Prints the location of the custodian errors in the path.
+
+    Args:
+        path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
+    """
+
     vol_folders = [d for d in os.listdir(path) if d.startswith("vol")]
     for vol_folder in vol_folders:
         error_folders = [
@@ -472,6 +475,12 @@ def custodian_errors_location(path: str) -> None:
 
 
 def NELM_reached(path: str) -> None:
+    """Prints the path of the calculations that have reached NELM.
+
+    Args:
+        path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
+    """
+
     start_dir = path
     target_line = "The electronic self-consistency was not achieved in the given"
     for dirpath, dirs, files in os.walk(start_dir):
@@ -492,6 +501,16 @@ def run_phonons(
     copy_magmom: bool = False,
     backup: bool = False,
 ):
+    """Runs a relaxation followed by a phonon calculation.
+
+    Args:
+        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        file of the next run. Defaults to False.
+        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        .orig. Defaults to False.
+    """
 
     step1 = VaspJob(
         vasp_cmd=vasp_cmd,
@@ -538,6 +557,15 @@ def phonons_parallel(
     kppa: float,
     run_file: str,
 ) -> None:
+    """Runs the run_phonons function in parallel for a list of phonon volumes.
+
+    Args:
+        path (str): path to the folder containing the VASP input files.
+        phonon_volumes (list[float]): a list of volumes to run the phonon calculations for.
+        supercell_size (list[int]): to create a supercell of the structure.
+        kppa (float): k-point grid density.
+        run_file (str): bash script to run the phonon calculations.
+    """
 
     # Create a new run_file to run the phonon calculations
     script_name = sys.argv[0]
@@ -628,6 +656,11 @@ def phonons_parallel(
 
 
 def process_phonon_dos_YPHON(path: str):
+    """Processes the phonon DOS calculations using YPHON.
+
+    Args:
+        path (str): path to the folder containing all the phonon calculation folders. E.g. phonon_1, phonon_2, etc.
+    """
 
     # Go to each phonon folder and copy the CONTCAR, OUTCAR, and vasprun.xml files to the phonon_dos folder to be processed by YPHON
     phonon_folders = [
@@ -708,7 +741,7 @@ def kpoints_conv_test(
     force_gamma: bool = True,
     backup: bool = False,
 ):
-    """This function runs a series of VASP calculations with different k-point densities for convergence testing.
+    """Runs a series of VASP calculations with different k-point densities for convergence testing.
 
     Args:
         path: the path to the folder containing the VASP input files
@@ -765,7 +798,7 @@ def kpoints_conv_test(
 
 
 def calculate_kpoint_conv(path: str, kppa_list: list[str]):
-    """This function calculates the energy convergence with respect to k-point density and plots the results.
+    """Calculates the energy convergence with respect to k-point density and plots the results.
 
     Args:
         path: the path to the folder containing the VASP input files
