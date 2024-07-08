@@ -1260,7 +1260,7 @@ def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     return eos_df, eos_parameters_df
 
 
-# TODO: Not sure if a list of dataframe will actually work. the function simply concats them all together
+# TODO: Consider moving to magnetism.py. Not related to EOS fitting.
 def plot_mv(df: pd.DataFrame, show_fig: bool = True) -> go.Figure:
     """Plot the magnetic moment vs volume
 
@@ -1534,10 +1534,6 @@ def plot_ev(
 
                 # Plot the equilibrium energy and volume for each config
                 if highlight_minimum == True:
-                    min_energy = min(eos_name_df["energies"].values[0])
-                    volume_at_min_energy = eos_name_df["volumes"].values[0][
-                        np.where(eos_name_df["energies"].values[0] == min_energy)[0][0]
-                    ]
 
                     x = eos_name_df["V0"].values[0]
                     y = eos_name_df["E0"].values[0]
@@ -1667,12 +1663,6 @@ def plot_energy_difference(
         cmap=cmap,
         marker_alpha=marker_alpha,
         marker_size=marker_size,
-    )
-
-    fig.update_layout(
-        font=dict(
-            family="Devaju Sans",
-        )
     )
 
     unit = "meV" if convert_to_mev else "eV"
