@@ -1,3 +1,7 @@
+"""
+Extract relevant data from VASP output files.
+"""
+
 # Standard library imports
 import os
 import glob
@@ -118,7 +122,7 @@ def recursive_extract_configuration_data(
 ) -> pd.DataFrame:
     """convenience function to extract configuration data from multiple config directories.
     Runs extract_configuration_data for each config directory in a list.
- 
+
     Args:
         config_dirs: list of paths to config directories that will be passed to extract_configuration_data()
         outcar_name: name of the OUTCAR file. Defaults to "OUTCAR".

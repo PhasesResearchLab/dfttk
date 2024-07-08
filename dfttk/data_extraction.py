@@ -9,7 +9,6 @@ import pandas as pd
 from pymatgen.core.structure import Structure
 
 
-
 def extract_volume(path: str) -> float:
     """Extract the volume of a structure from a POSCAR/CONTCAR file
 
@@ -100,7 +99,7 @@ def write_ev(path: str) -> None:
     data = np.array(data)
     sorted_indices = np.argsort(data[:, 0])
     sorted_data = data[sorted_indices]
-    np.savetxt("volume_energy.txt", sorted_data, fmt="%f")
+    np.savetxt("e-v.dat", sorted_data, fmt="%f")
     os.chdir(original_dir)
 
 
@@ -165,7 +164,7 @@ def extract_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
                 headers.pop(0)  # '#'
                 headers.pop(0)  # 'of'
                 headers.pop(0)  # 'ion'
-                headers.insert(0, '#_of_ion')
+                headers.insert(0, "#_of_ion")
             elif found_mag_data and not data_start and "----" in line:
                 data_start = True
             elif data_start and "----" not in line:
@@ -198,6 +197,7 @@ def extract_tot_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
     tot_data.reset_index(drop=True, inplace=True)
     return tot_data
 
+
 def parse_magmom_line(line: str) -> pd.DataFrame:
     """reads vasp formatted MAGMOM line from an INCAR or OUTCAR
 
@@ -206,20 +206,21 @@ def parse_magmom_line(line: str) -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: with columns '#_of_ion' and 'tot' containing the input magnetic moments for each atom.
-    """    
+    """
     # Remove "MAGMOM = " from the line and split it into parts
     parts = line.replace("MAGMOM = ", "").split()
     magmoms = []
     for part in parts:
-        if '*' in part:
-            count, value = part.split('*')
+        if "*" in part:
+            count, value = part.split("*")
             magmoms.extend([float(value)] * int(count))
         else:
             magmoms.append(float(part))
 
     number_of_ion = list(range(1, len(magmoms) + 1))
-    df = pd.DataFrame({'#_of_ion': number_of_ion, 'tot': magmoms})
+    df = pd.DataFrame({"#_of_ion": number_of_ion, "tot": magmoms})
     return df
+
 
 def extract_input_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
     """reads the first line of the OUTCAR that contains "MAGMOM", which should be the input magnetic moments for each atom.
@@ -233,7 +234,7 @@ def extract_input_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: with columns '#_of_ion' and 'tot' containing the input magnetic moments for each atom.
-    """    
+    """
     if not os.path.isfile(outcar_path):
         print(f"Warning: File {outcar_path} does not exist. Skipping.")
         return None
@@ -245,6 +246,3 @@ def extract_input_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
             if "MAGMOM" in caps_line:
                 return parse_magmom_line(line)
         raise ValueError("No MAGMOM line found in OUTCAR")
-                
-
-
