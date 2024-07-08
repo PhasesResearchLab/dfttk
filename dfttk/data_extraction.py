@@ -1,3 +1,7 @@
+"""
+Extract relevant data from VASP output files.
+"""
+
 # Standard library imports
 import os
 
