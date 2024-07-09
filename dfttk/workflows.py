@@ -367,10 +367,9 @@ def ev_curve_series(
             os.remove(file_path)
 
 
-# TODO: What is the return type?
 def charge_density_difference(
     path: str, vasp_cmd: list[str], handlers: list[str], backup: bool = False
-):
+) -> Chgcar:
     """Runs a charge density difference calculation. The charge_density_difference is calculated as the difference between the
     charge density of the final electronic step and the charge density of a single step.
 
@@ -382,7 +381,7 @@ def charge_density_difference(
         appended. Defaults to False.
 
     Returns:
-        _type_: The charge density difference between the final electronic step and a single step.
+        Chgcar: The charge density difference between the final electronic step and a single step.
     """
 
     original_dir = os.getcwd()
