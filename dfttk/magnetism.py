@@ -292,11 +292,14 @@ def make_incars(magmoms, incar='INCAR', configurations_directory='configurations
         with open(os.path.join(strs_dir, str_file), 'r') as file:
             lines = file.readlines()
             for line in lines:
+                components = line.split()
                 count = 0
-                for atom in atoms:
-                    if atom in line:
-                        mag_mom_list.append(magmoms[atom])
-                        count += 1
+                if len(components) == 4:
+                    atom_in_line = components[3]
+                    for atom in atoms:
+                        if atom == atom_in_line:
+                            mag_mom_list.append(magmoms[atom])
+                            count += 1
                 if count not in [0, 1]:
                     raise ValueError(f'Error: {count} atoms found in line {line} in file {str_file}')
         mag_mom_string = ' '.join(mag_mom_list)
@@ -358,6 +361,7 @@ this function is a patch to rearrange the sites and magmoms in the POSCAR and
 INCAR files. If the sites are not grouped by specie, VASP will look for more
 potentials than supplied/necessary.
 """
+# TODO: make magmoms written in NIONS*magmom format
 def rearrange_sites_and_magmoms(config_dir):
     incar_file = os.path.join(config_dir, 'INCAR')
     poscar_file = os.path.join(config_dir, 'POSCAR')
@@ -484,32 +488,46 @@ def set_up_ev_from_fixed_volume_calculations(df, path_to_fixed_volume_configurat
             print(f"Error processing configuration '{config}': {str(e)}")    
     return None
 
+# TODO: figure out why ATAT fails with more than 3 decimals for YBCO6
 def write_structure_to_lat_in(
     structure,
     filename="lat.in",
-    replace_atoms:dict = {}):
+    replace_atoms:dict = {},
+    exclude_sites:list = []
+):
 
     # Open the file for writing
     with open(filename, 'w') as file:
-        # Write an euclidean coordinate system
-        file.write('1 1 1 90 90 90\n')
-        # Write the lattice vectors
-        for vec in structure.lattice.matrix:
-            file.write(f"{vec[0]} {vec[1]} {vec[2]}\n")
+        # convert the lattice to coordinate system (a b c alpha beta gamma)
+        lengths = structure.lattice.lengths
+        angles = structure.lattice.angles
+        coord_sys = lengths + angles # tuple
+        # Round the values in the tuple
+        decimals = 3
+        rounded_coord_sys = tuple(round(value, decimals) for value in coord_sys)
+        coord_sys_str = ' '.join(map(str, rounded_coord_sys)) # space separated string
+        file.write(f"{coord_sys_str}\n")
+        # write the primitive unit cell/unit matrix
+        file.write("1 0 0\n")
+        file.write("0 1 0\n")
+        file.write("0 0 1\n")
         
         # Write the atomic positions and types
-        for site in structure.sites:
+        for index, site in enumerate(structure.sites):
             specie = site.specie.symbol  # Get the species symbol
             coords = site.frac_coords  # Get fractional coordinates
-            if specie in replace_atoms:
+            rounded_coords = tuple(round(value, decimals) for value in coords)
+            if specie in replace_atoms and index not in exclude_sites:
                 specie = replace_atoms[specie]
-            file.write(f"{coords[0]} {coords[1]} {coords[2]} {specie}\n")
+            file.write(f"{rounded_coords[0]} {rounded_coords[1]} {rounded_coords[2]} {specie}\n")
 
 def run_newgenstrYW(
     args:list,
     path:str,
     poscar_name:str='POSCAR',
-    replace_atoms:dict = {}):
+    replace_atoms:dict = {},
+    exclude_sites:list = []
+):
     
     os.mkdir(os.path.join(path, 'atat_stuff'))
     poscar_file = os.path.join(path, poscar_name)
@@ -518,7 +536,8 @@ def run_newgenstrYW(
     write_structure_to_lat_in(
         struct,
         filename=latin,
-        replace_atoms=replace_atoms
+        replace_atoms=replace_atoms,
+        exclude_sites=exclude_sites
     )
     cwd = os.getcwd()
     os.chdir(os.path.join(path, 'atat_stuff'))
@@ -526,6 +545,7 @@ def run_newgenstrYW(
         subprocess.run(args, stdout=outfile)
     os.chdir(cwd)
     
+# TODO do somethind better with kpoints.
 def generate_magnetic_configs(
     path,
     incar_name,
@@ -535,6 +555,8 @@ def generate_magnetic_configs(
     dummy_species_pairs,
     replace_atoms,
     submit_script,
+    kppa = 4000,
+    exclude_sites=[],
     newgenstrYW_args= [
         "newgenstrYW",
         "-sig",
@@ -565,7 +587,8 @@ def generate_magnetic_configs(
         newgenstrYW_args,
         path,
         poscar_name=poscar_name,
-        replace_atoms=replace_atoms
+        replace_atoms=replace_atoms,
+        exclude_sites=exclude_sites
     )
     
     yw_output = os.path.join(path, 'atat_stuff', 'YWoutput')
@@ -594,7 +617,7 @@ def generate_magnetic_configs(
     for dir in os.listdir(configurations_dir):
         shutil.copy(potcar, os.path.join(configurations_dir, dir, 'POTCAR'))
         rearrange_sites_and_magmoms(os.path.join(configurations_dir, dir))
-    make_kpoints(600, configurations_dir)
+    make_kpoints(kppa, configurations_dir)
     create_submit_scripts(
         configurations_directory=configurations_dir,
         submit_script=submit_script
