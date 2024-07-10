@@ -1188,7 +1188,7 @@ def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Fits the volume and energies of configurations to all EOS functions and returns the results in a dataframe.
 
     Args:
-        df: Dataframe with headers ['config', 'volume', 'energy', 'number_of_atoms'].
+        df: Dataframe from extract_configuration_data in dfttk.aggregate_extraction
 
     Returns:
         tuple(eos_df, eos_parameters_df)
