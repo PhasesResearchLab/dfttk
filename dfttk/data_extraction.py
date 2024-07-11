@@ -13,6 +13,7 @@ import pandas as pd
 from pymatgen.core.structure import Structure
 
 
+# TODO: If some of these functions can be replaced by just using pymatgen, then we should do that.
 def extract_volume(path: str) -> float:
     """Extract the volume of a structure from a POSCAR/CONTCAR file
 
@@ -49,6 +50,28 @@ def extract_pressure(path: str) -> float:
                 pressure = float(line.split()[3])
                 break
     return pressure
+
+
+def extract_kpoints(path: str) -> list[str]:
+    """Extract kpoints from an OUTCAR file
+
+    Args:
+        path (str): the path to an OUTCAR file
+
+    Returns:
+        list[str]: kpoints in the format ['9', '9', '9']
+    """
+
+    with open(path, "r") as file:
+        file_name = os.path.basename(path)
+        assert file_name.startswith("OUTCAR"), "File name does not start with 'OUTCAR'"
+
+        lines = file.readlines()
+        for line in lines:
+            if "generate k-points for" in line:
+                kpoints = line.split()[3:6]
+                break
+    return kpoints
 
 
 def extract_energy(path: str) -> float:
