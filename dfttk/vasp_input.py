@@ -115,7 +115,6 @@ def ev_curve_set(
     kppa: int = 4000,
     potcar_file: str = "PBE_54",
     functional: str = "PBE",
-    ISIF: int = 4,
     other_settings: dict = {},
 ) -> None:
 
@@ -124,7 +123,7 @@ def ev_curve_set(
         {
             "ENCUT": encut,
             "IBRION": 2,
-            "ISIF": ISIF,
+            "ISIF": 4,
             "NSW": 100,
         }
     )
