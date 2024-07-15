@@ -17,18 +17,18 @@ def base_set(
     material_type: str,
     encut: int = 520,
     kppa: int = 4000,
-    potcar_file: str = "PBE_54",
-    functional: str = "PBE",
+    potcar_functional: str = "PBE_54",
+    incar_functional: str = "PBE",
 ) -> None:
     
     poscar_path = os.path.join(path, "POSCAR")
-    poscar = Structure.from_file(poscar_path)
+    struct = Structure.from_file(poscar_path)
 
-    kpoints = Kpoints.automatic_density(poscar, kppa, force_gamma=True)
+    kpoints = Kpoints.automatic_density(struct, kppa, force_gamma=True)
     kpoints.write_file(os.path.join(path, "KPOINTS"))
     
-    potcar_symbols = [site.specie.symbol for site in poscar.sites]
-    potcar = Potcar(symbols=potcar_symbols, functional=potcar_file)
+    potcar_symbols = [site.specie.symbol for site in struct.sites]
+    potcar = Potcar(symbols=potcar_symbols, functional=potcar_functional)
     potcar.write_file(os.path.join(path, "POTCAR"))
 
     incar_settings = {
@@ -44,17 +44,17 @@ def base_set(
     
     # TODO: Include all possible functionals
     # For more details, see: https://www.vasp.at/wiki/index.php/GGA and https://www.vasp.at/wiki/index.php/METAGGA
-    functional_settings = {
+    incar_functional_settings = {
     "PBE": {"GGA": "PE"},
     "PBEsol": {"GGA": "PS"},
     "r2SCAN": {"METAGGA": "R2SCAN", "LASPH": True},
     }
 
-    incar_settings.update(functional_settings.get(functional, {}))
+    incar_settings.update(incar_functional_settings.get(incar_functional, {}))
     
     material_settings = {
         "metal": {"ISMEAR": 1, "SIGMA": 0.2},
-        "semicond_or_insul": {"ISMEAR": 0, "SIGMA": 0.05},
+        "non_metal": {"ISMEAR": 0, "SIGMA": 0.05},
     }
 
     incar_settings.update(material_settings.get(material_type, {}))
@@ -67,11 +67,11 @@ def volume_relax_set(
     material_type: str,
     encut: int = 520,
     kppa: int = 4000,
-    potcar_file: str = "PBE_54",
-    functional: str = "PBE",
+    potcar_functional: str = "PBE_54",
+    incar_functional: str = "PBE",
 ) -> None:
 
-    incar_settings = base_set(path, material_type, encut, kppa, potcar_file, functional)
+    incar_settings = base_set(path, material_type, encut, kppa, potcar_functional, incar_functional)
     incar_settings.update(
         {
             "ENCUT": encut,
@@ -89,12 +89,12 @@ def conv_set(
     path: str,
     encut: int = 520,
     kppa: int = 4000,
-    potcar_file: str = "PBE_54",
-    functional: str = "PBE",
+    potcar_functional: str = "PBE_54",
+    incar_functional: str = "PBE",
 ) -> None:
     
     material_type = "metal" # Will be overwridden by ISMEAR = -5
-    incar_settings = base_set(path, material_type, encut, kppa, potcar_file, functional)
+    incar_settings = base_set(path, material_type, encut, kppa, potcar_functional, incar_functional)
     incar_settings.update(
         {
             "ENCUT": encut,
@@ -113,12 +113,12 @@ def ev_curve_set(
     material_type: str,
     encut: int = 520,
     kppa: int = 4000,
-    potcar_file: str = "PBE_54",
-    functional: str = "PBE",
+    potcar_functional: str = "PBE_54",
+    incar_functional: str = "PBE",
     other_settings: dict = {},
 ) -> None:
 
-    incar_settings = base_set(path, material_type, encut, kppa, potcar_file, functional)
+    incar_settings = base_set(path, material_type, encut, kppa, potcar_functional, incar_functional)
     incar_settings.update(
         {
             "ENCUT": encut,
