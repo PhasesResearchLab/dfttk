@@ -201,7 +201,6 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
         for i in range(1, len(energy_per_atom_list))
     ]
     difference_meV_per_atom_list.insert(0, float("nan"))
-    
     df = pd.DataFrame(
         {
             "ENCUT": encut_list,
