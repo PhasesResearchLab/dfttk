@@ -1064,5 +1064,28 @@ def calculate_encut_conv(
             )
         )
         fig.show()
-
-    return df, fig
+    else:
+        fig = None
+        
+def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
+    fig = go.Figure(
+        data=[
+            go.Scatter(
+                x=df["ENCUT"],
+                y=df["energy_per_atom"],
+                mode="lines+markers",
+            )
+        ]
+    )
+    plot_format(fig, "ENCUT", "Energy (eV/atom)")
+    # outcar_path = os.path.join(encut_conv_dir, "OUTCAR." + str(encut_list[0]))
+    # kpoints = extract_kpoints(outcar_path)
+    # fig.update_layout(
+    #     title=dict(
+    #         text=f"k-points: {kpoints[0]} x {kpoints[1]} x {kpoints[2]}",
+    #         font=dict(size=24, color="rgb(0,0,0)"),
+    #     )
+    # )
+    if show_fig=True:
+        fig.show()
+    return fig
