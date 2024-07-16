@@ -1086,6 +1086,7 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
     #         font=dict(size=24, color="rgb(0,0,0)"),
     #     )
     # )
-    if show_fig=True:
+    if show_fig==True:
         fig.show()
     return fig
+
