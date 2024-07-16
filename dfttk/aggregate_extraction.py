@@ -8,6 +8,7 @@ import glob
 
 # Related third party imports
 import pandas as pd
+import numpy as np
 
 # Local application/library specific imports
 from pymatgen.core.structure import Structure
@@ -177,7 +178,7 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
     encut_list = []
     energy_list = []
     number_of_atoms_list = []
-    kpoints_list = []
+    kpoint_grid_list = []
     for item in conv_items:
         oszicar_path = os.path.join(path, f"OSZICAR.{item}")
         outcar_path = os.path.join(path, f"OUTCAR.{item}")
@@ -189,8 +190,7 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
         encut_list.append(incar.get("ENCUT", None))
         energy_list.append(extract_energy(oszicar_path))
         number_of_atoms_list.append(len(struct.sites))
-        kpoints_list.append(extract_kpoints(outcar_path))
-
+        kpoint_grid_list.append(extract_kpoints(outcar_path))
     energy_per_atom_list = [
         energy / num_atoms 
         for energy, num_atoms in zip(energy_list, number_of_atoms_list)
@@ -201,9 +201,17 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
         for i in range(1, len(energy_per_atom_list))
     ]
     difference_meV_per_atom_list.insert(0, float("nan"))
+    
+    kppa_list = []
+    for i, kpoint_grid in enumerate(kpoint_grid_list):
+        kppa = np.prod(kpoint_grid) * number_of_atoms_list[i]
+        kppa_list.append(kppa)
+    
     df = pd.DataFrame(
         {
             "ENCUT": encut_list,
+            "kpoint_grid": kpoint_grid_list,
+            "kppa": kppa_list,
             "energy": energy_list,
             "number_of_atoms": number_of_atoms_list,
             "energy_per_atom": energy_per_atom_list,
