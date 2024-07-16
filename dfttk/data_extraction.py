@@ -70,6 +70,7 @@ def extract_kpoints(path: str) -> list[str]:
         for line in lines:
             if "generate k-points for" in line:
                 kpoints = line.split()[3:6]
+                kpoints = [int(x) for x in kpoints]
                 break
     return kpoints
 
