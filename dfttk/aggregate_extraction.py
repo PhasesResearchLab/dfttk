@@ -9,6 +9,9 @@ import glob
 # Related third party imports
 import pandas as pd
 import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+
 
 # Local application/library specific imports
 from pymatgen.core.structure import Structure
@@ -220,3 +223,127 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
     )
     
     return df
+
+def plot_format(fig, x_title, y_title):
+    fig.update_layout(
+        font=dict(family="Devaju Sans"),
+        plot_bgcolor="white",
+        width=840,
+        height=600,
+        legend=dict(font=dict(size=20, color="black")),
+        xaxis=dict(
+            title=x_title,
+            titlefont=dict(size=22, color="rgb(0,0,0)"),
+            showline=True,
+            linecolor="black",
+            linewidth=1,
+            ticks="outside",
+            mirror="allticks",
+            tickwidth=1,
+            tickcolor="black",
+            showgrid=False,
+            tickfont=dict(color="rgb(0,0,0)", size=20),
+        ),
+        yaxis=dict(
+            title=y_title,
+            titlefont=dict(size=22, color="rgb(0,0,0)"),
+            showline=True,
+            linecolor="black",
+            linewidth=1,
+            ticks="outside",
+            mirror="allticks",
+            tickwidth=1,
+            tickcolor="black",
+            showgrid=False,
+            tickfont=dict(color="rgb(0,0,0)", size=20),
+        ),
+    )
+
+
+def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
+    fig = go.Figure(
+        data=[
+            go.Scatter(
+                x=df["ENCUT"],
+                y=df["energy_per_atom"],
+                mode="lines+markers",
+            )
+        ]
+    )
+    plot_format(fig, "ENCUT", "Energy (eV/atom)")
+    kpoints = df["kpoint_grid"].iloc[0]
+    fig.update_layout(
+        title=dict(
+            text=f"k-points: {kpoints[0]} x {kpoints[1]} x {kpoints[2]}",
+            font=dict(size=24, color="rgb(0,0,0)"),
+        )
+    )
+    if show_fig==True:
+        fig.show()
+    return fig
+
+def calculate_encut_conv(
+    path: str, plot: bool = True
+) -> tuple[pd.DataFrame, go.Figure]:
+    """Calculates the energy convergence with respect to ENCUT and plots the results.
+
+    Args:
+        path (str): path to the folder containing the VASP input files
+        plot (bool, optional): If True, plots the energy per atom vs. ENCUT. Defaults to True.
+
+    Returns:
+        pd.DataFrame: a pandas dataframe containing the ENCUT, energy, number of atoms, energy per atom, and difference in energy per atom.
+        go.Figure: a plotly figure of the energy per atom vs. ENCUT.
+    """
+    df = extract_convergence_data(path)
+
+    if plot:
+        fig = plot_encut_conv(df, show_fig=plot)
+    else:
+        fig = None
+        
+    return df, fig
+
+
+def plot_kpoint_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
+    fig = go.Figure(
+        data=[
+            go.Scatter(
+                x=df["kppa"],
+                y=df["energy_per_atom"],
+                mode="lines+markers",
+            )
+        ]
+    )
+    plot_format(fig, "KPPA", "Energy (eV/atom)")
+    encut = df["ENCUT"].iloc[0]
+    fig.update_layout(
+        title=dict(
+            text=f"ENCUT: {encut} eV",
+            font=dict(size=24, color="rgb(0,0,0)"),
+        )
+    )
+    if show_fig==True:
+        fig.show()
+    return fig
+
+# TODO: Incorporate other convergence criteria
+# See https://github.com/kavanase/vaspup2.0
+def calculate_kpoint_conv(
+    path: str, plot: bool = True
+) -> tuple[pd.DataFrame, go.Figure]:
+    """Calculates the energy convergence with respect to k-point density and plots the results.
+
+    Args:
+        path (str): the path to the folder containing the VASP input files
+    """
+
+    df = extract_convergence_data(path)
+    df = df.drop_duplicates(subset=["kpoint_grid"])
+
+    if plot:
+        fig = plot_kpoint_conv(df, show_fig=plot)
+    else:
+        fig = None
+        
+    return df, fig
