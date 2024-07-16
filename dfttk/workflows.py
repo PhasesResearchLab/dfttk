@@ -836,6 +836,28 @@ def kpoints_conv_test(
     calculate_kpoint_conv(path, kppa_list)
 
 
+def plot_kpoint_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
+    fig = go.Figure(
+        data=[
+            go.Scatter(
+                x=df["kppa"],
+                y=df["energy_per_atom"],
+                mode="lines+markers",
+            )
+        ]
+    )
+    plot_format(fig, "KPPA", "Energy (eV/atom)")
+    encut = df["ENCUT"].iloc[0]
+    fig.update_layout(
+        title=dict(
+            text=f"ENCUT: {encut} eV",
+            font=dict(size=24, color="rgb(0,0,0)"),
+        )
+    )
+    if show_fig==True:
+        fig.show()
+    return fig
+
 # TODO: Incorporate other convergence criteria
 # See https://github.com/kavanase/vaspup2.0
 def calculate_kpoint_conv(
@@ -847,75 +869,14 @@ def calculate_kpoint_conv(
         path (str): the path to the folder containing the VASP input files
     """
 
-    current_dir = os.getcwd()
-    kpoints_conv_dir = os.path.join(path, "kpoints_conv")
-    os.chdir(kpoints_conv_dir)
-
-    oszicar_files = [
-        file
-        for file in os.listdir(kpoints_conv_dir)
-        if os.path.isfile(os.path.join(kpoints_conv_dir, file))
-        and file.startswith("OSZICAR")
-    ]
-    kppa_list = [int(file.split(".")[1]) for file in oszicar_files]
-    kppa_list = natsorted(kppa_list)
-
-    kpoint_grid_list = []
-    energy_list = []
-    for kppa in kppa_list:
-        energy = extract_energy(f"OSZICAR.{kppa}")
-        kpoint_grid = extract_kpoints(f"OUTCAR.{kppa}")
-        energy_list.append(energy)
-        kpoint_grid_list.append(kpoint_grid)
-
-    number_of_atoms = len(Structure.from_file(f"POSCAR.{kppa_list[0]}").sites)
-    number_of_atoms_list = [number_of_atoms] * len(kppa_list)
-
-    energy_per_atom_list = [energy / number_of_atoms for energy in energy_list]
-
-    difference_meV_per_atom_list = [
-        (energy_per_atom_list[i] - energy_per_atom_list[i - 1]) * 1000
-        for i in range(1, len(energy_per_atom_list))
-    ]
-    difference_meV_per_atom_list.insert(0, float("nan"))
-
-    os.chdir(current_dir)
-
-    df = pd.DataFrame(
-        {
-            "kpoint_density": kppa_list,
-            "kpoint_grid": kpoint_grid_list,
-            "energy": energy_list,
-            "number_of_atoms": number_of_atoms_list,
-            "energy_per_atom": energy_per_atom_list,
-            "difference_meV_per_atom": difference_meV_per_atom_list,
-        }
-    )
-
+    df = extract_convergence_data(path)
     df = df.drop_duplicates(subset=["kpoint_grid"])
 
     if plot:
-        fig = go.Figure(
-            data=[
-                go.Scatter(
-                    x=df["kpoint_density"],
-                    y=df["energy_per_atom"],
-                    mode="lines+markers",
-                )
-            ],
-        )
-        plot_format(fig, "KPPA", "Energy (eV/atom)")
-
-        incar = Incar.from_file(os.path.join(kpoints_conv_dir, f"INCAR.{kppa_list[0]}"))
-        encut = incar["ENCUT"]
-        fig.update_layout(
-            title=dict(
-                text=f"ENCUT: {encut} eV",
-                font=dict(size=24, color="rgb(0,0,0)"),
-            )
-        )
-        fig.show()
-
+        fig = plot_kpoint_conv(df, show_fig=plot)
+    else:
+        fig = None
+        
     return df, fig
 
 
@@ -1002,14 +963,13 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
         ]
     )
     plot_format(fig, "ENCUT", "Energy (eV/atom)")
-    # outcar_path = os.path.join(encut_conv_dir, "OUTCAR." + str(encut_list[0]))
-    # kpoints = extract_kpoints(outcar_path)
-    # fig.update_layout(
-    #     title=dict(
-    #         text=f"k-points: {kpoints[0]} x {kpoints[1]} x {kpoints[2]}",
-    #         font=dict(size=24, color="rgb(0,0,0)"),
-    #     )
-    # )
+    kpoints = df["kpoint_grid"].iloc[0]
+    fig.update_layout(
+        title=dict(
+            text=f"k-points: {kpoints[0]} x {kpoints[1]} x {kpoints[2]}",
+            font=dict(size=24, color="rgb(0,0,0)"),
+        )
+    )
     if show_fig==True:
         fig.show()
     return fig
