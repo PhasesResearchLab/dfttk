@@ -26,6 +26,7 @@ from pymatgen.io.vasp.outputs import Chgcar
 from dfttk.data_extraction import extract_volume
 from dfttk.data_extraction import extract_energy
 from dfttk.data_extraction import extract_kpoints
+from dfttk.aggregate_extraction import extract_convergence_data
 
 
 def three_step_relaxation(
@@ -850,13 +851,13 @@ def calculate_kpoint_conv(
     kpoints_conv_dir = os.path.join(path, "kpoints_conv")
     os.chdir(kpoints_conv_dir)
 
-    OSZICAR_files = [
+    oszicar_files = [
         file
         for file in os.listdir(kpoints_conv_dir)
         if os.path.isfile(os.path.join(kpoints_conv_dir, file))
         and file.startswith("OSZICAR")
     ]
-    kppa_list = [int(file.split(".")[1]) for file in OSZICAR_files]
+    kppa_list = [int(file.split(".")[1]) for file in oszicar_files]
     kppa_list = natsorted(kppa_list)
 
     kpoint_grid_list = []
@@ -990,83 +991,6 @@ def encut_conv_test(
             os.remove(f"PROCAR.{encut}")
     os.chdir(original_dir)
 
-
-def calculate_encut_conv(
-    path: str, plot: bool = True
-) -> tuple[pd.DataFrame, go.Figure]:
-    """Calculates the energy convergence with respect to ENCUT and plots the results.
-
-    Args:
-        path (str): path to the folder containing the VASP input files
-        plot (bool, optional): If True, plots the energy per atom vs. ENCUT. Defaults to True.
-
-    Returns:
-        pd.DataFrame: a pandas dataframe containing the ENCUT, energy, number of atoms, energy per atom, and difference in energy per atom.
-        go.Figure: a plotly figure of the energy per atom vs. ENCUT.
-    """
-    current_dir = os.getcwd()
-    encut_conv_dir = os.path.join(path, "encut_conv")
-    os.chdir(encut_conv_dir)
-
-    OSZICAR_files = [
-        file
-        for file in os.listdir(encut_conv_dir)
-        if os.path.isfile(os.path.join(encut_conv_dir, file))
-        and file.startswith("OSZICAR")
-    ]
-    encut_list = [int(file.split(".")[1]) for file in OSZICAR_files]
-
-    energy_list = []
-    for encut in encut_list:
-        energy = extract_energy(f"OSZICAR.{encut}")
-        energy_list.append(energy)
-
-    number_of_atoms = len(Structure.from_file(f"POSCAR.{encut_list[0]}").sites)
-    number_of_atoms_list = [number_of_atoms] * len(encut_list)
-
-    energy_per_atom_list = [energy / number_of_atoms for energy in energy_list]
-
-    difference_meV_per_atom_list = [
-        (energy_per_atom_list[i] - energy_per_atom_list[i - 1]) * 1000
-        for i in range(1, len(energy_per_atom_list))
-    ]
-    difference_meV_per_atom_list.insert(0, float("nan"))
-
-    os.chdir(current_dir)
-
-    df = pd.DataFrame(
-        {
-            "ENCUT": encut_list,
-            "energy": energy_list,
-            "number_of_atoms": number_of_atoms_list,
-            "energy_per_atom": energy_per_atom_list,
-            "difference_meV_per_atom": difference_meV_per_atom_list,
-        }
-    )
-
-    if plot:
-        fig = go.Figure(
-            data=[
-                go.Scatter(
-                    x=df["ENCUT"],
-                    y=df["energy_per_atom"],
-                    mode="lines+markers",
-                )
-            ]
-        )
-        plot_format(fig, "ENCUT", "Energy (eV/atom)")
-        outcar_path = os.path.join(encut_conv_dir, "OUTCAR." + str(encut_list[0]))
-        kpoints = extract_kpoints(outcar_path)
-        fig.update_layout(
-            title=dict(
-                text=f"k-points: {kpoints[0]} x {kpoints[1]} x {kpoints[2]}",
-                font=dict(size=24, color="rgb(0,0,0)"),
-            )
-        )
-        fig.show()
-    else:
-        fig = None
-        
 def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
     fig = go.Figure(
         data=[
@@ -1089,4 +1013,26 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
     if show_fig==True:
         fig.show()
     return fig
+
+def calculate_encut_conv(
+    path: str, plot: bool = True
+) -> tuple[pd.DataFrame, go.Figure]:
+    """Calculates the energy convergence with respect to ENCUT and plots the results.
+
+    Args:
+        path (str): path to the folder containing the VASP input files
+        plot (bool, optional): If True, plots the energy per atom vs. ENCUT. Defaults to True.
+
+    Returns:
+        pd.DataFrame: a pandas dataframe containing the ENCUT, energy, number of atoms, energy per atom, and difference in energy per atom.
+        go.Figure: a plotly figure of the energy per atom vs. ENCUT.
+    """
+    df = extract_convergence_data(path)
+
+    if plot:
+        fig = plot_encut_conv(df, show_fig=plot)
+    else:
+        fig = None
+        
+    return df, fig
 
