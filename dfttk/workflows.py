@@ -1,3 +1,7 @@
+"""
+Workflows to automate VASP calculations using custodian.
+"""
+
 # Standard library imports
 import json
 import os
@@ -5,10 +9,7 @@ import shutil
 import sys
 
 # Related third party imports
-import matplotlib.pyplot as plt
-import numpy as np
 from natsort import natsorted
-import matplotlib.pyplot as plt
 
 # Local application/library specific imports
 from custodian.custodian import Custodian
@@ -16,11 +17,10 @@ from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Chgcar
-from pymatgen.analysis.magnetism.analyzer import CollinearMagneticStructureAnalyzer as CMSA
 
 # DFTTK imports
 from dfttk.data_extraction import extract_volume
-from dfttk.data_extraction import extract_energy
+
 
 def three_step_relaxation(
     path: str,
@@ -32,21 +32,20 @@ def three_step_relaxation(
     settings_override_2relax: list = None,
     settings_override_3static: list = None,
 ) -> None:
-    """This function runs a three-step relaxation (two consecutive relaxations followed by
-       one static) for a given path using VASP. The path should contain the necessary VASP
-       input files: POSCAR, POTCAR, INCAR, and KPOINTS.
+    """Runs a three-step relaxation - two consecutive relaxations followed by
+       one static.
 
     Args:
-        path: the path to the folder containing the VASP input files
-        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        copy_magmom: If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        path (str): path to the folder containing the VASP input files
+        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
         file of the next run. Defaults to False.
-        backup: If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
-        default_settings: if True, uses the default settings for the relaxation and static steps.
-        settings_override_2relax: a list of settings for the second relaxation step
-        settings_override_3static: a list of settings for the static step
+        default_settings (bool, optional): if True, uses the default settings for the relaxation and static steps. Defaults to True.
+        settings_override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
+        settings_override_3static (list, optional): override settings for the final static step. Defaults to None.
     """
 
     if default_settings:
@@ -97,7 +96,6 @@ def three_step_relaxation(
     os.chdir(original_dir)
 
 
-# TODO: write tests for this function
 def ev_curve_series(
     path: str,
     volumes: list[float],
@@ -111,19 +109,21 @@ def ev_curve_series(
     settings_override_2relax: list = None,
     settings_override_3static: list = None,
 ) -> None:
-    """This function runs a series of three_step_relaxation calculations for a list of volumes. It starts with the first volume, then
-       copies the relevant files to the next volume folder, scales the volume of the POSCAR accordingly, and so on.
+    """Runs a series of three_step_relaxation calculations for a list of volumes.
 
     Args:
-        path: the path to the folder containing the VASP input files
-        volumes: the list of volumes to run the calculations for
-        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        restarting: for restarting failed jobs. Defaults to False.
-        keep_wavecar: if True, does not delete WAVECAR.3static. Defaults to False.
-        keep_chgcar: if True, does not delete CHGCAR.3static. Defaults to False.
-        copy_magmom: If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        path (str): path to the folder containing the VASP input files.
+        volumes (list[float]): list of volumes
+        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        restarting (bool, optional): for restarting failed jobs. Defaults to False.
+        keep_wavecar (bool, optional): if True, does not delete WAVECAR.3static. Defaults to False.
+        keep_chgcar (bool, optional): if True, does not delete CHGCAR.3static. Defaults to False.
+        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
         file of the next run. Defaults to False.
+        default_settings (bool, optional): Use the default settings for three_step_relaxation. Defaults to True.
+        settings_override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
+        settings_override_3static (list, optional): override settings for the final static step. Defaults to None.
     """
 
     # Writes a params.json file to keep track of the parameters used
@@ -366,24 +366,21 @@ def ev_curve_series(
 
 def charge_density_difference(
     path: str, vasp_cmd: list[str], handlers: list[str], backup: bool = False
-):
-    """
-    Runs a charge density difference calculation for a configuration in a subdirectory of the given path.
-    called charge_density_difference. The charge density difference is calculated as the difference between
-    The charge density of the final electronic step and the charge density of a single step.
+) -> Chgcar:
+    """Runs a charge density difference calculation. The charge_density_difference is calculated as the difference between the
+    charge density of the final electronic step and the charge density of a single step.
 
     Args:
-        path: The path that contains the INCAR, POSCAR KPOINTS, and POTCAR.
-        vasp_cmd: The command to run VASP.
-        handlers: A list of error handlers that will be used during the calculation.
-        Refer to custodian.vasp.handlers
-        backup:  Whether to backup the initial input files. If True, the INCAR,
-        KPOINTS, POSCAR and POTCAR will be copied with a “.orig” appended. Defaults to True.
+        path (str): path that contains the VASP input files.
+        vasp_cmd (list[str]):  VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        backup (bool, optional): If True, the starting INCAR, KPOINTS, POSCAR and POTCAR files will be copied with a “.orig”
+        appended. Defaults to False.
 
     Returns:
-        The charge density difference between the final electronic step and
-        a single step.
+        Chgcar: The charge density difference between the final electronic step and a single step.
     """
+
     original_dir = os.getcwd()
     os.chdir(path)
     os.mkdir("charge_density_difference")
@@ -456,6 +453,12 @@ def charge_density_difference(
 
 
 def custodian_errors_location(path: str) -> None:
+    """Prints the location of the custodian errors in the path.
+
+    Args:
+        path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
+    """
+
     vol_folders = [d for d in os.listdir(path) if d.startswith("vol")]
     for vol_folder in vol_folders:
         error_folders = [
@@ -468,6 +471,12 @@ def custodian_errors_location(path: str) -> None:
 
 
 def NELM_reached(path: str) -> None:
+    """Prints the path of the calculations that have reached NELM.
+
+    Args:
+        path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
+    """
+
     start_dir = path
     target_line = "The electronic self-consistency was not achieved in the given"
     for dirpath, dirs, files in os.walk(start_dir):
@@ -488,6 +497,16 @@ def run_phonons(
     copy_magmom: bool = False,
     backup: bool = False,
 ):
+    """Runs a relaxation followed by a phonon calculation.
+
+    Args:
+        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        file of the next run. Defaults to False.
+        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        .orig. Defaults to False.
+    """
 
     step1 = VaspJob(
         vasp_cmd=vasp_cmd,
@@ -534,6 +553,15 @@ def phonons_parallel(
     kppa: float,
     run_file: str,
 ) -> None:
+    """Runs the run_phonons function in parallel for a list of phonon volumes.
+
+    Args:
+        path (str): path to the folder containing the VASP input files.
+        phonon_volumes (list[float]): a list of volumes to run the phonon calculations for.
+        supercell_size (list[int]): to create a supercell of the structure.
+        kppa (float): k-point grid density.
+        run_file (str): bash script to run the phonon calculations.
+    """
 
     # Create a new run_file to run the phonon calculations
     script_name = sys.argv[0]
@@ -624,6 +652,11 @@ def phonons_parallel(
 
 
 def process_phonon_dos_YPHON(path: str):
+    """Processes the phonon DOS calculations using YPHON.
+
+    Args:
+        path (str): path to the folder containing all the phonon calculation folders. E.g. phonon_1, phonon_2, etc.
+    """
 
     # Go to each phonon folder and copy the CONTCAR, OUTCAR, and vasprun.xml files to the phonon_dos folder to be processed by YPHON
     phonon_folders = [
@@ -684,24 +717,34 @@ def process_phonon_dos_YPHON(path: str):
             os.path.join(path, "YPHON_results", "volph_" + phonon_folder.split("_")[1]),
         )
 
-
 def kpoints_conv_test(
     path: str,
-    kppa_list: list[float],
     vasp_cmd: list[str],
     handlers: list[str],
+    kppa_list: list[float] = [
+        1000,
+        2000,
+        3000,
+        4000,
+        5000,
+        6000,
+        7000,
+        8000,
+        9000,
+        10000,
+    ],
     force_gamma: bool = True,
     backup: bool = False,
 ):
-    """This function runs a series of VASP calculations with different k-point densities for convergence testing.
+    """Runs a series of VASP calculations with different k-point densities for convergence testing.
 
     Args:
-        path: the path to the folder containing the VASP input files
-        kppa_list: the list of k-point densities to run the calculations for
-        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        force_gamma: If True, forces a gamma-centered mesh. Defaults to True.
-        backup: If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        path (str): the path to the folder containing the VASP input files
+        vasp_cmd (list[str]): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        kppa_list (list[float], optional): k-point densities. Defaults to [ 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, ].
+        force_gamma (bool, optional):If True, forces a gamma-centered mesh. Defaults to True.
+        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
     """
 
@@ -745,66 +788,39 @@ def kpoints_conv_test(
         if os.path.isfile(f"PROCAR.{kppa}"):
             os.remove(f"PROCAR.{kppa}")
     os.chdir(original_dir)
-    return None
-
-
-def calculate_kpoint_conv(path: str, kppa_list: list[str], plot: bool = True):
-    """This function calculates the energy convergence with respect to k-point density and plots the results.
-
-    Args:
-        path: the path to the folder containing the VASP input files
-        kppa_list: the list of k-point densities to run the calculations for
-        plot: If True, plots the results. Defaults to True.
-    """
-    original_dir = os.getcwd()
-    kpoints_conv_dir = os.path.join(path, "kpoints_conv")
-
-    os.chdir(kpoints_conv_dir)
-    data = []
-    for kppa in kppa_list:
-        energy = extract_energy(f"OSZICAR.{kppa}")
-        data.append([kppa, energy])
-    data = np.array(data)
-    sorted_indices = np.argsort(data[:, 0])
-    sorted_data = data[sorted_indices]
-    num_atoms = len(Structure.from_file(f"POSCAR.{kppa}").sites)
-    sorted_data = np.column_stack((sorted_data, np.zeros(len(sorted_data))))
-    sorted_data[1:, 2] = (sorted_data[1:, 1] - sorted_data[:-1, 1]) / num_atoms * 1000
-    os.chdir(path)
-    np.savetxt("kppa_energy.txt", sorted_data, fmt="%f")
-
-    if plot:
-        fig, axis = plt.subplots(1, 2, figsize=(12, 6))
-        axis[0].plot(sorted_data[:, 0], sorted_data[:, 1], marker="o")
-        axis[0].set_xlabel("k-point density")
-        axis[0].set_ylabel("Energy (eV)")
-        axis[1].plot(sorted_data[:, 0], sorted_data[:, 2], marker="o")
-        axis[1].axhline(y=1, color="black", linestyle="--")
-        axis[1].axhline(y=-1, color="black", linestyle="--")
-        axis[1].set_xlabel("k-point density")
-        axis[1].set_ylabel("ΔEnergy (meV/atom)")
-        plt.tight_layout()
-        plt.savefig("kpoint_conv.png", dpi=300)
-    os.chdir(original_dir)
-
+    
 
 def encut_conv_test(
     path: str,
-    encut_list: list[float],
     vasp_cmd: list[str],
     handlers: list[str],
+    encut_list: list[int] = [
+        270,
+        320,
+        370,
+        420,
+        470,
+        520,
+        570,
+        620,
+        670,
+        720,
+        770,
+        820,
+    ],
     backup: bool = False,
 ):
-    """This function runs a series of VASP calculations with different ENCUT values for convergence testing.
+    """Runs a series of VASP calculations with different ENCUT values for convergence testing.
 
     Args:
-        path: the path to the folder containing the VASP input files
-        encut_list: the list of ENCUT values to run the calculations for
-        vasp_cmd: the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers: custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        backup: If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
-        .orig. Defaults to False.
+        path (str): path to the folder containing the VASP input files
+        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        encut_list (list[int], optional): list of ENCUT values to run the calculations for.
+        Defaults to [270, 320 , 370, 420, 470, 520, 570, 620, 670, 720, 770, 820].
+        backup (bool, optional):If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with .orig. Defaults to False.
     """
+
     original_dir = os.getcwd()
     encut_conv_dir = os.path.join(path, "encut_conv")
     os.makedirs(encut_conv_dir)
@@ -847,41 +863,4 @@ def encut_conv_test(
     os.chdir(original_dir)
 
 
-def calculate_encut_conv(path: str, encut_list: str, plot: bool = True):
-    """This function calculates the energy convergence with respect to ENCUT and plots the results.
 
-    Args:
-        path: the path to the folder containing the VASP input files
-        encut_list: the list of ENCUT values to run the calculations for
-        plot: If True, plots the results. Defaults to True.
-    """
-    original_dir = os.getcwd()
-    encut_conv_dir = os.path.join(path, "encut_conv")
-
-    os.chdir(encut_conv_dir)
-    data = []
-    for encut in encut_list:
-        energy = extract_energy(f"OSZICAR.{encut}")
-        data.append([encut, energy])
-    data = np.array(data)
-    sorted_indices = np.argsort(data[:, 0])
-    sorted_data = data[sorted_indices]
-    num_atoms = len(Structure.from_file(f"POSCAR.{encut}").sites)
-    sorted_data = np.column_stack((sorted_data, np.zeros(len(sorted_data))))
-    sorted_data[1:, 2] = (sorted_data[1:, 1] - sorted_data[:-1, 1]) / num_atoms * 1000
-    os.chdir(path)
-    np.savetxt("encut_energy.txt", sorted_data, fmt="%f")
-
-    if plot:
-        fig, axis = plt.subplots(1, 2, figsize=(12, 6))
-        axis[0].plot(sorted_data[:, 0], sorted_data[:, 1], marker="o")
-        axis[0].set_xlabel("ENCUT (eV)")
-        axis[0].set_ylabel("Energy (eV)")
-        axis[1].plot(sorted_data[:, 0], sorted_data[:, 2], marker="o")
-        axis[1].axhline(y=1, color="black", linestyle="--")
-        axis[1].axhline(y=-1, color="black", linestyle="--")
-        axis[1].set_xlabel("ENCUT")
-        axis[1].set_ylabel("ΔEnergy (meV/atom)")
-        plt.tight_layout()
-        plt.savefig("encut_conv.png", dpi=300)
-    os.chdir(original_dir)
