@@ -158,15 +158,13 @@ def recursive_extract_configuration_data(
     return df
 
 def extract_convergence_data(path: str) -> pd.DataFrame:
-    """Calculates the energy convergence with respect to ENCUT and plots the results.
+    """extracts and calculates energy convergence data for a series of VASP convergence calculations
 
     Args:
-        path (str): path to the folder containing the VASP input files
-        plot (bool, optional): If True, plots the energy per atom vs. ENCUT. Defaults to True.
+        path: path to the folder containing the VASP calculation outputs for convergence calculations.
 
     Returns:
-        pd.DataFrame: a pandas dataframe containing the ENCUT, energy, number of atoms, energy per atom, and difference in energy per atom.
-        go.Figure: a plotly figure of the energy per atom vs. ENCUT.
+        pd.DataFrame: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom
     """
 
     OSZICAR_files = [
@@ -224,7 +222,13 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
     
     return df
 
-def plot_format(fig, x_title, y_title):
+def plot_format(fig: go.Figure, x_title: str, y_title: str):
+    """Updates an x-y plotly figure to the basic format used in DFTTK.
+    Args:
+        fig: A figure with x-y data.
+        x_title (str): title of the x-axis.
+        y_title (str): title of the y-axis
+    """    
     fig.update_layout(
         font=dict(family="Devaju Sans"),
         plot_bgcolor="white",
@@ -261,6 +265,15 @@ def plot_format(fig, x_title, y_title):
 
 
 def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
+    """makes a plot for Encut convergence using plotly.
+
+    Args:
+        df: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom (as structured by the return of `extract_convergence_data()`). 
+        show_fig: wheather or not to call the fig.show() method. Defaults to True.
+
+    Returns:
+        go.Figure: a plotly figure of the energy per atom vs. ENCUT.
+    """    
     fig = go.Figure(
         data=[
             go.Scatter(
@@ -285,14 +298,14 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
 def calculate_encut_conv(
     path: str, plot: bool = True
 ) -> tuple[pd.DataFrame, go.Figure]:
-    """Calculates the energy convergence with respect to ENCUT and plots the results.
+    """Convenience fuction to calculate the energy convergence with respect to ENCUT and plots the results.
 
     Args:
-        path (str): path to the folder containing the VASP input files
-        plot (bool, optional): If True, plots the energy per atom vs. ENCUT. Defaults to True.
+        path: path to the folder containing the ENCUT convergence calculation results
+        plot: If True, plots the energy per atom vs. ENCUT. Defaults to True.
 
     Returns:
-        pd.DataFrame: a pandas dataframe containing the ENCUT, energy, number of atoms, energy per atom, and difference in energy per atom.
+        pd.DataFrame: a pandas dataframe containing the ENCUT, kpoint_grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom.
         go.Figure: a plotly figure of the energy per atom vs. ENCUT.
     """
     df = extract_convergence_data(path)
@@ -306,6 +319,15 @@ def calculate_encut_conv(
 
 
 def plot_kpoint_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
+    """makes a plot for k-point convergence using plotly.
+
+    Args:
+        df: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom (as structured by the return of `extract_convergence_data()`). 
+        show_fig: wheather or not to call the fig.show() method. Defaults to True.
+
+    Returns:
+        go.Figure: a plotly figure of the energy per atom vs. k-point density (kppa).
+    """
     fig = go.Figure(
         data=[
             go.Scatter(
@@ -332,10 +354,15 @@ def plot_kpoint_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
 def calculate_kpoint_conv(
     path: str, plot: bool = True
 ) -> tuple[pd.DataFrame, go.Figure]:
-    """Calculates the energy convergence with respect to k-point density and plots the results.
-
+    """Convenience fuction to calculate the energy convergence with respect to k-point density and plots the results.
+    
     Args:
-        path (str): the path to the folder containing the VASP input files
+        path: path to the folder containing the kpoint convergence calculation results
+        plot: If True, plots the energy per atom vs. k-point density (kppa). Defaults to True.
+
+    Returns:
+        pd.DataFrame: a pandas dataframe containing the ENCUT, kpoint_grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom.
+        go.Figure: a plotly figure of the energy per atom vs. ENCUT.
     """
 
     df = extract_convergence_data(path)
