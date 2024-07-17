@@ -59,7 +59,7 @@ def extract_kpoints(path: str) -> list[str]:
         path (str): the path to an OUTCAR file
 
     Returns:
-        list[str]: kpoints in the format ['9', '9', '9']
+        list[int]: kpoints in the format [9, 9, 9]
     """
 
     with open(path, "r") as file:
@@ -70,6 +70,7 @@ def extract_kpoints(path: str) -> list[str]:
         for line in lines:
             if "generate k-points for" in line:
                 kpoints = line.split()[3:6]
+                kpoints = [int(x) for x in kpoints]
                 break
     return kpoints
 
