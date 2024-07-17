@@ -158,15 +158,13 @@ def recursive_extract_configuration_data(
     return df
 
 def extract_convergence_data(path: str) -> pd.DataFrame:
-    """Calculates the energy convergence with respect to ENCUT and plots the results.
+    """extracts and calculates energy convergence data for a series of VASP convergence calculations
 
     Args:
-        path (str): path to the folder containing the VASP input files
-        plot (bool, optional): If True, plots the energy per atom vs. ENCUT. Defaults to True.
+        path: path to the folder containing the VASP calculation outputs for convergence calculations.
 
     Returns:
-        pd.DataFrame: a pandas dataframe containing the ENCUT, energy, number of atoms, energy per atom, and difference in energy per atom.
-        go.Figure: a plotly figure of the energy per atom vs. ENCUT.
+        pd.DataFrame: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom
     """
 
     OSZICAR_files = [
