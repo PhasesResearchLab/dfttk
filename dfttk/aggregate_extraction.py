@@ -267,6 +267,15 @@ def plot_format(fig: go.Figure, x_title: str, y_title: str):
 
 
 def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
+    """makes a plot for Encut convergence using plotly.
+
+    Args:
+        df: a pandas dataframe containing the ENCUT, energy, number of atoms, energy per atom, and difference in energy per atom (as structured by the return of `extract_convergence_data()`). 
+        show_fig: wheather or not to call the fig.show() method. Defaults to True.
+
+    Returns:
+        go.Figure: a plotly figure of the energy per atom vs. ENCUT.
+    """    
     fig = go.Figure(
         data=[
             go.Scatter(
@@ -291,14 +300,14 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
 def calculate_encut_conv(
     path: str, plot: bool = True
 ) -> tuple[pd.DataFrame, go.Figure]:
-    """Calculates the energy convergence with respect to ENCUT and plots the results.
+    """ convenience fuction to calculate the energy convergence with respect to ENCUT and plots the results.
 
     Args:
-        path (str): path to the folder containing the VASP input files
-        plot (bool, optional): If True, plots the energy per atom vs. ENCUT. Defaults to True.
+        path: path to the folder containing the VASP input files
+        plot: If True, plots the energy per atom vs. ENCUT. Defaults to True.
 
     Returns:
-        pd.DataFrame: a pandas dataframe containing the ENCUT, energy, number of atoms, energy per atom, and difference in energy per atom.
+        pd.DataFrame: a pandas dataframe containing the ENCUT, kpoint_grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom.
         go.Figure: a plotly figure of the energy per atom vs. ENCUT.
     """
     df = extract_convergence_data(path)
