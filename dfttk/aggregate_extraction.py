@@ -270,7 +270,7 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
     """makes a plot for Encut convergence using plotly.
 
     Args:
-        df: a pandas dataframe containing the ENCUT, energy, number of atoms, energy per atom, and difference in energy per atom (as structured by the return of `extract_convergence_data()`). 
+        df: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom (as structured by the return of `extract_convergence_data()`). 
         show_fig: wheather or not to call the fig.show() method. Defaults to True.
 
     Returns:
