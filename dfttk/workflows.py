@@ -9,23 +9,17 @@ import shutil
 import sys
 
 # Related third party imports
-import numpy as np
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 from natsort import natsorted
 
 # Local application/library specific imports
 from custodian.custodian import Custodian
 from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
-from pymatgen.io.vasp.inputs import Incar, Kpoints
+from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Chgcar
 
 # DFTTK imports
 from dfttk.data_extraction import extract_volume
-from dfttk.data_extraction import extract_energy
-from dfttk.data_extraction import extract_kpoints
 
 
 def three_step_relaxation(
@@ -723,43 +717,6 @@ def process_phonon_dos_YPHON(path: str):
             os.path.join(path, "YPHON_results", "volph_" + phonon_folder.split("_")[1]),
         )
 
-
-def plot_format(fig, x_title, y_title):
-    fig.update_layout(
-        font=dict(family="Devaju Sans"),
-        plot_bgcolor="white",
-        width=840,
-        height=600,
-        legend=dict(font=dict(size=20, color="black")),
-        xaxis=dict(
-            title=x_title,
-            titlefont=dict(size=22, color="rgb(0,0,0)"),
-            showline=True,
-            linecolor="black",
-            linewidth=1,
-            ticks="outside",
-            mirror="allticks",
-            tickwidth=1,
-            tickcolor="black",
-            showgrid=False,
-            tickfont=dict(color="rgb(0,0,0)", size=20),
-        ),
-        yaxis=dict(
-            title=y_title,
-            titlefont=dict(size=22, color="rgb(0,0,0)"),
-            showline=True,
-            linecolor="black",
-            linewidth=1,
-            ticks="outside",
-            mirror="allticks",
-            tickwidth=1,
-            tickcolor="black",
-            showgrid=False,
-            tickfont=dict(color="rgb(0,0,0)", size=20),
-        ),
-    )
-
-
 def kpoints_conv_test(
     path: str,
     vasp_cmd: list[str],
@@ -831,92 +788,7 @@ def kpoints_conv_test(
         if os.path.isfile(f"PROCAR.{kppa}"):
             os.remove(f"PROCAR.{kppa}")
     os.chdir(original_dir)
-
-    calculate_kpoint_conv(path, kppa_list)
-
-
-# TODO: Incorporate other convergence criteria
-# See https://github.com/kavanase/vaspup2.0
-def calculate_kpoint_conv(
-    path: str, plot: bool = True
-) -> tuple[pd.DataFrame, go.Figure]:
-    """Calculates the energy convergence with respect to k-point density and plots the results.
-
-    Args:
-        path (str): the path to the folder containing the VASP input files
-    """
-
-    current_dir = os.getcwd()
-    kpoints_conv_dir = os.path.join(path, "kpoints_conv")
-    os.chdir(kpoints_conv_dir)
-
-    OSZICAR_files = [
-        file
-        for file in os.listdir(kpoints_conv_dir)
-        if os.path.isfile(os.path.join(kpoints_conv_dir, file))
-        and file.startswith("OSZICAR")
-    ]
-    kppa_list = [int(file.split(".")[1]) for file in OSZICAR_files]
-    kppa_list = natsorted(kppa_list)
-
-    kpoint_grid_list = []
-    energy_list = []
-    for kppa in kppa_list:
-        energy = extract_energy(f"OSZICAR.{kppa}")
-        kpoint_grid = extract_kpoints(f"OUTCAR.{kppa}")
-        energy_list.append(energy)
-        kpoint_grid_list.append(kpoint_grid)
-
-    number_of_atoms = len(Structure.from_file(f"POSCAR.{kppa_list[0]}").sites)
-    number_of_atoms_list = [number_of_atoms] * len(kppa_list)
-
-    energy_per_atom_list = [energy / number_of_atoms for energy in energy_list]
-
-    difference_meV_per_atom_list = [
-        (energy_per_atom_list[i] - energy_per_atom_list[i - 1]) * 1000
-        for i in range(1, len(energy_per_atom_list))
-    ]
-    difference_meV_per_atom_list.insert(0, float("nan"))
-
-    os.chdir(current_dir)
-
-    df = pd.DataFrame(
-        {
-            "kpoint_density": kppa_list,
-            "kpoint_grid": kpoint_grid_list,
-            "energy": energy_list,
-            "number_of_atoms": number_of_atoms_list,
-            "energy_per_atom": energy_per_atom_list,
-            "difference_meV_per_atom": difference_meV_per_atom_list,
-        }
-    )
-
-    df = df.drop_duplicates(subset=["kpoint_grid"])
-
-    if plot:
-        fig = go.Figure(
-            data=[
-                go.Scatter(
-                    x=df["kpoint_density"],
-                    y=df["energy_per_atom"],
-                    mode="lines+markers",
-                )
-            ],
-        )
-        plot_format(fig, "KPPA", "Energy (eV/atom)")
-
-        incar = Incar.from_file(os.path.join(kpoints_conv_dir, f"INCAR.{kppa_list[0]}"))
-        encut = incar["ENCUT"]
-        fig.update_layout(
-            title=dict(
-                text=f"ENCUT: {encut} eV",
-                font=dict(size=24, color="rgb(0,0,0)"),
-            )
-        )
-        fig.show()
-
-    return df, fig
-
+    
 
 def encut_conv_test(
     path: str,
@@ -991,78 +863,4 @@ def encut_conv_test(
     os.chdir(original_dir)
 
 
-def calculate_encut_conv(
-    path: str, plot: bool = True
-) -> tuple[pd.DataFrame, go.Figure]:
-    """Calculates the energy convergence with respect to ENCUT and plots the results.
 
-    Args:
-        path (str): path to the folder containing the VASP input files
-        plot (bool, optional): If True, plots the energy per atom vs. ENCUT. Defaults to True.
-
-    Returns:
-        pd.DataFrame: a pandas dataframe containing the ENCUT, energy, number of atoms, energy per atom, and difference in energy per atom.
-        go.Figure: a plotly figure of the energy per atom vs. ENCUT.
-    """
-    current_dir = os.getcwd()
-    encut_conv_dir = os.path.join(path, "encut_conv")
-    os.chdir(encut_conv_dir)
-
-    OSZICAR_files = [
-        file
-        for file in os.listdir(encut_conv_dir)
-        if os.path.isfile(os.path.join(encut_conv_dir, file))
-        and file.startswith("OSZICAR")
-    ]
-    encut_list = [int(file.split(".")[1]) for file in OSZICAR_files]
-
-    energy_list = []
-    for encut in encut_list:
-        energy = extract_energy(f"OSZICAR.{encut}")
-        energy_list.append(energy)
-
-    number_of_atoms = len(Structure.from_file(f"POSCAR.{encut_list[0]}").sites)
-    number_of_atoms_list = [number_of_atoms] * len(encut_list)
-
-    energy_per_atom_list = [energy / number_of_atoms for energy in energy_list]
-
-    difference_meV_per_atom_list = [
-        (energy_per_atom_list[i] - energy_per_atom_list[i - 1]) * 1000
-        for i in range(1, len(energy_per_atom_list))
-    ]
-    difference_meV_per_atom_list.insert(0, float("nan"))
-
-    os.chdir(current_dir)
-
-    df = pd.DataFrame(
-        {
-            "ENCUT": encut_list,
-            "energy": energy_list,
-            "number_of_atoms": number_of_atoms_list,
-            "energy_per_atom": energy_per_atom_list,
-            "difference_meV_per_atom": difference_meV_per_atom_list,
-        }
-    )
-
-    if plot:
-        fig = go.Figure(
-            data=[
-                go.Scatter(
-                    x=df["ENCUT"],
-                    y=df["energy_per_atom"],
-                    mode="lines+markers",
-                )
-            ]
-        )
-        plot_format(fig, "ENCUT", "Energy (eV/atom)")
-        outcar_path = os.path.join(encut_conv_dir, "OUTCAR." + str(encut_list[0]))
-        kpoints = extract_kpoints(outcar_path)
-        fig.update_layout(
-            title=dict(
-                text=f"k-points: {kpoints[0]} x {kpoints[1]} x {kpoints[2]}",
-                font=dict(size=24, color="rgb(0,0,0)"),
-            )
-        )
-        fig.show()
-
-    return df, fig
