@@ -224,7 +224,13 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
     
     return df
 
-def plot_format(fig, x_title, y_title):
+def plot_format(fig: go.Figure, x_title: str, y_title: str):
+    """Updates an x-y plotly figure to the basic format used in DFTTK.
+    Args:
+        fig: A figure with x-y data.
+        x_title (str): title of the x-axis.
+        y_title (str): title of the y-axis
+    """    
     fig.update_layout(
         font=dict(family="Devaju Sans"),
         plot_bgcolor="white",
