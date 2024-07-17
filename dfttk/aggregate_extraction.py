@@ -300,7 +300,7 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
 def calculate_encut_conv(
     path: str, plot: bool = True
 ) -> tuple[pd.DataFrame, go.Figure]:
-    """ convenience fuction to calculate the energy convergence with respect to ENCUT and plots the results.
+    """convenience fuction to calculate the energy convergence with respect to ENCUT and plots the results.
 
     Args:
         path: path to the folder containing the VASP input files
