@@ -303,7 +303,7 @@ def calculate_encut_conv(
     """Convenience fuction to calculate the energy convergence with respect to ENCUT and plots the results.
 
     Args:
-        path: path to the folder containing the VASP input files
+        path: path to the folder containing the ENCUT convergence calculation results
         plot: If True, plots the energy per atom vs. ENCUT. Defaults to True.
 
     Returns:
@@ -356,10 +356,15 @@ def plot_kpoint_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
 def calculate_kpoint_conv(
     path: str, plot: bool = True
 ) -> tuple[pd.DataFrame, go.Figure]:
-    """Calculates the energy convergence with respect to k-point density and plots the results.
-
+    """Convenience fuction to calculate the energy convergence with respect to k-point density and plots the results.
+    
     Args:
-        path (str): the path to the folder containing the VASP input files
+        path: path to the folder containing the kpoint convergence calculation results
+        plot: If True, plots the energy per atom vs. k-point density (kppa). Defaults to True.
+
+    Returns:
+        pd.DataFrame: a pandas dataframe containing the ENCUT, kpoint_grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom.
+        go.Figure: a plotly figure of the energy per atom vs. ENCUT.
     """
 
     df = extract_convergence_data(path)
