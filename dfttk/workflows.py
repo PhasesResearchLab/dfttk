@@ -453,13 +453,17 @@ def charge_density_difference(
     return difference
 
 
-def custodian_errors_location(path: str) -> None:
+def custodian_errors_location(path: str) -> list[str]:   
     """Prints the location of the custodian errors in the path.
 
     Args:
         path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
+    
+    Returns:
+        list[str]: volume folders that encountered VASP errors
     """
 
+    vol_folders_errors = []
     vol_folders = [d for d in os.listdir(path) if d.startswith("vol")]
     for vol_folder in vol_folders:
         error_folders = [
@@ -469,6 +473,9 @@ def custodian_errors_location(path: str) -> None:
         ]
         if len(error_folders) > 0:
             print(f"In {vol_folder} there are error folders: {error_folders}")
+            vol_folders_errors.append(vol_folder)
+    
+    return vol_folders_errors
 
 
 def NELM_reached(path: str) -> None:
