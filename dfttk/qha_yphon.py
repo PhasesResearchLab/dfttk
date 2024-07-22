@@ -70,9 +70,6 @@ def load_phonon_dos(path: str) -> pd.DataFrame:
         pd.DataFrame: pandas dataframe containing the phonon DOS data
     """
 
-    original_path = os.getcwd()
-    os.chdir(path)
-
     file_list = os.listdir(path)
     vdos_files = [file for file in file_list if file.startswith("vdos_")]
     volph_files = [file for file in file_list if file.startswith("volph_")]
@@ -81,10 +78,12 @@ def load_phonon_dos(path: str) -> pd.DataFrame:
 
     dataframes = []
     for i in range(len(vdos_files)):
-        volph_content = float(open(volph_files[i]).readline().strip())
+        volph_content = float(
+            open(os.path.join(path, volph_files[i])).readline().strip()
+        )
         df = pd.read_csv(
-            vdos_files[i],
-            sep="\s+",
+            os.path.join(path, vdos_files[i]),
+            sep="\\s+",
             header=None,
             names=["frequency_hz", "dos_1_per_hz"],
         )
@@ -92,8 +91,6 @@ def load_phonon_dos(path: str) -> pd.DataFrame:
         dataframes.append(df)
 
     vdos_data = pd.concat(dataframes)
-
-    os.chdir(original_path)
 
     return vdos_data
 
@@ -606,9 +603,8 @@ def quasi_harmonic(
     harmonic_properties_fit: pd.DataFrame,
     P: int = 0,
     plot: bool = True,
-    plot_type: str = 'default',
+    plot_type: str = "default",
 ) -> pd.DataFrame:
-    
     """Calculates the quasi-harmonic properties
 
     Args:
@@ -708,14 +704,16 @@ def quasi_harmonic(
     return quasi_harmonic_properties
 
 
-def plot_quasi_harmonic(quasi_harmonic_properties: pd.DataFrame, plot_type: str = 'default'):
+def plot_quasi_harmonic(
+    quasi_harmonic_properties: pd.DataFrame, plot_type: str = "default"
+):
     """Plots the quasi-harmonic properties
 
     Args:
         quasi_harmonic_properties (pd.DataFrame): pandas dataframe containing the quasi-harmonic properties from the quasi_harmonic function
         plot_type (str, optional): Type of plots to include. Defaults to 'default'.
-    """    
-    
+    """
+
     temperature_list = quasi_harmonic_properties["temperature"].values
     spaces = len(temperature_list) - 1
     step = int(spaces / 9)
@@ -726,7 +724,7 @@ def plot_quasi_harmonic(quasi_harmonic_properties: pd.DataFrame, plot_type: str 
 
     scale_atoms = quasi_harmonic_properties["number_of_atoms"].iloc[0]
 
-    if plot_type == 'default' or plot_type == 'all':
+    if plot_type == "default" or plot_type == "all":
         # Free energy plot
         fig = go.Figure()
         for temperature in selected_temperatures:
@@ -863,7 +861,7 @@ def plot_quasi_harmonic(quasi_harmonic_properties: pd.DataFrame, plot_type: str 
         )
         fig.show()
 
-    if plot_type == 'all':
+    if plot_type == "all":
         # Enthalpy plot
         fig = go.Figure()
         x = temperature_list
@@ -901,7 +899,9 @@ def plot_quasi_harmonic(quasi_harmonic_properties: pd.DataFrame, plot_type: str 
                 name=f"{temperature} K",
             ),
         )
-        plot_format(fig, f"Temperature (K)", "Bulk modulus (GPa)", width=600, height=600)
+        plot_format(
+            fig, f"Temperature (K)", "Bulk modulus (GPa)", width=600, height=600
+        )
         fig.show()
 
         # Gibbs energy plot

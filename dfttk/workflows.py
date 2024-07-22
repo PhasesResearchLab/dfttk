@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import sys
+import subprocess
 
 # Related third party imports
 from natsort import natsorted
@@ -666,56 +667,55 @@ def process_phonon_dos_YPHON(path: str):
     ]
 
     for phonon_folder in phonon_folders:
-        os.chdir(os.path.join(path, phonon_folder))
-        if not os.path.exists("phonon_dos"):
-            os.makedirs("phonon_dos", exist_ok=True)
+        phonon_dos_folder = os.path.join(path, phonon_folder, "phonon_dos")
+        phonon_folder = os.path.join(path, phonon_folder)
+        if not os.path.exists(phonon_dos_folder):
+            os.makedirs(phonon_dos_folder, exist_ok=True)
         shutil.copy(
-            os.path.join(path, phonon_folder, "CONTCAR.2phonons"),
-            os.path.join(path, phonon_folder, "phonon_dos", "CONTCAR"),
+            os.path.join(phonon_folder, "CONTCAR.2phonons"),
+            os.path.join(phonon_dos_folder, "CONTCAR"),
         )
         shutil.copy(
-            os.path.join(path, phonon_folder, "OUTCAR.2phonons"),
-            os.path.join(path, phonon_folder, "phonon_dos", "OUTCAR"),
+            os.path.join(phonon_folder, "OUTCAR.2phonons"),
+            os.path.join(phonon_dos_folder, "OUTCAR"),
         )
         shutil.copy(
-            os.path.join(path, phonon_folder, "vasprun.xml.2phonons"),
-            os.path.join(path, phonon_folder, "phonon_dos", "vasprun.xml"),
+            os.path.join(phonon_folder, "vasprun.xml.2phonons"),
+            os.path.join(phonon_dos_folder, "vasprun.xml"),
         )
 
-        os.chdir(os.path.join(path, phonon_folder, "phonon_dos"))
-        index = phonon_folder.split("_")[1]
-        structure = Structure.from_file("CONTCAR")
+        index = phonon_folder.split("_")[-1]
+        structure = Structure.from_file(os.path.join(phonon_dos_folder, "CONTCAR"))
         number_of_atoms = structure.num_sites
-        volume = extract_volume("CONTCAR")
+        volume = extract_volume(os.path.join(phonon_dos_folder, "CONTCAR"))
         volume_per_atom = volume / number_of_atoms
 
-        with open("volph_" + index, "w") as f:
+        with open(os.path.join(phonon_dos_folder, "volph_" + index), "w") as f:
             f.write(str(volume_per_atom))
 
         # YPHON commands
-        os.system("vasp_fij")
-        os.system("Yphon <superfij.out")
+        subprocess.run(["vasp_fij"], cwd=phonon_dos_folder)
+        subprocess.run(["Yphon <superfij.out"], cwd=phonon_dos_folder, shell=True)
 
-        os.rename("vdos.out", "vdos_" + index)
-        os.chdir(path)
+        os.rename(
+            os.path.join(phonon_dos_folder, "vdos.out"),
+            os.path.join(phonon_dos_folder, "vdos_" + index),
+        )
 
-    os.makedirs("YPHON_results", exist_ok=True)
+    os.makedirs(os.path.join(path, "YPHON_results"), exist_ok=True)
     for phonon_folder in phonon_folders:
+        phonon_dos_folder = os.path.join(path, phonon_folder, "phonon_dos")
+        phonon_folder = os.path.join(path, phonon_folder)
+        index = phonon_folder.split("_")[-1]
         shutil.copy(
-            os.path.join(
-                path, phonon_folder, "phonon_dos", "vdos_" + phonon_folder.split("_")[1]
-            ),
-            os.path.join(path, "YPHON_results", "vdos_" + phonon_folder.split("_")[1]),
+            os.path.join(phonon_dos_folder, "vdos_" + index),
+            os.path.join(path, "YPHON_results", "vdos_" + index),
         )
         shutil.copy(
-            os.path.join(
-                path,
-                phonon_folder,
-                "phonon_dos",
-                "volph_" + phonon_folder.split("_")[1],
-            ),
-            os.path.join(path, "YPHON_results", "volph_" + phonon_folder.split("_")[1]),
+            os.path.join(phonon_dos_folder, "volph_" + index),
+            os.path.join(path, "YPHON_results", "volph_" + index),
         )
+
 
 def kpoints_conv_test(
     path: str,
@@ -788,7 +788,7 @@ def kpoints_conv_test(
         if os.path.isfile(f"PROCAR.{kppa}"):
             os.remove(f"PROCAR.{kppa}")
     os.chdir(original_dir)
-    
+
 
 def encut_conv_test(
     path: str,
@@ -861,6 +861,3 @@ def encut_conv_test(
         if os.path.isfile(f"PROCAR.{encut}"):
             os.remove(f"PROCAR.{encut}")
     os.chdir(original_dir)
-
-
-
