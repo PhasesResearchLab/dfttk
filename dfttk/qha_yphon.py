@@ -832,7 +832,7 @@ def plot_quasi_harmonic(
         plot_format(
             fig,
             f"Temperature (K)",
-            f"Entropy eV/K/{scale_atoms} atoms",
+            f"Entropy (eV/K/{scale_atoms} atoms)",
             width=600,
             height=600,
         )
@@ -855,7 +855,7 @@ def plot_quasi_harmonic(
         plot_format(
             fig,
             f"Temperature (K)",
-            f"C<sub>p</sub> eV/K/{scale_atoms} atoms",
+            f"C<sub>p</sub> (eV/K/{scale_atoms} atoms)",
             width=600,
             height=600,
         )
