@@ -453,18 +453,19 @@ def charge_density_difference(
     return difference
 
 
-def custodian_errors_location(path: str) -> list[str]:   
+def custodian_errors_location(path: str) -> list[str]:
     """Prints the location of the custodian errors in the path.
 
     Args:
         path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
-    
+
     Returns:
         list[str]: volume folders that encountered VASP errors
+        list[str]: phonon folders that encountered VASP errors
     """
 
     vol_folders_errors = []
-    vol_folders = [d for d in os.listdir(path) if d.startswith("vol")]
+    vol_folders = [d for d in os.listdir(path) if d.startswith("vol") and os.path.isdir(os.path.join(path, d))]
     for vol_folder in vol_folders:
         error_folders = [
             f
@@ -475,7 +476,19 @@ def custodian_errors_location(path: str) -> list[str]:
             print(f"In {vol_folder} there are error folders: {error_folders}")
             vol_folders_errors.append(vol_folder)
     
-    return vol_folders_errors
+    phonon_folders_errors = []
+    phonon_folders = [d for d in os.listdir(path) if d.startswith("phonon") and os.path.isdir(os.path.join(path, d))]
+    for phonon_folder in phonon_folders:
+        error_folders = [
+            f
+            for f in os.listdir(os.path.join(path, phonon_folder))
+            if f.startswith("error")
+        ]
+        if len(error_folders) > 0:
+            print(f"In {phonon_folder} there are error folders: {error_folders}")
+            phonon_folders_errors.append(phonon_folder)
+    
+    return vol_folders_errors, phonon_folders_errors
 
 
 def NELM_reached(path: str) -> None:
