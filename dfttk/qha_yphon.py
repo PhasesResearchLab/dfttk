@@ -493,7 +493,7 @@ def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
         entropy_polynomial_list.append(entropy_polynomial)
         heat_capacity_polynomial_list.append(heat_capacity_polynomial)
 
-        volume_fit = np.linspace(min(volume) * 0.98, max(volume) * 1.02, 2000)
+        volume_fit = np.linspace(min(volume) * 0.98, max(volume) * 1.02, 1000)
         f_vib_fit = free_energy_polynomial(volume_fit)
         s_vib_fit = entropy_polynomial(volume_fit)
         cv_vib_fit = heat_capacity_polynomial(volume_fit)
@@ -633,6 +633,7 @@ def quasi_harmonic(
     # For each temperature, add energy_eos to f_vib_fit and fit to an EOS
     free_energy_list = []
     volume_range_list = []
+    eos_constants_list = []
     V0_list = []
     F0_list = []
     B_list = []
@@ -648,7 +649,8 @@ def quasi_harmonic(
         free_energy_list.append(free_energy)
         volume_range_list.append(volume_range)
 
-        _, eos_parameters, _, _, _ = eos_fit.BM4(volume_range, free_energy)
+        eos_constants, eos_parameters, _, _, _ = eos_fit.BM4(volume_range, free_energy)
+        eos_constants_list.append(eos_constants)
         V0_list.append(eos_parameters[0])
         F0_list.append(eos_parameters[1])
         B_list.append(eos_parameters[2])
@@ -663,16 +665,18 @@ def quasi_harmonic(
     # Create a quasi-harmonic dataframe
     quasi_harmonic_properties = pd.DataFrame(
         data={
+            "pressure": [P] * len(temperature_list),
             "number_of_atoms": [harmonic_properties_fit["number_of_atoms"].iloc[0]]
             * len(temperature_list),
             "temperature": temperature_list,
             "volume_range": volume_range_list,
             "free_energy": free_energy_list,
+            "eos_constants": eos_constants_list,
             "V0": V0_list,
             "F0": F0_list,
             "B": B_list,
             "BP": BP_list,
-            "S0": S0_list,  # Review
+            "S0": S0_list,
         }
     )
 
