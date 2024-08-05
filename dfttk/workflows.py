@@ -18,6 +18,7 @@ from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Chgcar
+from pymatgen.transformations import SupercellTransformation
 
 # DFTTK imports
 from dfttk.data_extraction import extract_volume
@@ -571,18 +572,18 @@ def run_phonons(
 def phonons_parallel(
     path: str,
     phonon_volumes: list[float],
-    supercell_size: list[int],
     kppa: float,
     run_file: str,
+    scaling_matrix: tuple[tuple[int]]=((1, 0, 0), (0, 1, 0), (0, 0, 1)),
 ) -> None:
     """Runs the run_phonons function in parallel for a list of phonon volumes.
 
     Args:
-        path (str): path to the folder containing the VASP input files.
-        phonon_volumes (list[float]): a list of volumes to run the phonon calculations for.
-        supercell_size (list[int]): to create a supercell of the structure.
-        kppa (float): k-point grid density.
-        run_file (str): bash script to run the phonon calculations.
+        path: path to the folder containing the VASP input files.
+        phonon_volumes: a list of volumes to run the phonon calculations for.
+        kppa: k-point grid density.
+        run_file: bash script to run the phonon calculations.
+        scaling_matrix: scaling matrix for the supercell. The default is the identity matrix.
     """
 
     # Create a new run_file to run the phonon calculations
@@ -653,13 +654,15 @@ def phonons_parallel(
                 shutil.copy2(file_source, file_dest)
 
     # Create a supercell and write the KPOINTS file
+    transformation = SupercellTransformation(scaling_matrix)
+    
     for phonon_volume, phonon_folder in phonon_volumes_and_folders:
         try: # to get a magnetic structure
             structure = get_magnetic_structure(
                 os.path.join(path,f"vol_{phonon_folder}","CONTCAR.3static"),
                 os.path.join(path,f"vol_{phonon_folder}","OUTCAR.3static")
                 ) # if magnetic data not in OUTCAR, will raise an exception.
-            structure.make_supercell(supercell_size)
+            structure = transformation.apply_transformation(structure)
             structure.to_file(
                 os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
             )
@@ -681,11 +684,11 @@ def phonons_parallel(
             structure = Structure.from_file(
                 os.path.join(path, f"phonon_{phonon_folder}", "POSCAR")
             )
-            structure.make_supercell(supercell_size)
+            structure = transformation.apply_transformation(structure)
             structure.to_file(
                 os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
             )
-        
+            
         kpoints = Kpoints.automatic_density(structure, kppa, force_gamma=True)
         kpoints.write_file(os.path.join(path, f"phonon_{phonon_folder}", "KPOINTS"))
 
