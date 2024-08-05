@@ -454,14 +454,19 @@ def charge_density_difference(
     return difference
 
 
-def custodian_errors_location(path: str) -> None:
+def custodian_errors_location(path: str) -> list[str]:
     """Prints the location of the custodian errors in the path.
 
     Args:
         path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
+
+    Returns:
+        list[str]: volume folders that encountered VASP errors
+        list[str]: phonon folders that encountered VASP errors
     """
 
-    vol_folders = [d for d in os.listdir(path) if d.startswith("vol")]
+    vol_folders_errors = []
+    vol_folders = [d for d in os.listdir(path) if d.startswith("vol") and os.path.isdir(os.path.join(path, d))]
     for vol_folder in vol_folders:
         error_folders = [
             f
@@ -470,6 +475,21 @@ def custodian_errors_location(path: str) -> None:
         ]
         if len(error_folders) > 0:
             print(f"In {vol_folder} there are error folders: {error_folders}")
+            vol_folders_errors.append(vol_folder)
+    
+    phonon_folders_errors = []
+    phonon_folders = [d for d in os.listdir(path) if d.startswith("phonon") and os.path.isdir(os.path.join(path, d))]
+    for phonon_folder in phonon_folders:
+        error_folders = [
+            f
+            for f in os.listdir(os.path.join(path, phonon_folder))
+            if f.startswith("error")
+        ]
+        if len(error_folders) > 0:
+            print(f"In {phonon_folder} there are error folders: {error_folders}")
+            phonon_folders_errors.append(phonon_folder)
+    
+    return vol_folders_errors, phonon_folders_errors
 
 
 def NELM_reached(path: str) -> None:
@@ -693,56 +713,55 @@ def process_phonon_dos_YPHON(path: str):
     ]
 
     for phonon_folder in phonon_folders:
-        os.chdir(os.path.join(path, phonon_folder))
-        if not os.path.exists("phonon_dos"):
-            os.makedirs("phonon_dos", exist_ok=True)
+        phonon_dos_folder = os.path.join(path, phonon_folder, "phonon_dos")
+        phonon_folder = os.path.join(path, phonon_folder)
+        if not os.path.exists(phonon_dos_folder):
+            os.makedirs(phonon_dos_folder, exist_ok=True)
         shutil.copy(
-            os.path.join(path, phonon_folder, "CONTCAR.2phonons"),
-            os.path.join(path, phonon_folder, "phonon_dos", "CONTCAR"),
+            os.path.join(phonon_folder, "CONTCAR.2phonons"),
+            os.path.join(phonon_dos_folder, "CONTCAR"),
         )
         shutil.copy(
-            os.path.join(path, phonon_folder, "OUTCAR.2phonons"),
-            os.path.join(path, phonon_folder, "phonon_dos", "OUTCAR"),
+            os.path.join(phonon_folder, "OUTCAR.2phonons"),
+            os.path.join(phonon_dos_folder, "OUTCAR"),
         )
         shutil.copy(
-            os.path.join(path, phonon_folder, "vasprun.xml.2phonons"),
-            os.path.join(path, phonon_folder, "phonon_dos", "vasprun.xml"),
+            os.path.join(phonon_folder, "vasprun.xml.2phonons"),
+            os.path.join(phonon_dos_folder, "vasprun.xml"),
         )
 
-        os.chdir(os.path.join(path, phonon_folder, "phonon_dos"))
-        index = phonon_folder.split("_")[1]
-        structure = Structure.from_file("CONTCAR")
+        index = phonon_folder.split("_")[-1]
+        structure = Structure.from_file(os.path.join(phonon_dos_folder, "CONTCAR"))
         number_of_atoms = structure.num_sites
-        volume = extract_volume("CONTCAR")
+        volume = extract_volume(os.path.join(phonon_dos_folder, "CONTCAR"))
         volume_per_atom = volume / number_of_atoms
 
-        with open("volph_" + index, "w") as f:
+        with open(os.path.join(phonon_dos_folder, "volph_" + index), "w") as f:
             f.write(str(volume_per_atom))
 
         # YPHON commands
-        os.system("vasp_fij")
-        os.system("Yphon <superfij.out")
+        subprocess.run(["vasp_fij"], cwd=phonon_dos_folder)
+        subprocess.run(["Yphon <superfij.out"], cwd=phonon_dos_folder, shell=True)
 
-        os.rename("vdos.out", "vdos_" + index)
-        os.chdir(path)
+        os.rename(
+            os.path.join(phonon_dos_folder, "vdos.out"),
+            os.path.join(phonon_dos_folder, "vdos_" + index),
+        )
 
-    os.makedirs("YPHON_results", exist_ok=True)
+    os.makedirs(os.path.join(path, "YPHON_results"), exist_ok=True)
     for phonon_folder in phonon_folders:
+        phonon_dos_folder = os.path.join(path, phonon_folder, "phonon_dos")
+        phonon_folder = os.path.join(path, phonon_folder)
+        index = phonon_folder.split("_")[-1]
         shutil.copy(
-            os.path.join(
-                path, phonon_folder, "phonon_dos", "vdos_" + phonon_folder.split("_")[1]
-            ),
-            os.path.join(path, "YPHON_results", "vdos_" + phonon_folder.split("_")[1]),
+            os.path.join(phonon_dos_folder, "vdos_" + index),
+            os.path.join(path, "YPHON_results", "vdos_" + index),
         )
         shutil.copy(
-            os.path.join(
-                path,
-                phonon_folder,
-                "phonon_dos",
-                "volph_" + phonon_folder.split("_")[1],
-            ),
-            os.path.join(path, "YPHON_results", "volph_" + phonon_folder.split("_")[1]),
+            os.path.join(phonon_dos_folder, "volph_" + index),
+            os.path.join(path, "YPHON_results", "volph_" + index),
         )
+
 
 def kpoints_conv_test(
     path: str,
@@ -817,33 +836,74 @@ def kpoints_conv_test(
     os.chdir(original_dir)
 
 
-def run_configurations(
-    args: list[str],
-    configurations_dir:str = 'configurations'
-) -> None:
-    """
-    Executes subprocess.run in each configuration directory. NOT RECOMMENED.
-    This function does not use custodian, and so doesn't have proper error
-    handling. However, if you wish to avoid the use of custodian, have at it.
+def encut_conv_test(
+    path: str,
+    vasp_cmd: list[str],
+    handlers: list[str],
+    encut_list: list[int] = [
+        270,
+        320,
+        370,
+        420,
+        470,
+        520,
+        570,
+        620,
+        670,
+        720,
+        770,
+        820,
+    ],
+    backup: bool = False,
+):
+    """Runs a series of VASP calculations with different ENCUT values for convergence testing.
+
     Args:
-        args: args of subprocess.run()
-        configurations_dir: path to configurations directory containing config_x folders. Defaults to 'configurations'.
-    """   
-    # Change to the configurations directory
-    cwd = os.getcwd()
-    try:
-        os.chdir(configurations_dir)
-        
-        # Get a list of directories starting with 'config_', sorted naturally
-        dirs = [d for d in os.listdir('.') if os.path.isdir(d) and d.startswith('config_')]
-        dirs = natsorted(dirs)
-        
-        # Iterate through each directory and run 'args
-        for dir in dirs:
-            os.chdir(dir)
-            subprocess.run(args)
-            os.chdir('..')
-    except Exception as e:  # Catch all exceptions and print an error message
-        print(f"An error occurred: {e}")
-    finally:
-        os.chdir(cwd)  # Restore the original working directory
+        path (str): path to the folder containing the VASP input files
+        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        encut_list (list[int], optional): list of ENCUT values to run the calculations for.
+        Defaults to [270, 320 , 370, 420, 470, 520, 570, 620, 670, 720, 770, 820].
+        backup (bool, optional):If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with .orig. Defaults to False.
+    """
+
+    original_dir = os.getcwd()
+    encut_conv_dir = os.path.join(path, "encut_conv")
+    os.makedirs(encut_conv_dir)
+
+    shutil.copy2(os.path.join(path, "POSCAR"), os.path.join(encut_conv_dir, "POSCAR"))
+    shutil.copy2(os.path.join(path, "KPOINTS"), os.path.join(encut_conv_dir, "KPOINTS"))
+    shutil.copy2(os.path.join(path, "POTCAR"), os.path.join(encut_conv_dir, "POTCAR"))
+    shutil.copy2(os.path.join(path, "INCAR"), os.path.join(encut_conv_dir, "INCAR"))
+
+    os.chdir(encut_conv_dir)
+    for i, encut in enumerate(encut_list):
+        if i == len(encut_list) - 1:
+            final = True
+        else:
+            final = False
+
+        job = VaspJob(
+            vasp_cmd=vasp_cmd,
+            final=final,
+            backup=backup,
+            suffix=f".{encut}",
+            settings_override=[
+                {
+                    "dict": "INCAR",
+                    "action": {"_set": {"IBRION": -1, "NSW": 0, "ENCUT": encut}},
+                }
+            ],
+        )
+        c = Custodian(handlers, [job], max_errors=3)
+        c.run()
+
+        if os.path.isfile(f"WAVECAR.{encut}"):
+            os.remove(f"WAVECAR.{encut}")
+        if os.path.isfile(f"CHGCAR.{encut}"):
+            os.remove(f"CHGCAR.{encut}")
+        if os.path.isfile(f"CHG.{encut}"):
+            os.remove(f"CHG.{encut}")
+        if os.path.isfile(f"PROCAR.{encut}"):
+            os.remove(f"PROCAR.{encut}")
+    os.chdir(original_dir)

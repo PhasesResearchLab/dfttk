@@ -70,9 +70,6 @@ def load_phonon_dos(path: str) -> pd.DataFrame:
         pd.DataFrame: pandas dataframe containing the phonon DOS data
     """
 
-    original_path = os.getcwd()
-    os.chdir(path)
-
     file_list = os.listdir(path)
     vdos_files = [file for file in file_list if file.startswith("vdos_")]
     volph_files = [file for file in file_list if file.startswith("volph_")]
@@ -81,10 +78,12 @@ def load_phonon_dos(path: str) -> pd.DataFrame:
 
     dataframes = []
     for i in range(len(vdos_files)):
-        volph_content = float(open(volph_files[i]).readline().strip())
+        volph_content = float(
+            open(os.path.join(path, volph_files[i])).readline().strip()
+        )
         df = pd.read_csv(
-            vdos_files[i],
-            sep="\s+",
+            os.path.join(path, vdos_files[i]),
+            sep="\\s+",
             header=None,
             names=["frequency_hz", "dos_1_per_hz"],
         )
@@ -92,8 +91,6 @@ def load_phonon_dos(path: str) -> pd.DataFrame:
         dataframes.append(df)
 
     vdos_data = pd.concat(dataframes)
-
-    os.chdir(original_path)
 
     return vdos_data
 
@@ -496,7 +493,7 @@ def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
         entropy_polynomial_list.append(entropy_polynomial)
         heat_capacity_polynomial_list.append(heat_capacity_polynomial)
 
-        volume_fit = np.linspace(min(volume) * 0.98, max(volume) * 1.02, 2000)
+        volume_fit = np.linspace(min(volume) * 0.98, max(volume) * 1.02, 1000)
         f_vib_fit = free_energy_polynomial(volume_fit)
         s_vib_fit = entropy_polynomial(volume_fit)
         cv_vib_fit = heat_capacity_polynomial(volume_fit)
@@ -606,9 +603,8 @@ def quasi_harmonic(
     harmonic_properties_fit: pd.DataFrame,
     P: int = 0,
     plot: bool = True,
-    plot_type: str = 'default',
+    plot_type: str = "default",
 ) -> pd.DataFrame:
-    
     """Calculates the quasi-harmonic properties
 
     Args:
@@ -637,6 +633,7 @@ def quasi_harmonic(
     # For each temperature, add energy_eos to f_vib_fit and fit to an EOS
     free_energy_list = []
     volume_range_list = []
+    eos_constants_list = []
     V0_list = []
     F0_list = []
     B_list = []
@@ -652,7 +649,8 @@ def quasi_harmonic(
         free_energy_list.append(free_energy)
         volume_range_list.append(volume_range)
 
-        _, eos_parameters, _, _, _ = eos_fit.BM4(volume_range, free_energy)
+        eos_constants, eos_parameters, _, _, _ = eos_fit.BM4(volume_range, free_energy)
+        eos_constants_list.append(eos_constants)
         V0_list.append(eos_parameters[0])
         F0_list.append(eos_parameters[1])
         B_list.append(eos_parameters[2])
@@ -667,16 +665,18 @@ def quasi_harmonic(
     # Create a quasi-harmonic dataframe
     quasi_harmonic_properties = pd.DataFrame(
         data={
+            "pressure": [P] * len(temperature_list),
             "number_of_atoms": [harmonic_properties_fit["number_of_atoms"].iloc[0]]
             * len(temperature_list),
             "temperature": temperature_list,
             "volume_range": volume_range_list,
             "free_energy": free_energy_list,
+            "eos_constants": eos_constants_list,
             "V0": V0_list,
             "F0": F0_list,
             "B": B_list,
             "BP": BP_list,
-            "S0": S0_list,  # Review
+            "S0": S0_list,
         }
     )
 
@@ -708,14 +708,16 @@ def quasi_harmonic(
     return quasi_harmonic_properties
 
 
-def plot_quasi_harmonic(quasi_harmonic_properties: pd.DataFrame, plot_type: str = 'default'):
+def plot_quasi_harmonic(
+    quasi_harmonic_properties: pd.DataFrame, plot_type: str = "default"
+):
     """Plots the quasi-harmonic properties
 
     Args:
         quasi_harmonic_properties (pd.DataFrame): pandas dataframe containing the quasi-harmonic properties from the quasi_harmonic function
         plot_type (str, optional): Type of plots to include. Defaults to 'default'.
-    """    
-    
+    """
+
     temperature_list = quasi_harmonic_properties["temperature"].values
     spaces = len(temperature_list) - 1
     step = int(spaces / 9)
@@ -726,7 +728,7 @@ def plot_quasi_harmonic(quasi_harmonic_properties: pd.DataFrame, plot_type: str 
 
     scale_atoms = quasi_harmonic_properties["number_of_atoms"].iloc[0]
 
-    if plot_type == 'default' or plot_type == 'all':
+    if plot_type == "default" or plot_type == "all":
         # Free energy plot
         fig = go.Figure()
         for temperature in selected_temperatures:
@@ -834,7 +836,7 @@ def plot_quasi_harmonic(quasi_harmonic_properties: pd.DataFrame, plot_type: str 
         plot_format(
             fig,
             f"Temperature (K)",
-            f"Entropy eV/K/{scale_atoms} atoms",
+            f"Entropy (eV/K/{scale_atoms} atoms)",
             width=600,
             height=600,
         )
@@ -857,13 +859,13 @@ def plot_quasi_harmonic(quasi_harmonic_properties: pd.DataFrame, plot_type: str 
         plot_format(
             fig,
             f"Temperature (K)",
-            f"C<sub>p</sub> eV/K/{scale_atoms} atoms",
+            f"C<sub>p</sub> (eV/K/{scale_atoms} atoms)",
             width=600,
             height=600,
         )
         fig.show()
 
-    if plot_type == 'all':
+    if plot_type == "all":
         # Enthalpy plot
         fig = go.Figure()
         x = temperature_list
@@ -901,7 +903,9 @@ def plot_quasi_harmonic(quasi_harmonic_properties: pd.DataFrame, plot_type: str 
                 name=f"{temperature} K",
             ),
         )
-        plot_format(fig, f"Temperature (K)", "Bulk modulus (GPa)", width=600, height=600)
+        plot_format(
+            fig, f"Temperature (K)", "Bulk modulus (GPa)", width=600, height=600
+        )
         fig.show()
 
         # Gibbs energy plot

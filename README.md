@@ -1,14 +1,26 @@
 # DFTTK
-## Documentation
-A more complete description of DFTTK and its capabilities can be found in the documentation at [https://vasp-job-automation.readthedocs.io/en/latest/index.html](https://vasp-job-automation.readthedocs.io/en/latest/index.html)
-## Summary
-The **d**ensity **f**unctional **t**heory **t**ool**k**it is a python package for automating VASP jobs and storing relevant results on MongoDB. We currently have workflows for:  
+<p align="center">
+    <img src="docs/logo.png" alt="DFTTK Logo">
+</p>
 
-- ENCUT and KPOINTS convergence 
-- Energy-volume curves
-- Phonons
+## Overview
+The **d**ensity **f**unctional **t**heory **t**ool**k**it is a Python package for automating VASP jobs and storing relevant results on MongoDB. These workflows are based on Custodian (https://github.com/materialsproject/custodian), and PyMongo (https://github.com/mongodb/mongo-python-driver) is used to store the results on MongoDB.
 
-These workflows are based on Custodian and PyMongo is used to store the results on MongoDB. 
+## Key Features
+
+- **Prepare VASP input files**
+  - Generate magnetic and symmetry-breaking configurations
+  - Given a POSCAR file, generates the INCAR, KPOINTS, and POTCAR files automatically
+- **VASP workflows**
+  - Convergence tests
+  - Free energy workflows
+- **Analysis**
+  - Equation of state (EOS) fitting
+  - Harmonic approximation
+  - Quasi-harmonic approximation
+- **MongoDB**
+  - Store results on a MongoDB database
+
 
 ## Installation
 It is recommended to first set up a virtual environment using Conda:
@@ -29,3 +41,5 @@ Or clone a specific branch:
     cd dfttk
     pip install -e .
 
+## Documentation
+A more complete description of DFTTK and its capabilities can be found in the documentation at [https://vasp-job-automation.readthedocs.io/en/latest/index.html](https://vasp-job-automation.readthedocs.io/en/latest/index.html). 

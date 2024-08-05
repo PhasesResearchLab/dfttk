@@ -7,6 +7,7 @@ import os
 import glob
 
 # Related third party imports
+from natsort import natsorted
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -59,7 +60,9 @@ def extract_configuration_data(
     config = path[start:]  # get the string following "config_"
 
     row_list = []
-    for vol_dir in glob.glob(os.path.join(path, "vol_*")):
+    vol_dirs = glob.glob(os.path.join(path, "vol_*"))
+    vol_dirs = natsorted(vol_dirs)
+    for vol_dir in vol_dirs:
         outcar_path = os.path.join(vol_dir, outcar_name)
         if not os.path.isfile(outcar_path):
             print(f"Warning: File {outcar_path} does not exist. Skipping.")
