@@ -21,6 +21,7 @@ from pymatgen.io.vasp.outputs import Chgcar
 
 # DFTTK imports
 from dfttk.data_extraction import extract_volume
+from dfttk.magnetism import get_magnetic_structure
 
 
 def three_step_relaxation(
@@ -633,13 +634,38 @@ def phonons_parallel(
 
     # Create a supercell and write the KPOINTS file
     for phonon_volume, phonon_folder in phonon_volumes_and_folders:
-        structure = Structure.from_file(
-            os.path.join(path, f"phonon_{phonon_folder}", "POSCAR")
-        )
-        structure.make_supercell(supercell_size)
-        structure.to_file(
-            os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
-        )
+        try: # to get a magnetic structure
+            structure = get_magnetic_structure(
+                os.path.join(path,f"vol_{phonon_folder}","CONTCAR.3static"),
+                os.path.join(path,f"vol_{phonon_folder}","OUTCAR.3static")
+                ) # if magnetic data not in OUTCAR, will raise an exception.
+            structure.make_supercell(supercell_size)
+            structure.to_file(
+                os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
+            )
+            structure_magmoms = structure.site_properties['magmom']
+            numeric_strings = [str(value) for value in structure_magmoms]
+            magmom_string = ' '.join(numeric_strings)
+            magmom_line = "MAGMOM = " + magmom_string
+            # Write the magmom_line to the INCAR file
+            incar_file = os.path.join(path, f"phonon_{phonon_folder}", "INCAR")
+            with open(incar_file, 'r') as file:
+                lines = file.readlines()
+            with open(incar_file, 'w') as file:
+                for line in lines:
+                    if line.startswith('MAGMOM ='):
+                        file.write(magmom_line + '\n')
+                    else:
+                        file.write(line)
+        except Exception as e:
+            structure = Structure.from_file(
+                os.path.join(path, f"phonon_{phonon_folder}", "POSCAR")
+            )
+            structure.make_supercell(supercell_size)
+            structure.to_file(
+                os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
+            )
+        
         kpoints = Kpoints.automatic_density(structure, kppa, force_gamma=True)
         kpoints.write_file(os.path.join(path, f"phonon_{phonon_folder}", "KPOINTS"))
 
