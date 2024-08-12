@@ -31,7 +31,7 @@ def debye_temperature(volume, eos_parameters,
     return s * A * volume_0**(1/6) * (bulk_modulus/mass)**(1/2) * (volume_0/volume)**gru_param
 
 def debye_function(x, n=3, order=5):
-    """series expansion of the debye function
+    """series expansion of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1, comes from the expansion
     Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
     """
     
