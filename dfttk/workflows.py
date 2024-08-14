@@ -680,14 +680,23 @@ def process_phonon_dos_YPHON(path: str):
         path (str): path to the folder containing all the phonon calculation folders. E.g. phonon_1, phonon_2, etc.
     """
 
+    # Reset logging configuration
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+        
     # Configure logging
     log_file_path = os.path.join(path, 'phonons_parallel.log')
+
+    # If log_file_path already exists, delete it
+    if os.path.exists(log_file_path):
+        os.remove(log_file_path)
+        
     logging.basicConfig(
         filename=log_file_path,
         level=logging.ERROR,  # Set the log level to ERROR
         format='%(asctime)s - %(levelname)s - %(message)s'
     )
-    
+
     # Go to each phonon folder and copy the CONTCAR, OUTCAR, and vasprun.xml files to the phonon_dos folder to be processed by YPHON
     phonon_folders = [
         folder
@@ -751,6 +760,9 @@ def process_phonon_dos_YPHON(path: str):
         except Exception as e:
             logging.error(f"Error copying files from {phonon_folder}: {e}")
 
+        # Delete log_file_path if it is empty
+        if os.path.exists(log_file_path) and os.path.getsize(log_file_path) == 0:
+            os.remove(log_file_path)
 
 def kpoints_conv_test(
     path: str,
