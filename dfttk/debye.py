@@ -58,7 +58,8 @@ def debye_function(x: float, n: int = 3, order: int = 30):
     
 
     if x > 1.5*np.pi:
-        return np.exp(-k*x)((x**n)/k + )
+        return
+        # return np.exp(-k*x)((x**n)/k + )
     if x <= 1.5*np.pi:
         if order > 2:
             bern_list = bernoulli(2*(order-2))
