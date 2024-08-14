@@ -67,7 +67,7 @@ def debye_function(x: float, order: int = 30):
             return 1 - 3/8*x + 3 * summation
         elif order == 2:
             return 1 - 3/8*x
-        elif order < 2:
+        else:
             # value error
             raise ValueError("Order of the debye function series expansion must be greater than or equal to 2.")
     else:
@@ -75,16 +75,29 @@ def debye_function(x: float, order: int = 30):
 
         
 
-def debye_function_derivative(x, n=3, order=5):
+def debye_function_derivative(x, order=30):
     """series expansion of the derivative of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1, comes from the expansion
     Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
     and Abramowitz, M. and Stegun, I.A. eds., 1968. Handbook of mathematical functions with formulas, graphs, and mathematical tables (Vol. 55). US Government printing office.
     """
     
-    summation = sum(bernoulli(2*k)/((2*k+n)*gamma(2*k+1)) * 2*k*x**(2*k-1) for k in range(1, order-2))
-    return -n/(2*(n+1)) + n*summation
+    order = int(order)
+    
+    if x >= 0.7*np.pi:
+        summation = sum(-np.exp(-k*x)*(1 + 3/(k*x) + 9/(k**2*x**2) + 18/(k**3*x**3) + 18/(k**4*x**4)) for k in range(1, order))
+        return -3*np.pi**4/(5*x**4) - 3*summation
         
-    return -n/((2*n+1)) + n*summation
+    elif -2*np.pi < x < 0.7*np.pi:
+        if order > 1:
+            bern_list = bernoulli(2*(order-1))
+            summation = sum(bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * 2*k*x**(2*k-1) for k in range(1, order))
+            return -3/8 + 3*summation
+        elif order == 1:
+            return -3/8
+        else:
+            raise ValueError("Order of the debye function derivative series expansion must be greater than or equal to 1.")
+    else:
+        raise ValueError("The debye function derivative series expansions used are only valid for x > -2𝜋")
 
 def vibrational_energy(temperature, theta):
     debye_value = debye_function(theta/temperature)
