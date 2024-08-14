@@ -4,13 +4,13 @@ from scipy import constants
 from scipy.special import bernoulli
 from scipy.special import gamma
 from dfttk import eos_fit
-from dfttk.data_extraction import extract_configuration_data
+from dfttk.aggregate_extraction import extract_configuration_data
 from dfttk.data_extraction import extract_mass
 
 
 
 # A is the ____ constant of th Debye-Gruneisen model
-A = (8 * constants.pi**2)**(1/3)*constants.hbar/constants.k)
+A = (8 * constants.pi**2)**(1/3)*constants.hbar/constants.k
 
 def scaling_factor():
     pass
@@ -36,14 +36,42 @@ def debye_temperature(
     
     return s * A * volume_0**(1/6) * (bulk_modulus/mass)**(1/2) * (volume_0/volume)**gru_param
 
-def debye_function(x, n=3, order=5):
-    """series expansion of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1, comes from the expansion
+def debye_function(x: float, n: int = 3, order: int = 30):
+    """series expansion of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1,
+    comes from the expansion
     Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
     and Abramowitz, M. and Stegun, I.A. eds., 1968. Handbook of mathematical functions with formulas, graphs, and mathematical tables (Vol. 55). US Government printing office.
-    """
 
-    summation = sum(bernoulli(2*k)/((2*k+n)*gamma(2*k+1)) * x**(2*k) for k in range(1, order-2))
-    return 1 - n/(2(n+1))*x + n*summation
+    Args:
+        x: _description_
+        n: _description_. Defaults to 3.
+        order: the default is well within accuracy of floats and takes less than 0.0 seconds for n=3. Defaults to 30.
+
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        _type_: _description_
+    """
+    
+    order = int(order)
+    
+
+    if x > 1.5*np.pi:
+        return np.exp(-k*x)((x**n)/k + )
+    if x <= 1.5*np.pi:
+        if order > 2:
+            bern_list = bernoulli(2*(order-2))
+            summation = sum(bern_list[2*k]/((2*k+n)*gamma(2*k+1)) * x**(2*k) for k in range(1, order-1))
+            return 1 - n/(2*(n+1))*x + n * summation
+        elif order == 2:
+            return 1 - n/(2*(n+1))*x
+        elif order < 2:
+            # value error
+            raise ValueError("Order of the debye function series expansion must be greater than or equal to 2.")
+    elif x == 0:
+        return 1.0
+        
 
 def debye_function_derivative(x, n=3, order=5):
     """series expansion of the derivative of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1, comes from the expansion
@@ -107,8 +135,10 @@ def debye_gruneisen(
     gru_const = gruneisen_constant()
     gru_param = gruneisen_parameter(bulk_modulus_prime, gru_const)
     
+    volume = np.array(1) # please finish this
+    temperature =  np.array(1) # please finish this
     theta = debye_temperature(volume, eos_parameters, mass, s, gru_param)
     x=theta/temperature
     debye_value = debye_function(x)
-    
+    return
     
