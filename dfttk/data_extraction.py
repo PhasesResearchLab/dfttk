@@ -98,6 +98,12 @@ def extract_energy(path: str) -> float:
                 break
     return energy
 
+def extract_mass(outcar_path: str) -> float:
+    """
+    Extract the mass of each atom from an OUTCAR file as a dictionary.
+    """
+    pass
+    
 
 def write_ev(path: str) -> None:
     """Function to write the volumes and energies obtained from ev_curve_series to a text file.
