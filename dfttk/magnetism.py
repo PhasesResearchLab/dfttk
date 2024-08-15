@@ -1,16 +1,19 @@
 # Standard library imports
 import os
+import itertools
+import numbers
+
 
 # Related third party imports
 import numpy as np
 import pandas as pd
-import itertools
-import numbers
 
 # Local application/library specific imports
 from pymatgen.core.structure import Structure
 from pymatgen.analysis.magnetism.analyzer import \
     CollinearMagneticStructureAnalyzer as CMSA
+from pymatgen.io.vasp.outputs import Poscar
+
 
 # DFTTK imports
 from dfttk.data_extraction import (
@@ -176,4 +179,37 @@ def significant_magmom_change(
         if row['tot'] < min_df['tot'][index] or row['tot'] > max_df['tot'][index]:
             return True
     return False
+
+# TODO: make magmoms written in NIONS*magmom format
+def rearrange_sites_and_magmoms(config_dir):
+    """
+    this function is a patch to rearrange the sites and magmoms in the POSCAR and
+    INCAR files. If the sites are not grouped by specie, VASP will look for more
+    potentials than supplied/necessary.
+    """
+    incar_file = os.path.join(config_dir, 'INCAR')
+    poscar_file = os.path.join(config_dir, 'POSCAR')
+    struct = Structure.from_file(poscar_file) # read poscar
+    orig_magmom_df = extract_input_mag_data(incar_file) # read magmom from incar
+    orig_magmoms = orig_magmom_df['tot'].tolist() # get the magmoms
+    struct.add_site_property("magmom", orig_magmoms) # add magmom to structure
+    struct = struct.get_sorted_structure() # sort structure with the magmoms
+    rearranged_magmoms = struct.site_properties['magmom'] # get the rearranged magmoms
+    numeric_strings = [str(value) for value in rearranged_magmoms] # convert values to strings
+    result_string = ' '.join(numeric_strings) # join the strings
+    result_string = "MAGMOM = " + result_string # add the MAGMOM = part
+
+    # Write the result_string to the INCAR file
+    with open(incar_file, 'r') as file:
+        lines = file.readlines()
+    with open(incar_file, 'w') as file:
+        for line in lines:
+            if line.startswith('MAGMOM ='):
+                file.write(result_string + '\n')
+            else:
+                file.write(line)
     
+    # Write the rearranged structure to the POSCAR file
+    poscar = Poscar(struct)
+    poscar.write_file(poscar_file)
+    return None
