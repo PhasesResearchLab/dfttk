@@ -25,6 +25,7 @@ from dfttk.data_extraction import (
     extract_energy,
     extract_tot_mag_data,
     extract_kpoints,
+    extract_atomic_masses
 )
 from dfttk.magnetism import determine_magnetic_ordering
 
@@ -85,6 +86,7 @@ def extract_configuration_data(
         energy_per_atom = energy / number_of_atoms
         vol_per_atom = vol / number_of_atoms
         space_group = SpacegroupAnalyzer(struct).get_space_group_symbol()
+        atomic_masses = extract_atomic_masses(outcar_path)
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(outcar_path)
             total_magnetic_moment = mag_data["tot"].sum()
@@ -101,6 +103,8 @@ def extract_configuration_data(
                 "volume_per_atom": vol_per_atom,
                 "energy": energy,
                 "energy_per_atom": energy_per_atom,
+                "space_group": space_group,
+                "atomic_masses": atomic_masses,
                 "total_magnetic_moment": total_magnetic_moment,
                 "magnetic_ordering": magnetic_ordering,
                 "mag_data": mag_data,
@@ -114,6 +118,7 @@ def extract_configuration_data(
                 "energy": energy,
                 "energy_per_atom": energy_per_atom,
                 "space_group": space_group,
+                "atomic_masses": atomic_masses,
             }
         row_list.append(row)
     df = pd.DataFrame(row_list)

@@ -98,11 +98,27 @@ def extract_energy(path: str) -> float:
                 break
     return energy
 
-def extract_mass(outcar_path: str) -> float:
+def extract_atomic_masses(outcar_path: str) -> float:
     """
-    Extract the mass of each atom from an OUTCAR file as a dictionary.
+    Extract the mass of each atom (POMASS values) from an OUTCAR file as a dictionary.
     """
-    pass
+    
+    atoms = []
+    masses = []
+    with open(outcar_path, "r") as file:
+        lines = file.readlines()
+        for line in lines:
+            if "TITEL" in line:
+                atoms.append(line.split()[-2])
+            elif "POMASS" in line:
+                mass = line.split()[2].replace(';', '')
+                masses.append(float(mass))
+                
+    # Clean atoms so that only the species is containted. e.g. 'Fe_pv' -> 'Fe'
+    atoms = [atom.split('_')[0] for atom in atoms]
+    
+    atomic_masses = dict(zip(atoms, masses))
+    return atomic_masses
     
 
 def write_ev(path: str) -> None:
