@@ -18,7 +18,7 @@ BOLTZMANN = constants.physical_constants['Boltzmann constant in eV/K'][0]
 def scaling_factor():
     return 0.75
 
-def gruneisen_constant(temperature):
+def gruneisen_constant():
     return 1.0
 
 def gruneisen_parameter(bulk_modulus_prime, gruneisen_constant):
