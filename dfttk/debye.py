@@ -15,7 +15,7 @@ from dfttk.data_extraction import extract_atomic_masses
 A = 231.04
 BOLTZMANN = constants.physical_constants['Boltzmann constant in eV/K'][0]
 
-def scaling_factor(temperature):
+def scaling_factor():
     s = 0.75
 
 def gruneisen_constant():
