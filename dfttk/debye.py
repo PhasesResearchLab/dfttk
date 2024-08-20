@@ -81,7 +81,7 @@ def debye_function(x_array: np.array, order: int = 30):
 
         
 # TODO use a while loop to ensure convergence. order=30 is plenty for x > -1.5𝜋
-def debye_function_derivative(x, order=30):
+def debye_function_derivative(x_array, order=30):
     """series expansion of the derivative of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1, comes from the expansion
     Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
     and Abramowitz, M. and Stegun, I.A. eds., 1968. Handbook of mathematical functions with formulas, graphs, and mathematical tables (Vol. 55). US Government printing office.
@@ -89,21 +89,24 @@ def debye_function_derivative(x, order=30):
     
     order = int(order)
     
-    if x >= 0.7*np.pi:
-        summation = sum(-np.exp(-k*x)*(1 + 3/(k*x) + 9/(k**2*x**2) + 18/(k**3*x**3) + 18/(k**4*x**4)) for k in range(1, order))
-        return -3*np.pi**4/(5*x**4) - 3*summation
-        
-    elif -2*np.pi < x < 0.7*np.pi:
-        if order > 1:
-            bern_list = bernoulli(2*(order-1))
-            summation = sum(bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * 2*k*x**(2*k-1) for k in range(1, order))
-            return -3/8 + 3*summation
-        elif order == 1:
-            return -3/8
+    result = np.zeros_like(x_array)
+    for i, x in enumerate(x_array):
+        if x >= 0.7*np.pi:
+            summation = sum(-np.exp(-k*x)*(1 + 3/(k*x) + 9/(k**2*x**2) + 18/(k**3*x**3) + 18/(k**4*x**4)) for k in range(1, order))
+            result[i] = -3*np.pi**4/(5*x**4) - 3*summation
+            
+        elif -2*np.pi < x < 0.7*np.pi:
+            if order > 1:
+                bern_list = bernoulli(2*(order-1))
+                summation = sum(bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * 2*k*x**(2*k-1) for k in range(1, order))
+                result[i] = -3/8 + 3*summation
+            elif order == 1:
+                result[i] = -3/8
+            else:
+                raise ValueError("Order of the debye function derivative series expansion must be greater than or equal to 1.")
         else:
-            raise ValueError("Order of the debye function derivative series expansion must be greater than or equal to 1.")
-    else:
-        raise ValueError("The debye function derivative series expansions used are only valid for x > -2𝜋")
+            raise ValueError("The debye function derivative series expansions used are only valid for x > -2𝜋")
+    return result
 
 def vibrational_energy(temperature, theta):
     debye_value = debye_function(theta/temperature)
@@ -154,9 +157,24 @@ def process_debye_gruneisen(
     gru_const = gruneisen_constant()
     gru_param = gruneisen_parameter(bulk_modulus_prime, gru_const)
     
-    volume = np.array(1) # please finish this
-    temperature =  np.array(1) # please finish this
-    x=theta/temperature
-    debye_value = debye_function(x)
-    return
+    volume_min = volume.min()
+    volume_max = volume.max()
+    
+    volumes = np.linspace(volume_min, volume_max, 4000)
+    temperatures = np.linspace(1e-8, 1000, 4000)
+    
+    total_mass = df['total_mass'][0]
+    theta = debye_temperature(volumes, eos_parameters, total_mass, s, gru_param)
+    
+    for i, volume in enumerate(volumes):
+        x = theta[i]/temperatures
+        debye_value = debye_function(x)
+        s_vib = vibrational_entropy(temperatures, theta[i])
+        f_vib = vibrational_helmholtz_energy(temperatures, theta[i])
+        cv_vib = vibrational_heat_capacity(temperatures, theta[i])
+        # Compute the differences between successive elements
+        d_s_vib = np.array([k - j for j, k in zip(s_vib[:-1], s_vib[1:])])
+        dt = np.array([k - j for j, k in zip(temperatures[:-1], temperatures[1:])])
+        c_p = temperatures[:-1] * d_s_vib / dt # this is incorrect because it is done at constant volume
+        return temperatures, volumes, s_vib, f_vib, c_p
     
