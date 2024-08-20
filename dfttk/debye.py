@@ -3,14 +3,17 @@ import numpy as np
 from scipy import constants
 from scipy.special import bernoulli
 from scipy.special import gamma
+from pymatgen.io.vasp.outputs import Poscar
 from dfttk import eos_fit
 from dfttk.aggregate_extraction import extract_configuration_data
-from dfttk.data_extraction import extract_mass
+from dfttk.data_extraction import extract_atomic_masses
 
 
 
-# A is the ____ constant of th Debye-Gruneisen model
-A = (8 * constants.pi**2)**(1/3)*constants.hbar/constants.k
+# A is the ____ constant of th Debye-Gruneisen model in units of
+    # A = (8 * constants.pi**2)**(1/3)*constants.hbar/constants.k
+A = 231.04
+BOLTZMANN = constants.physical_constants['Boltzmann constant in eV/K'][0]
 
 def scaling_factor():
     pass
@@ -104,21 +107,21 @@ def debye_function_derivative(x, order=30):
 
 def vibrational_energy(temperature, theta):
     debye_value = debye_function(theta/temperature)
-    return 3 * constants.k * temperature * debye_value + 9/8 * constants.k * theta
+    return 3 * BOLTZMANN * temperature * debye_value + 9/8 * BOLTZMANN * theta
 
 def vibrational_entropy(temperature, theta):
     x = theta/temperature
     debye_value = debye_function(x)
-    return 3*constants.k*(4/3*debye_value-np.log(1-np.exp(-x)))
+    return 3*BOLTZMANN*(4/3*debye_value-np.log(1-np.exp(-x)))
 
 def vibrational_helmholtz_energy(temperature, theta):
     x = theta/temperature
     debye_value = debye_function(x)
-    return 9/8*constants.k*theta + constants.k*temperature*(3*np.log(1-np.exp(-x)) - debye_value)
+    return 9/8*BOLTZMANN*theta + BOLTZMANN*temperature*(3*np.log(1-np.exp(-x)) - debye_value)
 
 def vibrational_heat_capacity(temperature, theta):
     x = theta/temperature
-    return 3*constants.k*temperature*debye_function_derivative(x) + debye_function(x)
+    return 3*BOLTZMANN*temperature*debye_function_derivative(x) + debye_function(x)
 
 def process_debye_gruneisen(
     config_path,
@@ -147,17 +150,12 @@ def process_debye_gruneisen(
     _, eos_parameters, _, _, _ = eos_fitting(volume, energy)
     volume_0, energy_0, bulk_modulus, bulk_modulus_prime, bulk_modulus_2prime = eos_parameters
     
-    
-    # extract the mass of each atom from the OUTCAR file
-    mass = extract_mass(os.path.join(config_path, outcar_name))
-    
     s = scaling_factor()
     gru_const = gruneisen_constant()
     gru_param = gruneisen_parameter(bulk_modulus_prime, gru_const)
     
     volume = np.array(1) # please finish this
     temperature =  np.array(1) # please finish this
-    theta = debye_temperature(volume, eos_parameters, mass, s, gru_param)
     x=theta/temperature
     debye_value = debye_function(x)
     return
