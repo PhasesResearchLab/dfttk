@@ -36,7 +36,8 @@ def debye_temperature(
     
     return s * A * volume_0**(1/6) * (bulk_modulus/mass)**(1/2) * (volume_0/volume)**gru_param
 
-def debye_function(x: float, order: int = 30):
+# TODO use a while loop to ensure convergence order=30 is plenty for x > -1.5𝜋
+def debye_function(x_array: np.array, order: int = 30):
     """series expansion of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1,
     comes from the expansion
     Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
@@ -53,28 +54,30 @@ def debye_function(x: float, order: int = 30):
     Returns:
         _type_: _description_
     """
-    
     order = int(order)
-    
-
-    if x >= 0.7*np.pi:
-        summation = sum(1/k*(1 + 3/(k*x) + 6/(k**2*x**2) + 6/(k**3*x**3))*np.exp(-k*x) for k in range(1, order-1))
-        return np.pi**4/(5*x**3)-3*summation
-    elif -2*np.pi < x < 0.7*np.pi:
-        if order > 2:
-            bern_list = bernoulli(2*(order-2))
-            summation = sum(bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * x**(2*k) for k in range(1, order-1))
-            return 1 - 3/8*x + 3 * summation
-        elif order == 2:
-            return 1 - 3/8*x
+    if order < 2:
+        raise ValueError("Order of the debye function series expansion must be greater than or equal to 2.")
+    result = np.zeros_like(x_array)
+    for i, x in enumerate(x_array):
+        if x >= 0.7*np.pi:
+            summation = sum(1/k*(1 + 3/(k*x) + 6/(k**2*x**2) + 6/(k**3*x**3))*np.exp(-k*x) for k in range(1, order-1))
+            result[i] = np.pi**4/(5*x**3)-3*summation
+        elif -2*np.pi < x < 0.7*np.pi:
+            if order > 2:
+                bern_list = bernoulli(2*(order-2))
+                summation = sum(bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * x**(2*k) for k in range(1, order-1))
+                result[i] = 1 - 3/8*x + 3 * summation
+            elif order == 2:
+                result[i] = 1 - 3/8*x
+            else:
+                # value error
+                raise ValueError("Order of the debye function series expansion must be greater than or equal to 2.")
         else:
-            # value error
-            raise ValueError("Order of the debye function series expansion must be greater than or equal to 2.")
-    else:
-        raise ValueError("The debye function series expansions used are only valid for x > -2𝜋")
+            raise ValueError("The debye function series expansions used are only valid for x > -2𝜋")
+    return result
 
         
-
+# TODO use a while loop to ensure convergence. order=30 is plenty for x > -1.5𝜋
 def debye_function_derivative(x, order=30):
     """series expansion of the derivative of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1, comes from the expansion
     Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
@@ -117,7 +120,7 @@ def vibrational_heat_capacity(temperature, theta):
     x = theta/temperature
     return 3*constants.k*temperature*debye_function_derivative(x) + debye_function(x)
 
-def debye_gruneisen(
+def process_debye_gruneisen(
     config_path,
     outcar_name: str = "OUTCAR.3static",
     oszicar_name: str = "OSZICAR.3static",
@@ -139,7 +142,9 @@ def debye_gruneisen(
     )
     
     # fit the equation of state
-    _, eos_parameters, _, _, _ = eos_fitting(df)
+    volume = df['volume']
+    energy = df['energy']
+    _, eos_parameters, _, _, _ = eos_fitting(volume, energy)
     volume_0, energy_0, bulk_modulus, bulk_modulus_prime, bulk_modulus_2prime = eos_parameters
     
     
