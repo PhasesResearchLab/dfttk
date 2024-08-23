@@ -41,4 +41,4 @@ dependencies = [
 keywords = ["VASP", "automation", "thermodynamics", "dfttk2", "DFT", "materials", "science", "MongoDB"]
 
 [project.urls]
-"Homepage" = "https://github.com/lukeamyers/vasp-job-automation"
+"Homepage" = "https://github.com/PhasesResearchLab/dfttk2"
