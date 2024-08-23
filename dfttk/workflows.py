@@ -468,7 +468,11 @@ def custodian_errors_location(path: str) -> list[str]:
     """
 
     vol_folders_errors = []
-    vol_folders = [d for d in os.listdir(path) if d.startswith("vol") and os.path.isdir(os.path.join(path, d))]
+    vol_folders = [
+        d
+        for d in os.listdir(path)
+        if d.startswith("vol") and os.path.isdir(os.path.join(path, d))
+    ]
     for vol_folder in vol_folders:
         error_folders = [
             f
@@ -478,9 +482,13 @@ def custodian_errors_location(path: str) -> list[str]:
         if len(error_folders) > 0:
             print(f"In {vol_folder} there are error folders: {error_folders}")
             vol_folders_errors.append(vol_folder)
-    
+
     phonon_folders_errors = []
-    phonon_folders = [d for d in os.listdir(path) if d.startswith("phonon") and os.path.isdir(os.path.join(path, d))]
+    phonon_folders = [
+        d
+        for d in os.listdir(path)
+        if d.startswith("phonon") and os.path.isdir(os.path.join(path, d))
+    ]
     for phonon_folder in phonon_folders:
         error_folders = [
             f
@@ -490,7 +498,7 @@ def custodian_errors_location(path: str) -> list[str]:
         if len(error_folders) > 0:
             print(f"In {phonon_folder} there are error folders: {error_folders}")
             phonon_folders_errors.append(phonon_folder)
-    
+
     return vol_folders_errors, phonon_folders_errors
 
 
@@ -575,7 +583,7 @@ def phonons_parallel(
     phonon_volumes: list[float],
     kppa: float,
     run_file: str,
-    scaling_matrix: tuple[tuple[int]]=((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    scaling_matrix: tuple[tuple[int]] = ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
 ) -> None:
     """Runs the run_phonons function in parallel for a list of phonon volumes.
 
@@ -656,29 +664,29 @@ def phonons_parallel(
 
     # Create a supercell and write the KPOINTS file
     transformation = SupercellTransformation(scaling_matrix)
-    
+
     for phonon_volume, phonon_folder in phonon_volumes_and_folders:
-        try: # to get a magnetic structure
+        try:  # to get a magnetic structure
             structure = get_magnetic_structure(
-                os.path.join(path,f"vol_{phonon_folder}","CONTCAR.3static"),
-                os.path.join(path,f"vol_{phonon_folder}","OUTCAR.3static")
-                ) # if magnetic data not in OUTCAR, will raise an exception.
+                os.path.join(path, f"vol_{phonon_folder}", "CONTCAR.3static"),
+                os.path.join(path, f"vol_{phonon_folder}", "OUTCAR.3static"),
+            )  # if magnetic data not in OUTCAR, will raise an exception.
             structure = transformation.apply_transformation(structure)
             structure.to_file(
                 os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
             )
-            structure_magmoms = structure.site_properties['magmom']
+            structure_magmoms = structure.site_properties["magmom"]
             numeric_strings = [str(value) for value in structure_magmoms]
-            magmom_string = ' '.join(numeric_strings)
+            magmom_string = " ".join(numeric_strings)
             magmom_line = "MAGMOM = " + magmom_string
             # Write the magmom_line to the INCAR file
             incar_file = os.path.join(path, f"phonon_{phonon_folder}", "INCAR")
-            with open(incar_file, 'r') as file:
+            with open(incar_file, "r") as file:
                 lines = file.readlines()
-            with open(incar_file, 'w') as file:
+            with open(incar_file, "w") as file:
                 for line in lines:
-                    if line.startswith('MAGMOM ='):
-                        file.write(magmom_line + '\n')
+                    if line.startswith("MAGMOM ="):
+                        file.write(magmom_line + "\n")
                     else:
                         file.write(line)
         except Exception as e:
@@ -689,7 +697,7 @@ def phonons_parallel(
             structure.to_file(
                 os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
             )
-            
+
         kpoints = Kpoints.automatic_density(structure, kppa, force_gamma=True)
         kpoints.write_file(os.path.join(path, f"phonon_{phonon_folder}", "KPOINTS"))
 
@@ -712,18 +720,18 @@ def process_phonon_dos_YPHON(path: str):
     # Reset logging configuration
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
-        
+
     # Configure logging
-    log_file_path = os.path.join(path, 'phonons_parallel.log')
+    log_file_path = os.path.join(path, "phonons_parallel.log")
 
     # If log_file_path already exists, delete it
     if os.path.exists(log_file_path):
         os.remove(log_file_path)
-        
+
     logging.basicConfig(
         filename=log_file_path,
         level=logging.ERROR,  # Set the log level to ERROR
-        format='%(asctime)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(levelname)s - %(message)s",
     )
 
     # Go to each phonon folder and copy the CONTCAR, OUTCAR, and vasprun.xml files to the phonon_dos folder to be processed by YPHON
@@ -792,6 +800,7 @@ def process_phonon_dos_YPHON(path: str):
         # Delete log_file_path if it is empty
         if os.path.exists(log_file_path) and os.path.getsize(log_file_path) == 0:
             os.remove(log_file_path)
+
 
 def kpoints_conv_test(
     path: str,

@@ -160,6 +160,7 @@ def recursive_extract_configuration_data(
     df = pd.concat(df_list, ignore_index=True)
     return df
 
+
 def extract_convergence_data(path: str) -> pd.DataFrame:
     """extracts and calculates energy convergence data for a series of VASP convergence calculations
 
@@ -173,12 +174,11 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
     OSZICAR_files = [
         file
         for file in os.listdir(path)
-        if os.path.isfile(os.path.join(path, file))
-        and file.startswith("OSZICAR")
+        if os.path.isfile(os.path.join(path, file)) and file.startswith("OSZICAR")
     ]
-    
+
     conv_items = sorted([int(file.split(".")[1]) for file in OSZICAR_files])
-    
+
     encut_list = []
     energy_list = []
     number_of_atoms_list = []
@@ -190,27 +190,27 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
         poscar_path = os.path.join(path, f"POSCAR.{item}")
         incar = Incar.from_file(incar_path)
         struct = Structure.from_file(poscar_path)
-        
+
         encut_list.append(incar.get("ENCUT", None))
         energy_list.append(extract_energy(oszicar_path))
         number_of_atoms_list.append(len(struct.sites))
         kpoint_grid_list.append(extract_kpoints(outcar_path))
     energy_per_atom_list = [
-        energy / num_atoms 
+        energy / num_atoms
         for energy, num_atoms in zip(energy_list, number_of_atoms_list)
     ]
-    
+
     difference_meV_per_atom_list = [
         (energy_per_atom_list[i] - energy_per_atom_list[i - 1]) * 1000
         for i in range(1, len(energy_per_atom_list))
     ]
     difference_meV_per_atom_list.insert(0, float("nan"))
-    
+
     kppa_list = []
     for i, kpoint_grid in enumerate(kpoint_grid_list):
         kppa = np.prod(kpoint_grid) * number_of_atoms_list[i]
         kppa_list.append(kppa)
-    
+
     df = pd.DataFrame(
         {
             "ENCUT": encut_list,
@@ -222,8 +222,9 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
             "difference_meV_per_atom": difference_meV_per_atom_list,
         }
     )
-    
+
     return df
+
 
 def plot_format(fig: go.Figure, x_title: str, y_title: str):
     """Updates an x-y plotly figure to the basic format used in DFTTK.
@@ -231,7 +232,7 @@ def plot_format(fig: go.Figure, x_title: str, y_title: str):
         fig: A figure with x-y data.
         x_title (str): title of the x-axis.
         y_title (str): title of the y-axis
-    """    
+    """
     fig.update_layout(
         font=dict(family="Devaju Sans"),
         plot_bgcolor="white",
@@ -271,12 +272,12 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
     """makes a plot for Encut convergence using plotly.
 
     Args:
-        df: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom (as structured by the return of `extract_convergence_data()`). 
+        df: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom (as structured by the return of `extract_convergence_data()`).
         show_fig: wheather or not to call the fig.show() method. Defaults to True.
 
     Returns:
         go.Figure: a plotly figure of the energy per atom vs. ENCUT.
-    """    
+    """
     fig = go.Figure(
         data=[
             go.Scatter(
@@ -294,9 +295,10 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
             font=dict(size=24, color="rgb(0,0,0)"),
         )
     )
-    if show_fig==True:
+    if show_fig == True:
         fig.show()
     return fig
+
 
 def calculate_encut_conv(
     path: str, plot: bool = True
@@ -317,7 +319,7 @@ def calculate_encut_conv(
         fig = plot_encut_conv(df, show_fig=plot)
     else:
         fig = None
-        
+
     return df, fig
 
 
@@ -325,7 +327,7 @@ def plot_kpoint_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
     """makes a plot for k-point convergence using plotly.
 
     Args:
-        df: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom (as structured by the return of `extract_convergence_data()`). 
+        df: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom (as structured by the return of `extract_convergence_data()`).
         show_fig: wheather or not to call the fig.show() method. Defaults to True.
 
     Returns:
@@ -348,9 +350,10 @@ def plot_kpoint_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
             font=dict(size=24, color="rgb(0,0,0)"),
         )
     )
-    if show_fig==True:
+    if show_fig == True:
         fig.show()
     return fig
+
 
 # TODO: Incorporate other convergence criteria
 # See https://github.com/kavanase/vaspup2.0
@@ -358,7 +361,7 @@ def calculate_kpoint_conv(
     path: str, plot: bool = True
 ) -> tuple[pd.DataFrame, go.Figure]:
     """Convenience fuction to calculate the energy convergence with respect to k-point density and plots the results.
-    
+
     Args:
         path: path to the folder containing the kpoint convergence calculation results
         plot: If True, plots the energy per atom vs. k-point density (kppa). Defaults to True.
@@ -375,5 +378,5 @@ def calculate_kpoint_conv(
         fig = plot_kpoint_conv(df, show_fig=plot)
     else:
         fig = None
-        
+
     return df, fig
