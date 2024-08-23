@@ -8,6 +8,7 @@ import os
 import shutil
 import sys
 import subprocess
+import logging
 
 # Related third party imports
 from natsort import natsorted
@@ -18,9 +19,11 @@ from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Chgcar
+from pymatgen.transformations import SupercellTransformation
 
 # DFTTK imports
 from dfttk.data_extraction import extract_volume
+from dfttk.magnetism import get_magnetic_structure
 
 
 def three_step_relaxation(
@@ -570,18 +573,18 @@ def run_phonons(
 def phonons_parallel(
     path: str,
     phonon_volumes: list[float],
-    supercell_size: list[int],
     kppa: float,
     run_file: str,
+    scaling_matrix: tuple[tuple[int]]=((1, 0, 0), (0, 1, 0), (0, 0, 1)),
 ) -> None:
     """Runs the run_phonons function in parallel for a list of phonon volumes.
 
     Args:
-        path (str): path to the folder containing the VASP input files.
-        phonon_volumes (list[float]): a list of volumes to run the phonon calculations for.
-        supercell_size (list[int]): to create a supercell of the structure.
-        kppa (float): k-point grid density.
-        run_file (str): bash script to run the phonon calculations.
+        path: path to the folder containing the VASP input files.
+        phonon_volumes: a list of volumes to run the phonon calculations for.
+        kppa: k-point grid density.
+        run_file: bash script to run the phonon calculations.
+        scaling_matrix: scaling matrix for the supercell. The default is the identity matrix.
     """
 
     # Create a new run_file to run the phonon calculations
@@ -652,14 +655,41 @@ def phonons_parallel(
                 shutil.copy2(file_source, file_dest)
 
     # Create a supercell and write the KPOINTS file
+    transformation = SupercellTransformation(scaling_matrix)
+    
     for phonon_volume, phonon_folder in phonon_volumes_and_folders:
-        structure = Structure.from_file(
-            os.path.join(path, f"phonon_{phonon_folder}", "POSCAR")
-        )
-        structure.make_supercell(supercell_size)
-        structure.to_file(
-            os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
-        )
+        try: # to get a magnetic structure
+            structure = get_magnetic_structure(
+                os.path.join(path,f"vol_{phonon_folder}","CONTCAR.3static"),
+                os.path.join(path,f"vol_{phonon_folder}","OUTCAR.3static")
+                ) # if magnetic data not in OUTCAR, will raise an exception.
+            structure = transformation.apply_transformation(structure)
+            structure.to_file(
+                os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
+            )
+            structure_magmoms = structure.site_properties['magmom']
+            numeric_strings = [str(value) for value in structure_magmoms]
+            magmom_string = ' '.join(numeric_strings)
+            magmom_line = "MAGMOM = " + magmom_string
+            # Write the magmom_line to the INCAR file
+            incar_file = os.path.join(path, f"phonon_{phonon_folder}", "INCAR")
+            with open(incar_file, 'r') as file:
+                lines = file.readlines()
+            with open(incar_file, 'w') as file:
+                for line in lines:
+                    if line.startswith('MAGMOM ='):
+                        file.write(magmom_line + '\n')
+                    else:
+                        file.write(line)
+        except Exception as e:
+            structure = Structure.from_file(
+                os.path.join(path, f"phonon_{phonon_folder}", "POSCAR")
+            )
+            structure = transformation.apply_transformation(structure)
+            structure.to_file(
+                os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
+            )
+            
         kpoints = Kpoints.automatic_density(structure, kppa, force_gamma=True)
         kpoints.write_file(os.path.join(path, f"phonon_{phonon_folder}", "KPOINTS"))
 
@@ -679,6 +709,23 @@ def process_phonon_dos_YPHON(path: str):
         path (str): path to the folder containing all the phonon calculation folders. E.g. phonon_1, phonon_2, etc.
     """
 
+    # Reset logging configuration
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+        
+    # Configure logging
+    log_file_path = os.path.join(path, 'phonons_parallel.log')
+
+    # If log_file_path already exists, delete it
+    if os.path.exists(log_file_path):
+        os.remove(log_file_path)
+        
+    logging.basicConfig(
+        filename=log_file_path,
+        level=logging.ERROR,  # Set the log level to ERROR
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+
     # Go to each phonon folder and copy the CONTCAR, OUTCAR, and vasprun.xml files to the phonon_dos folder to be processed by YPHON
     phonon_folders = [
         folder
@@ -687,55 +734,64 @@ def process_phonon_dos_YPHON(path: str):
     ]
 
     for phonon_folder in phonon_folders:
-        phonon_dos_folder = os.path.join(path, phonon_folder, "phonon_dos")
-        phonon_folder = os.path.join(path, phonon_folder)
-        if not os.path.exists(phonon_dos_folder):
-            os.makedirs(phonon_dos_folder, exist_ok=True)
-        shutil.copy(
-            os.path.join(phonon_folder, "CONTCAR.2phonons"),
-            os.path.join(phonon_dos_folder, "CONTCAR"),
-        )
-        shutil.copy(
-            os.path.join(phonon_folder, "OUTCAR.2phonons"),
-            os.path.join(phonon_dos_folder, "OUTCAR"),
-        )
-        shutil.copy(
-            os.path.join(phonon_folder, "vasprun.xml.2phonons"),
-            os.path.join(phonon_dos_folder, "vasprun.xml"),
-        )
+        try:
+            phonon_dos_folder = os.path.join(path, phonon_folder, "phonon_dos")
+            phonon_folder = os.path.join(path, phonon_folder)
+            if not os.path.exists(phonon_dos_folder):
+                os.makedirs(phonon_dos_folder, exist_ok=True)
+            shutil.copy(
+                os.path.join(phonon_folder, "CONTCAR.2phonons"),
+                os.path.join(phonon_dos_folder, "CONTCAR"),
+            )
+            shutil.copy(
+                os.path.join(phonon_folder, "OUTCAR.2phonons"),
+                os.path.join(phonon_dos_folder, "OUTCAR"),
+            )
+            shutil.copy(
+                os.path.join(phonon_folder, "vasprun.xml.2phonons"),
+                os.path.join(phonon_dos_folder, "vasprun.xml"),
+            )
 
-        index = phonon_folder.split("_")[-1]
-        structure = Structure.from_file(os.path.join(phonon_dos_folder, "CONTCAR"))
-        number_of_atoms = structure.num_sites
-        volume = extract_volume(os.path.join(phonon_dos_folder, "CONTCAR"))
-        volume_per_atom = volume / number_of_atoms
+            index = phonon_folder.split("_")[-1]
+            structure = Structure.from_file(os.path.join(phonon_dos_folder, "CONTCAR"))
+            number_of_atoms = structure.num_sites
+            volume = extract_volume(os.path.join(phonon_dos_folder, "CONTCAR"))
+            volume_per_atom = volume / number_of_atoms
 
-        with open(os.path.join(phonon_dos_folder, "volph_" + index), "w") as f:
-            f.write(str(volume_per_atom))
+            with open(os.path.join(phonon_dos_folder, "volph_" + index), "w") as f:
+                f.write(str(volume_per_atom))
 
-        # YPHON commands
-        subprocess.run(["vasp_fij"], cwd=phonon_dos_folder)
-        subprocess.run(["Yphon <superfij.out"], cwd=phonon_dos_folder, shell=True)
+            # YPHON commands
+            subprocess.run(["vasp_fij"], cwd=phonon_dos_folder)
+            subprocess.run(["Yphon <superfij.out"], cwd=phonon_dos_folder, shell=True)
 
-        os.rename(
-            os.path.join(phonon_dos_folder, "vdos.out"),
-            os.path.join(phonon_dos_folder, "vdos_" + index),
-        )
+            os.rename(
+                os.path.join(phonon_dos_folder, "vdos.out"),
+                os.path.join(phonon_dos_folder, "vdos_" + index),
+            )
+        except Exception as e:
+            logging.error(f"Error processing folder {phonon_folder}: {e}")
 
     os.makedirs(os.path.join(path, "YPHON_results"), exist_ok=True)
     for phonon_folder in phonon_folders:
-        phonon_dos_folder = os.path.join(path, phonon_folder, "phonon_dos")
-        phonon_folder = os.path.join(path, phonon_folder)
-        index = phonon_folder.split("_")[-1]
-        shutil.copy(
-            os.path.join(phonon_dos_folder, "vdos_" + index),
-            os.path.join(path, "YPHON_results", "vdos_" + index),
-        )
-        shutil.copy(
-            os.path.join(phonon_dos_folder, "volph_" + index),
-            os.path.join(path, "YPHON_results", "volph_" + index),
-        )
+        try:
+            phonon_dos_folder = os.path.join(path, phonon_folder, "phonon_dos")
+            phonon_folder = os.path.join(path, phonon_folder)
+            index = phonon_folder.split("_")[-1]
+            shutil.copy(
+                os.path.join(phonon_dos_folder, "vdos_" + index),
+                os.path.join(path, "YPHON_results", "vdos_" + index),
+            )
+            shutil.copy(
+                os.path.join(phonon_dos_folder, "volph_" + index),
+                os.path.join(path, "YPHON_results", "volph_" + index),
+            )
+        except Exception as e:
+            logging.error(f"Error copying files from {phonon_folder}: {e}")
 
+        # Delete log_file_path if it is empty
+        if os.path.exists(log_file_path) and os.path.getsize(log_file_path) == 0:
+            os.remove(log_file_path)
 
 def kpoints_conv_test(
     path: str,
