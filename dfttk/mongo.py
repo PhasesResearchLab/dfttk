@@ -17,7 +17,8 @@ from pymatgen.io.vasp.inputs import Incar, Kpoints, Poscar, Potcar
 from dfttk.workflows import custodian_errors_location
 from dfttk.data_extraction import extract_volume
 
-#TODO: add docstrings
+
+# TODO: add docstrings
 class MongoDBStorage:
 
     # Establish connection to MongoDB

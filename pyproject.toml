@@ -34,10 +34,11 @@ dependencies = [
     "scipy>=1.11.4",
     "custodian>=2023.10.9",
     "natsort>=8.4.0",
-    "distinctipy>=1.3.4"
+    "distinctipy>=1.3.4",
+    "pymongo>=4.4",
 ]
 
-keywords = ["VASP", "automation", "thermodynamics", "zentropy", "dfttk", "DFT", "custodian", "materials", "science"]
+keywords = ["VASP", "automation", "thermodynamics", "dfttk2", "DFT", "materials", "science", "MongoDB"]
 
 [project.urls]
-"Homepage" = "https://github.com/lukeamyers/vasp-job-automation"
+"Homepage" = "https://github.com/PhasesResearchLab/dfttk2"
