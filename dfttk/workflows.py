@@ -19,7 +19,7 @@ from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Chgcar
-from pymatgen.transformations import SupercellTransformation
+from pymatgen.transformations.standard_transformations import SupercellTransformation
 
 # DFTTK imports
 from dfttk.data_extraction import extract_volume
@@ -800,7 +800,7 @@ def process_phonon_dos_YPHON(path: str):
         # Delete log_file_path if it is empty
         if os.path.exists(log_file_path) and os.path.getsize(log_file_path) == 0:
             os.remove(log_file_path)
-
+        
 
 def kpoints_conv_test(
     path: str,
