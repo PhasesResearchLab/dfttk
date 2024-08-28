@@ -126,6 +126,7 @@ def vibrational_heat_capacity(temperature, theta):
 def plot_debye(
     temperatures,
     volumes,
+    number_of_atoms,
     y,
     y_label,
     selected_temperatures = None,
@@ -140,7 +141,7 @@ def plot_debye(
                 y=y[i],
                 mode='lines',
                 name=f'{volume:.{volume_decimals}f} \u212B<sup>3</sup>'))
-    plot_format(s_t_fig,"Temperature (K)", f"{y_label}<sub>vib</sub> (eV/K/**atom**)")
+    plot_format(s_t_fig,"Temperature (K)", f"{y_label}<sub>vib</sub> (eV/K/{number_of_atoms} atoms)")
     
     s_v_fig = go.Figure()
     if selected_temperatures is None:
@@ -153,10 +154,8 @@ def plot_debye(
                 y=y[:, i],
                 mode='lines',
                 name=f'{temperature:.{temperature_decimals}f} K'))
-    plot_format(s_v_fig,"Volume (\u212B<sup>3</sup>)", f"S<sub>vib</sub> (eV/K/**atom**)")
+    plot_format(s_v_fig,"Volume (\u212B<sup>3</sup>)", f"S<sub>vib</sub> (eV/K/{number_of_atoms} atoms)")
     return s_t_fig, s_v_fig
-
-    
 
 
 def process_debye_gruneisen(
@@ -219,5 +218,7 @@ def process_debye_gruneisen(
         s_vib_v_t[i, :] = s_vib
         f_vib_v_t[i, :] = f_vib
         cv_vib_v_t[i, :] = cv_vib
-    return temperatures, volumes, s_vib_v_t, f_vib_v_t, cv_vib_v_t
+    n = df['number_of_atoms'][0]
+    
+    return temperatures, volumes, n, s_vib_v_t, f_vib_v_t, cv_vib_v_t
     
