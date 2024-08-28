@@ -137,6 +137,8 @@ def plot_debye(
     y,
     y_label,
     selected_temperatures = None,
+    volume_decimals = 0,
+    temperature_decimals = 0
     ):
     s_t_fig = go.Figure()
     for i, volume in enumerate(volumes):
@@ -145,7 +147,7 @@ def plot_debye(
                 x=temperatures,
                 y=y[i],
                 mode='lines',
-                name=f'{volume:.2f} \u212B<sup>3</sup>'))
+                name=f'{volume:.{volume_decimals}f} \u212B<sup>3</sup>'))
     plot_format(s_t_fig,"Temperature (K)", f"{y_label}<sub>vib</sub> (eV/K/**atom**)")
     
     s_v_fig = go.Figure()
@@ -158,7 +160,7 @@ def plot_debye(
                 x=volumes,
                 y=y[:, i],
                 mode='lines',
-                name=f'{temperature:.2f} K'))
+                name=f'{temperature:.{temperature_decimals}f} K'))
     plot_format(s_v_fig,"Volume (\u212B<sup>3</sup>)", f"S<sub>vib</sub> (eV/K/**atom**)")
     return s_t_fig, s_v_fig
 
