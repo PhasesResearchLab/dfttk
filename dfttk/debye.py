@@ -131,6 +131,8 @@ def vibrational_heat_capacity(temperature, theta):
 
 def process_debye_gruneisen(
     config_path,
+    volumes: np.array = None,
+    temperatures: np.array = np.linspace(10, 1000, 100),
     outcar_name: str = "OUTCAR.3static",
     oszicar_name: str = "OSZICAR.3static",
     contcar_name: str = "CONTCAR.3static",
@@ -161,11 +163,10 @@ def process_debye_gruneisen(
     gru_const = gruneisen_constant()
     gru_param = gruneisen_parameter(bulk_modulus_prime, gru_const)
     
-    volume_min = volume.min()
-    volume_max = volume.max()
-    
-    volumes = np.linspace(volume_min, volume_max, 200) # make volumes an input parameter
-    temperatures = np.linspace(1e-8, 200, 200)
+    if volumes is None:
+        volume_min = volume.min()
+        volume_max = volume.max() 
+        volumes = np.linspace(volume_min, volume_max, 10) # make volumes an input parameter
     
     total_mass = df['total_mass'][0]
     theta = debye_temperature(volumes, eos_parameters, total_mass, s, gru_param)
