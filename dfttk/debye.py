@@ -15,8 +15,11 @@ from dfttk.data_extraction import extract_atomic_masses
 A = 231.04
 BOLTZMANN = constants.physical_constants['Boltzmann constant in eV/K'][0]
 
-def scaling_factor():
-    return 0.75
+def scaling_factor(poisson_ratio):
+    term1 = (4 * np.sqrt(2) * ((1 + poisson_ratio) / (1 - 2 * poisson_ratio)) ** (3 / 2))
+    term2 = ((1 + poisson_ratio) / (1 - poisson_ratio)) ** (3 / 2)
+    result = 3 ** (5 / 6) * (term1 + term2) ** (-1 / 3)
+    return result
 
 def gruneisen_constant():
     return 1.0
@@ -153,18 +156,23 @@ def process_debye_gruneisen(
     _, eos_parameters, _, _, _ = eos_fitting(volume, energy)
     volume_0, energy_0, bulk_modulus, bulk_modulus_prime, bulk_modulus_2prime = eos_parameters
     
-    s = scaling_factor()
+    # s = scaling_factor()
+    s = 0.617 # for now, this is a constant
     gru_const = gruneisen_constant()
     gru_param = gruneisen_parameter(bulk_modulus_prime, gru_const)
     
     volume_min = volume.min()
     volume_max = volume.max()
     
-    volumes = np.linspace(volume_min, volume_max, 4000)
-    temperatures = np.linspace(1e-8, 1000, 4000)
+    volumes = np.linspace(volume_min, volume_max, 200) # make volumes an input parameter
+    temperatures = np.linspace(1e-8, 200, 200)
     
     total_mass = df['total_mass'][0]
     theta = debye_temperature(volumes, eos_parameters, total_mass, s, gru_param)
+    
+    s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+    f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+    cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
     
     for i, volume in enumerate(volumes):
         x = theta[i]/temperatures
@@ -176,5 +184,8 @@ def process_debye_gruneisen(
         d_s_vib = np.array([k - j for j, k in zip(s_vib[:-1], s_vib[1:])])
         dt = np.array([k - j for j, k in zip(temperatures[:-1], temperatures[1:])])
         c_p = temperatures[:-1] * d_s_vib / dt # this is incorrect because it is done at constant volume
-        return temperatures, volumes, s_vib, f_vib, c_p
+        s_vib_v_t[i, :] = s_vib
+        f_vib_v_t[i, :] = f_vib
+        cv_vib_v_t[i, :] = cv_vib
+    return temperatures, volumes, s_vib_v_t, f_vib_v_t, cv_vib_v_t
     
