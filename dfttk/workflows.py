@@ -19,7 +19,7 @@ from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Chgcar
-from pymatgen.transformations import SupercellTransformation
+from pymatgen.transformations.standard_transformations import SupercellTransformation
 
 # DFTTK imports
 from dfttk.data_extraction import extract_volume
@@ -801,6 +801,184 @@ def process_phonon_dos_YPHON(path: str):
         if os.path.exists(log_file_path) and os.path.getsize(log_file_path) == 0:
             os.remove(log_file_path)
 
+
+def run_elec_dos(
+    vasp_cmd: list[str],
+    handlers: list[str],
+    copy_magmom: bool = False,
+    backup: bool = False,
+):
+    """Runs an electronic DOS calculation.
+
+    Args:
+        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        file of the next run. Defaults to False.
+        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        .orig. Defaults to False.
+    """
+
+    step1 = VaspJob(
+        vasp_cmd=vasp_cmd,
+        copy_magmom=copy_magmom,
+        final=True,
+        suffix=".elec_dos",
+        backup=backup,
+        settings_override=[
+            {
+                "dict": "INCAR",
+                "action": {
+                    "_set": {
+                        "EDIFF": "1E-6",
+                        "NELM": 200,
+                        "IBRION": -1,
+                        "NSW": 0,
+                        "ISMEAR": -5,
+                        "LORBIT": 11,
+                        "NEDOS": 5001,
+                    }
+                },
+            },],
+    )
+
+    jobs = [step1]
+    c = Custodian(handlers, jobs, max_errors=3)
+    c.run()
+
+
+def elec_dos_parallel(
+    path: str,
+    volumes: list[float],
+    kppa: float,
+    run_file: str,
+    scaling_matrix: tuple[tuple[int]] = ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+) -> None:
+    """Runs the run_elec_dos function in parallel for a list of volumes.
+
+    Args:
+        path: path to the folder containing the VASP input files.
+        volumes: a list of volumes to run the electron DOS calculations for.
+        kppa: k-point grid density.
+        run_file: bash script to run the electron DOS calculations.
+        scaling_matrix: scaling matrix for the supercell. The default is the identity matrix.
+    """
+
+    # Create a new run_file to run the electron DOS calculations
+    script_name = sys.argv[0]
+    with open(script_name, "r") as file:
+        script_contents = file.read()
+        script_contents = "\n".join(
+            [
+                line
+                for line in script_contents.split("\n")
+                if "workflows.elec_dos_parallel" not in line
+            ]
+        )
+
+    with open(run_file, "r") as file:
+        run_file_contents = file.read()
+
+    new_run_file = run_file_contents + "\n"
+    new_run_file += "\n"
+    new_run_file += "python << END_OF_PYTHON\n"
+    new_run_file += script_contents
+    new_run_file += "workflows.run_elec_dos(vasp_cmd, handlers)\n"
+    new_run_file += "END_OF_PYTHON\n"
+
+    # Copy files to elec folders
+    vol_folders = [
+        folder
+        for folder in os.listdir(path)
+        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol")
+    ]
+    vol_folders = natsorted(vol_folders)
+    
+    ev_volumes_finished = []
+    ev_folder_names = []
+    for vol_folder in vol_folders:
+        structure_path = os.path.join(path, vol_folder, "CONTCAR.3static")
+        ev_volumes_finished.append(extract_volume(structure_path))
+        ev_folder_names.append(vol_folder)
+
+    ev_volumes_and_folders_finished = [
+        [a, b] for a, b in zip(ev_volumes_finished, ev_folder_names)
+    ]
+
+    for i in range(len(ev_volumes_and_folders_finished)):
+        ev_volumes_and_folders_finished[i][1] = ev_volumes_and_folders_finished[i][
+            1
+        ].replace("vol_", "")
+
+    elec_volumes_and_folders = []
+    for ev_volume_finished, folder in ev_volumes_and_folders_finished:
+        if ev_volume_finished in volumes:
+            elec_volumes_and_folders.append([ev_volume_finished, folder])
+
+    for volume, elec_folder in elec_volumes_and_folders:
+        os.makedirs(os.path.join(path, f"elec_{elec_folder}"), exist_ok=True)
+
+    source_name_dest_name = [
+        ("CONTCAR.3static", "POSCAR"),
+        ("INCAR.2relax", "INCAR"),
+        ("POTCAR", "POTCAR"),
+        ("WAVECAR.3static", "WAVECAR"),
+    ]
+
+    for volume, elec_folder in elec_volumes_and_folders:
+        for source_name, dest_name in source_name_dest_name:
+            file_source = os.path.join(path, f"vol_{elec_folder}", source_name)
+            file_dest = os.path.join(path, f"elec_{elec_folder}", dest_name)
+            if os.path.isfile(file_source):
+                shutil.copy2(file_source, file_dest)
+
+    # Create a supercell and write the KPOINTS file
+    transformation = SupercellTransformation(scaling_matrix)
+
+    for volume, elec_folder in elec_volumes_and_folders:
+        try:  # to get a magnetic structure
+            structure = get_magnetic_structure(
+                os.path.join(path, f"vol_{elec_folder}", "CONTCAR.3static"),
+                os.path.join(path, f"vol_{elec_folder}", "OUTCAR.3static"),
+            )  # if magnetic data not in OUTCAR, will raise an exception.
+            structure = transformation.apply_transformation(structure)
+            structure.to_file(
+                os.path.join(path, f"elec_{elec_folder}", "POSCAR"), "POSCAR"
+            )
+            structure_magmoms = structure.site_properties["magmom"]
+            numeric_strings = [str(value) for value in structure_magmoms]
+            magmom_string = " ".join(numeric_strings)
+            magmom_line = "MAGMOM = " + magmom_string
+            # Write the magmom_line to the INCAR file
+            incar_file = os.path.join(path, f"elec_{elec_folder}", "INCAR")
+            with open(incar_file, "r") as file:
+                lines = file.readlines()
+            with open(incar_file, "w") as file:
+                for line in lines:
+                    if line.startswith("MAGMOM ="):
+                        file.write(magmom_line + "\n")
+                    else:
+                        file.write(line)
+        except Exception as e:
+            structure = Structure.from_file(
+                os.path.join(path, f"elec_{elec_folder}", "POSCAR")
+            )
+            structure = transformation.apply_transformation(structure)
+            structure.to_file(
+                os.path.join(path, f"elec_{elec_folder}", "POSCAR"), "POSCAR"
+            )
+
+        kpoints = Kpoints.automatic_density(structure, kppa, force_gamma=True)
+        kpoints.write_file(os.path.join(path, f"elec_{elec_folder}", "KPOINTS"))
+
+    # Run the electronic DOS calculations in parallel
+    for volume, elec_folder in elec_volumes_and_folders:
+        os.chdir(os.path.join(path, f"elec_{elec_folder}"))
+        with open("run_elec_dos", "w") as file:
+            file.write(new_run_file)
+        os.system("sbatch run_elec_dos")
+        os.chdir(path)        
+        
 
 def kpoints_conv_test(
     path: str,
