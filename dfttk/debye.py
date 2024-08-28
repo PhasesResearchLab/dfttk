@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import plotly.graph_objects as go
 from scipy import constants
 from scipy.special import bernoulli
 from scipy.special import gamma
@@ -7,6 +8,7 @@ from pymatgen.io.vasp.outputs import Poscar
 from dfttk import eos_fit
 from dfttk.aggregate_extraction import extract_configuration_data
 from dfttk.data_extraction import extract_atomic_masses
+from dfttk.qha_yphon import plot_format
 
 
 
@@ -128,6 +130,40 @@ def vibrational_helmholtz_energy(temperature, theta):
 def vibrational_heat_capacity(temperature, theta):
     x = theta/temperature
     return 3*BOLTZMANN*temperature*debye_function_derivative(x) + debye_function(x)
+
+def plot_debye(
+    temperatures,
+    volumes,
+    y,
+    y_label,
+    selected_temperatures = None,
+    ):
+    s_t_fig = go.Figure()
+    for i, volume in enumerate(volumes):
+        s_t_fig.add_trace(
+            go.Scatter(
+                x=temperatures,
+                y=y[i],
+                mode='lines',
+                name=f'{volume:.2f} \u212B<sup>3</sup>'))
+    plot_format(s_t_fig,"Temperature (K)", f"{y_label}<sub>vib</sub> (eV/K/**atom**)")
+    
+    s_v_fig = go.Figure()
+    if selected_temperatures is None:
+        indices = np.linspace(0, len(temperatures) - 1, 5, dtype=int)
+        selected_temperatures = np.array([temperatures[j] for j in indices])
+    for i, temperature in enumerate(selected_temperatures):
+        s_v_fig.add_trace(
+            go.Scatter(
+                x=volumes,
+                y=y[:, i],
+                mode='lines',
+                name=f'{temperature:.2f} K'))
+    plot_format(s_v_fig,"Volume (\u212B<sup>3</sup>)", f"S<sub>vib</sub> (eV/K/**atom**)")
+    return s_t_fig, s_v_fig
+
+    
+
 
 def process_debye_gruneisen(
     config_path,
