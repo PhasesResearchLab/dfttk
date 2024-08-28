@@ -17,14 +17,6 @@ from dfttk.qha_yphon import plot_format
 A = 231.04
 BOLTZMANN = constants.physical_constants['Boltzmann constant in eV/K'][0]
 
-def scaling_factor(poisson_ratio):
-    term1 = (4 * np.sqrt(2) * ((1 + poisson_ratio) / (1 - 2 * poisson_ratio)) ** (3 / 2))
-    term2 = ((1 + poisson_ratio) / (1 - poisson_ratio)) ** (3 / 2)
-    result = 3 ** (5 / 6) * (term1 + term2) ** (-1 / 3)
-    return result
-
-def gruneisen_constant():
-    return 1.0
 
 def gruneisen_parameter(bulk_modulus_prime, gruneisen_constant):
     return (1+bulk_modulus_prime)/2 - gruneisen_constant
@@ -169,6 +161,8 @@ def plot_debye(
 
 def process_debye_gruneisen(
     config_path,
+    scaling_factor: float = 0.617,
+    gruneisen_constant: float = 1,
     volumes: np.array = None,
     temperatures: np.array = np.linspace(10, 1000, 100),
     outcar_name: str = "OUTCAR.3static",
@@ -196,9 +190,8 @@ def process_debye_gruneisen(
     _, eos_parameters, _, _, _ = eos_fitting(volume, energy)
     volume_0, energy_0, bulk_modulus, bulk_modulus_prime, bulk_modulus_2prime = eos_parameters
     
-    # s = scaling_factor()
-    s = 0.617 # for now, this is a constant
-    gru_const = gruneisen_constant()
+    s = scaling_factor
+    gru_const = gruneisen_constant
     gru_param = gruneisen_parameter(bulk_modulus_prime, gru_const)
     
     if volumes is None:
