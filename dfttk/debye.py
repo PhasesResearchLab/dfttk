@@ -1,13 +1,12 @@
-import os
 import numpy as np
 import plotly.graph_objects as go
+
 from scipy import constants
 from scipy.special import bernoulli
 from scipy.special import gamma
-from pymatgen.io.vasp.outputs import Poscar
+
 from dfttk import eos_fit
 from dfttk.aggregate_extraction import extract_configuration_data
-from dfttk.data_extraction import extract_atomic_masses
 from dfttk.qha_yphon import plot_format
 
 
