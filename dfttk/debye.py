@@ -43,7 +43,7 @@ def debye_temperature(
     
     return s * A * volume_0**(1/6) * (bulk_modulus/mass)**(1/2) * (volume_0/volume)**gru_param
 
-def debye_function(x_array: np.array, prec = 1e-10):
+def debye_function(x_array: np.array, prec = 1e-10, nth_bernoulli = 100):
     """series expansion of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1,
     comes from the expansion
     Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
@@ -63,7 +63,7 @@ def debye_function(x_array: np.array, prec = 1e-10):
     if not 0 < prec < 1:
         raise ValueError("The precision must be between 0 and 1")
     result = np.zeros_like(x_array)
-    bern_list = bernoulli(100) # 2*k must be less than 100
+    bern_list = bernoulli(nth_bernoulli) # 2*k must be less than 100
     for i, x in enumerate(x_array):
         term = 1 # ensures the while loop runs at least once
         k = 1
@@ -77,7 +77,10 @@ def debye_function(x_array: np.array, prec = 1e-10):
         elif -2*np.pi < x < 0.7*np.pi:
             summation = 1 - 3/8*x
             while abs(term) > prec:
-                term = 3 * (bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * x**(2*k))
+                try:
+                    term = 3 * (bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * x**(2*k))
+                except IndexError:
+                    raise IndexError(f"IndexError: the bernoulli number at index {2*k} is not available. This indicates slow converges of the Debye function series expansion. I hope you know what you are doing.")
                 summation += term
                 k += 1
             result[i] = summation
@@ -86,30 +89,36 @@ def debye_function(x_array: np.array, prec = 1e-10):
     return result
 
         
-# TODO use a while loop to ensure convergence. order=30 is plenty for x > -1.5𝜋
-def debye_function_derivative(x_array, order=30):
+def debye_function_derivative(x_array, prec=1e-10, nth_bernoulli=100):
     """series expansion of the derivative of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1, comes from the expansion
     Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
     and Abramowitz, M. and Stegun, I.A. eds., 1968. Handbook of mathematical functions with formulas, graphs, and mathematical tables (Vol. 55). US Government printing office.
     """
-    
-    order = int(order)
-    
+    if not 0 < prec < 1:
+        raise ValueError("The precision must be between 0 and 1")
     result = np.zeros_like(x_array)
+    bern_list = bernoulli(nth_bernoulli) # 2*k must be less than 100
     for i, x in enumerate(x_array):
+        term = 1 # ensures the while loop runs at least once
+        k = 1
         if x >= 0.7*np.pi:
-            summation = sum(-np.exp(-k*x)*(1 + 3/(k*x) + 9/(k**2*x**2) + 18/(k**3*x**3) + 18/(k**4*x**4)) for k in range(1, order))
-            result[i] = -3*np.pi**4/(5*x**4) - 3*summation
-            
+            summation = -3*np.pi**4/(5*x**4)
+            while abs(term) > prec:
+                term = -3*(-np.exp(-k*x)*(1 + 3/(k*x) + 9/(k**2*x**2) + 18/(k**3*x**3) + 18/(k**4*x**4)))
+                summation += term
+                k += 1
+            result[i] = summation
         elif -2*np.pi < x < 0.7*np.pi:
-            if order > 1:
-                bern_list = bernoulli(2*(order-1))
-                summation = sum(bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * 2*k*x**(2*k-1) for k in range(1, order))
-                result[i] = -3/8 + 3*summation
-            elif order == 1:
-                result[i] = -3/8
-            else:
-                raise ValueError("Order of the debye function derivative series expansion must be greater than or equal to 1.")
+            summation = -3/8
+            term = 1 # ensures the while loop runs at least once
+            while abs(term) > prec:
+                try:
+                    term = 3*(bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * 2*k*x**(2*k-1))
+                except IndexError:
+                    raise IndexError(f"IndexError: the bernoulli number at index {2*k} is not available. This indicates slow converges of the Debye function derivative series expansion. I hope you know what you are doing.")
+                summation += term
+                k += 1
+            result[i] = summation
         else:
             raise ValueError("The debye function derivative series expansions used are only valid for x > -2𝜋")
     return result
