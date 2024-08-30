@@ -43,8 +43,7 @@ def debye_temperature(
     
     return s * A * volume_0**(1/6) * (bulk_modulus/mass)**(1/2) * (volume_0/volume)**gru_param
 
-# TODO use a while loop to ensure convergence. order=30 is plenty for x > -1.5𝜋
-def debye_function(x_array: np.array, order: int = 30):
+def debye_function(x_array: np.array, prec = 1e-6):
     """series expansion of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1,
     comes from the expansion
     Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
@@ -61,24 +60,27 @@ def debye_function(x_array: np.array, order: int = 30):
     Returns:
         _type_: _description_
     """
-    order = int(order)
-    if order < 2:
-        raise ValueError("Order of the debye function series expansion must be greater than or equal to 2.")
     result = np.zeros_like(x_array)
+    bern_list = bernoulli(100) # 2*k must be less than 100
     for i, x in enumerate(x_array):
+        if not 0 < prec < 1:
+            raise ValueError("The precision must be between 0 and 1")
+        term = 1 # ensures the while loop runs at least once
+        k = 1
         if x >= 0.7*np.pi:
-            summation = sum(1/k*(1 + 3/(k*x) + 6/(k**2*x**2) + 6/(k**3*x**3))*np.exp(-k*x) for k in range(1, order-1))
-            result[i] = np.pi**4/(5*x**3)-3*summation
+            summation = np.pi**4/(5*x**3)
+            while abs(term) > prec:
+                term = -3*(1/k*(1 + 3/(k*x) + 6/(k**2*x**2) + 6/(k**3*x**3))*np.exp(-k*x))
+                summation += term
+                k += 1
+            result[i] = summation
         elif -2*np.pi < x < 0.7*np.pi:
-            if order > 2:
-                bern_list = bernoulli(2*(order-2))
-                summation = sum(bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * x**(2*k) for k in range(1, order-1))
-                result[i] = 1 - 3/8*x + 3 * summation
-            elif order == 2:
-                result[i] = 1 - 3/8*x
-            else:
-                # value error
-                raise ValueError("Order of the debye function series expansion must be greater than or equal to 2.")
+            summation = 1 - 3/8*x
+            while abs(term) > prec:
+                term = 3 * (bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * x**(2*k))
+                summation += term
+                k += 1
+            result[i] = summation
         else:
             raise ValueError("The debye function series expansions used are only valid for x > -2𝜋")
     return result
