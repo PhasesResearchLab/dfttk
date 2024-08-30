@@ -65,21 +65,32 @@ def debye_temperature(
     return s * A * volume_0**(1/6) * (bulk_modulus/mass)**(1/2) * (volume_0/volume)**gru_param
 
 def debye_function(x_array: np.array, prec = 1e-10, nth_bernoulli = 100):
-    """series expansion of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1,
-    comes from the expansion
+    """Calculates the debye function with n=3 using one of two series expansions. Valid for |𝑋|<2𝜋 and 𝑁≥1,
+    for -2pi < x < 0.7𝜋 the series
+    .. math::
+        1 - 3/8x + 3 \sum{k=1} \frac{B_{2k}}{(2k+3) \Gamma(2k+1)} * x^{2k}
+        
+    for x >= 0.7𝜋 the series
+    .. math::
+        \frac{\pi^4}{5x^3} - 3 \sum{k=1} \frac{1}{k} (1 + \frac{3}{kx} + \frac{6}{k^2x^2} + \frac{6}{k^3x^3}) * e^{-kx}
+        
+    See references,
     Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
-    and Abramowitz, M. and Stegun, I.A. eds., 1968. Handbook of mathematical functions with formulas, graphs, and mathematical tables (Vol. 55). US Government printing office.
+    Abramowitz, M. and Stegun, I.A. eds., 1968. Handbook of mathematical functions with formulas, graphs, and mathematical tables (Vol. 55). US Government printing office.
+    Khishchenko, K., Analytic approximation of the Debye function, Mathematica Montisnigri (vol. 49), 2020.  https://doi.org/10.20948/MATHMONTIS-2020-49-8
 
     Args:
-        x: _description_
-        n: _description_. Defaults to 3.
-        order: the default is well within accuracy of floats and takes less than 0.0 seconds for n=3. Defaults to 30.
-
+        x_array: array of input values for the debye function
+        prec: Precission. Terminates the series expansion when the absolute value of the term is less than prec
+        nth_bernoulli: Determines the nth Bernoulli number to calculate. A list of bernoulli numbers is generated prior calculating the series expansion. There should be no reason to change this value under normal circumstances.
+        
     Raises:
-        ValueError: _description_
+        ValueError: If the precision is not between 0 and 1
+        ValueError: If x < -2𝜋
+        IndexError: If the bernoulli number at index 2k is not available. This indicates slow converges of the Debye function series expansion. If you wish to calculate values for x < -𝜋 convergence may be slow and you may need to increase nth_bernoulli.
 
     Returns:
-        _type_: _description_
+        np.array: The value of the debye function evaluated at each x in x_array
     """
     if not 0 < prec < 1:
         raise ValueError("The precision must be between 0 and 1")
@@ -101,7 +112,7 @@ def debye_function(x_array: np.array, prec = 1e-10, nth_bernoulli = 100):
                 try:
                     term = 3 * (bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * x**(2*k))
                 except IndexError:
-                    raise IndexError(f"IndexError: the bernoulli number at index {2*k} is not available. This indicates slow converges of the Debye function series expansion. I hope you know what you are doing.")
+                    raise IndexError(f"IndexError: the bernoulli number at index {2*k} is not available. This indicates slow converges of the Debye function series expansion. If you wish to calculate values for x < -𝜋 convergence may be slow and you may need to increase nth_bernoulli.")
                 summation += term
                 k += 1
             result[i] = summation
