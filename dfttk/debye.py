@@ -26,24 +26,36 @@ def gruneisen_parameter(
     bulk_modulus_prime: float,
     gruneisen_constant: float
 ) -> float:
-    """calculates the gruneisen parameter
+    """Calculates the gruneisen parameter
 
     Args:
         bulk_modulus_prime: B_0', first derivative of the bulk modulus with respect to volume
         gruneisen_constant: x, Should be between 2/3 (high temperature) and 1 (low temperature)
 
     Returns:
-        float: gamma, the gruneisen parameter
+        gamma, the gruneisen parameter
     """    
     return (1+bulk_modulus_prime)/2 - gruneisen_constant
 
 def debye_temperature(
     volume: float,
-    eos_parameters: float,
+    eos_parameters: tuple[float],
     mass: float,
-    scaling_factor: float,
-    gru_param: float
+    gru_param: float,
+    scaling_factor: float = 0.617
 ) -> float:
+    """Calculates the Debye temperature within the Debye-Gruneisen model.
+
+    Args:
+        volume: Volume of the cell
+        eos_parameters: The parameters of the equation of state: (volume_0, energy_0, bulk_modulus, bulk_modulus_prime)
+        mass: Total mass of the cell
+        gru_param: gruneisen parameter
+        scaling_factor: Scaling factor defualts to 0.617 obtained by Moruzzi et al from nonmagnetic cubic metals
+
+    Returns:
+        Debye temperature
+    """    
     s = scaling_factor
     volume_0 = eos_parameters[0]
     energy_0 = eos_parameters[1]
