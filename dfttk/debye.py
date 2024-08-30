@@ -182,7 +182,7 @@ def process_debye_gruneisen(
         magmom_tolerance = magmom_tolerance,
         total_magnetic_moment_tolerance = total_magnetic_moment_tolerance
     )
-    
+    print(df)
     # fit the equation of state
     volume = df['volume']
     energy = df['energy']
