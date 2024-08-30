@@ -21,11 +21,20 @@ from dfttk.qha_yphon import plot_format
 A = 231.04
 BOLTZMANN = constants.physical_constants['Boltzmann constant in eV/K'][0]
 
-
+# check docstring bulk modulus derivative with respect to ____
 def gruneisen_parameter(
     bulk_modulus_prime: float,
     gruneisen_constant: float
 ) -> float:
+    """calculates the gruneisen parameter
+
+    Args:
+        bulk_modulus_prime: B_0', first derivative of the bulk modulus with respect to volume
+        gruneisen_constant: x, Should be between 2/3 (high temperature) and 1 (low temperature)
+
+    Returns:
+        float: gamma, the gruneisen parameter
+    """    
     return (1+bulk_modulus_prime)/2 - gruneisen_constant
 
 def debye_temperature(
