@@ -13,20 +13,28 @@ from dfttk.qha_yphon import plot_format
 
 # A is the ____ constant of th Debye-Gruneisen model in units of
     # A = (8 * constants.pi**2)**(1/3)*constants.hbar/constants.k
+    
+
+# The definition of the Debye temperature is hbar/k_B * (6 * pi^2)^1/3 * N/V)
+# A = hbar/k_B * (6 * pi^2)^1/3
+# here A has units of K*s/(A*GPa*amu)^1/2 ??? check this ???
 A = 231.04
 BOLTZMANN = constants.physical_constants['Boltzmann constant in eV/K'][0]
 
 
-def gruneisen_parameter(bulk_modulus_prime, gruneisen_constant):
+def gruneisen_parameter(
+    bulk_modulus_prime: float,
+    gruneisen_constant: float
+) -> float:
     return (1+bulk_modulus_prime)/2 - gruneisen_constant
 
 def debye_temperature(
-    volume,
-    eos_parameters,
-    mass,
-    scaling_factor,
-    gru_param
-):
+    volume: float,
+    eos_parameters: float,
+    mass: float,
+    scaling_factor: float,
+    gru_param: float
+) -> float:
     s = scaling_factor
     volume_0 = eos_parameters[0]
     energy_0 = eos_parameters[1]
@@ -35,7 +43,7 @@ def debye_temperature(
     
     return s * A * volume_0**(1/6) * (bulk_modulus/mass)**(1/2) * (volume_0/volume)**gru_param
 
-# TODO use a while loop to ensure convergence order=30 is plenty for x > -1.5𝜋
+# TODO use a while loop to ensure convergence. order=30 is plenty for x > -1.5𝜋
 def debye_function(x_array: np.array, order: int = 30):
     """series expansion of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1,
     comes from the expansion
