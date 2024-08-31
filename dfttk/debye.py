@@ -64,15 +64,19 @@ def debye_temperature(
     
     return s * A * volume_0**(1/6) * (bulk_modulus/mass)**(1/2) * (volume_0/volume)**gru_param
 
-def debye_function(x_array: np.array, prec = 1e-10, nth_bernoulli = 100):
+def debye_function(
+    x_array: np.array,
+    prec: float = 1e-10,
+    nth_bernoulli: int = 100
+) -> np.array:
     """Calculates the debye function with n=3 using one of two series expansions. Valid for |𝑋|<2𝜋 and 𝑁≥1,
-    for -2pi < x < 0.7𝜋 the series
+    for -2pi < x < 0.7𝜋
     .. math::
-        1 - 3/8x + 3 \sum{k=1} \frac{B_{2k}}{(2k+3) \Gamma(2k+1)} * x^{2k}
+       D(x) = 1 - 3/8x + 3 \sum{k=1} \frac{B_{2k}}{(2k+3) \Gamma(2k+1)} * x^{2k}
         
     for x >= 0.7𝜋 the series
     .. math::
-        \frac{\pi^4}{5x^3} - 3 \sum{k=1} \frac{1}{k} (1 + \frac{3}{kx} + \frac{6}{k^2x^2} + \frac{6}{k^3x^3}) * e^{-kx}
+       D(x) = \frac{\pi^4}{5x^3} - 3 \sum{k=1} \frac{1}{k} (1 + \frac{3}{kx} + \frac{6}{k^2x^2} + \frac{6}{k^3x^3}) * e^{-kx}
         
     See references,
     Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
@@ -121,10 +125,29 @@ def debye_function(x_array: np.array, prec = 1e-10, nth_bernoulli = 100):
     return result
 
         
-def debye_function_derivative(x_array, prec=1e-10, nth_bernoulli=100):
-    """series expansion of the derivative of the debye function. valid for |𝑋|<2𝜋 and 𝑁≥1, comes from the expansion
+def debye_function_derivative(
+    x_array: np.array,
+    prec: float =1e-10,
+    nth_bernoulli: int = 100
+) -> np.array:
+    """Calculates the derivative of the debye function with n=3 using one of two series expansions. Valid for |𝑋|<2𝜋 and 𝑁≥1,
+    for -2pi < x < 0.7𝜋,
+    .. math::
+        D'(x) = -3/8 + 3 \sum{k=1} \frac{B_{2k}}{(2k+3) \Gamma(2k+1)} * 2kx^{2k-1}
+    
+    for x >= 0.7𝜋,
+    .. math::
+        D'(x) = -3 \frac{\pi**4-3}{5x**4} + -3 \sum{k=1} \exp(-kx) (1 + 3/(kx) + 9/(k**2x**2) + 18/(k**3x**3) + 18/(k**4x**4))
+        
+    See references,
     Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
-    and Abramowitz, M. and Stegun, I.A. eds., 1968. Handbook of mathematical functions with formulas, graphs, and mathematical tables (Vol. 55). US Government printing office.
+    Abramowitz, M. and Stegun, I.A. eds., 1968. Handbook of mathematical functions with formulas, graphs, and mathematical tables (Vol. 55). US Government printing office.
+    Khishchenko, K., Analytic approximation of the Debye function, Mathematica Montisnigri (vol. 49), 2020.  https://doi.org/10.20948/MATHMONTIS-2020-49-8
+
+    Args:
+        x_array: array of input values for the debye function derivative
+        prec: Precission. Terminates the series expansion when the absolute value of the term is less than prec
+        nth_bernoulli: Determines the nth Bernoulli number to calculate. A list of bernoulli numbers is generated prior calculating the series expansion. There should be no reason to change this value under normal circumstances.
     """
     if not 0 < prec < 1:
         raise ValueError("The precision must be between 0 and 1")
@@ -155,11 +178,20 @@ def debye_function_derivative(x_array, prec=1e-10, nth_bernoulli=100):
             raise ValueError("The debye function derivative series expansions used are only valid for x > -2𝜋")
     return result
 
-def vibrational_energy(temperature, theta):
+def vibrational_energy(temperature: float, theta: float) -> float: 
+    """Evaluates the debye function at x = theta/temperature then calculates the vibrational energy in eV.
+
+    Args:
+        temperature : Temperature in Kelvin
+        theta: Debye temperature in Kelvin
+
+    Returns:
+        float: Vibrational energy in eV
+    """    
     debye_value = debye_function(theta/temperature)
     return 3 * BOLTZMANN * temperature * debye_value + 9/8 * BOLTZMANN * theta
 
-def vibrational_entropy(temperature, theta):
+def vibrational_entropy(temperature: float, theta: float):
     x = theta/temperature
     debye_value = debye_function(x)
     return 3*BOLTZMANN*(4/3*debye_value-np.log(1-np.exp(-x)))
