@@ -191,30 +191,76 @@ def vibrational_energy(temperature: float, theta: float) -> float:
     debye_value = debye_function(theta/temperature)
     return 3 * BOLTZMANN * temperature * debye_value + 9/8 * BOLTZMANN * theta
 
-def vibrational_entropy(temperature: float, theta: float):
+def vibrational_entropy(temperature: float, theta: float) -> float:
+    """Evaluates the debye function at x = theta/temperature then
+    calculates the vibrational entropy in eV/K.
+    
+    Args:
+        temperature : Temperature in Kelvin
+        theta: Debye temperature in Kelvin
+    
+    Returns:
+        float: Vibrational entropy in eV/K
+    
+    """
     x = theta/temperature
     debye_value = debye_function(x)
     return 3*BOLTZMANN*(4/3*debye_value-np.log(1-np.exp(-x)))
 
-def vibrational_helmholtz_energy(temperature, theta):
+def vibrational_helmholtz_energy(temperature: float, theta:float) -> float:
+    """Evaluates the debye function at x = theta/temperature then
+    calculates the vibrational Helmholtz energy in eV.
+    
+    Args:
+        temperature : Temperature in Kelvin
+        theta: Debye temperature in Kelvin
+        
+    Returns:
+        float: Vibrational Helmholtz energy in eV
+    """
     x = theta/temperature
     debye_value = debye_function(x)
     return 9/8*BOLTZMANN*theta + BOLTZMANN*temperature*(3*np.log(1-np.exp(-x)) - debye_value)
 
-def vibrational_heat_capacity(temperature, theta):
+def vibrational_heat_capacity(temperature: float, theta: float) -> float:
+    """Evaluates the debye function and its derivative at x = theta/temperature then
+    calculates the vibrational heat capacity in eV/K.
+    
+    Args:
+        temperature : Temperature in Kelvin
+        theta: Debye temperature in Kelvin
+        
+    Returns:
+        float: Vibrational heat capacity in eV/K
+    """
     x = theta/temperature
-    return 3*BOLTZMANN*temperature*debye_function_derivative(x) + debye_function(x)
+    return 3*BOLTZMANN*temperature*debye_function_derivative(x) + debye_function(x) # could probably optimize with property of derivative
 
 def plot_debye(
-    temperatures,
-    volumes,
-    number_of_atoms,
-    y,
-    y_label,
-    selected_temperatures = None,
-    volume_decimals = 0,
-    temperature_decimals = 0
-    ):
+    temperatures: np.array,
+    volumes: np.array,
+    number_of_atoms: int,
+    y: np.array,
+    y_label: str,
+    selected_temperatures: np.array | None = None,
+    volume_decimals: int = 0,
+    temperature_decimals: int = 0
+) -> go.Figure:
+    """Plots the vibrational properties (S,F,C_V) as a function of temperature and volume
+    
+    Args:
+        temperatures: Array of temperatures
+        volumes: Array of volumes
+        number_of_atoms: Number of atoms in the cell
+        y: Array of vibrational properties (S,F,C_V)
+        y_label: Label for the y-axis ('S', 'F', 'C_V')
+        selected_temperatures: Array of selected temperatures curves to plot in the y vs volume plot. If None, 5 liniearly spaced temperatures are selected., 
+        volume_decimals: Number of decimals to display for the volume in the plot
+        temperature_decimals: Number of decimals to display for the temperature in the plot
+        
+    Returns:
+        go.Figure: Plotly figure object
+    """
     s_t_fig = go.Figure()
     for i, volume in enumerate(volumes):
         s_t_fig.add_trace(
