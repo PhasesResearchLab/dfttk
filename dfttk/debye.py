@@ -245,7 +245,7 @@ def plot_debye(
     selected_temperatures: np.array | None = None,
     volume_decimals: int = 0,
     temperature_decimals: int = 0
-) -> go.Figure:
+) -> tuple[go.Figure, go.Figure]:
     """Plots the vibrational properties (S,F,C_V) as a function of temperature and volume
     
     Args:
@@ -259,7 +259,7 @@ def plot_debye(
         temperature_decimals: Number of decimals to display for the temperature in the plot
         
     Returns:
-        go.Figure: Plotly figure object
+        tuple[go.Figure, go.Figure]: Two plotly figures, one for the vibrational properties as a function of temperature and one for the vibrational properties as a function of volume
     """
     s_t_fig = go.Figure()
     for i, volume in enumerate(volumes):
