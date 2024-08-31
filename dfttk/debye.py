@@ -287,10 +287,10 @@ def plot_debye(
 
 
 def process_debye_gruneisen(
-    config_path,
+    config_path: str,
     scaling_factor: float = 0.617,
     gruneisen_constant: float = 1,
-    volumes: np.array = None,
+    volumes: np.array | None = None,
     temperatures: np.array = np.linspace(10, 1000, 100),
     outcar_name: str = "OUTCAR.3static",
     oszicar_name: str = "OSZICAR.3static",
@@ -299,7 +299,26 @@ def process_debye_gruneisen(
     magmom_tolerance: float = 1e-12,
     total_magnetic_moment_tolerance: float = 1e-12,
     eos_fitting = eos_fit.BM4
-):
+) -> tuple[np.array, np.array, int, np.array, np.array, np.array]:
+    """Applies the Debye-Gruneisen model to a given configuration for which E-V curve calculations have been performed.
+    
+    Args:
+        config_path: Path to the config folder
+        scaling_factor: s, Scaling factor for the Debye temperature
+        gruneisen_constant: x, Gruneisen constant
+        volumes: Array of volumes to evaluate the Debye thermal properties at
+        temperatures: Array of temperatures to evaluate the Debye thermal properties at
+        outcar_name: Name of the OUTCAR file
+        oszicar_name: Name of the OSZICAR file
+        contcar_name: Name of the CONTCAR file
+        collect_mag_data: Weather or not to collect magnetic data
+        magmom_tolerance: Magnetic moment tolerance for each atom
+        total_magnetic_moment_tolerance: Total magnetic moment tolerance
+        eos_fitting: Equation of state fitting function from the eos_fit module
+        
+        Returns:
+            tuple[np.array, np.array, int, np.array, np.array, np.array]: temperatures, volumes, number of atoms, vibrational entropy, vibrational Helmholtz energy, vibrational heat capacity
+    """
     # extract the volume and energy from the ev_curve_series
     df = extract_configuration_data(
         path = config_path,
