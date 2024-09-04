@@ -282,7 +282,7 @@ def plot_debye(
                 y=y[:, i],
                 mode='lines',
                 name=f'{temperature:.{temperature_decimals}f} K'))
-    plot_format(s_v_fig,"Volume (\u212B<sup>3</sup>)", f"S<sub>vib</sub> (eV/K/{number_of_atoms} atoms)")
+    plot_format(s_v_fig,"Volume (\u212B<sup>3</sup>)", f"{y_label}<sub>vib</sub> (eV/K/{number_of_atoms} atoms)")
     return s_t_fig, s_v_fig
 
 
