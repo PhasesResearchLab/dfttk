@@ -66,7 +66,7 @@ def debye_temperature(
 
 def debye_function(
     x_array: np.array,
-    prec: float = 1e-10,
+    prec: float = 1e-12,
     nth_bernoulli: int = 100
 ) -> np.array:
     """Calculates the debye function with n=3 using one of two series expansions. Valid for |𝑋|<2𝜋 and 𝑁≥1,
@@ -127,7 +127,7 @@ def debye_function(
         
 def debye_function_derivative(
     x_array: np.array,
-    prec: float =1e-10,
+    prec: float =1e-12,
     nth_bernoulli: int = 100
 ) -> np.array:
     """Calculates the derivative of the debye function with n=3 using one of two series expansions. Valid for |𝑋|<2𝜋 and 𝑁≥1,
@@ -242,7 +242,7 @@ def plot_debye(
     number_of_atoms: int,
     y: np.array,
     y_label: str,
-    selected_temperatures: np.array | None = None,
+    selected_temperatures: np.array = None,
     volume_decimals: int = 0,
     temperature_decimals: int = 0
 ) -> tuple[go.Figure, go.Figure]:
@@ -290,7 +290,7 @@ def process_debye_gruneisen(
     config_path: str,
     scaling_factor: float = 0.617,
     gruneisen_constant: float = 1,
-    volumes: np.array | None = None,
+    volumes: np.array = None,
     temperatures: np.array = np.linspace(10, 1000, 100),
     outcar_name: str = "OUTCAR.3static",
     oszicar_name: str = "OSZICAR.3static",
@@ -329,7 +329,6 @@ def process_debye_gruneisen(
         magmom_tolerance = magmom_tolerance,
         total_magnetic_moment_tolerance = total_magnetic_moment_tolerance
     )
-    print(df)
     # fit the equation of state
     volume = df['volume']
     energy = df['energy']
