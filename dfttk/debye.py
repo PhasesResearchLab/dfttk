@@ -353,13 +353,14 @@ def process_debye_gruneisen(
     s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
     f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
     cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-    
+    n = df['number_of_atoms'][0]
+
     for i, volume in enumerate(volumes):
         x = theta[i]/temperatures
         debye_value = debye_function(x)
-        s_vib = vibrational_entropy(temperatures, theta[i])
-        f_vib = vibrational_helmholtz_energy(temperatures, theta[i])
-        cv_vib = vibrational_heat_capacity(temperatures, theta[i])
+        s_vib = vibrational_entropy(temperatures, theta[i]) * n
+        f_vib = vibrational_helmholtz_energy(temperatures, theta[i]) * n
+        cv_vib = vibrational_heat_capacity(temperatures, theta[i]) * n
         # Compute the differences between successive elements
         d_s_vib = np.array([k - j for j, k in zip(s_vib[:-1], s_vib[1:])])
         dt = np.array([k - j for j, k in zip(temperatures[:-1], temperatures[1:])])
@@ -367,7 +368,7 @@ def process_debye_gruneisen(
         s_vib_v_t[i, :] = s_vib
         f_vib_v_t[i, :] = f_vib
         cv_vib_v_t[i, :] = cv_vib
-    n = df['number_of_atoms'][0]
+    
     
     return temperatures, volumes, n, s_vib_v_t, f_vib_v_t, cv_vib_v_t
     
