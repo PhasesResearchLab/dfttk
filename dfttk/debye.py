@@ -17,7 +17,7 @@ from dfttk.qha_yphon import plot_format
 
 # The definition of the Debye temperature is hbar/k_B * (6 * pi^2)^1/3 * N/V)
 # A = hbar/k_B * (6 * pi^2)^1/3
-A = 231.04 # K/(A*GPa*amu)^1/2
+A = 231.04 # K/(A*GPa/amu)^1/2
 BOLTZMANN = constants.physical_constants['Boltzmann constant in eV/K'][0]
 
 # check docstring bulk modulus derivative with respect to ____
@@ -60,6 +60,7 @@ def debye_temperature(
     energy_0 = eos_parameters[1]
     bulk_modulus = eos_parameters[2]
     bulk_modulus_prime = eos_parameters[3]
+    bulk_modulus_2prime = eos_parameters[4]
     
     return s * A * volume_0**(1/6) * (bulk_modulus/mass)**(1/2) * (volume_0/volume)**gru_param
 
@@ -344,7 +345,10 @@ def process_debye_gruneisen(
         volumes = np.linspace(volume_min, volume_max, 10) # make volumes an input parameter
     
     total_mass = df['total_mass'][0]
-    theta = debye_temperature(volumes, eos_parameters, total_mass, gru_param, s)
+    number_of_atoms = df['number_of_atoms'][0]
+    atomic_mass = total_mass/number_of_atoms # this needs to be corrected. arithmetic mean is no good. need geometric or log
+    
+    theta = debye_temperature(volumes, eos_parameters, atomic_mass, gru_param, s)
     
     s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
     f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
