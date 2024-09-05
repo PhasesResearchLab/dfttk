@@ -269,7 +269,7 @@ def process_debye_gruneisen(
         eos_fitting: Equation of state fitting function from the eos_fit module
         
         Returns:
-            tuple[np.array, np.array, int, np.array, np.array, np.array]: temperatures, volumes, number of atoms, vibrational entropy, vibrational Helmholtz energy, vibrational heat capacity
+            tuple[np.array, np.array, int, np.array, np.array, np.array]: temperatures, volumes, number of atoms, and 2D arrays with rows (columns) corresponding to volumes (temperatures) vibrational entropy, vibrational Helmholtz energy, vibrational heat capacity
     """
     # extract the volume and energy from the ev_curve_series
     df = extract_configuration_data(
