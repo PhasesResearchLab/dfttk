@@ -125,59 +125,6 @@ def debye_function(
     return result
 
         
-def debye_function_derivative(
-    x_array: np.array,
-    prec: float =1e-12,
-    nth_bernoulli: int = 100
-) -> np.array:
-    """Calculates the derivative of the debye function with n=3 using one of two series expansions. Valid for |𝑋|<2𝜋 and 𝑁≥1,
-    for -2pi < x < 0.7𝜋,
-    .. math::
-        D'(x) = -3/8 + 3 \sum{k=1} \frac{B_{2k}}{(2k+3) \Gamma(2k+1)} * 2kx^{2k-1}
-    
-    for x >= 0.7𝜋,
-    .. math::
-        D'(x) = -3 \frac{\pi**4-3}{5x**4} + -3 \sum{k=1} \exp(-kx) (1 + 3/(kx) + 9/(k**2x**2) + 18/(k**3x**3) + 18/(k**4x**4))
-        
-    See references,
-    Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
-    Abramowitz, M. and Stegun, I.A. eds., 1968. Handbook of mathematical functions with formulas, graphs, and mathematical tables (Vol. 55). US Government printing office.
-    Khishchenko, K., Analytic approximation of the Debye function, Mathematica Montisnigri (vol. 49), 2020.  https://doi.org/10.20948/MATHMONTIS-2020-49-8
-
-    Args:
-        x_array: array of input values for the debye function derivative
-        prec: Precission. Terminates the series expansion when the absolute value of the term is less than prec
-        nth_bernoulli: Determines the nth Bernoulli number to calculate. A list of bernoulli numbers is generated prior calculating the series expansion. There should be no reason to change this value under normal circumstances.
-    """
-    if not 0 < prec < 1:
-        raise ValueError("The precision must be between 0 and 1")
-    result = np.zeros_like(x_array)
-    bern_list = bernoulli(nth_bernoulli) # 2*k must be less than 100
-    for i, x in enumerate(x_array):
-        term = 1 # ensures the while loop runs at least once
-        k = 1
-        if x >= 0.7*np.pi:
-            summation = -3*np.pi**4/(5*x**4)
-            while abs(term) > prec:
-                term = -3*(-np.exp(-k*x)*(1 + 3/(k*x) + 9/(k**2*x**2) + 18/(k**3*x**3) + 18/(k**4*x**4)))
-                summation += term
-                k += 1
-            result[i] = summation
-        elif -2*np.pi < x < 0.7*np.pi:
-            summation = -3/8
-            term = 1 # ensures the while loop runs at least once
-            while abs(term) > prec:
-                try:
-                    term = 3*(bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * 2*k*x**(2*k-1))
-                except IndexError:
-                    raise IndexError(f"IndexError: the bernoulli number at index {2*k} is not available. This indicates slow converges of the Debye function derivative series expansion. I hope you know what you are doing.")
-                summation += term
-                k += 1
-            result[i] = summation
-        else:
-            raise ValueError("The debye function derivative series expansions used are only valid for x > -2𝜋")
-    return result
-
 def vibrational_energy(temperature: float, theta: float, number_of_atoms) -> float: 
     """Evaluates the debye function at x = theta/temperature then calculates the vibrational energy in eV.
 
