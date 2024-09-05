@@ -23,18 +23,18 @@ BOLTZMANN = constants.physical_constants['Boltzmann constant in eV/K'][0]
 # check docstring bulk modulus derivative with respect to ____
 def gruneisen_parameter(
     bulk_modulus_prime: float,
-    gruneisen_constant: float
+    gruneisen_x: float
 ) -> float:
     """Calculates the gruneisen parameter
 
     Args:
         bulk_modulus_prime: B_0', first derivative of the bulk modulus with respect to volume
-        gruneisen_constant: x, Should be between 2/3 (high temperature) and 1 (low temperature)
+        gruneisen_x: x, Should be between 2/3 (high temperature) and 1 (low temperature)
 
     Returns:
         gamma, the gruneisen parameter
     """    
-    return (1+bulk_modulus_prime)/2 - gruneisen_constant
+    return (1+bulk_modulus_prime)/2 - gruneisen_x
 
 def debye_temperature(
     volume: float,
@@ -237,7 +237,7 @@ def plot_debye(
 def process_debye_gruneisen(
     config_path: str,
     scaling_factor: float = 0.617,
-    gruneisen_constant: float = 1,
+    gruneisen_x: float = 1,
     volumes: np.array = None,
     temperatures: np.array = np.linspace(10, 1000, 100),
     outcar_name: str = "OUTCAR.3static",
@@ -253,7 +253,7 @@ def process_debye_gruneisen(
     Args:
         config_path: Path to the config folder
         scaling_factor: s, Scaling factor for the Debye temperature
-        gruneisen_constant: x, Gruneisen constant
+        gruneisen_x: x, Gruneisen constant
         volumes: Array of volumes to evaluate the Debye thermal properties at
         temperatures: Array of temperatures to evaluate the Debye thermal properties at
         outcar_name: Name of the OUTCAR file
@@ -284,8 +284,7 @@ def process_debye_gruneisen(
     volume_0, energy_0, bulk_modulus, bulk_modulus_prime, bulk_modulus_2prime = eos_parameters
     
     s = scaling_factor
-    gru_const = gruneisen_constant
-    gru_param = gruneisen_parameter(bulk_modulus_prime, gru_const)
+    gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
     
     if volumes is None:
         volume_min = volume.min()
