@@ -304,9 +304,9 @@ def process_debye_gruneisen(
     n = df['number_of_atoms'][0]
 
     for i, volume in enumerate(volumes):
-        s_vib = vibrational_entropy(temperatures, theta[i])
-        f_vib = vibrational_helmholtz_energy(temperatures, theta[i])
-        cv_vib = vibrational_heat_capacity(temperatures, theta[i])
+        s_vib = vibrational_entropy(temperatures, theta[i], n)
+        f_vib = vibrational_helmholtz_energy(temperatures, theta[i], n)
+        cv_vib = vibrational_heat_capacity(temperatures, theta[i], n)
         s_vib_v_t[i, :] = s_vib
         f_vib_v_t[i, :] = f_vib 
         cv_vib_v_t[i, :] = cv_vib
