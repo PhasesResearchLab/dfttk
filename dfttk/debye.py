@@ -131,6 +131,7 @@ def vibrational_energy(temperature: float, theta: float, number_of_atoms) -> flo
     Args:
         temperature : Temperature in Kelvin
         theta: Debye temperature in Kelvin
+        number_of_atoms: Number of atoms in the cell
 
     Returns:
         float: Vibrational energy in eV
@@ -145,6 +146,7 @@ def vibrational_entropy(temperature: float, theta: float, number_of_atoms) -> fl
     Args:
         temperature : Temperature in Kelvin
         theta: Debye temperature in Kelvin
+        number_of_atoms: Number of atoms in the cell
     
     Returns:
         float: Vibrational entropy in eV/K
@@ -161,6 +163,7 @@ def vibrational_helmholtz_energy(temperature: float, theta:float, number_of_atom
     Args:
         temperature : Temperature in Kelvin
         theta: Debye temperature in Kelvin
+        number_of_atoms: Number of atoms in the cell
         
     Returns:
         float: Vibrational Helmholtz energy in eV
@@ -176,6 +179,7 @@ def vibrational_heat_capacity(temperature: float, theta: float, number_of_atoms)
     Args:
         temperature : Temperature in Kelvin
         theta: Debye temperature in Kelvin
+        number_of_atoms: Number of atoms in the cell
         
     Returns:
         float: Vibrational heat capacity in eV/K
@@ -223,13 +227,13 @@ def plot_debye(
     if selected_temperatures is None:
         indices = np.linspace(0, len(temperatures) - 1, 5, dtype=int)
         selected_temperatures = np.array([temperatures[j] for j in indices])
-    for i, temperature in enumerate(selected_temperatures):
+    for i in indices:
         s_v_fig.add_trace(
             go.Scatter(
                 x=volumes,
                 y=y[:, i],
                 mode='lines',
-                name=f'{temperature:.{temperature_decimals}f} K'))
+                name=f'{temperatures[i]:.{temperature_decimals}f} K'))
     plot_format(s_v_fig,"Volume (\u212B<sup>3</sup>)", f"{y_label}<sub>vib</sub> (eV/K/{number_of_atoms} atoms)")
     return s_t_fig, s_v_fig
 
@@ -287,9 +291,7 @@ def process_debye_gruneisen(
     gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
     
     if volumes is None:
-        volume_min = volume.min()
-        volume_max = volume.max() 
-        volumes = np.linspace(volume_min, volume_max, 10) 
+        volumes = volume
     
     total_mass = df['total_mass'][0]
     number_of_atoms = df['number_of_atoms'][0]
