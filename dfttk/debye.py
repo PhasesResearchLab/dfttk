@@ -253,7 +253,7 @@ def process_debye_gruneisen(
     Args:
         config_path: Path to the config folder
         scaling_factor: s, Scaling factor for the Debye temperature
-        gruneisen_x: x, Gruneisen constant
+        gruneisen_x: x = 2/3 for high temperature case and x = 1 for low temperature case
         volumes: Array of volumes to evaluate the Debye thermal properties at
         temperatures: Array of temperatures to evaluate the Debye thermal properties at
         outcar_name: Name of the OUTCAR file
