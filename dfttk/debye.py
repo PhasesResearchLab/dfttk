@@ -290,7 +290,7 @@ def process_debye_gruneisen(
     if volumes is None:
         volume_min = volume.min()
         volume_max = volume.max() 
-        volumes = np.linspace(volume_min, volume_max, 10) # make volumes an input parameter
+        volumes = np.linspace(volume_min, volume_max, 10) 
     
     total_mass = df['total_mass'][0]
     number_of_atoms = df['number_of_atoms'][0]
