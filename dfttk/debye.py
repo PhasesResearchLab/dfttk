@@ -72,11 +72,11 @@ def debye_function(
     """Calculates the debye function with n=3 using one of two series expansions. Valid for |𝑋|<2𝜋 and 𝑁≥1,
     for -2pi < x < 0.7𝜋
     .. math::
-       D(x) = 1 - 3/8x + 3 \sum{k=1} \frac{B_{2k}}{(2k+3) \Gamma(2k+1)} * x^{2k}
+       D(x) = 1 - 3/8x + 3 \\sum{k=1} \\frac{B_{2k}}{(2k+3) \\Gamma(2k+1)} * x^{2k}
         
     for x >= 0.7𝜋 the series
     .. math::
-       D(x) = \frac{\pi^4}{5x^3} - 3 \sum{k=1} \frac{1}{k} (1 + \frac{3}{kx} + \frac{6}{k^2x^2} + \frac{6}{k^3x^3}) * e^{-kx}
+       D(x) = \\frac{\\pi^4}{5x^3} - 3 \\sum{k=1} \\frac{1}{k} (1 + \\frac{3}{kx} + \\frac{6}{k^2x^2} + \\frac{6}{k^3x^3}) * e^{-kx}
         
     See references,
     Gonzalez, I., Kondrashuk, I., Moll, V. H., & Vega, A. Analytic Expressions for Debye Functions and the Heat Capacity of a Solid. Mathematics, 10(10), 1745. https://doi.org/10.3390/math10101745
