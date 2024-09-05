@@ -222,7 +222,6 @@ def vibrational_helmholtz_energy(temperature: float, theta:float) -> float:
     debye_value = debye_function(x)
     return 9/8*BOLTZMANN*theta + BOLTZMANN*temperature*(3*np.log(1-np.exp(-x)) - debye_value)
 
-# TODO: fix. this equation is wrong
 def vibrational_heat_capacity(temperature: float, theta: float) -> float:
     """Evaluates the debye function and its derivative at x = theta/temperature then
     calculates the vibrational heat capacity in eV/K.
@@ -235,7 +234,8 @@ def vibrational_heat_capacity(temperature: float, theta: float) -> float:
         float: Vibrational heat capacity in eV/K
     """
     x = theta/temperature
-    return 3*BOLTZMANN*temperature*debye_function_derivative(x) + debye_function(x) # could probably optimize with property of derivative
+    debye_value = debye_function(x)
+    return  3*BOLTZMANN*(4*debye_value - 3*x/(np.exp(x)-1))
 
 def plot_debye(
     temperatures: np.array,
@@ -353,7 +353,7 @@ def process_debye_gruneisen(
     
     s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
     f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-    cv_vib_v_t = np.zeros((len(volumes), len(temperatures)-1))
+    cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
     n = df['number_of_atoms'][0]
 
     for i, volume in enumerate(volumes):
@@ -361,13 +361,13 @@ def process_debye_gruneisen(
         debye_value = debye_function(x)
         s_vib = vibrational_entropy(temperatures, theta[i]) * n
         f_vib = vibrational_helmholtz_energy(temperatures, theta[i]) * n
-        # cv_vib = vibrational_heat_capacity(temperatures, theta[i]) * n
-        # Compute the differences between successive elements
-        d_s_vib = np.array([k - j for j, k in zip(s_vib[:-1], s_vib[1:])])
-        dt = np.array([k - j for j, k in zip(temperatures[:-1], temperatures[1:])])
-        cv_vib = temperatures[:-1] * d_s_vib / dt 
+        cv_vib = vibrational_heat_capacity(temperatures, theta[i]) * n
+        # # Compute the differences between successive elements
+        # d_s_vib = np.array([k - j for j, k in zip(s_vib[:-1], s_vib[1:])])
+        # dt = np.array([k - j for j, k in zip(temperatures[:-1], temperatures[1:])])
+        # cv_vib = temperatures[:-1] * d_s_vib / dt 
         s_vib_v_t[i, :] = s_vib
-        f_vib_v_t[i, :] = f_vib
+        f_vib_v_t[i, :] = f_vib 
         cv_vib_v_t[i, :] = cv_vib
     
     
