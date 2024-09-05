@@ -178,7 +178,7 @@ def debye_function_derivative(
             raise ValueError("The debye function derivative series expansions used are only valid for x > -2𝜋")
     return result
 
-def vibrational_energy(temperature: float, theta: float) -> float: 
+def vibrational_energy(temperature: float, theta: float, number_of_atoms) -> float: 
     """Evaluates the debye function at x = theta/temperature then calculates the vibrational energy in eV.
 
     Args:
@@ -189,9 +189,9 @@ def vibrational_energy(temperature: float, theta: float) -> float:
         float: Vibrational energy in eV
     """    
     debye_value = debye_function(theta/temperature)
-    return 3 * BOLTZMANN * temperature * debye_value + 9/8 * BOLTZMANN * theta
+    return number_of_atoms * BOLTZMANN * (3 * temperature * debye_value + 9/8 * theta)
 
-def vibrational_entropy(temperature: float, theta: float) -> float:
+def vibrational_entropy(temperature: float, theta: float, number_of_atoms) -> float:
     """Evaluates the debye function at x = theta/temperature then
     calculates the vibrational entropy in eV/K.
     
@@ -205,9 +205,9 @@ def vibrational_entropy(temperature: float, theta: float) -> float:
     """
     x = theta/temperature
     debye_value = debye_function(x)
-    return 3*BOLTZMANN*(4/3*debye_value-np.log(1-np.exp(-x)))
+    return 3* number_of_atoms *BOLTZMANN*(4/3*debye_value-np.log(1-np.exp(-x)))
 
-def vibrational_helmholtz_energy(temperature: float, theta:float) -> float:
+def vibrational_helmholtz_energy(temperature: float, theta:float, number_of_atoms) -> float:
     """Evaluates the debye function at x = theta/temperature then
     calculates the vibrational Helmholtz energy in eV.
     
@@ -220,9 +220,9 @@ def vibrational_helmholtz_energy(temperature: float, theta:float) -> float:
     """
     x = theta/temperature
     debye_value = debye_function(x)
-    return 9/8*BOLTZMANN*theta + BOLTZMANN*temperature*(3*np.log(1-np.exp(-x)) - debye_value)
+    return number_of_atoms * (9/8*BOLTZMANN*theta + BOLTZMANN*temperature*(3*np.log(1-np.exp(-x)) - debye_value))
 
-def vibrational_heat_capacity(temperature: float, theta: float) -> float:
+def vibrational_heat_capacity(temperature: float, theta: float, number_of_atoms) -> float:
     """Evaluates the debye function and its derivative at x = theta/temperature then
     calculates the vibrational heat capacity in eV/K.
     
@@ -235,7 +235,7 @@ def vibrational_heat_capacity(temperature: float, theta: float) -> float:
     """
     x = theta/temperature
     debye_value = debye_function(x)
-    return  3*BOLTZMANN*(4*debye_value - 3*x/(np.exp(x)-1))
+    return  3*number_of_atoms*BOLTZMANN*(4*debye_value - 3*x/(np.exp(x)-1))
 
 def plot_debye(
     temperatures: np.array,
@@ -357,15 +357,9 @@ def process_debye_gruneisen(
     n = df['number_of_atoms'][0]
 
     for i, volume in enumerate(volumes):
-        x = theta[i]/temperatures
-        debye_value = debye_function(x)
-        s_vib = vibrational_entropy(temperatures, theta[i]) * n
-        f_vib = vibrational_helmholtz_energy(temperatures, theta[i]) * n
-        cv_vib = vibrational_heat_capacity(temperatures, theta[i]) * n
-        # # Compute the differences between successive elements
-        # d_s_vib = np.array([k - j for j, k in zip(s_vib[:-1], s_vib[1:])])
-        # dt = np.array([k - j for j, k in zip(temperatures[:-1], temperatures[1:])])
-        # cv_vib = temperatures[:-1] * d_s_vib / dt 
+        s_vib = vibrational_entropy(temperatures, theta[i])
+        f_vib = vibrational_helmholtz_energy(temperatures, theta[i])
+        cv_vib = vibrational_heat_capacity(temperatures, theta[i])
         s_vib_v_t[i, :] = s_vib
         f_vib_v_t[i, :] = f_vib 
         cv_vib_v_t[i, :] = cv_vib
