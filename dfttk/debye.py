@@ -1,11 +1,13 @@
 import numpy as np
 import plotly.graph_objects as go
+import os
 
 from scipy import constants
 from scipy.special import bernoulli
 from scipy.special import gamma
 
 from dfttk import eos_fit
+from dfttk.data_extraction import extract_average_mass
 from dfttk.aggregate_extraction import extract_configuration_data
 from dfttk.qha_yphon import plot_format
 
@@ -242,6 +244,7 @@ def process_debye_gruneisen(
     config_path: str,
     scaling_factor: float = 0.617,
     gruneisen_x: float = 1,
+    mass_average: str = 'geometric',
     volumes: np.array = None,
     temperatures: np.array = np.linspace(10, 1000, 100),
     outcar_name: str = "OUTCAR.3static",
@@ -293,10 +296,14 @@ def process_debye_gruneisen(
     if volumes is None:
         volumes = volume
     
-    total_mass = df['total_mass'][0]
-    number_of_atoms = df['number_of_atoms'][0]
-    atomic_mass = total_mass/number_of_atoms # this needs to be corrected. arithmetic mean is no good. need geometric or log
-    
+    for dir in os.listdir(config_path):
+        if dir.startswith("vol"):
+            contcar = os.path.join(config_path, dir, contcar_name)
+            outcar = os.path.join(config_path, dir, outcar_name)
+            break
+        
+    atomic_mass = extract_average_mass(contcar, outcar, mass_average)
+        
     theta = debye_temperature(volumes, eos_parameters, atomic_mass, gru_param, s)
     
     s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
