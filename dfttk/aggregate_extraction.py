@@ -133,7 +133,6 @@ def extract_configuration_data(
     df = pd.DataFrame(row_list)
     return df
 
-
 def recursive_extract_configuration_data(
     config_dirs: list[str],
     outcar_name: str = "OUTCAR",
