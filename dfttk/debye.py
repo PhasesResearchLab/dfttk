@@ -197,6 +197,7 @@ def plot_debye(
     y: np.array,
     y_label: str,
     selected_temperatures: np.array = None,
+    selected_volumes: np.array = None,
     volume_decimals: int = 0,
     temperature_decimals: int = 0
 ) -> tuple[go.Figure, go.Figure]:
@@ -208,7 +209,8 @@ def plot_debye(
         number_of_atoms: Number of atoms in the cell
         y: Array of vibrational properties (S,F,C_V)
         y_label: Label for the y-axis ('S', 'F', 'C_V')
-        selected_temperatures: Array of selected temperatures curves to plot in the y vs volume plot. If None, 5 liniearly spaced temperatures are selected., 
+        selected_temperatures: Array of selected temperatures curves to plot in the y vs volume plot. If None, 5 linearly spaced temperatures are selected., 
+        selected_volumes: Array of selected volumes curves to plot in the y vs temperature plot. If None, 5 linearly spaced volumes are selected.
         volume_decimals: Number of decimals to display for the volume in the plot
         temperature_decimals: Number of decimals to display for the temperature in the plot
         
@@ -216,19 +218,38 @@ def plot_debye(
         tuple[go.Figure, go.Figure]: Two plotly figures, one for the vibrational properties as a function of temperature and one for the vibrational properties as a function of volume
     """
     s_t_fig = go.Figure()
+    if selected_volumes is None:
+        indices = np.linspace(0, len(volumes) - 1, 5, dtype=int)
+    else:
+        indices = []
+        for v in selected_volumes:
+            try:
+                indices.append(np.where(volumes == v)[0][0])
+            except IndexError:
+                nearest_volume = volumes[np.argmin(np.abs(volumes - v))]
+                indices.append(np.where(volumes == nearest_volume)[0][0])
     for i, volume in enumerate(volumes):
-        s_t_fig.add_trace(
-            go.Scatter(
-                x=temperatures,
-                y=y[i],
-                mode='lines',
-                name=f'{volume:.{volume_decimals}f} \u212B<sup>3</sup>'))
+        if i in indices:
+            s_t_fig.add_trace(
+                go.Scatter(
+                    x=temperatures,
+                    y=y[i],
+                    mode='lines',
+                    name=f'{volume:.{volume_decimals}f} \u212B<sup>3</sup>'))
     plot_format(s_t_fig,"Temperature (K)", f"{y_label}<sub>vib</sub> (eV/K/{number_of_atoms} atoms)")
     
     s_v_fig = go.Figure()
     if selected_temperatures is None:
         indices = np.linspace(0, len(temperatures) - 1, 5, dtype=int)
         selected_temperatures = np.array([temperatures[j] for j in indices])
+    else:
+        indices = []
+        for t in selected_temperatures:
+            try:
+                indices.append(np.where(temperatures == t)[0][0])
+            except IndexError:
+                nearest_temperature = temperatures[np.argmin(np.abs(temperatures - t))]
+                indices.append(np.where(temperatures == nearest_temperature)[0][0])
     for i in indices:
         s_v_fig.add_trace(
             go.Scatter(
@@ -262,7 +283,7 @@ def process_debye_gruneisen(
         scaling_factor: s, Scaling factor for the Debye temperature
         gruneisen_x: x = 2/3 for high temperature case and x = 1 for low temperature case
         mass_average: Type of averaging to use for the atomic masses. Can be 'arithmetic', 'geometric', or 'harmonic'
-        volumes: Array of volumes to evaluate the Debye thermal properties at
+        volumes: Array of volumes to evaluate the Debye thermal properties at. If None, 100 volumes are linearly spaced between the minimum and maximum volumes
         temperatures: Array of temperatures to evaluate the Debye thermal properties at
         outcar_name: Name of the OUTCAR file
         oszicar_name: Name of the OSZICAR file
@@ -295,7 +316,9 @@ def process_debye_gruneisen(
     gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
     
     if volumes is None:
-        volumes = volume
+        volume_min = volume.min()
+        volume_max = volume.max() 
+        volumes = np.linspace(volume_min, volume_max, 100) # make volumes an input parameter
     
     for dir in os.listdir(config_path):
         if dir.startswith("vol"):
