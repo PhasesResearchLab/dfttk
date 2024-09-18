@@ -19,7 +19,7 @@ from pymatgen.electronic_structure.core import Spin
 
 # DFTTK imports
 from dfttk.data_extraction import extract_volume
-from dfttk.qha_yphon import plot_format
+from plotly_format import plot_format
 
 BOLTZMANN_CONSTANT = (
     scipy.constants.Boltzmann / scipy.constants.electron_volt
