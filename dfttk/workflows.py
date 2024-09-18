@@ -802,6 +802,8 @@ def process_phonon_dos_YPHON(path: str):
             os.remove(log_file_path)
 
 
+# TODO: Create two steps. 1) Get the whole electron DOS to compute Fel. 2) Get a very fine electron DOS
+# to compute Sel and Cv,el. 
 def run_elec_dos(
     vasp_cmd: list[str],
     handlers: list[str],
@@ -836,7 +838,7 @@ def run_elec_dos(
                         "NSW": 0,
                         "ISMEAR": -5,
                         "LORBIT": 11,
-                        "NEDOS": 5001,
+                        "NEDOS": 10001,
                     }
                 },
             },],
