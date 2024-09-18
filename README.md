@@ -4,13 +4,13 @@
 </p>
 
 ## Overview
-The **d**ensity **f**unctional **t**heory **t**ool**k**it is a Python package for automating VASP jobs and storing relevant results on MongoDB. These workflows are based on Custodian (https://github.com/materialsproject/custodian), and PyMongo (https://github.com/mongodb/mongo-python-driver) is used to store the results on MongoDB.
+The **D**ensity **F**unctional **T**heory **T**ool**K**it is a Python package for automating VASP jobs and storing relevant results on MongoDB. The VASP workflows are based on [Custodian](https://github.com/materialsproject/custodian), and [PyMongo](https://github.com/mongodb/mongo-python-driver) is used to store the results on MongoDB.
 
 ## Key Features
 
 - **Prepare VASP input files**
-  - Generate magnetic and symmetry-breaking configurations
   - Given a POSCAR file, generates the INCAR, KPOINTS, and POTCAR files automatically
+  - Generate magnetic configurations
 - **VASP workflows**
   - Convergence tests
   - Free energy workflows
@@ -30,11 +30,11 @@ It is recommended to first set up a virtual environment using Conda:
 
 Clone the main brach of the repository:
     
-    git clone https://github.com/lukeamyers/dfttk.git
+    git clone https://github.com/PhasesResearchLab/dfttk2.git
 
 Or clone a specific branch:
     
-    git clone -b <branch_name> https://github.com/lukeamyers/dfttk.git
+    git clone -b <branch_name> https://github.com/PhasesResearchLab/dfttk2.git
 
   Then move to `dfttk` directory and install in editable (`-e`) mode.
 
@@ -42,4 +42,4 @@ Or clone a specific branch:
     pip install -e .
 
 ## Documentation
-A more complete description of DFTTK and its capabilities can be found in the documentation at [https://vasp-job-automation.readthedocs.io/en/latest/index.html](https://vasp-job-automation.readthedocs.io/en/latest/index.html). 
+A more complete description of DFTTK and its capabilities can be found in the [documentation](https://vasp-job-automation.readthedocs.io/en/latest/index.html). 
