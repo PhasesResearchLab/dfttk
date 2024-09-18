@@ -129,7 +129,7 @@ def recursive_extract_configuration_data(
     magmom_tolerance: float = 0,
     total_magnetic_moment_tolerance: float = 1e-12,
 ) -> pd.DataFrame:
-    """convenience function to extract configuration data from multiple config directories.
+    """Convenience function to extract configuration data from multiple config directories.
     Runs extract_configuration_data for each config directory in a list.
 
     Args:
@@ -191,7 +191,7 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
         incar = Incar.from_file(incar_path)
         struct = Structure.from_file(poscar_path)
 
-        encut_list.append(incar.get("ENCUT", None))
+        encut_list.append(incar.get("encut", None))
         energy_list.append(extract_energy(oszicar_path))
         number_of_atoms_list.append(len(struct.sites))
         kpoint_grid_list.append(extract_kpoints(outcar_path))
@@ -213,13 +213,13 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
 
     df = pd.DataFrame(
         {
-            "ENCUT": encut_list,
+            "encut": encut_list,
             "kpoint_grid": kpoint_grid_list,
             "kppa": kppa_list,
             "energy": energy_list,
             "number_of_atoms": number_of_atoms_list,
             "energy_per_atom": energy_per_atom_list,
-            "difference_meV_per_atom": difference_meV_per_atom_list,
+            "difference_mev_per_atom": difference_meV_per_atom_list,
         }
     )
 
@@ -281,13 +281,13 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
     fig = go.Figure(
         data=[
             go.Scatter(
-                x=df["ENCUT"],
+                x=df["encut"],
                 y=df["energy_per_atom"],
                 mode="lines+markers",
             )
         ]
     )
-    plot_format(fig, "ENCUT", "Energy (eV/atom)")
+    plot_format(fig, "encut", "Energy (eV/atom)")
     kpoints = df["kpoint_grid"].iloc[0]
     fig.update_layout(
         title=dict(
@@ -343,7 +343,7 @@ def plot_kpoint_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
         ]
     )
     plot_format(fig, "KPPA", "Energy (eV/atom)")
-    encut = df["ENCUT"].iloc[0]
+    encut = df["encut"].iloc[0]
     fig.update_layout(
         title=dict(
             text=f"ENCUT: {encut} eV",
