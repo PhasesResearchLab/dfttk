@@ -1201,7 +1201,7 @@ def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         config_df = df[df["config"] == config]
         volumes = config_df["volume"].values
         energies = config_df["energy"].values
-        number_of_atoms = config_df["number_of_atoms"].values
+        number_of_atoms = config_df["number_of_atoms"].values[0]
 
         for eos_function in eos_functions:
             eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
@@ -1215,6 +1215,7 @@ def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
                         [
                             config,
                             eos_name,
+                            number_of_atoms,
                             eos_constants[0],
                             eos_constants[1],
                             eos_constants[2],
@@ -1228,12 +1229,12 @@ def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
                             volume_range,
                             energy_eos,
                             pressure_eos,
-                            number_of_atoms,
                         ]
                     ],
                     columns=[
                         "config",
-                        "EOS",
+                        "eos",
+                        "number_of_atoms",
                         "a",
                         "b",
                         "c",
@@ -1247,17 +1248,19 @@ def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
                         "volumes",
                         "energies",
                         "pressures",
-                        "number_of_atoms",
                     ],
                 )
             )
 
     eos_df = pd.concat(dataframes, ignore_index=True)
+    eos_values_df = eos_df.drop(
+        columns=["a", "b", "c", "d", "e", "V0", "E0", "B", "BP", "B2P"]
+    )
     eos_parameters_df = eos_df.drop(
-        columns=["volumes", "energies", "pressures", "number_of_atoms"]
+        columns=["volumes", "energies", "pressures"]
     )
 
-    return eos_df, eos_parameters_df
+    return eos_values_df, eos_parameters_df
 
 
 # TODO: Consider moving to magnetism.py. Not related to EOS fitting.
@@ -1486,7 +1489,7 @@ def plot_ev(
                     color=config_colors[config],
                     symbol=config_symbols[config],
                 ),
-                legendgroup="EOS",
+                legendgroup="eos",
                 name=f"{config}",
             )
         )
@@ -1509,8 +1512,8 @@ def plot_ev(
     if eos_fitting != None:
         for config in eos_df["config"].unique():
             eos_config_df = eos_df[eos_df["config"] == config]
-            if eos_fitting in eos_config_df["EOS"].unique():
-                eos_name_df = eos_config_df[eos_config_df["EOS"] == eos_fitting]
+            if eos_fitting in eos_config_df["eos"].unique():
+                eos_name_df = eos_config_df[eos_config_df["eos"] == eos_fitting]
 
                 x = eos_name_df["volumes"].values[0]
                 y = eos_name_df["energies"].values[0]
