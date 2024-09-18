@@ -191,7 +191,7 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
         incar = Incar.from_file(incar_path)
         struct = Structure.from_file(poscar_path)
 
-        encut_list.append(incar.get("encut", None))
+        encut_list.append(incar.get("ENCUT", None))
         energy_list.append(extract_energy(oszicar_path))
         number_of_atoms_list.append(len(struct.sites))
         kpoint_grid_list.append(extract_kpoints(outcar_path))
