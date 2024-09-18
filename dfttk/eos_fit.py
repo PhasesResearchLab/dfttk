@@ -1191,7 +1191,7 @@ def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         df: Dataframe from extract_configuration_data in dfttk.aggregate_extraction
 
     Returns:
-        tuple(eos_df, eos_parameters_df)
+        tuple(eos_values_df, eos_parameters_df)
     """
 
     eos_functions = [mBM4, mBM5, BM4, BM5, LOG4, LOG5, murnaghan, vinet, morse]
@@ -1256,9 +1256,7 @@ def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     eos_values_df = eos_df.drop(
         columns=["a", "b", "c", "d", "e", "V0", "E0", "B", "BP", "B2P"]
     )
-    eos_parameters_df = eos_df.drop(
-        columns=["volumes", "energies", "pressures"]
-    )
+    eos_parameters_df = eos_df.drop(columns=["volumes", "energies", "pressures"])
 
     return eos_values_df, eos_parameters_df
 
@@ -1405,7 +1403,7 @@ def assign_marker_symbols_to_configs(df: pd.DataFrame) -> dict:
 
 def plot_ev(
     data,
-    eos_fitting="BM4",
+    eos_name="BM4",
     highlight_minimum=True,
     per_atom=False,
     title=None,
@@ -1419,7 +1417,7 @@ def plot_ev(
     Args:
         data (pandas.DataFrame, list of pandas.DataFrame, or list of str): Data must be a pandas
         DataFrame or a list of pandas DataFrames.
-        eos_fitting (str, optional): EOS name. Defaults to "BM4".
+        eos_name (str, optional): EOS name. Defaults to "BM4".
         highlight_minimum (bool, optional): Defaults to True.
         per_atom (bool, optional):Defaults to False.
         title (_type_, optional): Defaults to None.
@@ -1451,8 +1449,8 @@ def plot_ev(
         )
 
     # Create a data frame with the eos fits for each config
-    if eos_fitting != None:
-        eos_df, _ = fit_to_all_eos(df)
+    if eos_name != None:
+        eos_values_df, eos_parameters_df = fit_to_all_eos(df)
 
     # Assign colors and symbols
     config_colors = assign_colors_to_configs(df, alpha=marker_alpha, cmap=cmap)
@@ -1509,17 +1507,26 @@ def plot_ev(
         )
 
     # Loop over configs in the eos data frame and plot the eos fits
-    if eos_fitting != None:
-        for config in eos_df["config"].unique():
-            eos_config_df = eos_df[eos_df["config"] == config]
-            if eos_fitting in eos_config_df["eos"].unique():
-                eos_name_df = eos_config_df[eos_config_df["eos"] == eos_fitting]
+    if eos_name != None:
+        for config in eos_values_df["config"].unique():
+            eos_config_values_df = eos_values_df[eos_values_df["config"] == config]
+            eos_config_parameters_df = eos_parameters_df[
+                eos_parameters_df["config"] == config
+            ]
 
-                x = eos_name_df["volumes"].values[0]
-                y = eos_name_df["energies"].values[0]
+            if eos_name in eos_config_values_df["eos"].unique():
+                eos_ev_df = eos_config_values_df[
+                    eos_config_values_df["eos"] == eos_name
+                ]
+                eos_min_df = eos_config_parameters_df[
+                    eos_config_parameters_df["eos"] == eos_name
+                ]
+
+                x = eos_ev_df["volumes"].values[0]
+                y = eos_ev_df["energies"].values[0]
 
                 if per_atom:
-                    num_atoms = eos_name_df["number_of_atoms"].values[0][0]
+                    num_atoms = eos_ev_df["number_of_atoms"].values[0][0]
                     x = x / num_atoms
                     y = y / num_atoms
 
@@ -1528,7 +1535,7 @@ def plot_ev(
                         x=x,
                         y=y,
                         mode="lines",
-                        name=f"{eos_fitting} fit",
+                        name=f"{eos_name} fit",
                         line=dict(width=1.75, color=config_colors[config]),
                         legendgroup="data",
                         showlegend=False,
@@ -1538,11 +1545,11 @@ def plot_ev(
                 # Plot the equilibrium energy and volume for each config
                 if highlight_minimum == True:
 
-                    x = eos_name_df["V0"].values[0]
-                    y = eos_name_df["E0"].values[0]
+                    x = eos_min_df["V0"].values[0]
+                    y = eos_min_df["E0"].values[0]
 
                     if per_atom:
-                        num_atoms = eos_name_df["number_of_atoms"].values[0][0]
+                        num_atoms = eos_ev_df["number_of_atoms"].values[0][0]
                         x = x / num_atoms
                         y = y / num_atoms
 
@@ -1551,7 +1558,7 @@ def plot_ev(
                             x=[x],
                             y=[y],
                             mode="markers",
-                            name=f"{eos_fitting} min energy",
+                            name=f"{eos_name} min energy",
                             marker=dict(
                                 color="black", size=marker_size, symbol="cross"
                             ),
@@ -1659,7 +1666,7 @@ def plot_energy_difference(
     # plot energy difference vs volume
     fig = plot_ev(
         energy_difference_df,
-        eos_fitting=None,
+        eos_name=None,
         per_atom=per_atom,
         show_fig=False,
         title=title,
