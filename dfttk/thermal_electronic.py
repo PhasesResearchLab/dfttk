@@ -1,5 +1,5 @@
 """
-Calculates the thermal electronic contribution to the Helmholtz free energy.
+Calculates the thermal electronic contribution to the Helmholtz energy.
 """
 
 # Standard Library Imports
@@ -21,7 +21,7 @@ from pymatgen.electronic_structure.core import Spin
 from dfttk.data_extraction import extract_volume
 from dfttk.qha_yphon import plot_format
 
-k_B = (
+BOLTZMANN_CONSTANT = (
     scipy.constants.Boltzmann / scipy.constants.electron_volt
 )  # The Boltzmann constant in eV/K
 
@@ -107,7 +107,9 @@ def fermi_dirac_distribution(energy, chemical_potential, temperature, plot=False
 
     if temperature > 0:
         # Note that expit(x) = 1/(1+exp(-x))
-        fermi_dist = expit(-(energy - chemical_potential) / (k_B * temperature))
+        fermi_dist = expit(
+            -(energy - chemical_potential) / (BOLTZMANN_CONSTANT * temperature)
+        )
 
     if plot:
         fig = go.Figure()
@@ -207,6 +209,7 @@ def calculate_internal_energy(energy, dos, temperature_range):
     return E_el_list
 
 
+# TODO: Evaluate the quality of the integration
 def calculate_entropy(energy, dos, temperature_range):
 
     # Check if energy and dos are pandas Series and convert to NumPy arrays if necessary
@@ -232,12 +235,13 @@ def calculate_entropy(energy, dos, temperature_range):
         filtered_integrand = integrand[mask]
         filtered_energy = energy[mask]
 
-        S_el = -k_B * np.trapz(filtered_integrand, filtered_energy)
+        S_el = -BOLTZMANN_CONSTANT * np.trapz(filtered_integrand, filtered_energy)
         S_el_list.append(S_el)
 
     return S_el_list
 
 
+# TODO: Evaluate the quality of the integration
 # TODO: Equation is from the MATLAB code. Double check this.
 def calculate_heat_capacity(energy, dos, temperature_range):
 
@@ -258,7 +262,7 @@ def calculate_heat_capacity(energy, dos, temperature_range):
                 dos
                 * (1 / fermi_dist - 1)
                 * (fermi_dist * (energy - chemical_potential) / temperature) ** 2
-                / k_B
+                / BOLTZMANN_CONSTANT
             )
 
         mask = ~np.isnan(integrand) & ~np.isinf(integrand)
