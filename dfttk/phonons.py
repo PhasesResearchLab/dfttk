@@ -12,9 +12,9 @@ import scipy.constants
 import plotly.graph_objects as go
 
 # Local application/library specific imports
-import dfttk.plotly_format as plot_format
+from dfttk.plotly_format import plot_format
 
-EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
+EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3 = 160.21766208 GPa
 BOLTZMANN_CONSTANT = (
     scipy.constants.Boltzmann / scipy.constants.electron_volt
 )  # The Boltzmann constant in eV/K
@@ -304,16 +304,8 @@ def harmonic(
     vdos_data_scaled["frequency_mid"] = pd.Series(frequency_mid_list)
     vdos_data_scaled["dos_mid"] = pd.Series(dos_mid_list)
 
-    # Calculate the integrals for the free energy, internal energy, entropy, and heat capacity
-    BOLTZMANN_CONSTANT = (
-        scipy.constants.Boltzmann / scipy.constants.electron_volt
-    )  # The Boltzmann constant in eV/K
-    PLANCK_CONSTANT = (
-        scipy.constants.Planck / scipy.constants.electron_volt
-    )  # The Planck's constant in eVs
-
     f_vib_list = []
-    u_vib_list = []
+    e_vib_list = []
     s_vib_list = []
     cv_vib_list = []
 
@@ -339,8 +331,8 @@ def harmonic(
             integrand = (
                 frequency_mid * np.cosh(ratio) / np.sinh(ratio) * dos_mid * differential
             )
-            u_vib = (PLANCK_CONSTANT / 2 * np.sum(integrand)) / 5 * scale_atoms
-            u_vib_list.append(u_vib)
+            e_vib = (PLANCK_CONSTANT / 2 * np.sum(integrand)) / 5 * scale_atoms
+            e_vib_list.append(e_vib)
 
             integrand = (
                 (ratio * np.cosh(ratio) / np.sinh(ratio) - np.log(2 * np.sinh(ratio)))
@@ -363,7 +355,7 @@ def harmonic(
             "volume": np.repeat(volumes_per_atom * scale_atoms, len(temp_range)),
             "temperature": np.tile(temp_range, len(volumes_per_atom)),
             "f_vib": f_vib_list,
-            "u_vib": u_vib_list,
+            "e_vib": e_vib_list,
             "s_vib": s_vib_list,
             "cv_vib": cv_vib_list,
         }
@@ -471,9 +463,9 @@ def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
     harmonic_properties_fit["f_vib_fit"] = f_vib_fit_list
     harmonic_properties_fit["s_vib_fit"] = s_vib_fit_list
     harmonic_properties_fit["cv_vib_fit"] = cv_vib_fit_list
-    harmonic_properties_fit["f_vib_polynomial"] = free_energy_polynomial_list
-    harmonic_properties_fit["entropy_polynomial"] = entropy_polynomial_list
-    harmonic_properties_fit["heat_capacity_polynomial"] = heat_capacity_polynomial_list
+    harmonic_properties_fit["f_vib_poly"] = free_energy_polynomial_list
+    harmonic_properties_fit["s_vib_poly"] = entropy_polynomial_list
+    harmonic_properties_fit["cv_vib_poly"] = heat_capacity_polynomial_list
 
     harmonic_properties_fit["number_of_atoms"] = harmonic_properties_fit[
         "number_of_atoms"
