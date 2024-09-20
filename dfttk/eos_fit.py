@@ -899,7 +899,7 @@ def LOG5(
     """
 
     a, b, c, d, e = curve_fit(
-        LOG5_equation, volume, energy, p0=[100, 100, 100, 100, 100]
+        LOG5_equation, volume, energy, p0=[1, 1, 1, 1, 1]
     )[0]
     volume_range = np.linspace(min(volume), max(volume), 1000)
 
