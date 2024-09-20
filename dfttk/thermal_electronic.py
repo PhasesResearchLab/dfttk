@@ -19,7 +19,7 @@ from pymatgen.electronic_structure.core import Spin
 
 # DFTTK imports
 from dfttk.data_extraction import extract_volume
-from plotly_format import plot_format
+from dfttk.plotly_format import plot_format
 
 BOLTZMANN_CONSTANT = (
     scipy.constants.Boltzmann / scipy.constants.electron_volt
@@ -170,11 +170,13 @@ def calculate_chemical_potential(energy, dos, temperature):
     num_electrons = calculate_num_electrons(
         energy, dos, chemical_potential, temperature
     )
-    while abs(num_electrons - num_electrons_0K) > 1e-2 and chemical_potential < 0.2:
+    while abs(num_electrons - num_electrons_0K) > 1e-2 and chemical_potential <= 0.2:
         chemical_potential += 0.01
         num_electrons = calculate_num_electrons(
             energy, dos, chemical_potential, temperature
         )
+    if chemical_potential == 0.21:
+        print("Warning: Not converged at chemical potential = 0.2 eV")
 
     return chemical_potential
 
@@ -328,10 +330,10 @@ def thermal_electronic(electron_dos_data, temperature_range, order=1, plot=True)
             ),
             "volume": np.repeat(volumes, len(temperature_range)),
             "temperature": np.tile(temperature_range, len(volumes)),
-            "E_el": E_el_list,
-            "S_el": S_el_list,
-            "Cv_el": Cv_el_list,
-            "F_el": F_el_list,
+            "f_el": F_el_list,
+            "e_el": E_el_list,
+            "s_el": S_el_list,
+            "cv_el": Cv_el_list,
         }
     )
 
@@ -350,7 +352,7 @@ def plot_thermal_electronic(thermal_electronic_properties):
 
     volumes = thermal_electronic_properties["volume"].unique()
     number_of_atoms = thermal_electronic_properties["number_of_atoms"].unique()[0]
-    y_values = ["F_el", "S_el", "Cv_el"]
+    y_values = ["f_el", "s_el", "cv_el"]
     for y_value in y_values:
         fig = go.Figure()
         for volume in volumes:
@@ -371,11 +373,11 @@ def plot_thermal_electronic(thermal_electronic_properties):
                 )
             )
 
-        if y_value == "F_el":
+        if y_value == "f_el":
             y_title = f"F<sub>el</sub> (eV/{number_of_atoms} atoms)"
-        elif y_value == "S_el":
+        elif y_value == "s_el":
             y_title = f"S<sub>el</sub> (eV/K/{number_of_atoms} atoms)"
-        elif y_value == "Cv_el":
+        elif y_value == "cv_el":
             y_title = f"C<sub>v, el</sub> (eV/K/{number_of_atoms} atoms)"
 
         plot_format(fig, "Temperature (K)", y_title)
@@ -399,9 +401,9 @@ def fit_thermal_electronic(thermal_electronic_properties, order):
 
     for temperature in temperatures:
         volume = thermal_electronic_properties_fit.loc[temperature]["volume"]
-        F_el = thermal_electronic_properties_fit.loc[temperature]["F_el"]
-        S_el = thermal_electronic_properties_fit.loc[temperature]["S_el"]
-        Cv_el = thermal_electronic_properties_fit.loc[temperature]["Cv_el"]
+        F_el = thermal_electronic_properties_fit.loc[temperature]["f_el"]
+        S_el = thermal_electronic_properties_fit.loc[temperature]["s_el"]
+        Cv_el = thermal_electronic_properties_fit.loc[temperature]["cv_el"]
 
         F_el_coefficients = np.polyfit(volume, F_el, order)
         S_el_coefficients = np.polyfit(volume, S_el, order)
@@ -429,12 +431,12 @@ def fit_thermal_electronic(thermal_electronic_properties, order):
         thermal_electronic_properties_fit["number_of_atoms"].values[0][0]
     )
     thermal_electronic_properties_fit["volume_fit"] = volume_fit_list
-    thermal_electronic_properties_fit["F_el_fit"] = F_el_fit_list
-    thermal_electronic_properties_fit["S_el_fit"] = S_el_fit_list
-    thermal_electronic_properties_fit["Cv_el_fit"] = Cv_el_fit_list
-    thermal_electronic_properties_fit["F_el_polynomial"] = F_el_polynomial_list
-    thermal_electronic_properties_fit["S_el_polynomial"] = S_el_polynomial_list
-    thermal_electronic_properties_fit["Cv_el_polynomial"] = Cv_el_polynomial_list
+    thermal_electronic_properties_fit["f_el_fit"] = F_el_fit_list
+    thermal_electronic_properties_fit["s_el_fit"] = S_el_fit_list
+    thermal_electronic_properties_fit["cv_el_fit"] = Cv_el_fit_list
+    thermal_electronic_properties_fit["f_el_poly"] = F_el_polynomial_list
+    thermal_electronic_properties_fit["s_el_poly"] = S_el_polynomial_list
+    thermal_electronic_properties_fit["cv_el_poly"] = Cv_el_polynomial_list
 
     return thermal_electronic_properties_fit
 
@@ -451,9 +453,9 @@ def plot_thermal_electronic_properties_fit(thermal_electronic_properties_fit):
         selected_temperatures = np.append(selected_temperatures, temperature_list[-1])
 
     y_values = [
-        ("F_el", "F_el_fit"),
-        ("S_el", "S_el_fit"),
-        ("Cv_el", "Cv_el_fit"),
+        ("f_el", "f_el_fit"),
+        ("s_el", "s_el_fit"),
+        ("cv_el", "cv_el_fit"),
     ]
     for y_value, y_value_fit in y_values:
         fig = go.Figure()
@@ -501,11 +503,11 @@ def plot_thermal_electronic_properties_fit(thermal_electronic_properties_fit):
             )
             i += 1
 
-        if y_value == "F_el":
+        if y_value == "f_el":
             y_title = f"F<sub>el</sub> (eV/{number_of_atoms} atoms)"
-        elif y_value == "S_el":
+        elif y_value == "s_el":
             y_title = f"S<sub>el</sub> (eV/K/{number_of_atoms} atoms)"
-        elif y_value == "Cv_el":
+        elif y_value == "cv_el":
             y_title = f"C<sub>v, el</sub> (eV/K/{number_of_atoms} atoms)"
 
         plot_format(fig, f"Volume (Å³/{number_of_atoms} atoms)", y_title)
