@@ -10,16 +10,14 @@ from dfttk import eos_fit
 from dfttk.data_extraction import extract_average_mass
 from dfttk.aggregate_extraction import extract_configuration_data
 from dfttk.qha_yphon import plot_format
+   
 
-
-
-# A is the ____ constant of th Debye-Gruneisen model in units of
-    # A = (8 * constants.pi**2)**(1/3)*constants.hbar/constants.k
-    
-
-# The definition of the Debye temperature is hbar/k_B * (6 * pi^2)^1/3 * N/V)
-# A = hbar/k_B * (6 * pi^2)^1/3
-A = 231.04 # K/(A*GPa/amu)^1/2
+# The definition of the Debye temperature is A * hbar/k_B * N/V) where A is
+# A = (6 * pi^2)^1/3 * hbar/k_B = 2.977*10^-11 s*K
+# converting to the of the eos_parameters,
+# A = (hbar/kb) * (6*math.pi**2)**(1/3) * (1*10**-10 m/Å)**(1/2) * (1*10**12 (g/(ms^2))/GPa)**(1/2) / ((1.66054*10**-24 g/u)**(1/2))
+# A = 231.0389521318254 K/(Å*GPa/u)^1/2
+A = 231.0389521318254
 BOLTZMANN_CONSTANT = constants.physical_constants['Boltzmann constant in eV/K'][0]
 
 # check docstring bulk modulus derivative with respect to ____
