@@ -20,7 +20,7 @@ from dfttk.qha_yphon import plot_format
 # The definition of the Debye temperature is hbar/k_B * (6 * pi^2)^1/3 * N/V)
 # A = hbar/k_B * (6 * pi^2)^1/3
 A = 231.04 # K/(A*GPa/amu)^1/2
-BOLTZMANN = constants.physical_constants['Boltzmann constant in eV/K'][0]
+BOLTZMANN_CONSTANT = constants.physical_constants['Boltzmann constant in eV/K'][0]
 
 # check docstring bulk modulus derivative with respect to ____
 def gruneisen_parameter(
@@ -139,7 +139,7 @@ def vibrational_energy(temperature: float, theta: float, number_of_atoms) -> flo
         float: Vibrational energy in eV
     """    
     debye_value = debye_function(theta/temperature)
-    return number_of_atoms * BOLTZMANN * (3 * temperature * debye_value + 9/8 * theta)
+    return number_of_atoms * BOLTZMANN_CONSTANT * (3 * temperature * debye_value + 9/8 * theta)
 
 def vibrational_entropy(temperature: float, theta: float, number_of_atoms) -> float:
     """Evaluates the debye function at x = theta/temperature then
@@ -156,7 +156,7 @@ def vibrational_entropy(temperature: float, theta: float, number_of_atoms) -> fl
     """
     x = theta/temperature
     debye_value = debye_function(x)
-    return 3* number_of_atoms *BOLTZMANN*(4/3*debye_value-np.log(1-np.exp(-x)))
+    return 3* number_of_atoms *BOLTZMANN_CONSTANT*(4/3*debye_value-np.log(1-np.exp(-x)))
 
 def vibrational_helmholtz_energy(temperature: float, theta:float, number_of_atoms) -> float:
     """Evaluates the debye function at x = theta/temperature then
@@ -172,7 +172,7 @@ def vibrational_helmholtz_energy(temperature: float, theta:float, number_of_atom
     """
     x = theta/temperature
     debye_value = debye_function(x)
-    return number_of_atoms * (9/8*BOLTZMANN*theta + BOLTZMANN*temperature*(3*np.log(1-np.exp(-x)) - debye_value))
+    return number_of_atoms * (9/8*BOLTZMANN_CONSTANT*theta + BOLTZMANN_CONSTANT*temperature*(3*np.log(1-np.exp(-x)) - debye_value))
 
 def vibrational_heat_capacity(temperature: float, theta: float, number_of_atoms) -> float:
     """Evaluates the debye function and its derivative at x = theta/temperature then
@@ -188,7 +188,7 @@ def vibrational_heat_capacity(temperature: float, theta: float, number_of_atoms)
     """
     x = theta/temperature
     debye_value = debye_function(x)
-    return  3*number_of_atoms*BOLTZMANN*(4*debye_value - 3*x/(np.exp(x)-1))
+    return  3*number_of_atoms*BOLTZMANN_CONSTANT*(4*debye_value - 3*x/(np.exp(x)-1))
 
 def plot_debye(
     temperatures: np.array,
