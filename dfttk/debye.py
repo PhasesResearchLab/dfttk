@@ -106,22 +106,22 @@ def debye_function(
         term = 1 # ensures the while loop runs at least once
         k = 1
         if x >= 0.7*np.pi:
-            summation = np.pi**4/(5*x**3)
+            debye_value = np.pi**4/(5*x**3)
             while abs(term) > prec:
                 term = -3*(1/k*(1 + 3/(k*x) + 6/(k**2*x**2) + 6/(k**3*x**3))*np.exp(-k*x))
-                summation += term
+                debye_value += term
                 k += 1
-            result[i] = summation
+            result[i] = debye_value
         elif -2*np.pi < x < 0.7*np.pi:
-            summation = 1 - 3/8*x
+            debye_value = 1 - 3/8*x
             while abs(term) > prec:
                 try:
                     term = 3 * (bern_list[2*k]/((2*k+3)*gamma(2*k+1)) * x**(2*k))
                 except IndexError:
                     raise IndexError(f"IndexError: the bernoulli number at index {2*k} is not available. This indicates slow converges of the Debye function series expansion. If you wish to calculate values for x < -𝜋 convergence may be slow and you may need to increase nth_bernoulli.")
-                summation += term
+                debye_value += term
                 k += 1
-            result[i] = summation
+            result[i] = debye_value
         else:
             raise ValueError("The debye function series expansions used are only valid for x > -2𝜋")
     return result
