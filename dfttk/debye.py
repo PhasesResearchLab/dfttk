@@ -30,7 +30,7 @@ def gruneisen_parameter(
     """Calculates the gruneisen parameter
 
     Args:
-        bulk_modulus_prime: B_0', first derivative of the bulk modulus with respect to volume
+        bulk_modulus_prime: B_0', first derivative of the bulk modulus with respect to pressure
         gruneisen_x: x, Should be between 2/3 (high temperature) and 1 (low temperature)
 
     Returns:
