@@ -18,6 +18,7 @@ import plotly.graph_objects as go
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.io.vasp.inputs import Incar
+from pymatgen.io.vasp.outputs import Poscar
 
 # DFTTK imports
 from dfttk.data_extraction import (
@@ -25,6 +26,7 @@ from dfttk.data_extraction import (
     extract_energy,
     extract_tot_mag_data,
     extract_kpoints,
+    extract_atomic_masses
 )
 from dfttk.magnetism import determine_magnetic_ordering
 
@@ -79,12 +81,18 @@ def extract_configuration_data(
             continue
 
         struct = Structure.from_file(contcar_path)
+        contcar = Poscar.from_file(contcar_path)
         number_of_atoms = len(struct.sites)
         vol = extract_volume(contcar_path)
         energy = extract_energy(oszicar_path)
         energy_per_atom = energy / number_of_atoms
         vol_per_atom = vol / number_of_atoms
         space_group = SpacegroupAnalyzer(struct).get_space_group_symbol()
+        atomic_masses = extract_atomic_masses(outcar_path)
+        species = contcar.site_symbols
+        num_atoms = contcar.natoms
+        specie_num_dict = dict(zip(species, num_atoms))
+        total_mass = sum([specie_num_dict[specie] * atomic_masses[specie] for specie in species])
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(outcar_path)
             total_magnetic_moment = mag_data["tot"].sum()
@@ -101,6 +109,9 @@ def extract_configuration_data(
                 "volume_per_atom": vol_per_atom,
                 "energy": energy,
                 "energy_per_atom": energy_per_atom,
+                "space_group": space_group,
+                "total_mass": total_mass,
+                "atomic_masses": atomic_masses,
                 "total_magnetic_moment": total_magnetic_moment,
                 "magnetic_ordering": magnetic_ordering,
                 "mag_data": mag_data,
@@ -114,11 +125,13 @@ def extract_configuration_data(
                 "energy": energy,
                 "energy_per_atom": energy_per_atom,
                 "space_group": space_group,
+                "total_mass": total_mass,
+                "atomic_masses": atomic_masses,
+                "total_mass": total_mass,
             }
         row_list.append(row)
     df = pd.DataFrame(row_list)
     return df
-
 
 def recursive_extract_configuration_data(
     config_dirs: list[str],
