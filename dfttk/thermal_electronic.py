@@ -48,6 +48,7 @@ def read_total_electron_dos(path, plot=False):
         volume = extract_volume(os.path.join(path, elec_folder, "CONTCAR.elec_dos"))
         num_atoms = vasprun.final_structure.num_sites
 
+        # TODO: Implement this for magnetic systems as well
         complete_dos = vasprun.complete_dos
         energy = complete_dos.energies
         total_dos = complete_dos.densities[Spin.up]
