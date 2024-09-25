@@ -73,25 +73,29 @@ def read_total_electron_dos(path, plot=False):
     electron_dos_data = electron_dos_data.reset_index(drop=True)
 
     if plot:
-        fig = go.Figure()
-        for i in range(len(electron_dos_data)):
-            fig.add_trace(
-                go.Scatter(
-                    x=electron_dos_data["energy_minus_fermi_energy"].iloc[i],
-                    y=electron_dos_data["total_dos"].iloc[i],
-                    mode="lines",
-                    name=f"{electron_dos_data['volume'].iloc[i]} Å<sup>3</sup>",
-                    showlegend=True,
-                )
-            )
-        plot_format(
-            fig,
-            xtitle="E - E<sub>F</sub> (eV)",
-            ytitle=f"DOS (states/eV/{electron_dos_data['number_of_atoms'].iloc[i]} atoms)",
-        )
-        fig.show()
-
+        plot_total_electron_dos(electron_dos_data)
+        
     return electron_dos_data
+
+
+def plot_total_electron_dos(electron_dos_data):
+    fig = go.Figure()
+    for i in range(len(electron_dos_data)):
+        fig.add_trace(
+            go.Scatter(
+                x=electron_dos_data["energy_minus_fermi_energy"].iloc[i],
+                y=electron_dos_data["total_dos"].iloc[i],
+                mode="lines",
+                name=f"{electron_dos_data['volume'].iloc[i]} Å<sup>3</sup>",
+                showlegend=True,
+            )
+        )
+    plot_format(
+        fig,
+        xtitle="E - E<sub>F</sub> (eV)",
+        ytitle=f"DOS (states/eV/{electron_dos_data['number_of_atoms'].iloc[i]} atoms)",
+    )
+    fig.show()
 
 
 def fermi_dirac_distribution(energy, chemical_potential, temperature, plot=False):
@@ -113,29 +117,24 @@ def fermi_dirac_distribution(energy, chemical_potential, temperature, plot=False
         )
 
     if plot:
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=energy, y=fermi_dist, mode="lines"))
-        fig.update_layout(
-            title=dict(
-                text=f"T = {temperature} K, &mu; = {chemical_potential} eV",
-                font=dict(size=20, color="rgb(0,0,0)"),
-            ),
-            margin=dict(t=130),
-        )
-        plot_format(fig, xtitle="E - E<sub>F</sub> (eV)", ytitle="f (E, T, V) ")
-        fig.show()
+        plot_fermi_dirac_distribution(energy, chemical_potential, temperature, fermi_dist)
 
     return fermi_dist
 
 
-def plot_fermi_dirac_distribution(energy, chemical_potential, temperature):
-
-    fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
-
+def plot_fermi_dirac_distribution(energy, chemical_potential, temperature, fermi_dist):
+    
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=energy, y=fermi_dist, mode="lines"))
-    plot_format(fig, xtitle="Energy (eV)", ytitle="Fermi-Dirac Distribution")
-    fig.show()
+    fig.update_layout(
+        title=dict(
+            text=f"T = {temperature} K, &mu; = {chemical_potential} eV",
+            font=dict(size=20, color="rgb(0,0,0)"),
+        ),
+        margin=dict(t=130),
+    )
+    plot_format(fig, xtitle="E - E<sub>F</sub> (eV)", ytitle="f (E, T, V) ")
+    fig.show() 
 
 
 def calculate_num_electrons(energy, dos, chemical_potential, temperature):
