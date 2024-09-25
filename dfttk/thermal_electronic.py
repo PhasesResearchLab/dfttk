@@ -155,7 +155,7 @@ def calculate_num_electrons(energy, dos, chemical_potential, temperature):
     return num_electrons
 
 
-def calculate_chemical_potential(energy, dos, temperature):
+def calculate_chemical_potential(energy, dos, temperature, min_chemical_potential = -0.2, max_chemical_potential = 0.2):
 
     # Check if energy and dos are pandas Series and convert to NumPy arrays if necessary
     if isinstance(energy, pd.Series):
@@ -166,11 +166,11 @@ def calculate_chemical_potential(energy, dos, temperature):
     num_electrons_0K = calculate_num_electrons(energy, dos, 0, 0)
 
     # Find the chemical potential at temperature such that the number of electrons matches that at 0 K
-    chemical_potential = -0.2
+    chemical_potential = min_chemical_potential
     num_electrons = calculate_num_electrons(
         energy, dos, chemical_potential, temperature
     )
-    while abs(num_electrons - num_electrons_0K) > 1e-2 and chemical_potential < 0.2:
+    while abs(num_electrons - num_electrons_0K) > 1e-2 and chemical_potential < max_chemical_potential:
         chemical_potential += 0.01
         num_electrons = calculate_num_electrons(
             energy, dos, chemical_potential, temperature
