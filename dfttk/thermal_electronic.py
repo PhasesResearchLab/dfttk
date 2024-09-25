@@ -344,13 +344,13 @@ def calculate_entropy(
         fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
 
         # The limit of f ln f + (1-f) ln (1-f) as f approaches 0 or 1 is 0
-        mask = (fermi_dist > 0) & (fermi_dist < 1)
+        mask = (fermi_dist = 0) or (fermi_dist = 1)
         integrand = np.zeros_like(fermi_dist)
-        integrand[mask] = dos[mask]* (
-            fermi_dist[mask] * np.log(fermi_dist[mask])
-            + (1 - fermi_dist[mask]) * np.log(1 - fermi_dist[mask])
+        integrand[~mask] = dos[~mask]* (
+            fermi_dist[~mask] * np.log(fermi_dist[~mask])
+            + (1 - fermi_dist[~mask]) * np.log(1 - fermi_dist[~mask])
         )
-        integrand[~mask] = 0
+        integrand[mask] = 0
 
         S_el = -BOLTZMANN_CONSTANT * np.trapz(integrand, energy)
         S_el_list.append(S_el)
