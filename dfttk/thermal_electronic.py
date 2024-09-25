@@ -74,7 +74,7 @@ def read_total_electron_dos(path, plot=False):
 
     if plot:
         plot_total_electron_dos(electron_dos_data)
-        
+
     return electron_dos_data
 
 
@@ -117,13 +117,15 @@ def fermi_dirac_distribution(energy, chemical_potential, temperature, plot=False
         )
 
     if plot:
-        plot_fermi_dirac_distribution(energy, chemical_potential, temperature, fermi_dist)
+        plot_fermi_dirac_distribution(
+            energy, chemical_potential, temperature, fermi_dist
+        )
 
     return fermi_dist
 
 
 def plot_fermi_dirac_distribution(energy, chemical_potential, temperature, fermi_dist):
-    
+
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=energy, y=fermi_dist, mode="lines"))
     fig.update_layout(
@@ -134,7 +136,7 @@ def plot_fermi_dirac_distribution(energy, chemical_potential, temperature, fermi
         margin=dict(t=130),
     )
     plot_format(fig, xtitle="E - E<sub>F</sub> (eV)", ytitle="f (E, T, V) ")
-    fig.show() 
+    fig.show()
 
 
 def calculate_num_electrons(energy, dos, chemical_potential, temperature):
@@ -155,7 +157,9 @@ def calculate_num_electrons(energy, dos, chemical_potential, temperature):
     return num_electrons
 
 
-def calculate_chemical_potential(energy, dos, temperature, min_chemical_potential = -0.2, max_chemical_potential = 0.2):
+def calculate_chemical_potential(
+    energy, dos, temperature, min_chemical_potential=-0.2, max_chemical_potential=0.2
+):
 
     # Check if energy and dos are pandas Series and convert to NumPy arrays if necessary
     if isinstance(energy, pd.Series):
@@ -170,7 +174,10 @@ def calculate_chemical_potential(energy, dos, temperature, min_chemical_potentia
     num_electrons = calculate_num_electrons(
         energy, dos, chemical_potential, temperature
     )
-    while abs(num_electrons - num_electrons_0K) > 1e-2 and chemical_potential < max_chemical_potential:
+    while (
+        abs(num_electrons - num_electrons_0K) > 1e-2
+        and chemical_potential < max_chemical_potential
+    ):
         chemical_potential += 0.01
         num_electrons = calculate_num_electrons(
             energy, dos, chemical_potential, temperature
@@ -209,8 +216,7 @@ def calculate_internal_energy(energy, dos, temperature_range):
     return E_el_list
 
 
-# TODO: Evaluate the quality of the integration
-def calculate_entropy(energy, dos, temperature_range):
+def calculate_entropy(energy, dos, temperature_range, plot=False):
 
     # Check if energy and dos are pandas Series and convert to NumPy arrays if necessary
     if isinstance(energy, pd.Series):
@@ -223,27 +229,36 @@ def calculate_entropy(energy, dos, temperature_range):
         chemical_potential = calculate_chemical_potential(energy, dos, temperature)
         fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
 
-        # Suppress warnings for divide-by-zero and invalid value encountered in log and multiply
+        # Suppress warnings and handle invalid values
         with np.errstate(divide="ignore", invalid="ignore"):
-            integrand = dos * (
+            # The limit of f ln f + (1-f) ln (1-f) as f approaches 0 or 1 is 0
+            integrand = dos * np.where(
+                (fermi_dist > 0) & (fermi_dist < 1),
                 fermi_dist * np.log(fermi_dist)
-                + (1 - fermi_dist) * np.log(1 - fermi_dist)
+                + (1 - fermi_dist) * np.log(1 - fermi_dist),
+                0,
             )
 
-        mask = ~np.isnan(integrand)
-
-        filtered_integrand = integrand[mask]
-        filtered_energy = energy[mask]
-
-        S_el = -BOLTZMANN_CONSTANT * np.trapz(filtered_integrand, filtered_energy)
+        S_el = -BOLTZMANN_CONSTANT * np.trapz(integrand, energy)
         S_el_list.append(S_el)
+
+    if plot:
+        plot_entropy_integral(energy, integrand)
 
     return S_el_list
 
 
-# TODO: Evaluate the quality of the integration
+def plot_entropy_integral(energy, integrand):
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(x=energy, y=-BOLTZMANN_CONSTANT * integrand, mode="markers")
+    )
+    plot_format(fig, xtitle="E - E<sub>F</sub> (eV)", ytitle="S<sub>el</sub> integrand")
+    fig.show()
+
+
 # TODO: Equation is from the MATLAB code. Double check this.
-def calculate_heat_capacity(energy, dos, temperature_range):
+def calculate_heat_capacity(energy, dos, temperature_range, plot=False):
 
     # Check if energy and dos are pandas Series and convert to NumPy arrays if necessary
     if isinstance(energy, pd.Series):
@@ -256,24 +271,32 @@ def calculate_heat_capacity(energy, dos, temperature_range):
         chemical_potential = calculate_chemical_potential(energy, dos, temperature)
         fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
 
-        # Suppress warnings for divide-by-zero and invalid value encountered in log and multiply
-        with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
-            integrand = (
-                dos
-                * (1 / fermi_dist - 1)
+        # Suppress warnings and handle invalid values
+        with np.errstate(divide='ignore', invalid='ignore'):
+            integrand = dos * np.where(
+                (fermi_dist > 0) & (fermi_dist < 1),
+                (1 / fermi_dist - 1)
                 * (fermi_dist * (energy - chemical_potential) / temperature) ** 2
-                / BOLTZMANN_CONSTANT
+                / BOLTZMANN_CONSTANT,
+                0,
             )
 
-        mask = ~np.isnan(integrand) & ~np.isinf(integrand)
-
-        filtered_energy = energy[mask]
-        filtered_integrand = integrand[mask]
-
-        Cv_el = np.trapz(filtered_integrand, filtered_energy)
+        Cv_el = np.trapz(integrand, energy)
         Cv_el_list.append(Cv_el)
+        
+        if plot:
+            plot_heat_capacity_integral(energy, integrand)
 
     return Cv_el_list
+
+
+def plot_heat_capacity_integral(energy, integrand):
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(x=energy, y=integrand, mode="markers")
+    )
+    plot_format(fig, xtitle="E - E<sub>F</sub> (eV)", ytitle="C<sub>v,el</sub> integrand")
+    fig.show()
 
 
 def calculate_free_energy(energy, dos, temperature_range):
