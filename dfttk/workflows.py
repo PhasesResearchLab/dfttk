@@ -807,6 +807,7 @@ def process_phonon_dos_YPHON(path: str):
 def run_elec_dos(
     vasp_cmd: list[str],
     handlers: list[str],
+    NEDOS: int = 10001,
     copy_magmom: bool = False,
     backup: bool = False,
 ):
@@ -838,7 +839,7 @@ def run_elec_dos(
                         "NSW": 0,
                         "ISMEAR": -5,
                         "LORBIT": 11,
-                        "NEDOS": 10001,
+                        "NEDOS": NEDOS,
                     }
                 },
             },],
