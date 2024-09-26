@@ -551,6 +551,7 @@ def plot_thermal_electronic(thermal_electronic_properties: pd.DataFrame):
 
     volumes = thermal_electronic_properties["volume"].unique()
     number_of_atoms = thermal_electronic_properties["number_of_atoms"].unique()[0]
+
     y_values = ["f_el", "s_el", "cv_el"]
     for y_value in y_values:
         fig = go.Figure()
@@ -577,6 +578,7 @@ def plot_thermal_electronic(thermal_electronic_properties: pd.DataFrame):
         elif y_value == "s_el":
             y_title = f"S<sub>el</sub> (eV/K/{number_of_atoms} atoms)"
         elif y_value == "cv_el":
+
             y_title = f"C<sub>v, el</sub> (eV/K/{number_of_atoms} atoms)"
 
         plot_format(fig, "Temperature (K)", y_title)
@@ -611,6 +613,7 @@ def fit_thermal_electronic(
 
     for temperature in temperatures:
         volume = thermal_electronic_properties_fit.loc[temperature]["volume"]
+
         F_el = thermal_electronic_properties_fit.loc[temperature]["f_el"]
         S_el = thermal_electronic_properties_fit.loc[temperature]["s_el"]
         Cv_el = thermal_electronic_properties_fit.loc[temperature]["cv_el"]
@@ -641,6 +644,7 @@ def fit_thermal_electronic(
         thermal_electronic_properties_fit["number_of_atoms"].values[0][0]
     )
     thermal_electronic_properties_fit["volume_fit"] = volume_fit_list
+
     thermal_electronic_properties_fit["f_el_fit"] = F_el_fit_list
     thermal_electronic_properties_fit["s_el_fit"] = S_el_fit_list
     thermal_electronic_properties_fit["cv_el_fit"] = Cv_el_fit_list
@@ -673,6 +677,7 @@ def plot_thermal_electronic_properties_fit(
         ("f_el", "f_el_fit"),
         ("s_el", "s_el_fit"),
         ("cv_el", "cv_el_fit"),
+
     ]
     for y_value, y_value_fit in y_values:
         fig = go.Figure()
@@ -725,6 +730,7 @@ def plot_thermal_electronic_properties_fit(
         elif y_value == "s_el":
             y_title = f"S<sub>el</sub> (eV/K/{number_of_atoms} atoms)"
         elif y_value == "cv_el":
+
             y_title = f"C<sub>v, el</sub> (eV/K/{number_of_atoms} atoms)"
 
         plot_format(fig, f"Volume (Å³/{number_of_atoms} atoms)", y_title)
