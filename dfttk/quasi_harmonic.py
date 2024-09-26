@@ -14,7 +14,7 @@ from dfttk.plotly_format import plot_format
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 
-def quasi_harmonic(
+def process_quasi_harmonic(
     eos_parameters_df: pd.DataFrame,
     harmonic_properties_fit: pd.DataFrame,
     volume_range: np.ndarray,
