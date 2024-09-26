@@ -673,14 +673,6 @@ def plot_thermal_electronic_properties_fit(
     if selected_temperatures_plot is None:
         indices = np.linspace(0, len(temperature_list) - 1, 5, dtype=int)
         selected_temperatures_plot = np.array([temperature_list[j] for j in indices])
-    '''
-    spaces = len(temperature_list) - 1
-    step = int(spaces / 4)
-
-    selected_temperatures = temperature_list[::step]
-    if selected_temperatures[-1] != temperature_list[-1]:
-        selected_temperatures = np.append(selected_temperatures, temperature_list[-1])
-    '''
     
     y_values = [
         ("f_el", "f_el_fit"),
