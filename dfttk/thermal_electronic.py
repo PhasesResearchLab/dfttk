@@ -343,15 +343,14 @@ def calculate_entropy(
         chemical_potential = calculate_chemical_potential(energy, dos, temperature)
         fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
 
-        # Suppress warnings and handle invalid values
-        with np.errstate(divide="ignore", invalid="ignore"):
-            # The limit of f ln f + (1-f) ln (1-f) as f approaches 0 or 1 is 0
-            integrand = dos * np.where(
-                (fermi_dist > 0) & (fermi_dist < 1),
-                fermi_dist * np.log(fermi_dist)
-                + (1 - fermi_dist) * np.log(1 - fermi_dist),
-                0,
-            )
+        # The limit of f ln f + (1-f) ln (1-f) as f approaches 0 or 1 is 0
+        mask = (fermi_dist == 0) | (fermi_dist == 1)
+        integrand = np.zeros_like(fermi_dist)
+        integrand[~mask] = dos[~mask] * (
+            fermi_dist[~mask] * np.log(fermi_dist[~mask])
+            + (1 - fermi_dist[~mask]) * np.log(1 - fermi_dist[~mask])
+        )
+        integrand[mask] = 0
 
         S_el = -BOLTZMANN_CONSTANT * np.trapz(integrand, energy)
         S_el_list.append(S_el)
@@ -408,16 +407,16 @@ def calculate_heat_capacity(
         chemical_potential = calculate_chemical_potential(energy, dos, temperature)
         fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
 
-        # Suppress warnings and handle invalid values
-        with np.errstate(divide="ignore", invalid="ignore"):
-            integrand = dos * np.where(
-                (fermi_dist > 0) & (fermi_dist < 1),
-                (1 / fermi_dist - 1)
-                * (fermi_dist * (energy - chemical_potential) / temperature) ** 2
-                / BOLTZMANN_CONSTANT,
-                0,
-            )
-
+        # The limit of (1 / f - 1) * (f * (E - mu) / T) ** 2 as f approaches 0 or 1 is 0
+        mask = (fermi_dist == 0) | (fermi_dist == 1)
+        integrand = np.zeros_like(fermi_dist)
+        integrand[~mask] = dos[~mask] * (
+            (1 / fermi_dist[~mask] - 1)
+            * (fermi_dist[~mask] * (energy[~mask] - chemical_potential) / temperature) ** 2
+            / BOLTZMANN_CONSTANT
+        )
+        integrand[mask] = 0
+        
         Cv_el = np.trapz(integrand, energy)
         Cv_el_list.append(Cv_el)
 
