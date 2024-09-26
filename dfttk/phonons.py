@@ -255,6 +255,7 @@ def harmonic(
         temp_range (list): temperature range to calculate the thermodynamic properties
         order (int, optional): order of the polynomial fit. Defaults to 1.
         plot (bool, optional): Defaults to True.
+        selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
 
     Returns:
         pd.DataFrame: pandas dataframes containing the harmonic and fitted harmonic properties
