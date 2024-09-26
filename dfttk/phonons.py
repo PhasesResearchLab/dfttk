@@ -487,7 +487,7 @@ def plot_fit_harmonic(
 
     Args:
         harmonic_properties_fit (pd.DataFrame): fitted harmonic properties dataframe from the fit_harmonic function
-        selec
+        selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
     """
 
     scale_atoms = harmonic_properties_fit["number_of_atoms"].iloc[0]
