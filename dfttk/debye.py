@@ -254,7 +254,7 @@ def plot_debye(
     debye_properties: pd.DataFrame,
     selected_temperatures: np.array = None,
     selected_volumes: np.array = None,
-    volume_decimals: int = 0,
+    volume_decimals: int = 2,
     temperature_decimals: int = 0,
 ) -> tuple[go.Figure, go.Figure]:
     """Plots the vibrational properties (S,F,C_V) as a function of temperature and volume
