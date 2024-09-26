@@ -240,7 +240,12 @@ def plot_phonon_dos(path: str, scale_atoms: int = 5):
 
 # TODO: Add the zero-point energy
 def harmonic(
-    path: str, scale_atoms: int, temp_range: list, order: int = 1, plot: bool = True
+    path: str,
+    scale_atoms: int,
+    temp_range: list,
+    order: int = 1,
+    plot: bool = True,
+    selected_temperatures_plot: np.ndarray = None,
 ) -> pd.DataFrame:
     """Calculate the harmonic properties at different volumes and temperatures
 
@@ -365,7 +370,7 @@ def harmonic(
 
     if plot == True:
         plot_harmonic(harmonic_properties)
-        plot_fit_harmonic(harmonic_properties_fit)
+        plot_fit_harmonic(harmonic_properties_fit, selected_temperatures_plot=selected_temperatures_plot)
 
     return harmonic_properties, harmonic_properties_fit
 
@@ -475,21 +480,21 @@ def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
     return harmonic_properties_fit
 
 
-def plot_fit_harmonic(harmonic_properties_fit: pd.DataFrame):
+def plot_fit_harmonic(
+    harmonic_properties_fit: pd.DataFrame, selected_temperatures_plot: np.ndarray = None
+):
     """Plots the fitted harmonic properties
 
     Args:
         harmonic_properties_fit (pd.DataFrame): fitted harmonic properties dataframe from the fit_harmonic function
+        selec
     """
 
     scale_atoms = harmonic_properties_fit["number_of_atoms"].iloc[0]
     temperature_list = harmonic_properties_fit.index.values
-    spaces = len(temperature_list) - 1
-    step = int(spaces / 4)
-
-    selected_temperatures = temperature_list[::step]
-    if selected_temperatures[-1] != temperature_list[-1]:
-        selected_temperatures = np.append(selected_temperatures, temperature_list[-1])
+    if selected_temperatures_plot is None:
+        indices = np.linspace(0, len(temperature_list) - 1, 5, dtype=int)
+        selected_temperatures_plot = np.array([temperature_list[j] for j in indices])
 
     y_values = [
         ("f_vib", "f_vib_fit"),
@@ -499,7 +504,7 @@ def plot_fit_harmonic(harmonic_properties_fit: pd.DataFrame):
     for y_value, y_value_fit in y_values:
         fig = go.Figure()
         i = 0
-        for temperature in selected_temperatures:
+        for temperature in selected_temperatures_plot:
             x = harmonic_properties_fit.loc[temperature]["volume"]
             y = harmonic_properties_fit.loc[temperature][y_value]
             x_fit = harmonic_properties_fit.loc[temperature]["volume_fit"]
