@@ -327,30 +327,60 @@ def harmonic(
         ]["dos_mid"].values[1:]
 
         for temp in temp_range:
-            ratio = (PLANCK_CONSTANT * frequency_mid) / (2 * BOLTZMANN_CONSTANT * temp)
-            differential = frequency_diff
+            if temp == 0:
+                integrand = (
+                    PLANCK_CONSTANT / 2 * frequency_mid * dos_mid * frequency_diff
+                )
+                f_vib = np.sum(integrand) / 5 * scale_atoms
+                f_vib_list.append(f_vib)
 
-            integrand = np.log(2 * np.sinh(ratio)) * dos_mid * differential
-            f_vib = (BOLTZMANN_CONSTANT * temp * np.sum(integrand)) / 5 * scale_atoms
-            f_vib_list.append(f_vib)
+                e_vib = f_vib
+                e_vib_list.append(e_vib)
 
-            integrand = (
-                frequency_mid * np.cosh(ratio) / np.sinh(ratio) * dos_mid * differential
-            )
-            e_vib = (PLANCK_CONSTANT / 2 * np.sum(integrand)) / 5 * scale_atoms
-            e_vib_list.append(e_vib)
+                s_vib = 0
+                s_vib_list.append(s_vib)
 
-            integrand = (
-                (ratio * np.cosh(ratio) / np.sinh(ratio) - np.log(2 * np.sinh(ratio)))
-                * dos_mid
-                * differential
-            )
-            s_vib = (BOLTZMANN_CONSTANT * np.sum(integrand)) / 5 * scale_atoms
-            s_vib_list.append(s_vib)
+                cv_vib = 0
+                cv_vib_list.append(cv_vib)
 
-            integrand = ratio**2 * (1 / np.sinh(ratio)) ** 2 * dos_mid * differential
-            cv_vib = (BOLTZMANN_CONSTANT * np.sum(integrand)) / 5 * scale_atoms
-            cv_vib_list.append(cv_vib)
+            if temp > 0:
+                ratio = (PLANCK_CONSTANT * frequency_mid) / (
+                    2 * BOLTZMANN_CONSTANT * temp
+                )
+                differential = frequency_diff
+
+                integrand = np.log(2 * np.sinh(ratio)) * dos_mid * differential
+                f_vib = (
+                    (BOLTZMANN_CONSTANT * temp * np.sum(integrand)) / 5 * scale_atoms
+                )
+                f_vib_list.append(f_vib)
+
+                integrand = (
+                    frequency_mid
+                    * np.cosh(ratio)
+                    / np.sinh(ratio)
+                    * dos_mid
+                    * differential
+                )
+                e_vib = (PLANCK_CONSTANT / 2 * np.sum(integrand)) / 5 * scale_atoms
+                e_vib_list.append(e_vib)
+
+                integrand = (
+                    (
+                        ratio * np.cosh(ratio) / np.sinh(ratio)
+                        - np.log(2 * np.sinh(ratio))
+                    )
+                    * dos_mid
+                    * differential
+                )
+                s_vib = (BOLTZMANN_CONSTANT * np.sum(integrand)) / 5 * scale_atoms
+                s_vib_list.append(s_vib)
+
+                integrand = (
+                    ratio**2 * (1 / np.sinh(ratio)) ** 2 * dos_mid * differential
+                )
+                cv_vib = (BOLTZMANN_CONSTANT * np.sum(integrand)) / 5 * scale_atoms
+                cv_vib_list.append(cv_vib)
 
     harmonic_properties = pd.DataFrame(
         {
@@ -371,7 +401,10 @@ def harmonic(
 
     if plot == True:
         plot_harmonic(harmonic_properties)
-        plot_fit_harmonic(harmonic_properties_fit, selected_temperatures_plot=selected_temperatures_plot)
+        plot_fit_harmonic(
+            harmonic_properties_fit,
+            selected_temperatures_plot=selected_temperatures_plot,
+        )
 
     return harmonic_properties, harmonic_properties_fit
 
@@ -504,35 +537,37 @@ def plot_fit_harmonic(
     ]
     for y_value, y_value_fit in y_values:
         fig = go.Figure()
+        colors = [
+            "#636EFA",
+            "#EF553B",
+            "#00CC96",
+            "#AB63FA",
+            "#FFA15A",
+            "#19D3F3",
+            "#FF6692",
+            "#B6E880",
+            "#FF97FF",
+            "#FECB52",
+        ]
+        colors = [
+            f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {1})"
+            for color in colors
+        ]
         i = 0
-        for temperature in selected_temperatures_plot:
+        for i, temperature in enumerate(selected_temperatures_plot):
             x = harmonic_properties_fit.loc[temperature]["volume"]
             y = harmonic_properties_fit.loc[temperature][y_value]
             x_fit = harmonic_properties_fit.loc[temperature]["volume_fit"]
             y_fit = harmonic_properties_fit.loc[temperature][y_value_fit]
 
-            colors = [
-                "#636EFA",
-                "#EF553B",
-                "#00CC96",
-                "#AB63FA",
-                "#FFA15A",
-                "#19D3F3",
-                "#FF6692",
-                "#B6E880",
-                "#FF97FF",
-                "#FECB52",
-            ]
-            colors = [
-                f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {1})"
-                for color in colors
-            ]
+            color = colors[i % len(colors)]
+
             fig.add_trace(
                 go.Scatter(
                     x=x,
                     y=y,
                     mode="markers",
-                    line=dict(color=colors[i]),
+                    line=dict(color=color),
                     showlegend=False,
                 )
             )
@@ -541,7 +576,7 @@ def plot_fit_harmonic(
                     x=x_fit,
                     y=y_fit,
                     mode="lines",
-                    line=dict(color=colors[i]),
+                    line=dict(color=color),
                     name=f"{temperature} K",
                     showlegend=True,
                 )
