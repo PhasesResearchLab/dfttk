@@ -243,7 +243,7 @@ def harmonic(
     path: str,
     scale_atoms: int,
     temp_range: list,
-    order: int = 1,
+    order: int = 2,
     plot: bool = True,
     selected_temperatures_plot: np.ndarray = None,
 ) -> pd.DataFrame:
