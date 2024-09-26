@@ -476,6 +476,7 @@ def thermal_electronic(
     temperature_range: np.ndarray,
     order: int = 2,
     plot: bool = True,
+    selected_temperatures_plot: np.ndarray = None
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Calculates the thermal electronic properties
 
@@ -484,7 +485,8 @@ def thermal_electronic(
         temperature_range (np.ndarray): temperature range
         order (int, optional): order of polynomial to fit thermal electronic properties vs. volume for a fixed temperature. Defaults to 2.
         plot (bool, optional): plots the thermal electronic properties vs. temperature and vs. volume. Defaults to True.
-
+        selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
+        
     Returns:
         tuple[pd.DataFrame, pd.DataFrame]: dataframes containing the thermal electronic properties and the fitted thermal electronic properties
     """
@@ -537,7 +539,7 @@ def thermal_electronic(
 
     if plot == True:
         plot_thermal_electronic(thermal_electronic_properties)
-        plot_thermal_electronic_properties_fit(thermal_electronic_properties_fit)
+        plot_thermal_electronic_properties_fit(thermal_electronic_properties_fit, selected_temperatures_plot)
 
     return thermal_electronic_properties, thermal_electronic_properties_fit
 
@@ -657,22 +659,29 @@ def fit_thermal_electronic(
 
 def plot_thermal_electronic_properties_fit(
     thermal_electronic_properties_fit: pd.DataFrame,
+    selected_temperatures_plot: np.ndarray = None
 ):
     """Plots the fitted thermal electronic properties vs. volume for various fixed temperatures
 
     Args:
         thermal_electronic_properties_fit (pd.DataFrame): dataframe containing the fitted thermal electronic properties
+        selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
     """
 
     number_of_atoms = thermal_electronic_properties_fit["number_of_atoms"].iloc[0]
     temperature_list = thermal_electronic_properties_fit.index.values
+    if selected_temperatures_plot is None:
+        indices = np.linspace(0, len(temperature_list) - 1, 5, dtype=int)
+        selected_temperatures_plot = np.array([temperature_list[j] for j in indices])
+    '''
     spaces = len(temperature_list) - 1
     step = int(spaces / 4)
 
     selected_temperatures = temperature_list[::step]
     if selected_temperatures[-1] != temperature_list[-1]:
         selected_temperatures = np.append(selected_temperatures, temperature_list[-1])
-
+    '''
+    
     y_values = [
         ("f_el", "f_el_fit"),
         ("s_el", "s_el_fit"),
@@ -682,7 +691,7 @@ def plot_thermal_electronic_properties_fit(
     for y_value, y_value_fit in y_values:
         fig = go.Figure()
         i = 0
-        for temperature in selected_temperatures:
+        for temperature in selected_temperatures_plot:
             x = thermal_electronic_properties_fit.loc[temperature]["volume"]
             y = thermal_electronic_properties_fit.loc[temperature][y_value]
             x_fit = thermal_electronic_properties_fit.loc[temperature]["volume_fit"]
