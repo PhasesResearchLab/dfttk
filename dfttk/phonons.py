@@ -1,3 +1,7 @@
+"""
+Harmonic approximation using phonons from VASP and YPHON. 
+"""
+
 # Standard library imports
 import os
 
@@ -8,55 +12,15 @@ import scipy.constants
 import plotly.graph_objects as go
 
 # Local application/library specific imports
-import dfttk.eos_fit as eos_fit
+from dfttk.plotly_format import plot_format
 
-EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
-
-
-def plot_format(
-    fig: go.Figure, xtitle: str, ytitle: str, width: int = 840, height: int = 600
-):
-    """Plot format using plotly
-
-    Args:
-        fig (go.Figure): plotly figure
-        xtitle (str): title of x-axis
-        ytitle (str): title of y-axis
-        width (int, optional): plot width. Defaults to 840.
-        height (int, optional): plot height. Defaults to 600.
-    """
-
-    fig.update_layout(
-        font=dict(
-            family="Devaju Sans",
-        )
-    )
-    fig.update_xaxes(
-        title=dict(
-            text=xtitle,
-            font=dict(size=22, color="rgb(0,0,0)"),
-        )
-    )
-    fig.update_yaxes(title=dict(text=ytitle, font=dict(size=22, color="rgb(0,0,0)")))
-    axis_params = dict(
-        showline=True,
-        linecolor="black",
-        linewidth=1,
-        ticks="outside",
-        mirror="allticks",
-        tickwidth=1,
-        tickcolor="black",
-        showgrid=False,
-        tickfont=dict(color="rgb(0,0,0)", size=20),
-    )
-    fig.update_layout(
-        plot_bgcolor="white",
-        width=width,
-        height=height,
-        legend=dict(font=dict(size=20, color="black")),
-        xaxis=axis_params,
-        yaxis=axis_params,
-    )
+EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3 = 160.21766208 GPa
+BOLTZMANN_CONSTANT = (
+    scipy.constants.Boltzmann / scipy.constants.electron_volt
+)  # The Boltzmann constant in eV/K
+PLANCK_CONSTANT = (
+    scipy.constants.Planck / scipy.constants.electron_volt
+)  # The Planck's constant in eVs
 
 
 # TODO: Make an error check to make sure there are equal number of vdos and volph files and all the indexes match
@@ -274,9 +238,13 @@ def plot_phonon_dos(path: str, scale_atoms: int = 5):
     fig.show()
 
 
-# TODO: Add the zero-point energy
 def harmonic(
-    path: str, scale_atoms: int, temp_range: list, order: int = 1, plot: bool = True
+    path: str,
+    scale_atoms: int,
+    temp_range: list,
+    order: int = 2,
+    plot: bool = True,
+    selected_temperatures_plot: np.ndarray = None,
 ) -> pd.DataFrame:
     """Calculate the harmonic properties at different volumes and temperatures
 
@@ -286,6 +254,7 @@ def harmonic(
         temp_range (list): temperature range to calculate the thermodynamic properties
         order (int, optional): order of the polynomial fit. Defaults to 1.
         plot (bool, optional): Defaults to True.
+        selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
 
     Returns:
         pd.DataFrame: pandas dataframes containing the harmonic and fitted harmonic properties
@@ -340,16 +309,8 @@ def harmonic(
     vdos_data_scaled["frequency_mid"] = pd.Series(frequency_mid_list)
     vdos_data_scaled["dos_mid"] = pd.Series(dos_mid_list)
 
-    # Calculate the integrals for the free energy, internal energy, entropy, and heat capacity
-    k_B = (
-        scipy.constants.Boltzmann / scipy.constants.electron_volt
-    )  # The Boltzmann constant in eV/K
-    h = (
-        scipy.constants.Planck / scipy.constants.electron_volt
-    )  # The Planck's constant in eVs
-
     f_vib_list = []
-    u_vib_list = []
+    e_vib_list = []
     s_vib_list = []
     cv_vib_list = []
 
@@ -365,30 +326,60 @@ def harmonic(
         ]["dos_mid"].values[1:]
 
         for temp in temp_range:
-            ratio = (h * frequency_mid) / (2 * k_B * temp)
-            differential = frequency_diff
+            if temp == 0:
+                integrand = (
+                    PLANCK_CONSTANT / 2 * frequency_mid * dos_mid * frequency_diff
+                )
+                f_vib = np.sum(integrand) / 5 * scale_atoms
+                f_vib_list.append(f_vib)
 
-            integrand = np.log(2 * np.sinh(ratio)) * dos_mid * differential
-            f_vib = (k_B * temp * np.sum(integrand)) / 5 * scale_atoms
-            f_vib_list.append(f_vib)
+                e_vib = f_vib
+                e_vib_list.append(e_vib)
 
-            integrand = (
-                frequency_mid * np.cosh(ratio) / np.sinh(ratio) * dos_mid * differential
-            )
-            u_vib = (h / 2 * np.sum(integrand)) / 5 * scale_atoms
-            u_vib_list.append(u_vib)
+                s_vib = 0
+                s_vib_list.append(s_vib)
 
-            integrand = (
-                (ratio * np.cosh(ratio) / np.sinh(ratio) - np.log(2 * np.sinh(ratio)))
-                * dos_mid
-                * differential
-            )
-            s_vib = (k_B * np.sum(integrand)) / 5 * scale_atoms
-            s_vib_list.append(s_vib)
+                cv_vib = 0
+                cv_vib_list.append(cv_vib)
 
-            integrand = ratio**2 * (1 / np.sinh(ratio)) ** 2 * dos_mid * differential
-            cv_vib = (k_B * np.sum(integrand)) / 5 * scale_atoms
-            cv_vib_list.append(cv_vib)
+            if temp > 0:
+                ratio = (PLANCK_CONSTANT * frequency_mid) / (
+                    2 * BOLTZMANN_CONSTANT * temp
+                )
+                differential = frequency_diff
+
+                integrand = np.log(2 * np.sinh(ratio)) * dos_mid * differential
+                f_vib = (
+                    (BOLTZMANN_CONSTANT * temp * np.sum(integrand)) / 5 * scale_atoms
+                )
+                f_vib_list.append(f_vib)
+
+                integrand = (
+                    frequency_mid
+                    * np.cosh(ratio)
+                    / np.sinh(ratio)
+                    * dos_mid
+                    * differential
+                )
+                e_vib = (PLANCK_CONSTANT / 2 * np.sum(integrand)) / 5 * scale_atoms
+                e_vib_list.append(e_vib)
+
+                integrand = (
+                    (
+                        ratio * np.cosh(ratio) / np.sinh(ratio)
+                        - np.log(2 * np.sinh(ratio))
+                    )
+                    * dos_mid
+                    * differential
+                )
+                s_vib = (BOLTZMANN_CONSTANT * np.sum(integrand)) / 5 * scale_atoms
+                s_vib_list.append(s_vib)
+
+                integrand = (
+                    ratio**2 * (1 / np.sinh(ratio)) ** 2 * dos_mid * differential
+                )
+                cv_vib = (BOLTZMANN_CONSTANT * np.sum(integrand)) / 5 * scale_atoms
+                cv_vib_list.append(cv_vib)
 
     harmonic_properties = pd.DataFrame(
         {
@@ -399,7 +390,7 @@ def harmonic(
             "volume": np.repeat(volumes_per_atom * scale_atoms, len(temp_range)),
             "temperature": np.tile(temp_range, len(volumes_per_atom)),
             "f_vib": f_vib_list,
-            "u_vib": u_vib_list,
+            "e_vib": e_vib_list,
             "s_vib": s_vib_list,
             "cv_vib": cv_vib_list,
         }
@@ -409,7 +400,10 @@ def harmonic(
 
     if plot == True:
         plot_harmonic(harmonic_properties)
-        plot_fit_harmonic(harmonic_properties_fit)
+        plot_fit_harmonic(
+            harmonic_properties_fit,
+            selected_temperatures_plot=selected_temperatures_plot,
+        )
 
     return harmonic_properties, harmonic_properties_fit
 
@@ -507,9 +501,9 @@ def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
     harmonic_properties_fit["f_vib_fit"] = f_vib_fit_list
     harmonic_properties_fit["s_vib_fit"] = s_vib_fit_list
     harmonic_properties_fit["cv_vib_fit"] = cv_vib_fit_list
-    harmonic_properties_fit["f_vib_polynomial"] = free_energy_polynomial_list
-    harmonic_properties_fit["entropy_polynomial"] = entropy_polynomial_list
-    harmonic_properties_fit["heat_capacity_polynomial"] = heat_capacity_polynomial_list
+    harmonic_properties_fit["f_vib_poly"] = free_energy_polynomial_list
+    harmonic_properties_fit["s_vib_poly"] = entropy_polynomial_list
+    harmonic_properties_fit["cv_vib_poly"] = heat_capacity_polynomial_list
 
     harmonic_properties_fit["number_of_atoms"] = harmonic_properties_fit[
         "number_of_atoms"
@@ -519,21 +513,21 @@ def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
     return harmonic_properties_fit
 
 
-def plot_fit_harmonic(harmonic_properties_fit: pd.DataFrame):
+def plot_fit_harmonic(
+    harmonic_properties_fit: pd.DataFrame, selected_temperatures_plot: np.ndarray = None
+):
     """Plots the fitted harmonic properties
 
     Args:
         harmonic_properties_fit (pd.DataFrame): fitted harmonic properties dataframe from the fit_harmonic function
+        selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
     """
 
     scale_atoms = harmonic_properties_fit["number_of_atoms"].iloc[0]
     temperature_list = harmonic_properties_fit.index.values
-    spaces = len(temperature_list) - 1
-    step = int(spaces / 4)
-
-    selected_temperatures = temperature_list[::step]
-    if selected_temperatures[-1] != temperature_list[-1]:
-        selected_temperatures = np.append(selected_temperatures, temperature_list[-1])
+    if selected_temperatures_plot is None:
+        indices = np.linspace(0, len(temperature_list) - 1, 5, dtype=int)
+        selected_temperatures_plot = np.array([temperature_list[j] for j in indices])
 
     y_values = [
         ("f_vib", "f_vib_fit"),
@@ -542,35 +536,37 @@ def plot_fit_harmonic(harmonic_properties_fit: pd.DataFrame):
     ]
     for y_value, y_value_fit in y_values:
         fig = go.Figure()
+        colors = [
+            "#636EFA",
+            "#EF553B",
+            "#00CC96",
+            "#AB63FA",
+            "#FFA15A",
+            "#19D3F3",
+            "#FF6692",
+            "#B6E880",
+            "#FF97FF",
+            "#FECB52",
+        ]
+        colors = [
+            f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {1})"
+            for color in colors
+        ]
         i = 0
-        for temperature in selected_temperatures:
+        for i, temperature in enumerate(selected_temperatures_plot):
             x = harmonic_properties_fit.loc[temperature]["volume"]
             y = harmonic_properties_fit.loc[temperature][y_value]
             x_fit = harmonic_properties_fit.loc[temperature]["volume_fit"]
             y_fit = harmonic_properties_fit.loc[temperature][y_value_fit]
 
-            colors = [
-                "#636EFA",
-                "#EF553B",
-                "#00CC96",
-                "#AB63FA",
-                "#FFA15A",
-                "#19D3F3",
-                "#FF6692",
-                "#B6E880",
-                "#FF97FF",
-                "#FECB52",
-            ]
-            colors = [
-                f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {1})"
-                for color in colors
-            ]
+            color = colors[i % len(colors)]
+
             fig.add_trace(
                 go.Scatter(
                     x=x,
                     y=y,
                     mode="markers",
-                    line=dict(color=colors[i]),
+                    line=dict(color=color),
                     showlegend=False,
                 )
             )
@@ -579,7 +575,7 @@ def plot_fit_harmonic(harmonic_properties_fit: pd.DataFrame):
                     x=x_fit,
                     y=y_fit,
                     mode="lines",
-                    line=dict(color=colors[i]),
+                    line=dict(color=color),
                     name=f"{temperature} K",
                     showlegend=True,
                 )
@@ -594,339 +590,4 @@ def plot_fit_harmonic(harmonic_properties_fit: pd.DataFrame):
             y_title = f"C<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
 
         plot_format(fig, f"Volume (Å³/{scale_atoms} atoms)", y_title)
-        fig.show()
-
-
-# TODO: At the moment, only supports BM4. Add other EOS. Also, add a way to choose the EOS.
-def quasi_harmonic(
-    eos_parameters_df: pd.DataFrame,
-    harmonic_properties_fit: pd.DataFrame,
-    P: int = 0,
-    plot: bool = True,
-    plot_type: str = "default",
-) -> pd.DataFrame:
-    """Calculates the quasi-harmonic properties
-
-    Args:
-        eos_parameters_df (pd.DataFrame): pandas dataframe containing the EOS parameters from the eos_fit.fit_to_all function
-        harmonic_properties_fit (pd.DataFrame): pandas dataframe containing the fitted harmonic properties from the fit_harmonic function
-        P (int, optional): Pressure in GPa. Defaults to 0.
-        plot (bool, optional): Defaults to True.
-        plot_type (str, optional): Type of plots to include. Defaults to 'default'.
-
-    Returns:
-        pd.DataFrame: pandas dataframe containing the quasi-harmonic properties
-    """
-
-    # TODO: Add a way to ensure that the number of atoms from eos_parameters_df and harmonic_properties_fit match
-    eos_parameters_one_EOS = eos_parameters_df[eos_parameters_df["EOS"] == "BM4"]
-    a = eos_parameters_one_EOS["a"].values[0]
-    b = eos_parameters_one_EOS["b"].values[0]
-    c = eos_parameters_one_EOS["c"].values[0]
-    d = eos_parameters_one_EOS["d"].values[0]
-    e = eos_parameters_one_EOS["e"].values[0]
-
-    # Get the energy from the EOS fit
-    volume_range = harmonic_properties_fit.iloc[0]["volume_fit"]
-    energy_eos = eos_fit.BM4_equation(volume_range, a, b, c, d)
-
-    # For each temperature, add energy_eos to f_vib_fit and fit to an EOS
-    free_energy_list = []
-    volume_range_list = []
-    eos_constants_list = []
-    V0_list = []
-    F0_list = []
-    B_list = []
-    BP_list = []
-    S0_list = []
-
-    P = P / EV_PER_CUBIC_ANGSTROM_TO_GPA  # Convert GPa to eV/Å³
-    temperature_list = harmonic_properties_fit.index.tolist()
-    for temperature in temperature_list:
-
-        f_vib_fit = harmonic_properties_fit.loc[temperature]["f_vib_fit"]
-        free_energy = energy_eos + f_vib_fit + P * volume_range
-        free_energy_list.append(free_energy)
-        volume_range_list.append(volume_range)
-
-        eos_constants, eos_parameters, _, _, _ = eos_fit.BM4(volume_range, free_energy)
-        eos_constants_list.append(eos_constants)
-        V0_list.append(eos_parameters[0])
-        F0_list.append(eos_parameters[1])
-        B_list.append(eos_parameters[2])
-        BP_list.append(eos_parameters[3])
-
-        entropy_polynomial = harmonic_properties_fit.loc[temperature][
-            "entropy_polynomial"
-        ]
-        S0 = entropy_polynomial(eos_parameters[0])
-        S0_list.append(S0)
-
-    # Create a quasi-harmonic dataframe
-    quasi_harmonic_properties = pd.DataFrame(
-        data={
-            "pressure": [P] * len(temperature_list),
-            "number_of_atoms": [harmonic_properties_fit["number_of_atoms"].iloc[0]]
-            * len(temperature_list),
-            "temperature": temperature_list,
-            "volume_range": volume_range_list,
-            "free_energy": free_energy_list,
-            "eos_constants": eos_constants_list,
-            "V0": V0_list,
-            "F0": F0_list,
-            "B": B_list,
-            "BP": BP_list,
-            "S0": S0_list,
-        }
-    )
-
-    # Calculate other properties using the finite difference method
-    V0 = quasi_harmonic_properties["V0"].values
-    S0 = quasi_harmonic_properties["S0"].values
-    T = quasi_harmonic_properties["temperature"].values
-    dV = V0[1:] - V0[:-1]
-    dS = S0[1:] - S0[:-1]
-    dT = T[1:] - T[:-1]
-
-    CTE = (1 / V0[:-1]) * dV / dT * 1e6
-    Cp = T[:-1] * dS / dT
-
-    # Add a NaN value to the end of the CTE list
-    CTE = np.append(CTE, np.nan)
-    Cp = np.append(Cp, np.nan)
-
-    quasi_harmonic_properties["H0"] = (
-        quasi_harmonic_properties["F0"]
-        + quasi_harmonic_properties["temperature"] * quasi_harmonic_properties["S0"]
-    )
-    quasi_harmonic_properties["CTE"] = CTE
-    quasi_harmonic_properties["Cp"] = Cp
-
-    if plot == True:
-        plot_quasi_harmonic(quasi_harmonic_properties, plot_type)
-
-    return quasi_harmonic_properties
-
-
-def plot_quasi_harmonic(
-    quasi_harmonic_properties: pd.DataFrame, plot_type: str = "default"
-):
-    """Plots the quasi-harmonic properties
-
-    Args:
-        quasi_harmonic_properties (pd.DataFrame): pandas dataframe containing the quasi-harmonic properties from the quasi_harmonic function
-        plot_type (str, optional): Type of plots to include. Defaults to 'default'.
-    """
-
-    temperature_list = quasi_harmonic_properties["temperature"].values
-    spaces = len(temperature_list) - 1
-    step = int(spaces / 9)
-
-    selected_temperatures = temperature_list[::step]
-    if selected_temperatures[-1] != temperature_list[-1]:
-        selected_temperatures = np.append(selected_temperatures, temperature_list[-1])
-
-    scale_atoms = quasi_harmonic_properties["number_of_atoms"].iloc[0]
-
-    if plot_type == "default" or plot_type == "all":
-        # Free energy plot
-        fig = go.Figure()
-        for temperature in selected_temperatures:
-            x = quasi_harmonic_properties[
-                quasi_harmonic_properties["temperature"] == temperature
-            ]["volume_range"].values[0]
-            y = quasi_harmonic_properties[
-                quasi_harmonic_properties["temperature"] == temperature
-            ]["free_energy"].values[0]
-
-            F0 = quasi_harmonic_properties[
-                quasi_harmonic_properties["temperature"] == temperature
-            ]["F0"].values[0]
-            V0 = quasi_harmonic_properties[
-                quasi_harmonic_properties["temperature"] == temperature
-            ]["V0"].values[0]
-
-            fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=y,
-                    mode="lines",
-                    marker=dict(size=10),
-                    name=f"{temperature} K",
-                ),
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=[V0],
-                    y=[F0],
-                    mode="markers",
-                    marker=dict(size=10, symbol="cross", color="black"),
-                    showlegend=False,
-                ),
-            )
-        plot_format(
-            fig,
-            f"Volume (Å³/{scale_atoms} atoms)",
-            f"Free Energy (eV/{scale_atoms} atoms)",
-            width=600,
-            height=600,
-        )
-        fig.show()
-
-        # Volume plot
-        fig = go.Figure()
-        x = temperature_list
-        y = quasi_harmonic_properties["V0"].values
-
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=y,
-                mode="lines",
-                marker=dict(size=10),
-                name=f"{temperature} K",
-            ),
-        )
-        plot_format(
-            fig,
-            f"Temperature (K)",
-            f"Volume (Å³/{scale_atoms} atoms)",
-            width=600,
-            height=600,
-        )
-        fig.show()
-
-        # CTE plot
-        fig = go.Figure()
-        x = temperature_list
-        y = quasi_harmonic_properties["CTE"].values
-
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=y,
-                mode="lines",
-                marker=dict(size=10),
-                name=f"{temperature} K",
-            ),
-        )
-        plot_format(
-            fig,
-            f"Temperature (K)",
-            "CTE (10<sup>-6</sup> K<sup>-1</sup>)",
-            width=600,
-            height=600,
-        )
-        fig.show()
-
-        # Entropy plot
-        fig = go.Figure()
-        x = temperature_list
-        y = quasi_harmonic_properties["S0"].values
-
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=y,
-                mode="lines",
-                marker=dict(size=10),
-                name=f"{temperature} K",
-            ),
-        )
-        plot_format(
-            fig,
-            f"Temperature (K)",
-            f"Entropy (eV/K/{scale_atoms} atoms)",
-            width=600,
-            height=600,
-        )
-        fig.show()
-
-        # Cp plot
-        fig = go.Figure()
-        x = temperature_list
-        y = quasi_harmonic_properties["Cp"].values
-
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=y,
-                mode="lines",
-                marker=dict(size=10),
-                name=f"{temperature} K",
-            ),
-        )
-        plot_format(
-            fig,
-            f"Temperature (K)",
-            f"C<sub>p</sub> (eV/K/{scale_atoms} atoms)",
-            width=600,
-            height=600,
-        )
-        fig.show()
-
-    if plot_type == "all":
-        # Enthalpy plot
-        fig = go.Figure()
-        x = temperature_list
-        y = quasi_harmonic_properties["H0"].values
-
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=y,
-                mode="lines",
-                marker=dict(size=10),
-                name=f"{temperature} K",
-            ),
-        )
-        plot_format(
-            fig,
-            f"Temperature (K)",
-            f"Enthalpy (eV/{scale_atoms} atoms)",
-            width=600,
-            height=600,
-        )
-        fig.show()
-
-        # Bulk modulus plot
-        fig = go.Figure()
-        x = temperature_list
-        y = quasi_harmonic_properties["B"].values
-
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=y,
-                mode="lines",
-                marker=dict(size=10),
-                name=f"{temperature} K",
-            ),
-        )
-        plot_format(
-            fig, f"Temperature (K)", "Bulk modulus (GPa)", width=600, height=600
-        )
-        fig.show()
-
-        # Gibbs energy plot
-        fig = go.Figure()
-        x = temperature_list
-        y = quasi_harmonic_properties["F0"].values
-
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=y,
-                mode="lines",
-                marker=dict(size=10),
-                name=f"{temperature} K",
-            ),
-        )
-        plot_format(
-            fig,
-            f"Temperature (K)",
-            f"Gibbs energy (eV/{scale_atoms} atoms)",
-            width=600,
-            height=600,
-        )
         fig.show()
