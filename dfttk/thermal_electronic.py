@@ -294,22 +294,27 @@ def calculate_internal_energy(
 
     E_el_list = []
     for temperature in temperature_range:
-        chemical_potential = calculate_chemical_potential(energy, dos, temperature)
-        fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
+        if temperature == 0:
+            E_el = 0
+            E_el_list.append(E_el)
+        
+        elif temperature > 0:
+            chemical_potential = calculate_chemical_potential(energy, dos, temperature)
+            fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
 
-        integrand_1 = dos * fermi_dist * energy
-        integral_1 = np.trapz(integrand_1, energy)
+            integrand_1 = dos * fermi_dist * energy
+            integral_1 = np.trapz(integrand_1, energy)
 
-        # Only integrate over energy levels less than the chemical potential
-        mask = energy < chemical_potential
-        filtered_energy = energy[mask]
-        filtered_dos = dos[mask]
+            # Only integrate over energy levels less than the chemical potential
+            mask = energy < chemical_potential
+            filtered_energy = energy[mask]
+            filtered_dos = dos[mask]
 
-        integrand_2 = filtered_dos * filtered_energy
-        integral_2 = np.trapz(integrand_2, filtered_energy)
+            integrand_2 = filtered_dos * filtered_energy
+            integral_2 = np.trapz(integrand_2, filtered_energy)
 
-        E_el = integral_1 - integral_2
-        E_el_list.append(E_el)
+            E_el = integral_1 - integral_2
+            E_el_list.append(E_el)
 
     return E_el_list
 
@@ -340,20 +345,25 @@ def calculate_entropy(
 
     S_el_list = []
     for temperature in temperature_range:
-        chemical_potential = calculate_chemical_potential(energy, dos, temperature)
-        fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
+        if temperature == 0:
+            S_el = 0
+            S_el_list.append(S_el)
+            
+        elif temperature > 0:
+            chemical_potential = calculate_chemical_potential(energy, dos, temperature)
+            fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
 
-        # The limit of f ln f + (1-f) ln (1-f) as f approaches 0 or 1 is 0
-        mask = (fermi_dist == 0) | (fermi_dist == 1)
-        integrand = np.zeros_like(fermi_dist)
-        integrand[~mask] = dos[~mask] * (
-            fermi_dist[~mask] * np.log(fermi_dist[~mask])
-            + (1 - fermi_dist[~mask]) * np.log(1 - fermi_dist[~mask])
-        )
-        integrand[mask] = 0
+            # The limit of f ln f + (1-f) ln (1-f) as f approaches 0 or 1 is 0
+            mask = (fermi_dist == 0) | (fermi_dist == 1)
+            integrand = np.zeros_like(fermi_dist)
+            integrand[~mask] = dos[~mask] * (
+                fermi_dist[~mask] * np.log(fermi_dist[~mask])
+                + (1 - fermi_dist[~mask]) * np.log(1 - fermi_dist[~mask])
+            )
+            integrand[mask] = 0
 
-        S_el = -BOLTZMANN_CONSTANT * np.trapz(integrand, energy)
-        S_el_list.append(S_el)
+            S_el = -BOLTZMANN_CONSTANT * np.trapz(integrand, energy)
+            S_el_list.append(S_el)
 
     if plot:
         plot_entropy_integral(energy, integrand)
@@ -404,21 +414,26 @@ def calculate_heat_capacity(
 
     Cv_el_list = []
     for temperature in temperature_range:
-        chemical_potential = calculate_chemical_potential(energy, dos, temperature)
-        fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
+        if temperature == 0:
+            Cv_el = 0
+            Cv_el_list.append(Cv_el)
 
-        # The limit of (1 / f - 1) * (f * (E - mu) / T) ** 2 as f approaches 0 or 1 is 0
-        mask = (fermi_dist == 0) | (fermi_dist == 1)
-        integrand = np.zeros_like(fermi_dist)
-        integrand[~mask] = dos[~mask] * (
-            (1 / fermi_dist[~mask] - 1)
-            * (fermi_dist[~mask] * (energy[~mask] - chemical_potential) / temperature) ** 2
-            / BOLTZMANN_CONSTANT
-        )
-        integrand[mask] = 0
-        
-        Cv_el = np.trapz(integrand, energy)
-        Cv_el_list.append(Cv_el)
+        elif temperature > 0:
+            chemical_potential = calculate_chemical_potential(energy, dos, temperature)
+            fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
+
+            # The limit of (1 / f - 1) * (f * (E - mu) / T) ** 2 as f approaches 0 or 1 is 0
+            mask = (fermi_dist == 0) | (fermi_dist == 1)
+            integrand = np.zeros_like(fermi_dist)
+            integrand[~mask] = dos[~mask] * (
+                (1 / fermi_dist[~mask] - 1)
+                * (fermi_dist[~mask] * (energy[~mask] - chemical_potential) / temperature) ** 2
+                / BOLTZMANN_CONSTANT
+            )
+            integrand[mask] = 0
+            
+            Cv_el = np.trapz(integrand, energy)
+            Cv_el_list.append(Cv_el)
 
         if plot:
             plot_heat_capacity_integral(energy, integrand)
@@ -682,35 +697,38 @@ def plot_thermal_electronic_properties_fit(
     ]
     for y_value, y_value_fit in y_values:
         fig = go.Figure()
+        colors = [
+            "#636EFA",
+            "#EF553B",
+            "#00CC96",
+            "#AB63FA",
+            "#FFA15A",
+            "#19D3F3",
+            "#FF6692",
+            "#B6E880",
+            "#FF97FF",
+            "#FECB52",
+        ]
+        colors = [
+            f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {1})"
+            for color in colors
+        ]
+        
         i = 0
-        for temperature in selected_temperatures_plot:
+        for i, temperature in enumerate(selected_temperatures_plot):
             x = thermal_electronic_properties_fit.loc[temperature]["volume"]
             y = thermal_electronic_properties_fit.loc[temperature][y_value]
             x_fit = thermal_electronic_properties_fit.loc[temperature]["volume_fit"]
             y_fit = thermal_electronic_properties_fit.loc[temperature][y_value_fit]
 
-            colors = [
-                "#636EFA",
-                "#EF553B",
-                "#00CC96",
-                "#AB63FA",
-                "#FFA15A",
-                "#19D3F3",
-                "#FF6692",
-                "#B6E880",
-                "#FF97FF",
-                "#FECB52",
-            ]
-            colors = [
-                f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {1})"
-                for color in colors
-            ]
+            color = colors[i % len(colors)]
+            
             fig.add_trace(
                 go.Scatter(
                     x=x,
                     y=y,
                     mode="markers",
-                    line=dict(color=colors[i]),
+                    line=dict(color=color),
                     showlegend=False,
                 )
             )
@@ -719,7 +737,7 @@ def plot_thermal_electronic_properties_fit(
                     x=x_fit,
                     y=y_fit,
                     mode="lines",
-                    line=dict(color=colors[i]),
+                    line=dict(color=color),
                     name=f"{temperature} K",
                     showlegend=True,
                 )
