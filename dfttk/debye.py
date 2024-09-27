@@ -168,13 +168,24 @@ def vibrational_energy(temperature: float, theta: float, number_of_atoms) -> flo
         float: Vibrational energy in eV
     """
 
-    debye_value = debye_function(theta / temperature)
+    zero_temp_mask = (temperature == 0)
+    non_zero_temp_mask = (temperature > 0)
+    
+    e_vib = np.zeros_like(temperature)
+    debye_value = np.zeros_like(temperature)
+    
+    e_vib[zero_temp_mask] = number_of_atoms * (
+    9 / 8 * BOLTZMANN_CONSTANT * theta
+    )
+    
+    debye_value[non_zero_temp_mask] = debye_function(theta / temperature[non_zero_temp_mask])
 
-    return (
+    e_vib = (
         number_of_atoms
         * BOLTZMANN_CONSTANT
-        * (3 * temperature * debye_value + 9 / 8 * theta)
+        * (3 * temperature[non_zero_temp_mask] * debye_value[non_zero_temp_mask] + 9 / 8 * theta)
     )
+    return e_vib
 
 
 def vibrational_entropy(temperature: float, theta: float, number_of_atoms) -> float:
@@ -190,19 +201,30 @@ def vibrational_entropy(temperature: float, theta: float, number_of_atoms) -> fl
 
     """
 
-    x = theta / temperature
-    debye_value = debye_function(x)
+    zero_temp_mask = (temperature == 0)
+    non_zero_temp_mask = (temperature > 0)
+    
+    s_vib = np.zeros_like(temperature)
+    x = np.zeros_like(temperature)
+    debye_value = np.zeros_like(temperature)
+    
+    s_vib[zero_temp_mask] = 0
+    
+    x[non_zero_temp_mask] = theta / temperature[non_zero_temp_mask]
+    debye_value[non_zero_temp_mask] = debye_function(x[non_zero_temp_mask])
 
-    return (
+    s_vib[non_zero_temp_mask] = (
         3
         * number_of_atoms
         * BOLTZMANN_CONSTANT
-        * (4 / 3 * debye_value - np.log(1 - np.exp(-x)))
+        * (4 / 3 * debye_value[non_zero_temp_mask] - np.log(1 - np.exp(-x[non_zero_temp_mask])))
     )
+    
+    return s_vib
 
 
 def vibrational_helmholtz_energy(
-    temperature: float, theta: float, number_of_atoms
+    temperature: np.ndarray | float, theta: float, number_of_atoms
 ) -> float:
     """Evaluates the debye function at x = theta/temperature, then calculates the vibrational Helmholtz energy in eV.
 
@@ -214,18 +236,32 @@ def vibrational_helmholtz_energy(
     Returns:
         float: Vibrational Helmholtz energy in eV
     """
-
-    x = theta / temperature
-    debye_value = debye_function(x)
-
-    return number_of_atoms * (
-        9 / 8 * BOLTZMANN_CONSTANT * theta
-        + BOLTZMANN_CONSTANT * temperature * (3 * np.log(1 - np.exp(-x)) - debye_value)
+    
+    zero_temp_mask = (temperature == 0)
+    non_zero_temp_mask = (temperature > 0)
+    
+    f_vib = np.zeros_like(temperature)
+    x = np.zeros_like(temperature)
+    debye_value = np.zeros_like(temperature)
+    
+    # Zero point energy
+    f_vib[zero_temp_mask] = number_of_atoms * (
+    9 / 8 * BOLTZMANN_CONSTANT * theta
     )
+           
+    x[non_zero_temp_mask] = theta / temperature[non_zero_temp_mask]
+    debye_value[non_zero_temp_mask] = debye_function(x[non_zero_temp_mask])
+           
+    f_vib[non_zero_temp_mask] = number_of_atoms * (
+        9 / 8 * BOLTZMANN_CONSTANT * theta
+        + BOLTZMANN_CONSTANT * temperature[non_zero_temp_mask] * (3 * np.log(1 - np.exp(-x[non_zero_temp_mask])) - debye_value[non_zero_temp_mask])
+    )
+        
+    return f_vib
 
 
 def vibrational_heat_capacity(
-    temperature: float, theta: float, number_of_atoms
+    temperature: np.ndarray | float, theta: float, number_of_atoms
 ) -> float:
     """Evaluates the debye function and its derivative at x = theta/temperature, then calculates the vibrational heat capacity in eV/K.
     The formula is taken from Eq. (13) from Khishchenko (https://doi.org/10.20948/MATHMONTIS-2020-49-8).
@@ -239,15 +275,25 @@ def vibrational_heat_capacity(
         float: Vibrational heat capacity in eV/K
     """
 
-    x = theta / temperature
-    debye_value = debye_function(x)
+    zero_temp_mask = (temperature == 0)
+    non_zero_temp_mask = (temperature > 0)
+    
+    cv_vib = np.zeros_like(temperature)
+    x = np.zeros_like(temperature)
+    debye_value = np.zeros_like(temperature)
+    
+    cv_vib[zero_temp_mask] = 0
+    
+    x[non_zero_temp_mask] = theta / temperature[non_zero_temp_mask]
+    debye_value[non_zero_temp_mask] = debye_function(x[non_zero_temp_mask])
 
-    return (
+    cv_vib[non_zero_temp_mask] = (
         3
         * number_of_atoms
         * BOLTZMANN_CONSTANT
-        * (4 * debye_value - 3 * x / (np.exp(x) - 1))
+        * (4 * debye_value[non_zero_temp_mask] - 3 * x[non_zero_temp_mask] / (np.exp(x[non_zero_temp_mask]) - 1))
     )
+    return cv_vib
 
 
 def plot_debye(
@@ -359,7 +405,7 @@ def process_debye_gruneisen(
     gruneisen_x: float = 1,
     mass_average: str = "geometric",
     volumes: np.array = None,
-    temperatures: np.array = np.linspace(10, 1000, 100),
+    temperatures: np.array = np.linspace(0, 1000, 101),
     outcar_name: str = "OUTCAR.3static",
     oszicar_name: str = "OSZICAR.3static",
     contcar_name: str = "CONTCAR.3static",
@@ -427,7 +473,7 @@ def process_debye_gruneisen(
     atomic_mass = extract_average_mass(contcar, outcar, mass_average)
 
     theta = debye_temperature(volumes, eos_parameters, atomic_mass, gru_param, s)
-
+    
     s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
     f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
     cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
