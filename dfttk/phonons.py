@@ -238,7 +238,6 @@ def plot_phonon_dos(path: str, scale_atoms: int = 5):
     fig.show()
 
 
-# TODO: Add the zero-point energy
 def harmonic(
     path: str,
     scale_atoms: int,
