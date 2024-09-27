@@ -38,7 +38,7 @@ dependencies = [
     "pymongo>=4.4",
 ]
 
-keywords = ["VASP", "automation", "thermodynamics", "dfttk2", "DFT", "materials", "science", "MongoDB"]
+keywords = ["VASP", "automation", "thermodynamics", "dfttk", "DFT", "materials", "science", "MongoDB"]
 
 [project.urls]
-"Homepage" = "https://github.com/PhasesResearchLab/dfttk2"
+"Homepage" = "https://github.com/PhasesResearchLab/dfttk"
