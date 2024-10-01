@@ -25,6 +25,7 @@ def process_quasi_harmonic(
     eos: str = "BM4",
     plot: bool = True,
     plot_type: str = "default",
+    selected_temperatures_plot: list = None,
 ) -> pd.DataFrame:
     """Calculates the quasi-harmonic properties
 
@@ -37,6 +38,7 @@ def process_quasi_harmonic(
         P (int, optional): Pressure in GPa. Defaults to 0.
         plot (bool, optional): Defaults to True.
         plot_type (str, optional): Type of plots to include. Defaults to 'default'.
+        selected_temperatures_plot (list, optional): List of selected temperatures to plot. Defaults to None.
 
     Returns:
         pd.DataFrame: pandas dataframe containing the quasi-harmonic properties
@@ -252,29 +254,34 @@ def process_quasi_harmonic(
     quasi_harmonic_properties["Cp"] = Cp
 
     if plot == True:
-        plot_quasi_harmonic(quasi_harmonic_properties, plot_type)
+        plot_quasi_harmonic(quasi_harmonic_properties, plot_type, selected_temperatures_plot=selected_temperatures_plot)
 
     return quasi_harmonic_properties
 
 
 def plot_quasi_harmonic(
-    quasi_harmonic_properties: pd.DataFrame, plot_type: str = "default"
+    quasi_harmonic_properties: pd.DataFrame, plot_type: str = "default", selected_temperatures_plot: list = None
 ):
     """Plots the quasi-harmonic properties
 
     Args:
         quasi_harmonic_properties (pd.DataFrame): pandas dataframe containing the quasi-harmonic properties from the quasi_harmonic function
         plot_type (str, optional): Type of plots to include. Defaults to 'default'.
+        selected_temperatures_plot (list, optional): List of selected temperatures to plot. Defaults to None.
     """
 
     temperature_list = quasi_harmonic_properties["temperature"].values
-    spaces = len(temperature_list) - 1
-    step = int(spaces / 10)
+    if selected_temperatures_plot is None:
+        spaces = len(temperature_list) - 1
+        step = int(spaces / 10)
 
-    selected_temperatures = temperature_list[::step]
-    if selected_temperatures[-1] != temperature_list[-1]:
-        selected_temperatures = np.append(selected_temperatures, temperature_list[-1])
+        selected_temperatures = temperature_list[::step]
+        if selected_temperatures[-1] != temperature_list[-1]:
+            selected_temperatures = np.append(selected_temperatures, temperature_list[-1])
 
+    else:
+        selected_temperatures = selected_temperatures_plot
+        
     scale_atoms = quasi_harmonic_properties["number_of_atoms"].iloc[0]
 
     if plot_type == "default" or plot_type == "all":
