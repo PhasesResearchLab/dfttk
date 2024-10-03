@@ -324,6 +324,7 @@ def calculate_entropy(
     dos: pd.Series | np.ndarray,
     temperature_range: np.ndarray,
     plot=False,
+    plot_temperatures: np.ndarray = None,
 ) -> list:
     """Calculates the thermal electronic contribution to the entropy
 
@@ -332,6 +333,7 @@ def calculate_entropy(
         dos (pd.Series | np.ndarray): electron DOS values
         temperature_range (np.ndarray): temperature range
         plot (bool, optional): plots the integrand vs energy of the entropy equation. Defaults to False.
+        plot_temperatures (np.ndarray, optional): temperatures to plot the integrand vs energy of the entropy equation. Defaults to None.
 
     Returns:
         list: thermal electronic contribution to the entropy
@@ -343,11 +345,15 @@ def calculate_entropy(
     if isinstance(dos, pd.Series):
         dos = dos.values[0]
 
+    integrand_list = []
     S_el_list = []
     for temperature in temperature_range:
         if temperature == 0:
             S_el = 0
             S_el_list.append(S_el)
+            
+            integrand = np.zeros_like(energy)
+            integrand_list.append(integrand)
             
         elif temperature > 0:
             chemical_potential = calculate_chemical_potential(energy, dos, temperature)
@@ -361,27 +367,38 @@ def calculate_entropy(
                 + (1 - fermi_dist[~mask]) * np.log(1 - fermi_dist[~mask])
             )
             integrand[mask] = 0
-
+            integrand_list.append(integrand)
+            
             S_el = -BOLTZMANN_CONSTANT * np.trapz(integrand, energy)
             S_el_list.append(S_el)
-
+    
     if plot:
-        plot_entropy_integral(energy, integrand)
+        for plot_temperature in plot_temperatures:
+            index = np.where(temperature_range == plot_temperature)[0][0]
+            plot_entropy_integral(energy, integrand_list[index], plot_temperature)
 
     return S_el_list
 
 
-def plot_entropy_integral(energy: np.ndarray, integrand: np.ndarray):
+def plot_entropy_integral(energy: np.ndarray, integrand: np.ndarray, plot_temperature: float):
     """Plots the integrand vs energy of the entropy equation
 
     Args:
         energy (np.ndarray): energy values from the electron DOS
         integrand (np.ndarray): integrand from the entropy equation
+        plot_temperature (float): temperature
     """
 
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(x=energy, y=-BOLTZMANN_CONSTANT * integrand, mode="markers")
+    )
+    fig.update_layout(
+        title=dict(
+            text=f"T = {plot_temperature} K",
+            font=dict(size=20, color="rgb(0,0,0)"),
+        ),
+        margin=dict(t=130),
     )
     plot_format(fig, xtitle="E - E<sub>F</sub> (eV)", ytitle="S<sub>el</sub> integrand")
     fig.show()
@@ -393,6 +410,7 @@ def calculate_heat_capacity(
     dos: pd.Series | np.ndarray,
     temperature_range: np.ndarray,
     plot=False,
+    plot_temperatures: np.ndarray = None,
 ) -> list:
     """Calculates the thermal electronic contribution to the heat capacity
 
@@ -401,6 +419,7 @@ def calculate_heat_capacity(
         dos (pd.Series | np.ndarray): electron DOS values
         temperature_range (np.ndarray): temperature range
         plot (bool, optional): plots the integrand vs energy of the heat capacity equation. Defaults to False.
+        plot_temperatures (np.ndarray, optional): temperatures to plot the integrand vs energy of the heat capacity equation. Defaults to None.
 
     Returns:
         list: thermal electronic contribution to the heat capacity
@@ -412,12 +431,17 @@ def calculate_heat_capacity(
     if isinstance(dos, pd.Series):
         dos = dos.values[0]
 
+    integrand_list = []
     Cv_el_list = []
+    
     for temperature in temperature_range:
         if temperature == 0:
             Cv_el = 0
             Cv_el_list.append(Cv_el)
 
+            integrand = np.zeros_like(energy)
+            integrand_list.append(integrand)
+            
         elif temperature > 0:
             chemical_potential = calculate_chemical_potential(energy, dos, temperature)
             fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
@@ -431,26 +455,37 @@ def calculate_heat_capacity(
                 / BOLTZMANN_CONSTANT
             )
             integrand[mask] = 0
+            integrand_list.append(integrand)
             
             Cv_el = np.trapz(integrand, energy)
             Cv_el_list.append(Cv_el)
-
-        if plot:
-            plot_heat_capacity_integral(energy, integrand)
+            
+    if plot:
+        for plot_temperature in plot_temperatures:
+            index = np.where(temperature_range == plot_temperature)[0][0]
+            plot_heat_capacity_integral(energy, integrand_list[index], plot_temperature)
 
     return Cv_el_list
 
 
-def plot_heat_capacity_integral(energy: np.ndarray, integrand: np.ndarray):
+def plot_heat_capacity_integral(energy: np.ndarray, integrand: np.ndarray, plot_temperature: float):
     """plots the integrand vs energy of the heat capacity equation
 
     Args:
         energy (np.ndarray): energy values from the electron DOS
         integrand (np.ndarray): integrand from the heat capacity equation
+        plot_temperature (float): temperature
     """
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=energy, y=integrand, mode="markers"))
+    fig.update_layout(
+        title=dict(
+            text=f"T = {plot_temperature} K",
+            font=dict(size=20, color="rgb(0,0,0)"),
+        ),
+        margin=dict(t=130),
+    )
     plot_format(
         fig, xtitle="E - E<sub>F</sub> (eV)", ytitle="C<sub>v,el</sub> integrand"
     )
