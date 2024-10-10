@@ -61,7 +61,7 @@ def process_quasi_harmonic(
                 raise ValueError("The number of atoms do not match")
 
     # Debye model only
-    if debye_properties is not None and harmonic_properties_fit is None:
+    elif debye_properties is not None and harmonic_properties_fit is None:
         num_atoms_debye = debye_properties["number_of_atoms"].values[0]
         if num_atoms_eos != num_atoms_debye:
             raise ValueError("The number of atoms do not match")
@@ -115,7 +115,7 @@ def process_quasi_harmonic(
     if harmonic_properties_fit is not None and debye_properties is None:
         temperature_list = harmonic_properties_fit.index.tolist()
 
-    if debye_properties is not None and harmonic_properties_fit is None:
+    elif debye_properties is not None and harmonic_properties_fit is None:
         temperature_list = debye_properties["temperatures"].tolist()
 
     eos_fit_functions = {
@@ -143,7 +143,7 @@ def process_quasi_harmonic(
             f_plus_pv_list.append(f_plus_pv)
             volume_range_list.append(volume_range)
 
-        if debye_properties is not None and harmonic_properties_fit is None:
+        elif debye_properties is not None and harmonic_properties_fit is None:
             # Check if the volume range is the same as the one used for the Debye model
             volume_range_debye = debye_properties[
                 debye_properties["temperatures"] == temperature
@@ -190,24 +190,27 @@ def process_quasi_harmonic(
         B_list.append(B)
         BP_list.append(BP)
 
-        if harmonic_properties_fit is not None:
+        if harmonic_properties_fit is not None and debye_properties is None:
             s_vib_poly = harmonic_properties_fit.loc[temperature]["s_vib_poly"]
             order = s_vib_poly.order
             s_vib_fit = s_vib_poly(volume_range)
-            s = s_vib_fit
+            s_vib = s_vib_fit
 
-        if debye_properties is not None:
+        elif debye_properties is not None and harmonic_properties_fit is None:
             s_vib = debye_properties[debye_properties["temperatures"] == temperature][
                 "s_vib"
             ].values[0]
-            s = s_vib
             order = 2
 
         if thermal_electronic_properties_fit is not None:
             s_el_poly = thermal_electronic_properties_fit.loc[temperature]["s_el_poly"]
             s_el_fit = s_el_poly(volume_range)
-            s += s_el_fit
+            s_el = s_el_fit
 
+        elif thermal_electronic_properties_fit is None:
+            s_el = 0
+
+        s = s_vib + s_el
         s_coefficients = np.polyfit(volume_range, s, order)
         s_poly = np.poly1d(s_coefficients)
 
@@ -254,13 +257,19 @@ def process_quasi_harmonic(
     quasi_harmonic_properties["Cp"] = Cp
 
     if plot == True:
-        plot_quasi_harmonic(quasi_harmonic_properties, plot_type, selected_temperatures_plot=selected_temperatures_plot)
+        plot_quasi_harmonic(
+            quasi_harmonic_properties,
+            plot_type,
+            selected_temperatures_plot=selected_temperatures_plot,
+        )
 
     return quasi_harmonic_properties
 
 
 def plot_quasi_harmonic(
-    quasi_harmonic_properties: pd.DataFrame, plot_type: str = "default", selected_temperatures_plot: list = None
+    quasi_harmonic_properties: pd.DataFrame,
+    plot_type: str = "default",
+    selected_temperatures_plot: list = None,
 ):
     """Plots the quasi-harmonic properties
 
@@ -277,11 +286,13 @@ def plot_quasi_harmonic(
 
         selected_temperatures = temperature_list[::step]
         if selected_temperatures[-1] != temperature_list[-1]:
-            selected_temperatures = np.append(selected_temperatures, temperature_list[-1])
+            selected_temperatures = np.append(
+                selected_temperatures, temperature_list[-1]
+            )
 
     else:
         selected_temperatures = selected_temperatures_plot
-        
+
     scale_atoms = quasi_harmonic_properties["number_of_atoms"].iloc[0]
 
     if plot_type == "default" or plot_type == "all":
