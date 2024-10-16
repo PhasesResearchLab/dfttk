@@ -14,7 +14,7 @@ from dfttk.plotly_format import plot_format
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 
-# At the moment, the function can handle either phonon or debye. Should it handle both at the same time?
+# TODO: Consider pulling out parallel code out of this function into separate functions
 def process_quasi_harmonic(
     volume_range: np.ndarray,
     eos_parameters_df: pd.DataFrame,
