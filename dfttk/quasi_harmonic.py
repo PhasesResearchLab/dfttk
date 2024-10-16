@@ -339,7 +339,7 @@ def plot_quasi_harmonic(
             fig,
             f"Volume (Å³/{scale_atoms} atoms)",
             f"F + PV (eV/{scale_atoms} atoms)",
-            width=600,
+            width=650,
             height=600,
         )
         fig.show()
@@ -378,7 +378,7 @@ def plot_quasi_harmonic(
                 fig,
                 f"Temperature (K)",
                 y_label,
-                width=600,
+                width=650,
                 height=600,
             )
             fig.show()
