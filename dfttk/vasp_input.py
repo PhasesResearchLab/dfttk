@@ -213,7 +213,7 @@ def base_set(
     
     if magnetic:
         magmom = [MAGMOM_DICT[site.specie.symbol] for site in struct.sites]
-        incar_settings.update({"MAGMOM": magmom})
+        incar_settings.update({"MAGMOM": magmom, "ISPIN": 2})
 
     return incar_settings
 
