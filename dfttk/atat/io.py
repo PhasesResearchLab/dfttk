@@ -10,6 +10,8 @@ import pandas as pd
 from pymatgen.core import Lattice, Structure
 from pymatgen.io.vasp import Poscar
 
+from dfttk import vasp_input
+
 
 # TODO: sort out paths later
 def poscar2lat(
@@ -34,16 +36,16 @@ def poscar2lat(
 
         for i, specie in enumerate(species):
             coord_str = " ".join(f"{x:.10f}" for x in direct_coords[i])
-            
+
             if magnetic_sites:
                 site = magnetic_sites.get(specie.symbol, [specie.symbol])
                 site_str = ", ".join(site)
-                
+
             else:
                 site_str = specie.symbol
-                
+
             f.write(f"{coord_str} {site_str}\n")
-        
+
 
 def gen_spin_config(lat_file: str = "lat.in", output_file: str = "spin_configs"):
 
@@ -115,21 +117,27 @@ def parse_spin_config(
 
             # Collect the non-letters (magmom) from species_list
             magmom = ["".join(re.findall(r"[^a-zA-Z]", x)) for x in species_list]
-            
+
             # Set magmom = 0 for non-magnetic sites
             magmom = [float(x) if x else 0 for x in magmom]
             magmom = np.array(magmom)
             magmom_list.append(magmom)
-            
-            # Determine the magnetic ordering, ignoring non-magnetic sites     
+
+            # Determine the magnetic ordering, ignoring non-magnetic sites
             if (np.isclose(magmom, 0, atol=magmom_tolerance)).all():
                 magnetic_ordering = "NM"
-            elif np.isclose(sum(magmom), 0, atol=total_magnetic_moment_tolerance) == True:
+            elif (
+                np.isclose(sum(magmom), 0, atol=total_magnetic_moment_tolerance) == True
+            ):
                 magnetic_ordering = "AFM"
-            elif (magmom >= 0 +  magmom_tolerance).all() or (magmom <= 0 -  magmom_tolerance).all():
+            elif (magmom >= 0 + magmom_tolerance).all() or (
+                magmom <= 0 - magmom_tolerance
+            ).all():
                 magnetic_ordering = "FM"
-            elif (magmom > 0 + magmom_tolerance).sum() == (magmom < 0 - magmom_tolerance).sum():
-                magnetic_ordering = "FiM" 
+            elif (magmom > 0 + magmom_tolerance).sum() == (
+                magmom < 0 - magmom_tolerance
+            ).sum():
+                magnetic_ordering = "FiM"
             else:
                 magnetic_ordering = "SF"
 
@@ -139,7 +147,7 @@ def parse_spin_config(
             lattice = Lattice(lattice_vectors)
 
             structure = Structure(
-                lattice, species_elements, coords, site_properties={"magmom": magmom}
+                lattice, species_elements, coords, site_properties={"MAGMOM": magmom}
             )
 
             poscar_object = Poscar(structure)
@@ -161,13 +169,23 @@ def parse_spin_config(
 
 
 def write_spin_config(spin_configs):
-    
+
     config_values = spin_configs["config"].values
     for config_value in config_values:
-        poscar_object = spin_configs[spin_configs["config"] == config_value]["poscar_object"].values[0]
-        
+        poscar_object = spin_configs[spin_configs["config"] == config_value][
+            "poscar_object"
+        ].values[0]
+
         config_dir = f"config_{config_value}"
         os.makedirs(config_dir, exist_ok=True)
-        
+
         poscar_object.write_file(os.path.join(config_dir, "POSCAR"))
 
+        other_settings = poscar_object.structure.site_properties
+        vasp_input.ev_curve_set(
+            config_dir,
+            material_type="metal",
+            encut=520,
+            kppa=4001,
+            other_settings=other_settings,
+        )

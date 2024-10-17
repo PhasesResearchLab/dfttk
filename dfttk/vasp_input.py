@@ -112,6 +112,54 @@ POTCAR_DICT = {
     "Zr": "Zr_sv",
 }
 
+#TODO: Add more elements
+MAGMOM_DICT = {
+    "Co": 5,
+    "Co3+": 0.6,
+    "Co4+": 1,
+    "Cr": 5,
+    "Fe": 5,
+    "Mn": 5,
+    "Mn3+": 4,
+    "Mn4+": 3,
+    "Mo": 5,
+    "Ni": 5,
+    "V": 5,
+    "W": 5,
+    "Ce": 5,
+    "Eu": 10,
+    # spin-only predicted moments
+    "Ti3+": 1.73,
+    "V3+": 2.83,
+    "Cr3+": 3.88,
+    "Cr2+": 4.90,
+    "Mn2+": 5.92,
+    "Fe3+": 5.92,
+    "Co2+": 3.88,
+    "Ni2+": 2.83,
+    "Cu": 1.73, # fallback, if valence not detected
+    "Cu2+": 1.73,
+    # rare earths predicted moments
+    #Ce: 2.54
+    "Pr": 3.58,
+    "Pt": 0.0,
+    "Nd": 3.62,
+    "Pm": 2.68,
+    "Sm": 0.85,
+    "Gd": 7.94,
+    "Tb": 9.72,
+    "Dy": 10.65,
+    "Ho": 10.6,
+    "Er": 9.58,
+    "Tm": 7.56,
+    "Yb": 4.54,
+    # to add:
+    # Np:
+    "Ru": 2.2,
+    "Os": 2.2,
+    # Ir:
+    # U:
+}
 
 def base_set(
     path: str,
@@ -170,8 +218,10 @@ def volume_relax_set(
     material_type: str,
     encut: int = 520,
     kppa: int = 4000,
+    magnetic: bool = False,
     potcar_functional: str = "PBE_54",
     incar_functional: str = "PBE",
+    other_settings: dict = {},
 ) -> None:
 
     incar_settings = base_set(
@@ -185,8 +235,16 @@ def volume_relax_set(
             "NSW": 200,
         }
     )
-
+    incar_settings.update(other_settings)
     incar = Incar(incar_settings)
+    
+    poscar_path = os.path.join(path, "POSCAR")
+    struct = Structure.from_file(poscar_path)
+    print(struct.sites)
+    if magnetic:
+        magmom = [MAGMOM_DICT[site.specie.symbol] for site in struct.sites]
+        incar.update({"MAGMOM": magmom})
+    
     incar.write_file(os.path.join(path, "INCAR"))
 
 
