@@ -166,6 +166,7 @@ def base_set(
     material_type: str,
     encut: int = 520,
     kppa: int = 4000,
+    magnetic: bool = False,
     potcar_functional: str = "PBE_54",
     incar_functional: str = "PBE",
 ) -> None:
@@ -209,6 +210,10 @@ def base_set(
     }
 
     incar_settings.update(material_settings.get(material_type, {}))
+    
+    if magnetic:
+        magmom = [MAGMOM_DICT[site.specie.symbol] for site in struct.sites]
+        incar_settings.update({"MAGMOM": magmom})
 
     return incar_settings
 
@@ -225,7 +230,7 @@ def volume_relax_set(
 ) -> None:
 
     incar_settings = base_set(
-        path, material_type, encut, kppa, potcar_functional, incar_functional
+        path, material_type, encut, kppa, magnetic, potcar_functional, incar_functional
     )
     incar_settings.update(
         {
@@ -237,13 +242,6 @@ def volume_relax_set(
     )
     incar_settings.update(other_settings)
     incar = Incar(incar_settings)
-    
-    poscar_path = os.path.join(path, "POSCAR")
-    struct = Structure.from_file(poscar_path)
-    print(struct.sites)
-    if magnetic:
-        magmom = [MAGMOM_DICT[site.specie.symbol] for site in struct.sites]
-        incar.update({"MAGMOM": magmom})
     
     incar.write_file(os.path.join(path, "INCAR"))
 
