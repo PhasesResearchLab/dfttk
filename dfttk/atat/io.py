@@ -1,0 +1,173 @@
+"""
+Handle input and output files for ATAT calculations.
+"""
+
+import os
+import re
+import numpy as np
+import subprocess
+import pandas as pd
+from pymatgen.core import Lattice, Structure
+from pymatgen.io.vasp import Poscar
+
+
+# TODO: sort out paths later
+def poscar2lat(
+    poscar_file: str,
+    magnetic_sites: dict = {},
+    scaling_matrix: np.ndarray = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+    lat_file: str = "lat.in",
+):
+
+    poscar = Poscar.from_file(poscar_file)
+
+    lattice = poscar.structure.lattice
+    direct_coords = poscar.structure.frac_coords
+    species = poscar.structure.species
+
+    with open(lat_file, "w") as f:
+        for i in range(3):
+            f.write(" ".join(f"{x:.10f}" for x in lattice.matrix[i]) + "\n")
+
+        for i in range(3):
+            f.write(" ".join(str(x) for x in scaling_matrix[i]) + "\n")
+
+        for i, specie in enumerate(species):
+            coord_str = " ".join(f"{x:.10f}" for x in direct_coords[i])
+            
+            if magnetic_sites:
+                site = magnetic_sites.get(specie.symbol, [specie.symbol])
+                site_str = ", ".join(site)
+                
+            else:
+                site_str = specie.symbol
+                
+            f.write(f"{coord_str} {site_str}\n")
+        
+
+def gen_spin_config(lat_file: str = "lat.in", output_file: str = "spin_configs"):
+
+    subprocess.run(["icamag", "-d"], stdout=open(output_file, "w"))
+
+
+def parse_spin_config(
+    spin_config_file: str = "spin_configs",
+    magmom_tolerance: float = 0,
+    total_magnetic_moment_tolerance: float = 0,
+):
+
+    with open(spin_config_file, "r") as f:
+        lines = f.readlines()
+
+    multiplicity_list = []
+    coords_list = []
+    species_list = []
+    poscar_object_list = []
+    magmom_list = []
+    magnetic_ordering_list = []
+
+    count = 0
+    for line in lines:
+        line = line.strip().split()
+
+        if count == 0:
+            multiplicity = int(line[0])
+            multiplicity_list.append(multiplicity)
+
+        elif count == 1:
+            lattice_vector_1 = np.array([float(x) for x in line])
+
+        elif count == 2:
+            lattice_vector_2 = np.array([float(x) for x in line])
+
+        elif count == 3:
+            lattice_vector_3 = np.array([float(x) for x in line])
+            lattice_vectors = np.vstack(
+                (lattice_vector_1, lattice_vector_2, lattice_vector_3)
+            )
+
+        elif count == 4:
+            scaling_vector_1 = np.array([float(x) for x in line])
+
+        elif count == 5:
+            scaling_vector_2 = np.array([float(x) for x in line])
+
+        elif count == 6:
+            scaling_vector_3 = np.array([float(x) for x in line])
+            scaling_matrix = np.vstack(
+                (scaling_vector_1, scaling_vector_2, scaling_vector_3)
+            )
+
+        elif count > 6 and "end" not in line and len(line) > 1:
+            coord = np.array([float(x) for x in line[:3]])
+            species = line[3]
+
+            coords_list.append(coord)
+            species_list.append(species)
+
+        count += 1
+
+        if not line:
+            coords = np.vstack(coords_list)
+
+            # Remove any non-letter characters (magmom) from species
+            species_elements = ["".join(filter(str.isalpha, x)) for x in species_list]
+
+            # Collect the non-letters (magmom) from species_list
+            magmom = ["".join(re.findall(r"[^a-zA-Z]", x)) for x in species_list]
+            
+            # Set magmom = 0 for non-magnetic sites
+            magmom = [float(x) if x else 0 for x in magmom]
+            magmom = np.array(magmom)
+            magmom_list.append(magmom)
+            
+            # Determine the magnetic ordering, ignoring non-magnetic sites     
+            if (np.isclose(magmom, 0, atol=magmom_tolerance)).all():
+                magnetic_ordering = "NM"
+            elif np.isclose(sum(magmom), 0, atol=total_magnetic_moment_tolerance) == True:
+                magnetic_ordering = "AFM"
+            elif (magmom >= 0 +  magmom_tolerance).all() or (magmom <= 0 -  magmom_tolerance).all():
+                magnetic_ordering = "FM"
+            elif (magmom > 0 + magmom_tolerance).sum() == (magmom < 0 - magmom_tolerance).sum():
+                magnetic_ordering = "FiM" 
+            else:
+                magnetic_ordering = "SF"
+
+            magnetic_ordering_list.append(magnetic_ordering)
+
+            lattice_vectors = np.dot(lattice_vectors, scaling_matrix)
+            lattice = Lattice(lattice_vectors)
+
+            structure = Structure(
+                lattice, species_elements, coords, site_properties={"magmom": magmom}
+            )
+
+            poscar_object = Poscar(structure)
+            poscar_object_list.append(poscar_object)
+
+            # reset count and lists
+            count = 0
+            species_list = []
+            coords_list = []
+
+    # create a dataframe called spin_configs
+    spin_configs = pd.DataFrame()
+    spin_configs["config"] = range(len(poscar_object_list))
+    spin_configs["multiplicity"] = multiplicity_list
+    spin_configs["poscar_object"] = poscar_object_list
+    spin_configs["magnetic_ordering"] = magnetic_ordering_list
+
+    return spin_configs
+
+
+def write_spin_config(spin_configs):
+    
+    config_values = spin_configs["config"].values
+    for config_value in config_values:
+        poscar_object = spin_configs[spin_configs["config"] == config_value]["poscar_object"].values[0]
+        
+        config_dir = f"config_{config_value}"
+        os.makedirs(config_dir, exist_ok=True)
+        
+        poscar_object.write_file(os.path.join(config_dir, "POSCAR"))
+
