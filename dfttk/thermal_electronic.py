@@ -267,8 +267,8 @@ def calculate_chemical_potential(
     energy: pd.Series | np.ndarray,
     dos: pd.Series | np.ndarray,
     temperature: float,
-    min_chemical_potential: float = -0.2,
-    max_chemical_potential: float = 0.2,
+    min_chemical_potential: float = -0.01,
+    max_chemical_potential: float = 0.01,
 ) -> float:
     """Calculates the chemical potential at a given temperature and volume
 
@@ -276,8 +276,8 @@ def calculate_chemical_potential(
         energy (pd.Series | np.ndarray): energy values from the electron DOS
         dos (pd.Series | np.ndarray): electron DOS values
         temperature (float): temperature
-        min_chemical_potential (float, optional): starting search for the chemical potential. Defaults to -0.2.
-        max_chemical_potential (float, optional): end search for the chemical potential. Defaults to 0.2.
+        min_chemical_potential (float, optional): starting search for the chemical potential. Defaults to -0.01.
+        max_chemical_potential (float, optional): end search for the chemical potential. Defaults to 0.01.
 
     Returns:
         float: chemical potential at a given temperature and volume
@@ -289,20 +289,26 @@ def calculate_chemical_potential(
     if isinstance(dos, pd.Series):
         dos = dos.values[0]
 
-    num_electrons_0K = calculate_num_electrons(energy, dos, 0, 0)
+    num_electrons_0K = round(calculate_num_electrons(energy, dos, 0, 0))
 
     # Find the chemical potential at temperature such that the number of electrons matches that at 0 K
     chemical_potential = min_chemical_potential
     num_electrons = calculate_num_electrons(
         energy, dos, chemical_potential, temperature
     )
+
     while (
-        abs(num_electrons - num_electrons_0K) > 1e-2
+        abs(num_electrons - num_electrons_0K) > 1e-3
         and chemical_potential < max_chemical_potential
     ):
-        chemical_potential += 0.01
+        chemical_potential += 0.001
         num_electrons = calculate_num_electrons(
             energy, dos, chemical_potential, temperature
+        )
+
+    if chemical_potential == max_chemical_potential:
+        print(
+            f"Warning: The chemical potential is at the maximum value of {max_chemical_potential} eV. Consider increasing the maximum chemical potential."
         )
 
     return chemical_potential
@@ -472,9 +478,7 @@ def calculate_entropy(
             integrand_list.append(integrand)
 
         elif temperature > 0:
-            chemical_potential = calculate_chemical_potential(
-                energy_fit, dos_fit, temperature
-            )
+            chemical_potential = calculate_chemical_potential(energy, dos, temperature)
             fermi_dist = fermi_dirac_distribution(
                 energy_fit, chemical_potential, temperature
             )
@@ -571,9 +575,7 @@ def calculate_heat_capacity(
             integrand_list.append(integrand)
 
         elif temperature > 0:
-            chemical_potential = calculate_chemical_potential(
-                energy_fit, dos_fit, temperature
-            )
+            chemical_potential = calculate_chemical_potential(energy, dos, temperature)
             fermi_dist = fermi_dirac_distribution(
                 energy_fit, chemical_potential, temperature
             )
