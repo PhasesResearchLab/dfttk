@@ -1,33 +1,38 @@
 """
-Handle input and output files for ATAT calculations.
+Generates magnetic spin configurations using the icamag tool from the ATAT package.
+Please follow the installation instructions in atat/install/README.md.
 """
 
+# Standard library imports
 import os
 import re
-import numpy as np
 import subprocess
+
+# Third-party imports
+import numpy as np
 import pandas as pd
 from pymatgen.core import Lattice, Structure
 from pymatgen.io.vasp import Poscar
 
+# DFTTK imports
 from dfttk import vasp_input
 
 
-# TODO: sort out paths later
 def poscar2lat(
+    path: str,
     poscar_file: str,
     magnetic_sites: dict = {},
     scaling_matrix: np.ndarray = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
     lat_file: str = "lat.in",
 ):
 
-    poscar = Poscar.from_file(poscar_file)
+    poscar = Poscar.from_file(os.path.join(path, poscar_file))
 
     lattice = poscar.structure.lattice
     direct_coords = poscar.structure.frac_coords
     species = poscar.structure.species
 
-    with open(lat_file, "w") as f:
+    with open(os.path.join(path, lat_file), "w") as f:
         for i in range(3):
             f.write(" ".join(f"{x:.10f}" for x in lattice.matrix[i]) + "\n")
 
@@ -47,18 +52,25 @@ def poscar2lat(
             f.write(f"{coord_str} {site_str}\n")
 
 
-def gen_spin_config(lat_file: str = "lat.in", output_file: str = "spin_configs"):
+def call_icamag(path, output_file: str = "spin_configs"):
 
-    subprocess.run(["icamag", "-d"], stdout=open(output_file, "w"))
+    # Ensure the path exists
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"The specified path {path} does not exist.")
+
+    # Run the subprocess in the specified path
+    with open(os.path.join(path, output_file), "w") as output:
+        subprocess.run(["icamag", "-d"], cwd=path, stdout=output)
 
 
 def parse_spin_config(
+    path: str,
     spin_config_file: str = "spin_configs",
     magmom_tolerance: float = 0,
     total_magnetic_moment_tolerance: float = 0,
 ):
 
-    with open(spin_config_file, "r") as f:
+    with open(os.path.join(path, spin_config_file), "r") as f:
         lines = f.readlines()
 
     multiplicity_list = []
@@ -168,7 +180,9 @@ def parse_spin_config(
     return spin_configs
 
 
-def write_spin_config(spin_configs):
+def write_spin_config(
+    path, spin_configs, material_type, encut=520, kppa=4000, other_settings={}
+):
 
     config_values = spin_configs["config"].values
     for config_value in config_values:
@@ -176,7 +190,7 @@ def write_spin_config(spin_configs):
             "poscar_object"
         ].values[0]
 
-        config_dir = f"config_{config_value}"
+        config_dir = os.path.join(path, f"config_{config_value}")
         os.makedirs(config_dir, exist_ok=True)
 
         poscar_object.write_file(os.path.join(config_dir, "POSCAR"))
@@ -184,8 +198,32 @@ def write_spin_config(spin_configs):
         other_settings = poscar_object.structure.site_properties
         vasp_input.ev_curve_set(
             config_dir,
-            material_type="metal",
-            encut=520,
-            kppa=4001,
+            material_type=material_type,
+            encut=encut,
+            kppa=kppa,
             other_settings=other_settings,
         )
+
+
+def gen_spin_configs(
+    path,
+    magnetic_sites,
+    material_type,
+    poscar_file="POSCAR",
+    encut=520,
+    kppa=4000,
+    other_settings={},
+):
+
+    poscar2lat(path, poscar_file=poscar_file, magnetic_sites=magnetic_sites)
+    call_icamag(path)
+
+    spin_configs = parse_spin_config(path)
+    write_spin_config(
+        path,
+        spin_configs,
+        material_type=material_type,
+        encut=encut,
+        kppa=kppa,
+        other_settings=other_settings,
+    )

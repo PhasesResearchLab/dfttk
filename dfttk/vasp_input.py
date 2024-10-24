@@ -213,7 +213,7 @@ def base_set(
     
     if magnetic:
         magmom = [MAGMOM_DICT[site.specie.symbol] for site in struct.sites]
-        incar_settings.update({"MAGMOM": magmom, "ISPIN": 2})
+        incar_settings.update({"MAGMOM": magmom, "ISPIN": 2, "LORBIT": 11})
 
     return incar_settings
 
@@ -250,6 +250,7 @@ def conv_set(
     path: str,
     encut: int = 520,
     kppa: int = 4000,
+    magnetic: bool = False,
     potcar_functional: str = "PBE_54",
     incar_functional: str = "PBE",
     other_settings: dict = {},
@@ -257,7 +258,7 @@ def conv_set(
 
     material_type = "metal"  # Will be overwridden by ISMEAR = -5
     incar_settings = base_set(
-        path, material_type, encut, kppa, potcar_functional, incar_functional
+        path, material_type, encut, kppa, magnetic, potcar_functional, incar_functional
     )
     incar_settings.update(
         {
