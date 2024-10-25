@@ -6,160 +6,20 @@ For more information on available functionals,
 see https://github.com/materialsproject/pymatgen/blob/master/src/pymatgen/io/vasp/inputs.py#L2581
 """
 
+# Standard library imports
 import os
+
+# Third-party imports
 import numpy as np
+import yaml
 from pymatgen.core.structure import Structure
-from pymatgen.io.vasp.inputs import Poscar, Kpoints, Incar, Potcar
+from pymatgen.io.vasp.inputs import Incar, Kpoints, Poscar, Potcar
 
-# TODO: It may be good to move this long constant to another file
-POTCAR_DICT = {
-    "Ac": "Ac",
-    "Ag": "Ag",
-    "Al": "Al",
-    "Am": "Am",
-    "Ar": "Ar",
-    "As": "As",
-    "At": "At",
-    "Au": "Au",
-    "B": "B",
-    "Ba": "Ba_sv",
-    "Be": "Be_sv",
-    "Bi": "Bi",
-    "Br": "Br",
-    "C": "C",
-    "Ca": "Ca_sv",
-    "Cd": "Cd",
-    "Ce": "Ce",
-    "Cf": "Cf",
-    "Cl": "Cl",
-    "Cm": "Cm",
-    "Co": "Co",
-    "Cr": "Cr_pv",
-    "Cs": "Cs_sv",
-    "Cu": "Cu_pv",
-    "Dy": "Dy_3",
-    "Er": "Er_3",
-    "Eu": "Eu",
-    "F": "F",
-    "Fe": "Fe_pv",
-    "Fr": "Fr_sv",
-    "Ga": "Ga_d",
-    "Gd": "Gd",
-    "Ge": "Ge_d",
-    "H": "H",
-    "He": "He",
-    "Hf": "Hf_pv",
-    "Hg": "Hg",
-    "Ho": "Ho_3",
-    "I": "I",
-    "In": "In_d",
-    "Ir": "Ir",
-    "K": "K_sv",
-    "Kr": "Kr",
-    "La": "La",
-    "Li": "Li_sv",
-    "Lu": "Lu_3",
-    "Mg": "Mg_pv",
-    "Mn": "Mn_pv",
-    "Mo": "Mo_pv",
-    "N": "N",
-    "Na": "Na_pv",
-    "Nb": "Nb_pv",
-    "Nd": "Nd_3",
-    "Ne": "Ne",
-    "Ni": "Ni_pv",
-    "Np": "Np",
-    "O": "O",
-    "Os": "Os_pv",
-    "P": "P",
-    "Pa": "Pa",
-    "Pb": "Pb_d",
-    "Pd": "Pd",
-    "Pm": "Pm_3",
-    "Po": "Po_d",
-    "Pr": "Pr_3",
-    "Pt": "Pt",
-    "Pu": "Pu",
-    "Ra": "Ra_sv",
-    "Rb": "Rb_sv",
-    "Re": "Re_pv",
-    "Rh": "Rh_pv",
-    "Rn": "Rn",
-    "Ru": "Ru_pv",
-    "S": "S",
-    "Sb": "Sb",
-    "Sc": "Sc_sv",
-    "Se": "Se",
-    "Si": "Si",
-    "Sm": "Sm_3",
-    "Sn": "Sn_d",
-    "Sr": "Sr_sv",
-    "Ta": "Ta_pv",
-    "Tb": "Tb_3",
-    "Tc": "Tc_pv",
-    "Te": "Te",
-    "Th": "Th",
-    "Ti": "Ti_sv",
-    "Tl": "Tl_d",
-    "Tm": "Tm_3",
-    "U": "U",
-    "V": "V_pv",
-    "W": "W_sv",
-    "Xe": "Xe",
-    "Y": "Y_sv",
-    "Yb": "Yb_3",
-    "Zn": "Zn",
-    "Zr": "Zr_sv",
-}
+with open("potcar_dict.yaml", "r") as file:
+    POTCAR_DICT = yaml.safe_load(file)
 
-#TODO: Add more elements
-MAGMOM_DICT = {
-    "Co": 5,
-    "Co3+": 0.6,
-    "Co4+": 1,
-    "Cr": 5,
-    "Fe": 5,
-    "Mn": 5,
-    "Mn3+": 4,
-    "Mn4+": 3,
-    "Mo": 5,
-    "Ni": 5,
-    "V": 5,
-    "W": 5,
-    "Ce": 5,
-    "Eu": 10,
-    # spin-only predicted moments
-    "Ti3+": 1.73,
-    "V3+": 2.83,
-    "Cr3+": 3.88,
-    "Cr2+": 4.90,
-    "Mn2+": 5.92,
-    "Fe3+": 5.92,
-    "Co2+": 3.88,
-    "Ni2+": 2.83,
-    "Cu": 1.73, # fallback, if valence not detected
-    "Cu2+": 1.73,
-    # rare earths predicted moments
-    #Ce: 2.54
-    "Pr": 3.58,
-    "Pt": 0.0,
-    "Nd": 3.62,
-    "Pm": 2.68,
-    "Sm": 0.85,
-    "Gd": 7.94,
-    "Tb": 9.72,
-    "Dy": 10.65,
-    "Ho": 10.6,
-    "Er": 9.58,
-    "Tm": 7.56,
-    "Yb": 4.54,
-    # to add:
-    # Np:
-    "Ru": 2.2,
-    "Os": 2.2,
-    # Ir:
-    # U:
-}
+with open("magmom_dict.yaml", "r") as file:
+    MAGMOM_DICT = yaml.safe_load(file)
 
 def base_set(
     path: str,
