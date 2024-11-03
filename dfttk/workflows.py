@@ -35,6 +35,7 @@ def three_step_relaxation(
     default_settings: bool = True,
     settings_override_2relax: list = None,
     settings_override_3static: list = None,
+    max_errors: int = 10,
 ) -> None:
     """Runs a three-step relaxation - two consecutive relaxations followed by
        one static.
@@ -50,6 +51,7 @@ def three_step_relaxation(
         default_settings (bool, optional): if True, uses the default settings for the relaxation and static steps. Defaults to True.
         settings_override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
         settings_override_3static (list, optional): override settings for the final static step. Defaults to None.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
     """
 
     if default_settings:
@@ -95,7 +97,7 @@ def three_step_relaxation(
     )
 
     jobs = [step1, step2, step3]
-    c = Custodian(handlers, jobs, max_errors=3)
+    c = Custodian(handlers, jobs, max_errors=max_errors)
     c.run()
     os.chdir(original_dir)
 
@@ -112,6 +114,7 @@ def ev_curve_series(
     default_settings: bool = True,
     settings_override_2relax: list = None,
     settings_override_3static: list = None,
+    max_errors: int = 10,
 ) -> None:
     """Runs a series of three_step_relaxation calculations for a list of volumes.
 
@@ -128,6 +131,7 @@ def ev_curve_series(
         default_settings (bool, optional): Use the default settings for three_step_relaxation. Defaults to True.
         settings_override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
         settings_override_3static (list, optional): override settings for the final static step. Defaults to None.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
     """
 
     # Writes a params.json file to keep track of the parameters used
@@ -268,6 +272,7 @@ def ev_curve_series(
                 default_settings=True,
                 settings_override_2relax=settings_override_2relax,
                 settings_override_3static=settings_override_3static,
+                max_errors=max_errors,
             )
             last_vol_index = j + 1
 
@@ -369,7 +374,7 @@ def ev_curve_series(
 
 
 def charge_density_difference(
-    path: str, vasp_cmd: list[str], handlers: list[str], backup: bool = False
+    path: str, vasp_cmd: list[str], handlers: list[str], backup: bool = False, max_errors: int = 10
 ) -> Chgcar:
     """Runs a charge density difference calculation. The charge_density_difference is calculated as the difference between the
     charge density of the final electronic step and the charge density of a single step.
@@ -380,7 +385,8 @@ def charge_density_difference(
         handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
         backup (bool, optional): If True, the starting INCAR, KPOINTS, POSCAR and POTCAR files will be copied with a “.orig”
         appended. Defaults to False.
-
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
+        
     Returns:
         Chgcar: The charge density difference between the final electronic step and a single step.
     """
@@ -443,7 +449,7 @@ def charge_density_difference(
     )
 
     jobs = [reference_job, charge_density_job]
-    c = Custodian(handlers, jobs, max_errors=3)
+    c = Custodian(handlers, jobs, max_errors=max_errors)
     c.run()
 
     final = Chgcar.from_file("CHGCAR.charge_density")
@@ -528,6 +534,7 @@ def run_phonons(
     handlers: list[str],
     copy_magmom: bool = False,
     backup: bool = False,
+    max_errors: int = 10,
 ):
     """Runs a relaxation followed by a phonon calculation.
 
@@ -538,6 +545,7 @@ def run_phonons(
         file of the next run. Defaults to False.
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
     """
 
     step1 = VaspJob(
@@ -574,7 +582,7 @@ def run_phonons(
     )
 
     jobs = [step1, step2]
-    c = Custodian(handlers, jobs, max_errors=3)
+    c = Custodian(handlers, jobs, max_errors=max_errors)
     c.run()
 
 
@@ -808,6 +816,7 @@ def run_elec_dos(
     NEDOS: int = 10001,
     copy_magmom: bool = False,
     backup: bool = False,
+    max_errors: int = 10,
 ):
     """Runs an electronic DOS calculation.
 
@@ -818,6 +827,7 @@ def run_elec_dos(
         file of the next run. Defaults to False.
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
     """
 
     step1 = VaspJob(
@@ -844,7 +854,7 @@ def run_elec_dos(
     )
 
     jobs = [step1]
-    c = Custodian(handlers, jobs, max_errors=3)
+    c = Custodian(handlers, jobs, max_errors=max_errors)
     c.run()
 
 
@@ -999,6 +1009,7 @@ def kpoints_conv_test(
     ],
     force_gamma: bool = True,
     backup: bool = False,
+    max_errors: int = 10,
 ):
     """Runs a series of VASP calculations with different k-point densities for convergence testing.
 
@@ -1010,6 +1021,7 @@ def kpoints_conv_test(
         force_gamma (bool, optional):If True, forces a gamma-centered mesh. Defaults to True.
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
     """
 
     original_dir = os.getcwd()
@@ -1040,7 +1052,7 @@ def kpoints_conv_test(
                 {"dict": "INCAR", "action": {"_set": {"IBRION": -1, "NSW": 0}}}
             ],
         )
-        c = Custodian(handlers, [job], max_errors=3)
+        c = Custodian(handlers, [job], max_errors=max_errors)
         c.run()
 
         if os.path.isfile(f"WAVECAR.{kppa}"):
@@ -1073,6 +1085,7 @@ def encut_conv_test(
         820,
     ],
     backup: bool = False,
+    max_errors: int = 10,
 ):
     """Runs a series of VASP calculations with different ENCUT values for convergence testing.
 
@@ -1083,6 +1096,7 @@ def encut_conv_test(
         encut_list (list[int], optional): list of ENCUT values to run the calculations for.
         Defaults to [270, 320 , 370, 420, 470, 520, 570, 620, 670, 720, 770, 820].
         backup (bool, optional):If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with .orig. Defaults to False.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
     """
 
     original_dir = os.getcwd()
@@ -1113,7 +1127,7 @@ def encut_conv_test(
                 }
             ],
         )
-        c = Custodian(handlers, [job], max_errors=3)
+        c = Custodian(handlers, [job], max_errors=max_errors)
         c.run()
 
         if os.path.isfile(f"WAVECAR.{encut}"):
