@@ -1382,18 +1382,18 @@ def assign_marker_symbols_to_configs(df: pd.DataFrame) -> dict:
         "square-x",
         "diamond-cross",
         "diamond-x",
-        "cross-thin",
-        "x-thin",
-        "asterisk",
-        "hash",
-        "y-up",
-        "y-down",
-        "y-left",
-        "y-right",
-        "line-ew",
-        "line-ns",
-        "line-ne",
-        "line-nw",
+        "arrow-left",
+        "arrow-right",
+        "arrow",
+        "circle-open",
+        "square-open",
+        "diamond-open",
+        "x-open",
+        "triangle-up-open",
+        "triangle-down-open",
+        "triangle-left-open",
+        "triangle-right-open",
+        "pentagon-open",
     ]
     config_symbols = {
         config: symbols[i % len(symbols)] for i, config in enumerate(unique_configs)
@@ -1455,7 +1455,7 @@ def plot_ev(
     # Assign colors and symbols
     config_colors = assign_colors_to_configs(df, alpha=marker_alpha, cmap=cmap)
     config_symbols = assign_marker_symbols_to_configs(df)
-
+    
     # Plot the data
     fig = go.Figure()
     fig.update_layout(
@@ -1526,7 +1526,8 @@ def plot_ev(
                 y = eos_ev_df["energies"].values[0]
 
                 if per_atom:
-                    num_atoms = eos_ev_df["number_of_atoms"].values[0][0]
+                    num_atoms = eos_ev_df["number_of_atoms"].values[0]
+
                     x = x / num_atoms
                     y = y / num_atoms
 
@@ -1549,7 +1550,7 @@ def plot_ev(
                     y = eos_min_df["E0"].values[0]
 
                     if per_atom:
-                        num_atoms = eos_ev_df["number_of_atoms"].values[0][0]
+                        num_atoms = eos_ev_df["number_of_atoms"].values[0]
                         x = x / num_atoms
                         y = y / num_atoms
 
