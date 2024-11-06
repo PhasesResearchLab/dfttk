@@ -1,8 +1,11 @@
+"""
+Module for magnetic analysis of VASP calculations. 
+"""
+
 # Standard library imports
 import os
 import itertools
 import numbers
-
 
 # Related third party imports
 import numpy as np
@@ -20,6 +23,8 @@ from pymatgen.io.vasp.outputs import Poscar
 from dfttk.data_extraction import extract_tot_mag_data, extract_input_mag_data
 
 
+# TODO: While this does work, we also want the option to determine the magnetic ordering based on only certain elements.
+# For example, for Fe3Pt, we may want to determine the magnetic ordering based only on the Fe atoms.
 def determine_magnetic_ordering(
     df: pd.DataFrame,
     magmom_tolerance: float = 1e-12,
@@ -69,10 +74,12 @@ def get_magnetic_structure(poscar: str, outcar: str) -> Structure:
     structure = Structure.from_file(poscar)
     mag_data = extract_tot_mag_data(outcar)
     structure.add_site_property("magmom", mag_data["tot"])
+
     return structure
 
 
 # TODO: make this magnetic/non-magnetic agnostic
+# TODO: For Luke - Is this a general function that can be applied on EV curves? If not, should we remove it? 
 def equivalent_orderings(
     path: str, contcar_name: str = "CONTCAR", outcar_name: str = "OUTCAR"
 ) -> bool:
@@ -127,6 +134,7 @@ def equivalent_orderings(
     return equivalence_dict
 
 
+# TODO: For Luke - Is this a general function that can be applied on EV curves? If not, should we remove it? 
 def remove_equivalent_orderings(
     df: pd.DataFrame, equivalence_dict: dict
 ) -> pd.DataFrame:
@@ -147,6 +155,7 @@ def remove_equivalent_orderings(
 # TODO: support specify min and max for each ion (dict) and min/max (tuple) for
 # magmom_tol. it may be beneficial to have a range of acceptable values instead
 # a tolerance.
+# TODO: For Luke - Is this a general function that can be applied on EV curves? If not, should we remove it? 
 def significant_magmom_change(
     outcar_path: str = "OUTCAR", magmom_tol: float = 0.5
 ) -> bool:
@@ -186,6 +195,7 @@ def significant_magmom_change(
 
 
 # TODO: make magmoms written in NIONS*magmom format
+# TODO: For Luke - Is this a general function that can be applied on EV curves? If not, should we remove it? 
 def rearrange_sites_and_magmoms(config_dir):
     """
     this function is a patch to rearrange the sites and magmoms in the POSCAR and
