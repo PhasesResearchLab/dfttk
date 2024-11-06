@@ -100,12 +100,16 @@ def parse_spin_config(
     with open(os.path.join(path, spin_config_file), "r") as f:
         lines = f.readlines()
 
+    number_of_atoms_list = []
+    volume_list = []
+    space_group_list = []
     multiplicity_list = []
     coords_list = []
     species_list = []
     poscar_object_list = []
     magmom_list = []
     magnetic_ordering_list = []
+    mag_data_list = []
 
     count = 0
     for line in lines:
@@ -162,6 +166,11 @@ def parse_spin_config(
             magmom = np.array(magmom)
             magmom_list.append(magmom)
 
+            mag_data = pd.DataFrame()
+            mag_data["#_of_ion"] = range(len(magmom))
+            mag_data["tot"] = magmom
+            mag_data_list.append(mag_data)
+
             # Determine the magnetic ordering, ignoring non-magnetic sites
             if (np.isclose(magmom, 0, atol=magmom_tolerance)).all():
                 magnetic_ordering = "NM"
@@ -192,6 +201,15 @@ def parse_spin_config(
             poscar_object = Poscar(structure)
             poscar_object_list.append(poscar_object)
 
+            number_of_atoms = sum(poscar_object.natoms)
+            number_of_atoms_list.append(number_of_atoms)
+
+            volume = structure.volume
+            volume_list.append(volume)
+
+            space_group = structure.get_space_group_info()[0]
+            space_group_list.append(space_group)
+
             # reset count and lists
             count = 0
             species_list = []
@@ -201,15 +219,22 @@ def parse_spin_config(
     spin_configs = pd.DataFrame()
     spin_configs["config"] = range(len(poscar_object_list))
     spin_configs["multiplicity"] = multiplicity_list
-    spin_configs["poscar_object"] = poscar_object_list
+    spin_configs["number_of_atoms"] = number_of_atoms_list
+    spin_configs["volume"] = volume_list
+    spin_configs["volume_per_atom"] = (
+        spin_configs["volume"] / spin_configs["number_of_atoms"]
+    )
+    spin_configs["space_group"] = space_group_list
     spin_configs["magnetic_ordering"] = magnetic_ordering_list
+    spin_configs["mag_data"] = mag_data_list
 
-    return spin_configs
+    return spin_configs, poscar_object_list
 
 
 def write_spin_config(
     path: str,
     spin_configs: pd.DataFrame,
+    poscar_object_list: list,
     material_type: str,
     encut: int = 520,
     kppa: int = 4000,
@@ -226,6 +251,7 @@ def write_spin_config(
         other_settings (dict, optional): include other INCAR tags. Defaults to {}.
     """
 
+    spin_configs["poscar_object"] = poscar_object_list
     config_values = spin_configs["config"].values
     for config_value in config_values:
         poscar_object = spin_configs[spin_configs["config"] == config_value][
@@ -272,10 +298,11 @@ def gen_spin_configs(
     poscar2lat(path, poscar_file=poscar_file, magnetic_sites=magnetic_sites)
     call_icamag(path)
 
-    spin_configs = parse_spin_config(path)
+    spin_configs, poscar_object_list = parse_spin_config(path)
     write_spin_config(
         path,
         spin_configs,
+        poscar_object_list,
         material_type=material_type,
         encut=encut,
         kppa=kppa,
