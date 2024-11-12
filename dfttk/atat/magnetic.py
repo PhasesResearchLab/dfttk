@@ -166,11 +166,6 @@ def parse_spin_config(
             magmom = np.array(magmom)
             magmom_list.append(magmom)
 
-            mag_data = pd.DataFrame()
-            mag_data["#_of_ion"] = range(len(magmom))
-            mag_data["tot"] = magmom
-            mag_data_list.append(mag_data)
-
             # Determine the magnetic ordering, ignoring non-magnetic sites
             if (np.isclose(magmom, 0, atol=magmom_tolerance)).all():
                 magnetic_ordering = "NM"
@@ -195,7 +190,7 @@ def parse_spin_config(
             lattice = Lattice(lattice_vectors)
 
             structure = Structure(
-                lattice, species_elements, coords, site_properties={"MAGMOM": magmom}
+                lattice, species_elements, coords, site_properties={"magmom": magmom}
             )
 
             poscar_object = Poscar(structure)
@@ -210,6 +205,17 @@ def parse_spin_config(
             space_group = structure.get_space_group_info()[0]
             space_group_list.append(space_group)
 
+            species = [site.specie.symbol for site in poscar_object.structure]
+
+            mag_data = pd.DataFrame()
+            mag_data["#_of_ion"] = range(len(magmom))
+            mag_data["tot"] = magmom
+
+            mag_data = mag_data.copy()
+            mag_data.loc[:, "species"] = species
+
+            mag_data_list.append(mag_data)
+
             # reset count and lists
             count = 0
             species_list = []
@@ -217,7 +223,7 @@ def parse_spin_config(
 
     # create a dataframe called spin_configs
     spin_configs = pd.DataFrame()
-    spin_configs["config"] = range(len(poscar_object_list))
+    spin_configs["config"] = [str(i) for i in range(len(poscar_object_list))]
     spin_configs["multiplicity"] = multiplicity_list
     spin_configs["number_of_atoms"] = number_of_atoms_list
     spin_configs["volume"] = volume_list
