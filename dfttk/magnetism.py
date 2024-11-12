@@ -230,3 +230,93 @@ def rearrange_sites_and_magmoms(config_dir):
     poscar = Poscar(struct)
     poscar.write_file(poscar_file)
     return None
+
+def clean_magmom_configs(df, spin_configs, species):
+    
+    # Keep only species in mag_data
+    df_copy = df.copy()
+    for index, row in df_copy.iterrows():
+        mag_data = row["mag_data"]
+        mag_data = mag_data[mag_data["species"].isin(species)]
+        df_copy.at[index, "mag_data"] = mag_data
+    
+    spin_configs_copy = spin_configs.copy()
+    for index, row in spin_configs_copy.iterrows():
+        mag_data = row["mag_data"]
+        mag_data = mag_data[mag_data["species"].isin(species)]
+        spin_configs_copy.at[index, "mag_data"] = mag_data
+    
+    # Assign tot_sign column to each mag_data
+    for index, row in df_copy.iterrows():
+        mag_data = row["mag_data"].copy() 
+        mag_data["tot_sign"] = np.sign(mag_data["tot"])
+        df_copy.at[index, "mag_data"] = mag_data
+        
+    for index, row in spin_configs_copy.iterrows():
+        mag_data = row["mag_data"].copy() 
+        mag_data["tot_sign"] = np.sign(mag_data["tot"])
+        spin_configs_copy.at[index, "mag_data"] = mag_data
+        
+    unique_configs = spin_configs_copy["config"].unique()
+    match_list = []
+    index_list = []
+    unstable_initial_states = []
+    clean_df = pd.DataFrame()
+    for config in unique_configs:
+        
+        # First, determine if there are any jumps in magmom across a single configuration ev-curve
+        config_df = df_copy[df_copy["config"] == config]
+        ref = spin_configs_copy[spin_configs_copy["config"] == config]
+        ref_tot_sign = ref["mag_data"].values[0]["tot_sign"]
+
+        count = 0
+        for index, row in config_df.iterrows():
+            current_tot_sign = row["mag_data"]["tot_sign"]
+            if count == 0:
+                match = current_tot_sign.equals(ref_tot_sign)
+            else:
+                previous_tot_sign = config_df.iloc[count - 1]["mag_data"]["tot_sign"]
+                match = current_tot_sign.equals(previous_tot_sign)
+
+            match_list.append(match)
+            index_list.append(index)
+            count += 1
+
+        # If all of match_list are true - there are no jumps and it matches the original spin config
+        if all(match_list):
+            multiplicity = ref["multiplicity"].values[0]
+            config_df.insert(1, "multiplicity", multiplicity)
+            clean_df = pd.concat([clean_df, config_df.loc[index_list]])
+        
+        # If the first is False but the rest are True - there is a jump for the original spin config only
+        elif match_list[0] == False and all(match_list[1:]):
+            tot_sign = config_df.iloc[0]["mag_data"]["tot_sign"]
+            spin_up = (tot_sign[tot_sign == 1]).count()
+            spin_down = (tot_sign[tot_sign == -1]).count()
+            unstable_initial_states.append((config, spin_up, spin_down))
+
+        # TODO: Find a way to handle other cases
+        else:
+            print(f"config {config} is unstable.")
+            
+        match_list = []
+        index_list = []  
+
+    # Only works for the case where there is a jump in the original spin config
+    for unstable_config, unstable_spin_up, unstable_spin_down in unstable_initial_states:
+        unstable_df = df_copy[df_copy["config"] == unstable_config]
+        
+        unique_clean_configs = clean_df["config"].unique()
+        for clean_config in unique_clean_configs:
+            clean_config_df = clean_df[clean_df["config"] == clean_config]
+            clean_tot_sign = clean_config_df["mag_data"].values[0]["tot_sign"]
+            clean_spin_up = (clean_tot_sign[clean_tot_sign == 1]).count()
+            clean_spin_down = (clean_tot_sign[clean_tot_sign == -1]).count()
+            if unstable_df["volume_per_atom"].reset_index(drop=True).equals(clean_config_df["volume_per_atom"].reset_index(drop=True)):
+                energy_difference = abs(unstable_df["energy_per_atom"].reset_index(drop=True) - clean_config_df["energy_per_atom"].reset_index(drop=True))
+
+                if all(energy_difference < 0.001):
+                    if unstable_spin_up == clean_spin_up or unstable_spin_up == clean_spin_down:
+                        print(f"config {unstable_config} relaxed to config {clean_config} for all volumes.")
+    
+    return clean_df
