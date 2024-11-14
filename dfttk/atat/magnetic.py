@@ -190,7 +190,7 @@ def parse_spin_config(
             lattice = Lattice(lattice_vectors)
 
             structure = Structure(
-                lattice, species_elements, coords, site_properties={"magmom": magmom}
+                lattice, species_elements, coords, site_properties={"MAGMOM": magmom}
             )
 
             poscar_object = Poscar(structure)
