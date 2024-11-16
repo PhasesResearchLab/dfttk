@@ -94,7 +94,7 @@ def extract_configuration_data(
         specie_num_dict = dict(zip(species, num_atoms))
         total_mass = sum([specie_num_dict[specie] * atomic_masses[specie] for specie in species])
         if collect_mag_data == True:
-            mag_data = extract_tot_mag_data(outcar_path)
+            mag_data = extract_tot_mag_data(outcar_path, contcar_path)
             total_magnetic_moment = mag_data["tot"].sum()
             magnetic_ordering = determine_magnetic_ordering(
                 mag_data,
