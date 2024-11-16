@@ -17,6 +17,7 @@ from natsort import natsorted
 from custodian.custodian import Custodian
 from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
+from pymatgen.io.vasp import Incar
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Chgcar
 from pymatgen.transformations.standard_transformations import SupercellTransformation
@@ -24,6 +25,7 @@ from pymatgen.transformations.standard_transformations import SupercellTransform
 # DFTTK imports
 from dfttk.data_extraction import extract_volume
 from dfttk.magnetism import get_magnetic_structure
+from dfttk.data_extraction import extract_tot_mag_data
 
 
 def three_step_relaxation(
@@ -33,9 +35,10 @@ def three_step_relaxation(
     copy_magmom: bool = False,
     backup: bool = False,
     default_settings: bool = True,
-    settings_override_2relax: list = None,
-    settings_override_3static: list = None,
+    override_2relax: list = None,
+    override_3static: list = None,
     max_errors: int = 10,
+    restart: str = None,
 ) -> None:
     """Runs a three-step relaxation - two consecutive relaxations followed by
        one static.
@@ -49,16 +52,17 @@ def three_step_relaxation(
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
         default_settings (bool, optional): if True, uses the default settings for the relaxation and static steps. Defaults to True.
-        settings_override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
-        settings_override_3static (list, optional): override settings for the final static step. Defaults to None.
+        override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
+        override_3static (list, optional): override settings for the final static step. Defaults to None.
         max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
+        restart (str, optional): if not None, restarts the calculation from the specified step. Defaults to None.
     """
 
     if default_settings:
-        settings_override_2relax = [
+        override_2relax = [
             {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}}
         ]
-        settings_override_3static = [
+        override_3static = [
             {
                 "dict": "INCAR",
                 "action": {
@@ -77,28 +81,38 @@ def three_step_relaxation(
         suffix=".1relax",
         backup=backup,
     )
-
     step2 = VaspJob(
         vasp_cmd=vasp_cmd,
         copy_magmom=copy_magmom,
         final=False,
         suffix=".2relax",
         backup=backup,
-        settings_override=settings_override_2relax,
+        settings_override=override_2relax,
     )
-
     step3 = VaspJob(
         vasp_cmd=vasp_cmd,
         copy_magmom=copy_magmom,
         final=True,
         suffix=".3static",
         backup=backup,
-        settings_override=settings_override_3static,
+        settings_override=override_3static,
     )
 
-    jobs = [step1, step2, step3]
-    c = Custodian(handlers, jobs, max_errors=max_errors)
-    c.run()
+    if restart is None:
+        jobs = [step1, step2, step3]
+        c = Custodian(handlers, jobs, max_errors=max_errors)
+        c.run()
+
+    elif restart == "step2":
+        jobs = [step2, step3]
+        c = Custodian(handlers, jobs, max_errors=max_errors)
+        c.run()
+
+    elif restart == "step3":
+        jobs = [step3]
+        c = Custodian(handlers, jobs, max_errors=max_errors)
+        c.run()
+
     os.chdir(original_dir)
 
 
@@ -112,8 +126,8 @@ def ev_curve_series(
     keep_chgcar: bool = False,
     copy_magmom: bool = False,
     default_settings: bool = True,
-    settings_override_2relax: list = None,
-    settings_override_3static: list = None,
+    override_2relax: list = None,
+    override_3static: list = None,
     max_errors: int = 10,
 ) -> None:
     """Runs a series of three_step_relaxation calculations for a list of volumes.
@@ -129,18 +143,18 @@ def ev_curve_series(
         copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
         file of the next run. Defaults to False.
         default_settings (bool, optional): Use the default settings for three_step_relaxation. Defaults to True.
-        settings_override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
-        settings_override_3static (list, optional): override settings for the final static step. Defaults to None.
+        override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
+        override_3static (list, optional): override settings for the final static step. Defaults to None.
         max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
     """
 
-    # Writes a params.json file to keep track of the parameters used
-    errors_subset_list = [handler.errors_subset_to_catch for handler in handlers]
+    # Write a params.json file to track the parameters used
+    errors_subset = handlers[0].errors_subset_to_catch
     params = {
         "path": path,
         "volumes": volumes,
         "vasp_cmd": vasp_cmd,
-        "handlers": errors_subset_list[0],
+        "handlers": errors_subset,
         "restarting": restarting,
     }
 
@@ -149,13 +163,12 @@ def ev_curve_series(
     while os.path.isfile(params_json_path):
         n += 1
         params_json_path = os.path.join(path, "params_" + str(n) + ".json")
-
     with open(params_json_path, "w") as file:
         json.dump(params, file)
 
-    # Currently, restarting only supports:
-    # 1) Volumes list greater than or equal to the number of vol folders
-    # 2) The volumes in the vol folders should match the volumes list in order
+    # Currently, restarting supports the following conditions:
+    # 1) The volumes list must be greater than or equal to the number of volume folders.
+    # 2) The volumes in the volume folders must match the volumes list in order.
     if restarting:
 
         vol_folders = [
@@ -179,7 +192,7 @@ def ev_curve_series(
                     )
                 except Exception as e:
                     print(
-                        f"Error: {e}. Could not extract volumes from POSCAR files. Do the files POSCAR.1relax or POSCAR exist in each volume folder?"
+                        f"Error: {e}. Failed to extract volumes from POSCAR files. Ensure that POSCAR.1relax or POSCAR exists in each volume folder."
                     )
                     sys.exit(1)
 
@@ -188,81 +201,32 @@ def ev_curve_series(
 
         if not volumes_started == rounded_volumes_supplied[: len(volumes_started)]:
             print(
-                f"Error: The volumes completed do not match the inputed volumes list of the same number starting from the beginning. \n rounded_input_volumes: {rounded_volumes_supplied} \n volumes_started (rounded): {volumes_started} \n Exiting."
+                f"Error: The completed volumes do not match the input volumes list from the beginning. \n"
+                f"Rounded input volumes: {rounded_volumes_supplied} \n"
+                f"Started volumes: {volumes_started} \n"
+                "Exiting."
             )
             sys.exit(1)
         else:
             print(
-                "The volumes completed match the inputed volumes list of the same number starting from the beginning. Continuing restart"
+                "The completed volumes match the input volumes list from the beginning. Continuing restart."
             )
 
         j = len(vol_folders) - 1
         last_vol_folder_name = "vol_" + str(j)
         last_vol_folder_path = os.path.join(path, last_vol_folder_name)
 
-        # If the job failed at the third step of three_step_relaxation, restart using the files from the second step
-        if all(
-            os.path.isfile(os.path.join(last_vol_folder_path, file))
-            for file in ["INCAR.2relax", "POSCAR.2relax", "KPOINTS.2relax"]
-        ):
-            source_name_dest_name = [
-                ("INCAR.2relax", "INCAR"),
-                ("CONTCAR.2relax", "POSCAR"),
-                ("KPOINTS.2relax", "KPOINTS"),
-                ("CHGCAR.2relax", "CHGCAR"),
-                ("WAVECAR.2relax", "WAVECAR"),
-            ]
-            for file_name in source_name_dest_name:
-                file_source = os.path.join(last_vol_folder_path, file_name[0])
-                file_dest = os.path.join(last_vol_folder_path, file_name[1])
-                if os.path.isfile(file_source):
-                    shutil.copy2(file_source, file_dest)
+        # If the job failed at the second step of three_step_relaxation, restart from step 3.
+        files = os.listdir(last_vol_folder_path)
+        files_exist = any(file.endswith(".1relax") for file in files) and any(
+            file.endswith(".2relax") for file in files
+        )
+        files_missing = not any(file.endswith(".3static") for file in files)
 
-            keep_files = [name[1] for name in source_name_dest_name] + ["POTCAR"]
-            for filename in os.listdir(last_vol_folder_path):
-                file_path = os.path.join(last_vol_folder_path, filename)
-                if filename not in keep_files:
-                    os.remove(file_path)
-
-            print("Running three step relaxation for volume " + str(volumes[j]))
-            three_step_relaxation(
-                last_vol_folder_path,
-                vasp_cmd,
-                handlers,
-                copy_magmom=copy_magmom,
-                backup=False,
-                default_settings=True,
-                settings_override_2relax=settings_override_2relax,
-                settings_override_3static=settings_override_3static,
+        if files_exist and files_missing:
+            print(
+                f"Running three step relaxation for volume {str(volumes[j])} at step 3"
             )
-
-            last_vol_index = j + 1
-
-        # If the job failed at the second step of three_step_relaxation, restart using the files from the first step
-        elif all(
-            os.path.isfile(os.path.join(last_vol_folder_path, file))
-            for file in ["INCAR.1relax", "POSCAR.1relax", "KPOINTS.1relax"]
-        ):
-            source_name_dest_name = [
-                ("INCAR.1relax", "INCAR"),
-                ("CONTCAR.1relax", "POSCAR"),
-                ("KPOINTS.1relax", "KPOINTS"),
-                ("CHGCAR.1relax", "CHGCAR"),
-                ("WAVECAR.1relax", "WAVECAR"),
-            ]
-            for file_name in source_name_dest_name:
-                file_source = os.path.join(last_vol_folder_path, file_name[0])
-                file_dest = os.path.join(last_vol_folder_path, file_name[1])
-                if os.path.isfile(file_source):
-                    shutil.copy2(file_source, file_dest)
-
-            keep_files = [name[1] for name in source_name_dest_name] + ["POTCAR"]
-            for filename in os.listdir(last_vol_folder_path):
-                file_path = os.path.join(last_vol_folder_path, filename)
-                if filename not in keep_files:
-                    os.remove(file_path)
-
-            print("Running three step relaxation for volume " + str(volumes[j]))
             three_step_relaxation(
                 last_vol_folder_path,
                 vasp_cmd,
@@ -270,14 +234,45 @@ def ev_curve_series(
                 copy_magmom=copy_magmom,
                 backup=False,
                 default_settings=True,
-                settings_override_2relax=settings_override_2relax,
-                settings_override_3static=settings_override_3static,
+                override_2relax=override_2relax,
+                override_3static=override_3static,
                 max_errors=max_errors,
+                restart="step3",
+            )
+
+            last_vol_index = j + 1
+
+        # If the job failed at the second step of three_step_relaxation, restart from step 2.
+        files_exist = any(file.endswith(".1relax") for file in files)
+        files_missing = not any(
+            file.endswith(".3static") for file in files
+        ) and not any(file.endswith(".2relax") for file in files)
+
+        if files_exist and files_missing:
+            print(
+                f"Running three step relaxation for volume {str(volumes[j])} at step 2"
+            )
+            three_step_relaxation(
+                last_vol_folder_path,
+                vasp_cmd,
+                handlers,
+                copy_magmom=copy_magmom,
+                backup=False,
+                default_settings=True,
+                override_2relax=override_2relax,
+                override_3static=override_3static,
+                max_errors=max_errors,
+                restart="step2",
             )
             last_vol_index = j + 1
 
-        # If the job failed at the first step of three_step_relaxation, delete the folder
-        else:
+        # If the job failed at the first step of three_step_relaxation, delete the folder.
+        files_missing = (
+            not any(file.endswith(".3static") for file in files)
+            and not any(file.endswith(".2relax") for file in files)
+            and not any(file.endswith(".1relax") for file in files)
+        )
+        if files_missing:
             shutil.rmtree(last_vol_folder_path)
             last_vol_index = j
 
@@ -300,7 +295,7 @@ def ev_curve_series(
     if keep_chgcar:
         files_to_delete.remove("CHGCAR.3static")
 
-    # This starts the EV curve calculations in series. If restarting, skip the volumes that have already been completed.
+    # Start the EV curve calculations in series. If restarting, skip the volumes that have already been completed.
     for i, vol in enumerate(volumes):
         if restarting and i < last_vol_index:
             continue
@@ -317,24 +312,36 @@ def ev_curve_series(
                         os.path.join(path, file_name),
                         os.path.join(vol_folder_path, file_name),
                     )
+
         else:
-            previous_vol_folder_path = os.path.join(path, "vol_" + str(i - 1))
+            previous_vol_folder_path = os.path.join(path, f"vol_{i - 1}")
             source_name_dest_name = [
                 ("CONTCAR.3static", "POSCAR"),
-                ("INCAR.2relax", "INCAR"),
-                ("KPOINTS.1relax", "KPOINTS"),
+                ("KPOINTS.3static", "KPOINTS"),
                 ("POTCAR", "POTCAR"),
                 ("WAVECAR.3static", "WAVECAR"),
                 ("CHGCAR.3static", "CHGCAR"),
             ]
+
             for file_name in source_name_dest_name:
                 file_source = os.path.join(previous_vol_folder_path, file_name[0])
                 file_dest = os.path.join(vol_folder_path, file_name[1])
                 if os.path.isfile(file_source):
                     shutil.copy2(file_source, file_dest)
 
-            paths_to_delete = []
+            incar_path = os.path.join(path, "INCAR")
+            shutil.copy2(incar_path, os.path.join(vol_folder_path, "INCAR"))
 
+            if copy_magmom:
+                outcar_path = os.path.join(previous_vol_folder_path, "OUTCAR.3static")
+                contcar_path = os.path.join(previous_vol_folder_path, "CONTCAR.3static")
+                tot_data = extract_tot_mag_data(outcar_path, contcar_path)
+                magmom = tot_data["tot"].to_list()
+                incar = Incar.from_file(os.path.join(vol_folder_path, "INCAR"))
+                incar["MAGMOM"] = magmom
+                incar.write_file(os.path.join(vol_folder_path, "INCAR"))
+
+            paths_to_delete = []
             for file_name in files_to_delete:
                 file_path = os.path.join(previous_vol_folder_path, file_name)
                 paths_to_delete.append(file_path)
@@ -358,8 +365,8 @@ def ev_curve_series(
             backup=False,
             copy_magmom=copy_magmom,
             default_settings=default_settings,
-            settings_override_2relax=settings_override_2relax,
-            settings_override_3static=settings_override_3static,
+            override_2relax=override_2relax,
+            override_3static=override_3static,
         )
 
     previous_vol_folder_path = os.path.join(path, "vol_" + str(i))
@@ -374,7 +381,11 @@ def ev_curve_series(
 
 
 def charge_density_difference(
-    path: str, vasp_cmd: list[str], handlers: list[str], backup: bool = False, max_errors: int = 10
+    path: str,
+    vasp_cmd: list[str],
+    handlers: list[str],
+    backup: bool = False,
+    max_errors: int = 10,
 ) -> Chgcar:
     """Runs a charge density difference calculation. The charge_density_difference is calculated as the difference between the
     charge density of the final electronic step and the charge density of a single step.
@@ -386,7 +397,7 @@ def charge_density_difference(
         backup (bool, optional): If True, the starting INCAR, KPOINTS, POSCAR and POTCAR files will be copied with a “.orig”
         appended. Defaults to False.
         max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
-        
+
     Returns:
         Chgcar: The charge density difference between the final electronic step and a single step.
     """
@@ -809,7 +820,7 @@ def process_phonon_dos_YPHON(path: str):
         if os.path.exists(log_file_path) and os.path.getsize(log_file_path) == 0:
             os.remove(log_file_path)
 
- 
+
 def run_elec_dos(
     vasp_cmd: list[str],
     handlers: list[str],
@@ -850,7 +861,8 @@ def run_elec_dos(
                         "NEDOS": NEDOS,
                     }
                 },
-            },],
+            },
+        ],
     )
 
     jobs = [step1]
@@ -904,7 +916,7 @@ def elec_dos_parallel(
         if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol")
     ]
     vol_folders = natsorted(vol_folders)
-    
+
     ev_volumes_finished = []
     ev_folder_names = []
     for vol_folder in vol_folders:
@@ -988,8 +1000,8 @@ def elec_dos_parallel(
         with open("run_elec_dos", "w") as file:
             file.write(new_run_file)
         os.system("sbatch run_elec_dos")
-        os.chdir(path)        
-        
+        os.chdir(path)
+
 
 def kpoints_conv_test(
     path: str,
