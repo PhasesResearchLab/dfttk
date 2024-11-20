@@ -28,6 +28,163 @@ from dfttk.magnetism import get_magnetic_structure
 from dfttk.data_extraction import extract_tot_mag_data
 
 
+def move_error_folders(src_path: str, dest_path: str, error_folders: list[str]) -> None:
+    """Moves error folders from the source path to the destination path.
+
+    Args:
+        src_path (str): path to the source folder containing the error folders.
+        dest_path (str): path to the destination folder to move the error folders.
+        error_folders (list[str]): list of error folders to move.
+    """
+    for error_folder in error_folders:
+        src = os.path.join(src_path, error_folder)
+        dest = os.path.join(dest_path, error_folder)
+        subprocess.run(["mv", src, dest], check=True)
+
+
+def rename_error_folders(
+    path: str, error_folders_old: list[str], error_folders_count: int
+) -> None:
+    """Renames the error folders in the path.
+
+    Args:
+        path (str): path to the folder containing the error folders.
+        error_folders_old (list[str]): list of error folders to rename.
+        error_folders_count (int): count of error folders that was moved using move_error_folders.
+    """
+    for error_folder_old in error_folders_old:
+        error_folder_new = error_folder_old.copy()
+        index = int(error_folder_new[1])
+        error_folder_new[1] = str(index + error_folders_count)
+        error_folder_new = ".".join(error_folder_new)
+        error_folder_old = ".".join(error_folder_old)
+
+        src_path = os.path.join(path, error_folder_old)
+        dest_path = os.path.join(path, error_folder_new)
+        subprocess.run(["mv", src_path, dest_path], check=True)
+
+
+def process_error_folders(path: str, error_folders_count: int) -> None:
+    """processes the error folders in the path by renaming and moving them.
+
+    Args:
+        path (str): path to the folder containing the error folders.
+        error_folders_count (int): count of error folders that was moved using move_error_folders.
+    """
+    error_folders_old = [f for f in os.listdir(path) if f.startswith("error.")]
+    error_folders_old = [f.split(".") for f in error_folders_old]
+    error_folders_old.reverse()
+    rename_error_folders(path, error_folders_old, error_folders_count)
+
+    error_temp_path = os.path.join(path, "error_temp")
+    error_temp_folders = [f for f in os.listdir(error_temp_path)]
+    move_error_folders(error_temp_path, path, error_temp_folders)
+
+    subprocess.run(["rm", "-r", error_temp_path])
+
+
+def handle_custodian_json(path: str) -> None:
+    """Merges the custodian.json and custodian_old.json files in the path.
+
+    Args:
+        path (str): path to the folder containing the custodian.json and custodian_old.json files.
+    """
+    custodian_json_path = os.path.join(path, "custodian.json")
+    custodian_old_json_path = os.path.join(path, "custodian_old.json")
+    if os.path.isfile(custodian_old_json_path):
+        with open(custodian_json_path, "r") as f:
+            custodian_json = json.load(f)
+        with open(custodian_old_json_path, "r") as f:
+            custodian_old_json = json.load(f)
+
+        custodian_json[0].update({"restart": True})
+        combined_custodian_json = custodian_old_json + custodian_json
+        with open(custodian_json_path, "w") as f:
+            json.dump(combined_custodian_json, f, indent=4)
+
+        os.remove(custodian_old_json_path)
+
+
+def gzip_error_folders(path: str, error_folders: list[str]) -> None:
+    """Gzips the error folders in the path.
+
+    Args:
+        path (str): path to the folder containing the error folders.
+        error_folders (list[str]): list of error folders to gzip.
+    """
+    for error_folder in error_folders:
+        if not error_folder.endswith(".gz"):
+            error_folder_path = os.path.join(path, error_folder)
+            subprocess.run(["gzip", error_folder_path], check=True)
+
+
+def custodian_errors_location(path: str) -> list[str]:
+    """Prints the location of the custodian errors in the path.
+
+    Args:
+        path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
+
+    Returns:
+        list[str]: volume folders that encountered VASP errors
+        list[str]: phonon folders that encountered VASP errors
+    """
+
+    vol_folders_errors = []
+    vol_folders = [
+        d
+        for d in os.listdir(path)
+        if d.startswith("vol") and os.path.isdir(os.path.join(path, d))
+    ]
+    for vol_folder in vol_folders:
+        error_folders = [
+            f
+            for f in os.listdir(os.path.join(path, vol_folder))
+            if f.startswith("error")
+        ]
+        if len(error_folders) > 0:
+            print(f"In {vol_folder} there are error folders: {error_folders}")
+            vol_folders_errors.append(vol_folder)
+
+    phonon_folders_errors = []
+    phonon_folders = [
+        d
+        for d in os.listdir(path)
+        if d.startswith("phonon") and os.path.isdir(os.path.join(path, d))
+    ]
+    phonon_folders = natsorted(phonon_folders)
+    for phonon_folder in phonon_folders:
+        error_folders = [
+            f
+            for f in os.listdir(os.path.join(path, phonon_folder))
+            if f.startswith("error")
+        ]
+        if len(error_folders) > 0:
+            error_folders = natsorted(error_folders)
+            print(f"In {phonon_folder} there are error folders: {error_folders}")
+            phonon_folders_errors.append(phonon_folder)
+
+    return vol_folders_errors, phonon_folders_errors
+
+
+def NELM_reached(path: str) -> None:
+    """Prints the path of the calculations that have reached NELM.
+
+    Args:
+        path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
+    """
+
+    start_dir = path
+    target_line = "The electronic self-consistency was not achieved in the given"
+    for dirpath, dirs, files in os.walk(start_dir):
+        for filename in files:
+            filepath = os.path.join(dirpath, filename)
+            with open(filepath, "r", errors="ignore") as file:
+                for line in file:
+                    if target_line in line:
+                        print(f"{filepath} has reached NELM.")
+                        break
+
+
 def three_step_relaxation(
     path: str,
     vasp_cmd: list[str],
@@ -170,7 +327,6 @@ def ev_curve_series(
     # 1) The volumes list must be greater than or equal to the number of volume folders.
     # 2) The volumes in the volume folders must match the volumes list in order.
     if restarting:
-
         vol_folders = [
             folder
             for folder in os.listdir(path)
@@ -224,6 +380,24 @@ def ev_curve_series(
         files_missing = not any(file.endswith(".3static") for file in files)
 
         if files_exist and files_missing:
+
+            custodian_json_path = os.path.join(last_vol_folder_path, "custodian.json")
+            custodian_old_json_path = os.path.join(
+                last_vol_folder_path, "custodian_old.json"
+            )
+            if os.path.isfile(custodian_json_path):
+                os.rename(custodian_json_path, custodian_old_json_path)
+
+            error_folders = [
+                f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
+            ]
+            error_folders_count = len(error_folders)
+            error_temp_path = os.path.join(last_vol_folder_path, "error_temp")
+            if not os.path.exists(error_temp_path):
+                os.makedirs(error_temp_path)
+
+            move_error_folders(last_vol_folder_path, error_temp_path, error_folders)
+
             print(
                 f"Running three step relaxation for volume {str(volumes[j])} at step 3"
             )
@@ -240,6 +414,14 @@ def ev_curve_series(
                 restart="step3",
             )
 
+            process_error_folders(last_vol_folder_path, error_folders_count)
+            handle_custodian_json(last_vol_folder_path)
+
+            error_folders = [
+                f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
+            ]
+            gzip_error_folders(last_vol_folder_path, error_folders)
+
             last_vol_index = j + 1
 
         # If the job failed at the second step of three_step_relaxation, restart from step 2.
@@ -249,6 +431,24 @@ def ev_curve_series(
         ) and not any(file.endswith(".2relax") for file in files)
 
         if files_exist and files_missing:
+
+            custodian_json_path = os.path.join(last_vol_folder_path, "custodian.json")
+            custodian_old_json_path = os.path.join(
+                last_vol_folder_path, "custodian_old.json"
+            )
+            if os.path.isfile(custodian_json_path):
+                os.rename(custodian_json_path, custodian_old_json_path)
+
+            error_folders = [
+                f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
+            ]
+            error_folders_count = len(error_folders)
+            error_temp_path = os.path.join(last_vol_folder_path, "error_temp")
+            if not os.path.exists(error_temp_path):
+                os.makedirs(error_temp_path)
+
+            move_error_folders(last_vol_folder_path, error_temp_path, error_folders)
+
             print(
                 f"Running three step relaxation for volume {str(volumes[j])} at step 2"
             )
@@ -264,6 +464,15 @@ def ev_curve_series(
                 max_errors=max_errors,
                 restart="step2",
             )
+
+            process_error_folders(last_vol_folder_path, error_folders_count)
+            handle_custodian_json(last_vol_folder_path)
+
+            error_folders = [
+                f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
+            ]
+            gzip_error_folders(last_vol_folder_path, error_folders)
+
             last_vol_index = j + 1
 
         # If the job failed at the first step of three_step_relaxation, delete the folder.
@@ -369,6 +578,11 @@ def ev_curve_series(
             override_3static=override_3static,
         )
 
+        error_folders = [
+            f for f in os.listdir(vol_folder_path) if f.startswith("error.")
+        ]
+        gzip_error_folders(vol_folder_path, error_folders)
+
     previous_vol_folder_path = os.path.join(path, "vol_" + str(i))
     paths_to_delete = []
     for file_name in files_to_delete:
@@ -378,164 +592,6 @@ def ev_curve_series(
     for file_path in paths_to_delete:
         if os.path.exists(file_path):
             os.remove(file_path)
-
-
-def charge_density_difference(
-    path: str,
-    vasp_cmd: list[str],
-    handlers: list[str],
-    backup: bool = False,
-    max_errors: int = 10,
-) -> Chgcar:
-    """Runs a charge density difference calculation. The charge_density_difference is calculated as the difference between the
-    charge density of the final electronic step and the charge density of a single step.
-
-    Args:
-        path (str): path that contains the VASP input files.
-        vasp_cmd (list[str]):  VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        backup (bool, optional): If True, the starting INCAR, KPOINTS, POSCAR and POTCAR files will be copied with a “.orig”
-        appended. Defaults to False.
-        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
-
-    Returns:
-        Chgcar: The charge density difference between the final electronic step and a single step.
-    """
-
-    original_dir = os.getcwd()
-    os.chdir(path)
-    os.mkdir("charge_density_difference")
-    shutil.copy2("POSCAR", "charge_density_difference/POSCAR")
-    shutil.copy2("POTCAR", "charge_density_difference/POTCAR")
-    shutil.copy2("INCAR", "charge_density_difference/INCAR")
-    shutil.copy2("KPOINTS", "charge_density_difference/KPOINTS")
-    os.chdir("charge_density_difference")
-
-    reference_job = VaspJob(
-        vasp_cmd=vasp_cmd,
-        final=False,
-        suffix=".reference",
-        backup=backup,
-        settings_override=[
-            {
-                "dict": "INCAR",
-                "action": {
-                    "_set": {
-                        "EDIFF": "1E-6",
-                        "IBRION": -1,
-                        "NSW": 1,
-                        "ISIF": 2,
-                        "NELM": 1,
-                        "ISMEAR": -5,
-                        "SIGMA": 0.05,
-                        "LCHARG": True,
-                    }
-                },
-            },
-        ],
-    )
-
-    charge_density_job = VaspJob(
-        vasp_cmd=vasp_cmd,
-        final=True,
-        suffix=".charge_density",
-        backup=backup,
-        settings_override=[
-            {
-                "dict": "INCAR",
-                "action": {
-                    "_set": {
-                        "EDIFF": "1E-6",
-                        "IBRION": -1,
-                        "NSW": 1,
-                        "ISIF": 2,
-                        "NELM": 100,
-                        "ISMEAR": -5,
-                        "SIGMA": 0.05,
-                        "LCHARG": True,
-                    }
-                },
-            },
-        ],
-    )
-
-    jobs = [reference_job, charge_density_job]
-    c = Custodian(handlers, jobs, max_errors=max_errors)
-    c.run()
-
-    final = Chgcar.from_file("CHGCAR.charge_density")
-    reference = Chgcar.from_file("CHGCAR.reference")
-    difference = final - reference
-    difference.write_file("CHGCAR.difference")
-
-    os.chdir(original_dir)
-
-    return difference
-
-
-def custodian_errors_location(path: str) -> list[str]:
-    """Prints the location of the custodian errors in the path.
-
-    Args:
-        path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
-
-    Returns:
-        list[str]: volume folders that encountered VASP errors
-        list[str]: phonon folders that encountered VASP errors
-    """
-
-    vol_folders_errors = []
-    vol_folders = [
-        d
-        for d in os.listdir(path)
-        if d.startswith("vol") and os.path.isdir(os.path.join(path, d))
-    ]
-    for vol_folder in vol_folders:
-        error_folders = [
-            f
-            for f in os.listdir(os.path.join(path, vol_folder))
-            if f.startswith("error")
-        ]
-        if len(error_folders) > 0:
-            print(f"In {vol_folder} there are error folders: {error_folders}")
-            vol_folders_errors.append(vol_folder)
-
-    phonon_folders_errors = []
-    phonon_folders = [
-        d
-        for d in os.listdir(path)
-        if d.startswith("phonon") and os.path.isdir(os.path.join(path, d))
-    ]
-    for phonon_folder in phonon_folders:
-        error_folders = [
-            f
-            for f in os.listdir(os.path.join(path, phonon_folder))
-            if f.startswith("error")
-        ]
-        if len(error_folders) > 0:
-            print(f"In {phonon_folder} there are error folders: {error_folders}")
-            phonon_folders_errors.append(phonon_folder)
-
-    return vol_folders_errors, phonon_folders_errors
-
-
-def NELM_reached(path: str) -> None:
-    """Prints the path of the calculations that have reached NELM.
-
-    Args:
-        path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
-    """
-
-    start_dir = path
-    target_line = "The electronic self-consistency was not achieved in the given"
-    for dirpath, dirs, files in os.walk(start_dir):
-        for filename in files:
-            filepath = os.path.join(dirpath, filename)
-            with open(filepath, "r", errors="ignore") as file:
-                for line in file:
-                    if target_line in line:
-                        print(f"{filepath} has reached NELM.")
-                        break
 
 
 # TODO: add a way to restart the job if it has failed
@@ -1001,6 +1057,99 @@ def elec_dos_parallel(
             file.write(new_run_file)
         os.system("sbatch run_elec_dos")
         os.chdir(path)
+
+
+def charge_density_difference(
+    path: str,
+    vasp_cmd: list[str],
+    handlers: list[str],
+    backup: bool = False,
+    max_errors: int = 10,
+) -> Chgcar:
+    """Runs a charge density difference calculation. The charge_density_difference is calculated as the difference between the
+    charge density of the final electronic step and the charge density of a single step.
+
+    Args:
+        path (str): path that contains the VASP input files.
+        vasp_cmd (list[str]):  VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        backup (bool, optional): If True, the starting INCAR, KPOINTS, POSCAR and POTCAR files will be copied with a “.orig”
+        appended. Defaults to False.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
+
+    Returns:
+        Chgcar: The charge density difference between the final electronic step and a single step.
+    """
+
+    original_dir = os.getcwd()
+    os.chdir(path)
+    os.mkdir("charge_density_difference")
+    shutil.copy2("POSCAR", "charge_density_difference/POSCAR")
+    shutil.copy2("POTCAR", "charge_density_difference/POTCAR")
+    shutil.copy2("INCAR", "charge_density_difference/INCAR")
+    shutil.copy2("KPOINTS", "charge_density_difference/KPOINTS")
+    os.chdir("charge_density_difference")
+
+    reference_job = VaspJob(
+        vasp_cmd=vasp_cmd,
+        final=False,
+        suffix=".reference",
+        backup=backup,
+        settings_override=[
+            {
+                "dict": "INCAR",
+                "action": {
+                    "_set": {
+                        "EDIFF": "1E-6",
+                        "IBRION": -1,
+                        "NSW": 1,
+                        "ISIF": 2,
+                        "NELM": 1,
+                        "ISMEAR": -5,
+                        "SIGMA": 0.05,
+                        "LCHARG": True,
+                    }
+                },
+            },
+        ],
+    )
+
+    charge_density_job = VaspJob(
+        vasp_cmd=vasp_cmd,
+        final=True,
+        suffix=".charge_density",
+        backup=backup,
+        settings_override=[
+            {
+                "dict": "INCAR",
+                "action": {
+                    "_set": {
+                        "EDIFF": "1E-6",
+                        "IBRION": -1,
+                        "NSW": 1,
+                        "ISIF": 2,
+                        "NELM": 100,
+                        "ISMEAR": -5,
+                        "SIGMA": 0.05,
+                        "LCHARG": True,
+                    }
+                },
+            },
+        ],
+    )
+
+    jobs = [reference_job, charge_density_job]
+    c = Custodian(handlers, jobs, max_errors=max_errors)
+    c.run()
+
+    final = Chgcar.from_file("CHGCAR.charge_density")
+    reference = Chgcar.from_file("CHGCAR.reference")
+    difference = final - reference
+    difference.write_file("CHGCAR.difference")
+
+    os.chdir(original_dir)
+
+    return difference
 
 
 def kpoints_conv_test(
