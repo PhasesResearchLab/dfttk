@@ -5,6 +5,8 @@
 
         tar -xvf atat*.tar.gz
 
+- Remove the makefile located atat/src.
+
 - Copy icamag.c++, fxvector.h, and makefile from this folder into atat/src. Then navigate to the atat/src folder and type:
 
         make icamag
