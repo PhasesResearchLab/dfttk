@@ -1,27 +1,29 @@
 # Installation
-- Download the ATAT source code from https://www.brown.edu/Departments/Engineering/Labs/avdw/atat/.
+1. Download the ATAT source code from https://www.brown.edu/Departments/Engineering/Labs/avdw/atat/. If ATAT is already installed skip to step 3.
 
-- Unzip the package
+2. Unzip the package
 
         tar -xvf atat*.tar.gz
 
-- Copy icamag.c++, fxvector.h, and makefile from this folder into atat/src. Then navigate to the atat/src folder and type:
+3. Replace the fxvector.h and makefile in atat/src with the fxvector.h and makefile from this folder.
+
+4. Copy icamag.c++ from this folder into atat/src. Then navigate to the atat/src folder and type:
 
         make icamag
 
-- Navigate to the atat folder and type:
+5. Navigate to the atat folder and type:
 
         make
         make install
 
-- Navigate to the bashrc file using:
+6. Navigate to the bashrc file using:
 
         vi ~/.bashrc
 
-- Add to PATH:
+7. Add to PATH:
 
         export PATH=$PATH:/path/to/ATAT/bin/
 
--Implement the changes:
+8. Implement the changes:
 
         source ~/.bashrc
