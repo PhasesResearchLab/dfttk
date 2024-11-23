@@ -104,7 +104,7 @@ def handle_custodian_json(path: str) -> None:
 
         os.remove(custodian_old_json_path)
 
-
+#TODO: Find a way to deal with custodian mistakenly naming indexing two error folders the same name
 def gzip_error_folders(path: str, error_folders: list[str]) -> None:
     """Gzips the error folders in the path.
 
@@ -420,7 +420,6 @@ def ev_curve_series(
             error_folders = [
                 f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
             ]
-            gzip_error_folders(last_vol_folder_path, error_folders)
 
             last_vol_index = j + 1
 
@@ -471,7 +470,6 @@ def ev_curve_series(
             error_folders = [
                 f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
             ]
-            gzip_error_folders(last_vol_folder_path, error_folders)
 
             last_vol_index = j + 1
 
@@ -581,7 +579,6 @@ def ev_curve_series(
         error_folders = [
             f for f in os.listdir(vol_folder_path) if f.startswith("error.")
         ]
-        gzip_error_folders(vol_folder_path, error_folders)
 
     previous_vol_folder_path = os.path.join(path, "vol_" + str(i))
     paths_to_delete = []
