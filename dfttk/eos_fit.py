@@ -1202,56 +1202,57 @@ def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         volumes = config_df["volume"].values
         energies = config_df["energy"].values
         number_of_atoms = config_df["number_of_atoms"].values[0]
-
-        for eos_function in eos_functions:
-            eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
-                eos_function(volumes, energies)
-            )
-            eos_name = eos_function.__name__
-
-            dataframes.append(
-                pd.DataFrame(
-                    [
-                        [
-                            config,
-                            eos_name,
-                            number_of_atoms,
-                            eos_constants[0],
-                            eos_constants[1],
-                            eos_constants[2],
-                            eos_constants[3],
-                            eos_constants[4],
-                            eos_parameters[0],
-                            eos_parameters[1],
-                            eos_parameters[2],
-                            eos_parameters[3],
-                            eos_parameters[4],
-                            volume_range,
-                            energy_eos,
-                            pressure_eos,
-                        ]
-                    ],
-                    columns=[
-                        "config",
-                        "eos",
-                        "number_of_atoms",
-                        "a",
-                        "b",
-                        "c",
-                        "d",
-                        "e",
-                        "V0",
-                        "E0",
-                        "B",
-                        "BP",
-                        "B2P",
-                        "volumes",
-                        "energies",
-                        "pressures",
-                    ],
+        try:
+            for eos_function in eos_functions:
+                eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
+                    eos_function(volumes, energies)
                 )
-            )
+                eos_name = eos_function.__name__
 
+                dataframes.append(
+                    pd.DataFrame(
+                        [
+                            [
+                                config,
+                                eos_name,
+                                number_of_atoms,
+                                eos_constants[0],
+                                eos_constants[1],
+                                eos_constants[2],
+                                eos_constants[3],
+                                eos_constants[4],
+                                eos_parameters[0],
+                                eos_parameters[1],
+                                eos_parameters[2],
+                                eos_parameters[3],
+                                eos_parameters[4],
+                                volume_range,
+                                energy_eos,
+                                pressure_eos,
+                            ]
+                        ],
+                        columns=[
+                            "config",
+                            "eos",
+                            "number_of_atoms",
+                            "a",
+                            "b",
+                            "c",
+                            "d",
+                            "e",
+                            "V0",
+                            "E0",
+                            "B",
+                            "BP",
+                            "B2P",
+                            "volumes",
+                            "energies",
+                            "pressures",
+                        ],
+                    )
+                )
+        except Exception as e:
+            print(f"Error fitting config {config}: {e}")
     eos_df = pd.concat(dataframes, ignore_index=True)
     eos_values_df = eos_df.drop(
         columns=["a", "b", "c", "d", "e", "V0", "E0", "B", "BP", "B2P"]
@@ -1572,7 +1573,6 @@ def plot_ev(
 
                 else:
                     raise ValueError("highlight_minimum must be True or False")
-
     axis_params = dict(
         showline=True,
         linecolor="black",
