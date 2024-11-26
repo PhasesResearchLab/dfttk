@@ -342,7 +342,7 @@ def clean_magmom_configs(
                     if count > max_true:
                         max_true = count
                 else:
-                    count = 0
+                    break
 
             # Only keep the configuration if it has at least 7 True values in a row.
             if max_true > 6:
