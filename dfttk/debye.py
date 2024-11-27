@@ -412,7 +412,6 @@ def plot_debye(
         s_v_fig.show()
 
 
-# TODO: provide choice for other EOS fitting functions
 def process_debye_gruneisen(
     energy_volume_df: pd.DataFrame,
     eos_parameters_df: pd.DataFrame,
@@ -420,7 +419,7 @@ def process_debye_gruneisen(
     gruneisen_x: float = 1,
     volumes: np.array = None,
     temperatures: np.array = np.linspace(0, 1000, 101),
-    eos: str="BM4",
+    eos: str = "BM4",
     plot=None,
     selected_temperatures_plot: np.array = None,
 ) -> tuple[np.array, np.array, int, np.array, np.array, np.array]:
@@ -441,27 +440,31 @@ def process_debye_gruneisen(
             tuple[np.array, np.array, int, np.array, np.array, np.array]: temperatures, volumes, number of atoms, and 2D arrays with rows (columns) corresponding
             to volumes (temperatures) vibrational entropy, vibrational Helmholtz energy, vibrational heat capacity
     """
-    
+
     s = scaling_factor
     filtered_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos]
     configs = filtered_eos_parameters_df["config"].unique()
-    
+
     debye_properties_list = []
     for config in configs:
-        config_eos_parameters_df = filtered_eos_parameters_df[filtered_eos_parameters_df["config"] == config]
+        config_eos_parameters_df = filtered_eos_parameters_df[
+            filtered_eos_parameters_df["config"] == config
+        ]
         bulk_modulus_prime = config_eos_parameters_df["BP"].values[0]
         gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
 
         config_energy_volume_df = energy_volume_df[energy_volume_df["config"] == config]
         volume = config_energy_volume_df["volume"].values
-        
+
         if volumes is None:
             volume_min = volume.min() * 0.98
             volume_max = volume.max() * 1.02
             volumes = np.linspace(volume_min, volume_max, 1000)
 
         atomic_mass = config_energy_volume_df["average_mass"].values[0]
-        eos_parameters = config_eos_parameters_df[["V0", "E0", "B", "BP", "B2P"]].values[0]
+        eos_parameters = config_eos_parameters_df[
+            ["V0", "E0", "B", "BP", "B2P"]
+        ].values[0]
         theta = debye_temperature(volumes, eos_parameters, atomic_mass, gru_param, s)
 
         s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
@@ -471,7 +474,9 @@ def process_debye_gruneisen(
 
         for i, volume in enumerate(volumes):
             s_vib = vibrational_entropy(temperatures, theta[i], number_of_atoms)
-            f_vib = vibrational_helmholtz_energy(temperatures, theta[i], number_of_atoms)
+            f_vib = vibrational_helmholtz_energy(
+                temperatures, theta[i], number_of_atoms
+            )
             cv_vib = vibrational_heat_capacity(temperatures, theta[i], number_of_atoms)
             s_vib_v_t[i, :] = s_vib
             f_vib_v_t[i, :] = f_vib
@@ -482,7 +487,7 @@ def process_debye_gruneisen(
         cv_vib_transposed = cv_vib_v_t.T
 
         debye_properties = pd.DataFrame(
-            {   
+            {
                 "config": [config] * len(temperatures),
                 "temperatures": temperatures,
                 "number_of_atoms": number_of_atoms,
@@ -496,11 +501,11 @@ def process_debye_gruneisen(
         )
 
         debye_properties_list.append(debye_properties)
-        
+
         if plot == config:
             plot_debye(
                 debye_properties, selected_temperatures_plot=selected_temperatures_plot
             )
-            
+
     all_debye_properties = pd.concat(debye_properties_list, ignore_index=True)
     return all_debye_properties
