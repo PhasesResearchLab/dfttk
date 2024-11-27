@@ -1,0 +1,75 @@
+Metadata-Version: 2.1
+Name: dfttk
+Version: 0.0.0
+Author-email: "Luke A. Myers" <lam7027@psu.edu>, Nigel Lee En Hew <njh5724@psu.edu>
+Project-URL: Homepage, https://github.com/PhasesResearchLab/dfttk
+Keywords: VASP,automation,thermodynamics,dfttk,DFT,materials,science,MongoDB
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Density Functional Theory
+Classifier: Topic :: Scientific/Engineering :: Chemistry
+Classifier: Topic :: Scientific/Engineering :: Physics
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pymatgen>=2024.2.20
+Requires-Dist: numpy<2.0.0,>=1.26
+Requires-Dist: pandas>=2.1.4
+Requires-Dist: matplotlib>=3.8.2
+Requires-Dist: plotly>=5.18.0
+Requires-Dist: scipy>=1.11.4
+Requires-Dist: custodian>=2023.10.9
+Requires-Dist: natsort>=8.4.0
+Requires-Dist: distinctipy>=1.3.4
+Requires-Dist: pymongo>=4.4
+
+# DFTTK
+<p align="center">
+    <img src="docs/logo.png" alt="DFTTK Logo">
+</p>
+
+## Overview
+The **D**ensity **F**unctional **T**heory **T**ool**K**it is a Python package for automating VASP jobs and storing relevant results on MongoDB. The VASP workflows are based on [Custodian](https://github.com/materialsproject/custodian), and [PyMongo](https://github.com/mongodb/mongo-python-driver) is used to store the results on MongoDB.
+
+## Key Features
+
+- **Prepare VASP input files**
+  - Given a POSCAR file, generates the INCAR, KPOINTS, and POTCAR files automatically
+  - Generate magnetic configurations
+- **VASP workflows**
+  - Convergence tests
+  - Free energy workflows
+- **Analysis**
+  - Equation of state (EOS) fitting
+  - Harmonic approximation
+  - Quasi-harmonic approximation
+- **MongoDB**
+  - Store results on a MongoDB database
+
+
+## Installation
+It is recommended to first set up a virtual environment using Conda:
+
+    conda create -n dfttk python=3.12      
+    conda activate dfttk
+
+Clone the main brach of the repository:
+    
+    git clone https://github.com/PhasesResearchLab/dfttk.git
+
+Or clone a specific branch:
+    
+    git clone -b <branch_name> https://github.com/PhasesResearchLab/dfttk.git
+
+  Then move to `dfttk` directory and install in editable (`-e`) mode.
+
+    cd dfttk
+    pip install -e .
+
+## Documentation
+A more complete description of DFTTK and its capabilities can be found in the [documentation](https://vasp-job-automation.readthedocs.io/en/latest/index.html). 

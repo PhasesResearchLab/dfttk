@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"name": "dfttk",
+			"path": ".."
+		},
+		{
+			"name": "paper_2",
+			"path": "../../PbTiO3/paper_2"
+		},
+		{
+			"path": "../../dfttk_tutorials/Al_QHA"
+		}
+	],
+	"settings": {}
+}
