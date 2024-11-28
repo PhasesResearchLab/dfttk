@@ -261,7 +261,7 @@ def assign_tot_sign(row: pd.Series) -> pd.DataFrame:
 
 def check_discontinuities(
     config_df: pd.DataFrame, ref_tot_sign: pd.Series
-) -> tuple(list[bool], list[int]):
+) -> tuple[list[bool], list[int]]:
     """Checks for discontinuities in the magnetic moment for an ev-curve.
 
     Args:
