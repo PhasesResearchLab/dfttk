@@ -281,6 +281,8 @@ def write_spin_config(
     material_type: str,
     encut: int = 520,
     kppa: int = 4000,
+    potcar_functional: str = "PBE_54",
+    incar_functional: str = "PBE",
     other_settings: dict = {},
 ):
     """Writes the spin configurations to separate folders and generates VASP input files.
@@ -313,6 +315,8 @@ def write_spin_config(
             material_type=material_type,
             encut=encut,
             kppa=kppa,
+            potcar_functional=potcar_functional,
+            incar_functional=incar_functional,
             other_settings=other_settings,
         )
 
