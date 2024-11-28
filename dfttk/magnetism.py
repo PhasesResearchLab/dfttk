@@ -80,7 +80,6 @@ def get_magnetic_structure(poscar: str, outcar: str) -> Structure:
 
 
 # TODO: make this magnetic/non-magnetic agnostic
-# TODO: For Luke - Is this a general function that can be applied on EV curves? If not, should we remove it?
 def equivalent_orderings(
     path: str, contcar_name: str = "CONTCAR", outcar_name: str = "OUTCAR"
 ) -> bool:
@@ -135,7 +134,6 @@ def equivalent_orderings(
     return equivalence_dict
 
 
-# TODO: For Luke - Is this a general function that can be applied on EV curves? If not, should we remove it?
 def remove_equivalent_orderings(
     df: pd.DataFrame, equivalence_dict: dict
 ) -> pd.DataFrame:
@@ -156,7 +154,6 @@ def remove_equivalent_orderings(
 # TODO: support specify min and max for each ion (dict) and min/max (tuple) for
 # magmom_tol. it may be beneficial to have a range of acceptable values instead
 # a tolerance.
-# TODO: For Luke - Is this a general function that can be applied on EV curves? If not, should we remove it?
 def significant_magmom_change(
     outcar_path: str = "OUTCAR", magmom_tol: float = 0.5
 ) -> bool:
@@ -196,7 +193,6 @@ def significant_magmom_change(
 
 
 # TODO: make magmoms written in NIONS*magmom format
-# TODO: For Luke - Is this a general function that can be applied on EV curves? If not, should we remove it?
 def rearrange_sites_and_magmoms(config_dir):
     """
     this function is a patch to rearrange the sites and magmoms in the POSCAR and
@@ -233,7 +229,7 @@ def rearrange_sites_and_magmoms(config_dir):
     return None
 
 
-def filter_mag_data(row: pd.Series, species: list[str]) -> pd.DataFrame:
+def filter_mag_data_by_species(row: pd.Series, species: list[str]) -> pd.DataFrame:
     """
     Filters the mag_data to include only the specified species.
 
@@ -263,101 +259,141 @@ def assign_tot_sign(row: pd.Series) -> pd.DataFrame:
     return mag_data
 
 
-# TODO: What other cases to cover?
-def clean_magmom_configs(
-    df: pd.DataFrame, spin_configs: pd.DataFrame, species: list[str]
-) -> pd.DataFrame:
-    """
-    Cleans the magnetic moment configurations by filtering species of interest,
-    assigning total sign columns, and checking for discontinuities in magmom.
+def check_discontinuities(
+    config_df: pd.DataFrame, ref_tot_sign: pd.Series
+) -> tuple(list[bool], list[int]):
+    """Checks for discontinuities in the magnetic moment for an ev-curve.
 
     Args:
-        df (pd.DataFrame): DataFrame containing the relaxed energy-volume data.
-        spin_configs (pd.DataFrame): DataFrame containing the original spin configurations from ATAT icamag.
-        species (list): List of species to filter by.
+        config_df (pd.DataFrame): DataFrame containing the magnetic moment data for a configuration.
+        ref_tot_sign (pd.Series): Series containing the reference tot_sign values.
 
     Returns:
-        pd.DataFrame: Cleaned DataFrame with consistent magnetic moment configurations.
+        tuple: A list of booleans indicating whether there is a discontinuity at each volume, and a list of indices.
     """
-    # Keep only species of interest in df_copy and spin_configs_copy.
-    df_copy = df.copy()
-    df_copy["mag_data"] = df_copy.apply(filter_mag_data, species=species, axis=1)
-    spin_configs_copy = spin_configs.copy()
-    spin_configs_copy["mag_data"] = spin_configs_copy.apply(
-        filter_mag_data, species=species, axis=1
-    )
-
-    # Assign a tot_sign column to each mag_data.
-    df_copy["mag_data"] = df_copy.apply(assign_tot_sign, axis=1)
-    spin_configs_copy["mag_data"] = spin_configs_copy.apply(assign_tot_sign, axis=1)
-
-    unique_configs = spin_configs_copy["config"].unique()
     match_list = []
     index_list = []
-    unstable_initial_states = []
-    clean_df = pd.DataFrame()
-    for config in unique_configs:
-        # First, check for any discontinuities in magmom within a single configuration ev-curve.
-        config_df = df_copy[df_copy["config"] == config]
-        ref = spin_configs_copy[spin_configs_copy["config"] == config]
-        ref_tot_sign = ref["mag_data"].values[0]["tot_sign"]
-
-        count = 0
-        for index, row in config_df.iterrows():
-            current_tot_sign = row["mag_data"]["tot_sign"]
-            if count == 0:
-                match = current_tot_sign.equals(ref_tot_sign)
-            else:
-                previous_tot_sign = config_df.iloc[count - 1]["mag_data"]["tot_sign"]
-                match = current_tot_sign.equals(previous_tot_sign)
-
-            match_list.append(match)
-            index_list.append(index)
-            count += 1
-
-        # If all elements in match_list are true, there are no jumps, and it matches the original spin configuration.
-        if all(match_list):
-            multiplicity = ref["multiplicity"].values[0]
-            config_df.insert(1, "multiplicity", multiplicity)
-            clean_df = pd.concat([clean_df, config_df.loc[index_list]])
-
-        # If the first element is False but the rest are True, there is a jump from the original spin configuration only.
-        elif match_list[0] == False and all(match_list[1:]):
-            tot_sign = config_df.iloc[0]["mag_data"]["tot_sign"]
-            spin_up = (tot_sign[tot_sign == 1]).count()
-            spin_down = (tot_sign[tot_sign == -1]).count()
-            unstable_initial_states.append((config, spin_up, spin_down))
-
-        # If there is a False value later in the list, there is a jump at that index later in the configuration.
+    count = 0
+    for index, row in config_df.iterrows():
+        current_tot_sign = row["mag_data"]["tot_sign"]
+        if count == 0:
+            match = current_tot_sign.equals(ref_tot_sign)
         else:
-            print(
-                f"There is a jump in config {config} at volume {config_df.loc[index_list[match_list.index(False)]]['volume']}."
-            )
+            previous_tot_sign = config_df.iloc[count - 1]["mag_data"]["tot_sign"]
+            match = current_tot_sign.equals(previous_tot_sign)
 
-            # Gets the maximum number of True values in a row.
-            max_true = 0
-            count = 0
-            for match in match_list:
-                if match == True:
-                    count += 1
-                    if count > max_true:
-                        max_true = count
-                else:
-                    break
+        match_list.append(match)
+        index_list.append(index)
+        count += 1
 
-            # Only keep the configuration if it has at least 7 True values in a row.
-            if max_true > 6:
-                first_false = index_list[match_list.index(False)]
-                config_df = config_df.loc[: first_false - 1]
-                multiplicity = ref["multiplicity"].values[0]
-                config_df.insert(1, "multiplicity", multiplicity)
-                new_index_list = index_list[: match_list.index(False)]
-                clean_df = pd.concat([clean_df, config_df.loc[new_index_list]])
+    return match_list, index_list
 
-        match_list = []
-        index_list = []
 
-    # If the first element is False but the rest are True, tell the user which configuration it jumped to.
+def handle_no_discontinuity(
+    match_list: list[bool],
+    index_list: list[int],
+    config_df: pd.DataFrame,
+    ref: pd.DataFrame,
+    filtered_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Handles the case where there are no discontinuities in the magnetic moment in an ev-curve.
+
+    Args:
+        match_list (list[bool]): list of booleans indicating whether there is a discontinuity at each volume.
+        index_list (list[int]): list of indices.
+        config_df (pd.DataFrame): DataFrame containing the magnetic moment data for a configuration.
+        ref (pd.DataFrame): DataFrame containing the reference tot_sign values.
+        filtered_df (pd.DataFrame): DataFrame containing the filtered configurations.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the filtered configurations.
+    """
+    if all(match_list):
+        multiplicity = ref["multiplicity"].values[0]
+        config_df.insert(1, "multiplicity", multiplicity)
+        filtered_df = pd.concat([filtered_df, config_df.loc[index_list]])
+
+    return filtered_df
+
+
+def handle_initial_jump(
+    config: str,
+    config_df: pd.DataFrame,
+    unstable_initial_states: list[tuple[str, int, int]],
+) -> list[tuple[str, int, int]]:
+    """Handles the case where there is a jump in the magnetic moment at the initial volume in an ev-curve.
+
+    Args:
+        config (str): name of the configuration.
+        config_df (pd.DataFrame): DataFrame containing the magnetic moment data for a configuration.
+        unstable_initial_states (list[tuple[str, int, int]]): List of unstable initial states.
+
+    Returns:
+        list[tuple[str, int, int]]: List of unstable initial states.
+    """
+    unstable_initial_states = []
+    tot_sign = config_df.iloc[0]["mag_data"]["tot_sign"]
+    spin_up = (tot_sign[tot_sign == 1]).count()
+    spin_down = (tot_sign[tot_sign == -1]).count()
+    unstable_initial_states.append((config, spin_up, spin_down))
+
+    return unstable_initial_states
+
+
+def handle_later_jump(
+    match_list: list[bool],
+    index_list: list[int],
+    config_df: pd.DataFrame,
+    ref: pd.DataFrame,
+    filtered_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Handles the case where there is a jump in the magnetic moment at a later volume in an ev-curve.
+
+    Args:
+        match_list (list[bool]): list of booleans indicating whether there is a discontinuity at each volume.
+        index_list (list[int]): list of indices.
+        config_df (pd.DataFrame): DataFrame containing the magnetic moment data for a configuration.
+        ref (pd.DataFrame): DataFrame containing the reference tot_sign values.
+        filtered_df (pd.DataFrame): DataFrame containing the filtered configurations.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the filtered configurations.
+    """
+    # Gets the maximum number of True values in a row.
+    max_true = 0
+    count = 0
+    for match in match_list:
+        if match == True:
+            count += 1
+            if count > max_true:
+                max_true = count
+        else:
+            break
+
+    # Only keep the configuration if it has at least 7 True values in a row.
+    if max_true > 6:
+        first_false = index_list[match_list.index(False)]
+        config_df = config_df.loc[: first_false - 1]
+        multiplicity = ref["multiplicity"].values[0]
+        config_df.insert(1, "multiplicity", multiplicity)
+        new_index_list = index_list[: match_list.index(False)]
+        filtered_df = pd.concat([filtered_df, config_df.loc[new_index_list]])
+
+    return filtered_df
+
+
+def identify_relaxed_config(
+    unstable_initial_states: list[tuple[str, int, int]],
+    df_copy: pd.DataFrame,
+    filtered_df: pd.DataFrame,
+) -> None:
+    """Prints the configurations that the unstable states relaxed to.
+
+    Args:
+        unstable_initial_states (list[tuple[str, int, int]]): list of unstable initial states.
+        df_copy (pd.DataFrame): DataFrame containing the relaxed energy-volume data.
+        filtered_df (pd.DataFrame): DataFrame containing the filtered configurations.
+    """
     for (
         unstable_config,
         unstable_spin_up,
@@ -371,29 +407,94 @@ def clean_magmom_configs(
             drop=True
         )
 
-        unique_clean_configs = clean_df["config"].unique()
-        for clean_config in unique_clean_configs:
-            clean_config_df = clean_df[clean_df["config"] == clean_config]
-            clean_tot_sign = clean_config_df["mag_data"].values[0]["tot_sign"]
-            clean_spin_up = (clean_tot_sign[clean_tot_sign == 1]).count()
-            clean_spin_down = (clean_tot_sign[clean_tot_sign == -1]).count()
-            clean_config_volume = clean_config_df["volume_per_atom"].reset_index(
+        unique_filtered_configs = filtered_df["config"].unique()
+        for filtered_config in unique_filtered_configs:
+            filtered_config_df = filtered_df[filtered_df["config"] == filtered_config]
+            filtered_tot_sign = filtered_config_df["mag_data"].values[0]["tot_sign"]
+            filtered_spin_up = (filtered_tot_sign[filtered_tot_sign == 1]).count()
+            filtered_spin_down = (filtered_tot_sign[filtered_tot_sign == -1]).count()
+            filtered_config_volume = filtered_config_df["volume_per_atom"].reset_index(
                 drop=True
             )
-            clean_config_energy = clean_config_df["energy_per_atom"].reset_index(
+            filtered_config_energy = filtered_config_df["energy_per_atom"].reset_index(
                 drop=True
             )
 
-            if unstable_config_volume.equals(clean_config_volume):
-                energy_difference = abs(unstable_config_energy - clean_config_energy)
+            if unstable_config_volume.equals(filtered_config_volume):
+                energy_difference = abs(unstable_config_energy - filtered_config_energy)
 
                 if all(energy_difference < 0.001):
                     if (
-                        unstable_spin_up == clean_spin_up
-                        or unstable_spin_up == clean_spin_down
+                        unstable_spin_up == filtered_spin_up
+                        or unstable_spin_up == filtered_spin_down
                     ):
                         print(
-                            f"config {unstable_config} relaxed to config {clean_config} for all volumes."
+                            f"config {unstable_config} relaxed to config {filtered_config} for all volumes."
                         )
 
-    return clean_df
+
+# TODO: What other cases to cover?
+# TODO: For all unstable states, report which configurations they relaxed to.
+def filter_magmom_configs(
+    df: pd.DataFrame, spin_configs: pd.DataFrame, species: list[str]
+) -> pd.DataFrame:
+    """
+    Filters the magnetic moment configurations by filtering species of interest,
+    assigning total sign columns, and checking for discontinuities in magmom.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing the relaxed energy-volume data.
+        spin_configs (pd.DataFrame): DataFrame containing the original spin configurations from ATAT icamag.
+        species (list): List of species to filter by.
+
+    Returns:
+        pd.DataFrame: Filtered DataFrame with consistent magnetic moment configurations.
+    """
+    # Keep only species of interest in df_copy and spin_configs_copy.
+    df_copy = df.copy()
+    df_copy["mag_data"] = df_copy.apply(
+        filter_mag_data_by_species, species=species, axis=1
+    )
+    spin_configs_copy = spin_configs.copy()
+    spin_configs_copy["mag_data"] = spin_configs_copy.apply(
+        filter_mag_data_by_species, species=species, axis=1
+    )
+
+    # Assign a tot_sign column to each mag_data.
+    df_copy["mag_data"] = df_copy.apply(assign_tot_sign, axis=1)
+    spin_configs_copy["mag_data"] = spin_configs_copy.apply(assign_tot_sign, axis=1)
+
+    unique_configs = spin_configs_copy["config"].unique()
+    unstable_initial_states = []
+    filtered_df = pd.DataFrame()
+    for config in unique_configs:
+        config_df = df_copy[df_copy["config"] == config]
+        ref = spin_configs_copy[spin_configs_copy["config"] == config]
+        ref_tot_sign = ref["mag_data"].values[0]["tot_sign"]
+
+        # Check for any discontinuities.
+        match_list, index_list = check_discontinuities(config_df, ref_tot_sign)
+
+        if all(match_list):
+            filtered_df = handle_no_discontinuity(
+                match_list, index_list, config_df, ref, filtered_df
+            )
+
+        elif match_list[0] == False and all(match_list[1:]):
+            unstable_intial_states = handle_initial_jump(
+                config, config_df, unstable_initial_states
+            )
+
+        else:
+            print(
+                f"There is a jump in config {config} at volume {config_df.loc[index_list[match_list.index(False)]]['volume']}."
+            )
+
+            filtered_df = handle_later_jump(
+                match_list, index_list, config_df, ref, filtered_df
+            )
+
+    # For the unstable states, report which configurations they relaxed to.
+    identify_relaxed_config(unstable_initial_states, df_copy, filtered_df)
+
+    return filtered_df
