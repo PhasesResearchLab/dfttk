@@ -30,7 +30,7 @@ def poscar2lat(
     Args:
         path (str): path to the folder containing the POSCAR file
         poscar_file (str): name of the POSCAR file
-        magnetic_sites (dict, optional): sites with magnetic moments. Defaults to {}.
+        magnetic_sites (dict, optional): sites with magnetic moments. E.g., {"Fe": ["Fe+5", "Fe-5"]}. Defaults to {}.
         scaling_matrix (np.ndarray, optional): scaling matrix for the lattice. Defaults to np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]).
         lat_file (str, optional): name of the lat.in file. Defaults to "lat.in".
     """
