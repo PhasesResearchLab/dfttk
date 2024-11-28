@@ -28,34 +28,38 @@ from dfttk.magnetism import get_magnetic_structure
 from dfttk.data_extraction import extract_tot_mag_data
 
 
-def move_error_folders(src_path: str, dest_path: str, error_folders: list[str]) -> None:
-    """Moves error folders from the source path to the destination path.
+def move_folders(src_path: str, dest_path: str, folders: list[str]) -> None:
+    """Moves folders from the source path to the destination path. It is used to move previous error folders when restarting
+    a job to a temporary folder. 
 
     Args:
         src_path (str): path to the source folder containing the error folders.
         dest_path (str): path to the destination folder to move the error folders.
-        error_folders (list[str]): list of error folders to move.
+        folders (list[str]): list of error folders to move.
     """
-    for error_folder in error_folders:
-        src = os.path.join(src_path, error_folder)
-        dest = os.path.join(dest_path, error_folder)
+    for folder in folders:
+        src = os.path.join(src_path, folder)
+        dest = os.path.join(dest_path, folder)
         subprocess.run(["mv", src, dest], check=True)
 
 
 def rename_error_folders(
-    path: str, error_folders_old: list[str], error_folders_count: int
+    path: str, error_folders_old: list[str], prev_error_folders_count: int
 ) -> None:
-    """Renames the error folders in the path.
+    """Renames the error folders in the path. It is used to rename the error folders when restarting a job according
+    to the number of error folders that were moved to a temporary folder from the previous run. For example, if the 
+    error folders in the temporary folder are error.1.tar and error.2.tar, the error folders in the path will be renamed
+    from error.1.tar to error.3.tar and error.2.tar to error.4.tar. 
 
     Args:
         path (str): path to the folder containing the error folders.
         error_folders_old (list[str]): list of error folders to rename.
-        error_folders_count (int): count of error folders that was moved using move_error_folders.
+        prev_error_folders_count (int): count of error folders that was moved using move_folders.
     """
     for error_folder_old in error_folders_old:
         error_folder_new = error_folder_old.copy()
         index = int(error_folder_new[1])
-        error_folder_new[1] = str(index + error_folders_count)
+        error_folder_new[1] = str(index + prev_error_folders_count)
         error_folder_new = ".".join(error_folder_new)
         error_folder_old = ".".join(error_folder_old)
 
@@ -64,62 +68,55 @@ def rename_error_folders(
         subprocess.run(["mv", src_path, dest_path], check=True)
 
 
-def process_error_folders(path: str, error_folders_count: int) -> None:
-    """processes the error folders in the path by renaming and moving them.
+def process_error_folders(path: str, prev_error_folders_count: int) -> None:
+    """Processes the error folders in the path by renaming and moving them. It is used to rename the error folders when restarting a job according
+    to the number of error folders that were moved to a temporary folder from the previous run. For example, if the 
+    error folders in the temporary folder are error.1.tar and error.2.tar, the error folders in the path will be renamed
+    from error.1.tar to error.3.tar and error.2.tar to error.4.tar. Then, the error folders in the temporary folder will be moved to the path 
+    and the temporary folder will be removed.
 
     Args:
         path (str): path to the folder containing the error folders.
-        error_folders_count (int): count of error folders that was moved using move_error_folders.
+        prev_error_folders_count (int): count of error folders that was moved using move_folders.
     """
     error_folders_old = [f for f in os.listdir(path) if f.startswith("error.")]
     error_folders_old = [f.split(".") for f in error_folders_old]
     error_folders_old.reverse()
-    rename_error_folders(path, error_folders_old, error_folders_count)
+    rename_error_folders(path, error_folders_old, prev_error_folders_count)
 
     error_temp_path = os.path.join(path, "error_temp")
     error_temp_folders = [f for f in os.listdir(error_temp_path)]
-    move_error_folders(error_temp_path, path, error_temp_folders)
+    move_folders(error_temp_path, path, error_temp_folders)
 
     subprocess.run(["rm", "-r", error_temp_path])
 
 
-def handle_custodian_json(path: str) -> None:
-    """Merges the custodian.json and custodian_old.json files in the path.
+def merge_custodian_json_files(path: str) -> None:
+    """Merges the custodian.json and prev_custodian.json files in the path. The prev_custodian.json file is
+    the custodian.json file from the previous run, while the custodian.json file is the custodian.json file from 
+    the current restart run. The merged custodian.json file will contain the combined settings from the two files.
 
     Args:
-        path (str): path to the folder containing the custodian.json and custodian_old.json files.
+        path (str): path to the folder containing the custodian.json and prev_custodian.json files.
     """
     custodian_json_path = os.path.join(path, "custodian.json")
-    custodian_old_json_path = os.path.join(path, "custodian_old.json")
-    if os.path.isfile(custodian_old_json_path):
+    prev_custodian_json_path = os.path.join(path, "prev_custodian.json")
+    if os.path.isfile(prev_custodian_json_path):
         with open(custodian_json_path, "r") as f:
             custodian_json = json.load(f)
-        with open(custodian_old_json_path, "r") as f:
-            custodian_old_json = json.load(f)
+        with open(prev_custodian_json_path, "r") as f:
+            prev_custodian_json = json.load(f)
 
         custodian_json[0].update({"restart": True})
-        combined_custodian_json = custodian_old_json + custodian_json
+        combined_custodian_json = prev_custodian_json + custodian_json
         with open(custodian_json_path, "w") as f:
             json.dump(combined_custodian_json, f, indent=4)
 
-        os.remove(custodian_old_json_path)
-
-#TODO: Find a way to deal with custodian mistakenly naming indexing two error folders the same name
-def gzip_error_folders(path: str, error_folders: list[str]) -> None:
-    """Gzips the error folders in the path.
-
-    Args:
-        path (str): path to the folder containing the error folders.
-        error_folders (list[str]): list of error folders to gzip.
-    """
-    for error_folder in error_folders:
-        if not error_folder.endswith(".gz"):
-            error_folder_path = os.path.join(path, error_folder)
-            subprocess.run(["gzip", error_folder_path], check=True)
-
+        os.remove(prev_custodian_json_path)
+        
 
 def custodian_errors_location(path: str) -> list[str]:
-    """Prints the location of the custodian errors in the path.
+    """Prints the calculation folders containing the custodian errors in the specified path.
 
     Args:
         path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
@@ -391,12 +388,12 @@ def ev_curve_series(
             error_folders = [
                 f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
             ]
-            error_folders_count = len(error_folders)
+            prev_error_folders_count = len(error_folders)
             error_temp_path = os.path.join(last_vol_folder_path, "error_temp")
             if not os.path.exists(error_temp_path):
                 os.makedirs(error_temp_path)
 
-            move_error_folders(last_vol_folder_path, error_temp_path, error_folders)
+            move_folders(last_vol_folder_path, error_temp_path, error_folders)
 
             print(
                 f"Running three step relaxation for volume {str(volumes[j])} at step 3"
@@ -414,7 +411,7 @@ def ev_curve_series(
                 restart="step3",
             )
 
-            process_error_folders(last_vol_folder_path, error_folders_count)
+            process_error_folders(last_vol_folder_path, prev_error_folders_count)
             handle_custodian_json(last_vol_folder_path)
 
             error_folders = [
@@ -441,12 +438,12 @@ def ev_curve_series(
             error_folders = [
                 f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
             ]
-            error_folders_count = len(error_folders)
+            prev_error_folders_count = len(error_folders)
             error_temp_path = os.path.join(last_vol_folder_path, "error_temp")
             if not os.path.exists(error_temp_path):
                 os.makedirs(error_temp_path)
 
-            move_error_folders(last_vol_folder_path, error_temp_path, error_folders)
+            move_folders(last_vol_folder_path, error_temp_path, error_folders)
 
             print(
                 f"Running three step relaxation for volume {str(volumes[j])} at step 2"
@@ -464,7 +461,7 @@ def ev_curve_series(
                 restart="step2",
             )
 
-            process_error_folders(last_vol_folder_path, error_folders_count)
+            process_error_folders(last_vol_folder_path, prev_error_folders_count)
             handle_custodian_json(last_vol_folder_path)
 
             error_folders = [
