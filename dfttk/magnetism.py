@@ -25,6 +25,7 @@ from dfttk.data_extraction import extract_tot_mag_data, extract_input_mag_data
 
 # TODO: While this does work, we also want the option to determine the magnetic ordering based on only certain elements.
 # For example, for Fe3Pt, we may want to determine the magnetic ordering based only on the Fe atoms.
+# In principle though, it would be wrong to label the whole structure based on only some of the atoms. So we have to be clear in the comments this meaning of "AFM", "SFC", etc.
 def determine_magnetic_ordering(
     df: pd.DataFrame,
     magmom_tolerance: float = 1e-12,
