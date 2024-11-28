@@ -116,7 +116,7 @@ def create_poscar_object(
     scaling_matrix: np.ndarray,
     species_elements: list[str],
     coords: np.ndarray,
-    magmom: np.ndarray
+    magmom: np.ndarray,
 ) -> Poscar:
     """
     Creates a POSCAR object from the given lattice vectors, scaling matrix, species elements, coordinates, and magnetic moments.
@@ -287,7 +287,7 @@ def write_spin_config(
 
     Args:
         path (str): path to the folder to write the spin configurations
-        spin_configs (pd.DataFrame): dataframe containing information about the spin configurations
+        spin_configs (pd.DataFrame): dataframe from the parse_spin_config function containing information about the spin configurations
         material_type (str): metal or non_metal
         encut (int, optional): ENCUt value. Defaults to 520.
         kppa (int, optional): k-point mesh per reciprocal atom. Defaults to 4000.
