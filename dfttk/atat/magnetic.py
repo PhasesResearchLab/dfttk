@@ -328,6 +328,8 @@ def gen_spin_configs(
     poscar_file: str = "POSCAR",
     encut: int = 520,
     kppa: int = 4000,
+    potcar_functional: str = "PBE_54",
+    incar_functional: str = "PBE",
     other_settings: dict = {},
 ):
     """Convenience function to generate spin configurations using the POSCAR file in the specified path.
@@ -353,5 +355,7 @@ def gen_spin_configs(
         material_type=material_type,
         encut=encut,
         kppa=kppa,
+        potcar_functional=potcar_functional,
+        incar_functional=incar_functional,
         other_settings=other_settings,
     )
