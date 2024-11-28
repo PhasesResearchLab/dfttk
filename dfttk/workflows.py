@@ -412,7 +412,7 @@ def ev_curve_series(
             )
 
             process_error_folders(last_vol_folder_path, prev_error_folders_count)
-            handle_custodian_json(last_vol_folder_path)
+            merge_custodian_json_files(last_vol_folder_path)
 
             error_folders = [
                 f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
@@ -462,7 +462,7 @@ def ev_curve_series(
             )
 
             process_error_folders(last_vol_folder_path, prev_error_folders_count)
-            handle_custodian_json(last_vol_folder_path)
+            merge_custodian_json_files(last_vol_folder_path)
 
             error_folders = [
                 f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
