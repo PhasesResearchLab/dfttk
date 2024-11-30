@@ -505,25 +505,12 @@ def process_debye_gruneisen(
     s_vib_transposed = s_vib_v_t.T
     cv_vib_transposed = cv_vib_v_t.T
 
-    debye_properties = pd.DataFrame(
-        {
-            "temperatures": temperatures,
-            "number_of_atoms": number_of_atoms,
-            "scaling_factor": [s] * len(temperatures),
-            "gruneisen_x": [gruneisen_x] * len(temperatures),
-            "volume": [volumes] * len(temperatures),
-            "f_vib": [col for col in f_vib_transposed],
-            "s_vib": [col for col in s_vib_transposed],
-            "cv_vib": [col for col in cv_vib_transposed],
-        }
-    )
-
     if plot:
         plot_debye(
             debye_properties, selected_temperatures_plot=selected_temperatures_plot
         )
 
-    return debye_properties
+    return f_vib_transposed, s_vib_transposed, cv_vib_transposed, volumes, temperatures
 
 
 def get_config_paths(configurations_dir: str) -> list[str]:
