@@ -1,8 +1,11 @@
+"""
+Module for magnetic analysis of VASP calculations. 
+"""
+
 # Standard library imports
 import os
 import itertools
 import numbers
-
 
 # Related third party imports
 import numpy as np
@@ -20,6 +23,9 @@ from pymatgen.io.vasp.outputs import Poscar
 from dfttk.data_extraction import extract_tot_mag_data, extract_input_mag_data
 
 
+# TODO: While this does work, we also want the option to determine the magnetic ordering based on only certain elements.
+# For example, for Fe3Pt, we may want to determine the magnetic ordering based only on the Fe atoms.
+# In principle though, it would be wrong to label the whole structure based on only some of the atoms. So we have to be clear in the comments this meaning of "AFM", "SFC", etc.
 def determine_magnetic_ordering(
     df: pd.DataFrame,
     magmom_tolerance: float = 1e-12,
@@ -69,6 +75,7 @@ def get_magnetic_structure(poscar: str, outcar: str) -> Structure:
     structure = Structure.from_file(poscar)
     mag_data = extract_tot_mag_data(outcar)
     structure.add_site_property("magmom", mag_data["tot"])
+
     return structure
 
 
@@ -220,3 +227,274 @@ def rearrange_sites_and_magmoms(config_dir):
     poscar = Poscar(struct)
     poscar.write_file(poscar_file)
     return None
+
+
+def filter_mag_data_by_species(row: pd.Series, species: list[str]) -> pd.DataFrame:
+    """
+    Filters the mag_data to include only the specified species.
+
+    Args:
+        row (pd.Series): A row from a DataFrame containing mag_data.
+        species (list): A list of species to filter by.
+
+    Returns:
+        pd.DataFrame: Filtered mag_data containing only the specified species.
+    """
+    mag_data = row["mag_data"]
+    return mag_data[mag_data["species"].isin(species)]
+
+
+def assign_tot_sign(row: pd.Series) -> pd.DataFrame:
+    """
+    Assigns a tot_sign column to the mag_data based on the sign of the tot column.
+
+    Args:
+        row (pd.Series): A row from a DataFrame containing mag_data.
+
+    Returns:
+        pd.DataFrame: mag_data with an additional tot_sign column.
+    """
+    mag_data = row["mag_data"].copy()
+    mag_data["tot_sign"] = np.sign(mag_data["tot"])
+    return mag_data
+
+
+def check_discontinuities(
+    config_df: pd.DataFrame, ref_tot_sign: pd.Series
+) -> tuple[list[bool], list[int]]:
+    """Checks for discontinuities in the magnetic moment for an ev-curve.
+
+    Args:
+        config_df (pd.DataFrame): DataFrame containing the magnetic moment data for a configuration.
+        ref_tot_sign (pd.Series): Series containing the reference tot_sign values.
+
+    Returns:
+        tuple: A list of booleans indicating whether there is a discontinuity at each volume, and a list of indices.
+    """
+    match_list = []
+    index_list = []
+    count = 0
+    for index, row in config_df.iterrows():
+        current_tot_sign = row["mag_data"]["tot_sign"]
+        if count == 0:
+            match = current_tot_sign.equals(ref_tot_sign)
+        else:
+            previous_tot_sign = config_df.iloc[count - 1]["mag_data"]["tot_sign"]
+            match = current_tot_sign.equals(previous_tot_sign)
+
+        match_list.append(match)
+        index_list.append(index)
+        count += 1
+
+    return match_list, index_list
+
+
+def handle_no_discontinuity(
+    match_list: list[bool],
+    index_list: list[int],
+    config_df: pd.DataFrame,
+    ref: pd.DataFrame,
+    filtered_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Handles the case where there are no discontinuities in the magnetic moment in an ev-curve.
+
+    Args:
+        match_list (list[bool]): list of booleans indicating whether there is a discontinuity at each volume.
+        index_list (list[int]): list of indices.
+        config_df (pd.DataFrame): DataFrame containing the magnetic moment data for a configuration.
+        ref (pd.DataFrame): DataFrame containing the reference tot_sign values.
+        filtered_df (pd.DataFrame): DataFrame containing the filtered configurations.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the filtered configurations.
+    """
+    if all(match_list):
+        multiplicity = ref["multiplicity"].values[0]
+        config_df.insert(1, "multiplicity", multiplicity)
+        filtered_df = pd.concat([filtered_df, config_df.loc[index_list]])
+
+    return filtered_df
+
+
+def handle_initial_jump(
+    config: str,
+    config_df: pd.DataFrame,
+    unstable_initial_states: list[tuple[str, int, int]],
+) -> list[tuple[str, int, int]]:
+    """Handles the case where there is a jump in the magnetic moment at the initial volume in an ev-curve.
+
+    Args:
+        config (str): name of the configuration.
+        config_df (pd.DataFrame): DataFrame containing the magnetic moment data for a configuration.
+        unstable_initial_states (list[tuple[str, int, int]]): List of unstable initial states.
+
+    Returns:
+        list[tuple[str, int, int]]: List of unstable initial states.
+    """
+    unstable_initial_states = []
+    tot_sign = config_df.iloc[0]["mag_data"]["tot_sign"]
+    spin_up = (tot_sign[tot_sign == 1]).count()
+    spin_down = (tot_sign[tot_sign == -1]).count()
+    unstable_initial_states.append((config, spin_up, spin_down))
+
+    return unstable_initial_states
+
+
+def handle_later_jump(
+    match_list: list[bool],
+    index_list: list[int],
+    config_df: pd.DataFrame,
+    ref: pd.DataFrame,
+    filtered_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """Handles the case where there is a jump in the magnetic moment at a later volume in an ev-curve.
+
+    Args:
+        match_list (list[bool]): list of booleans indicating whether there is a discontinuity at each volume.
+        index_list (list[int]): list of indices.
+        config_df (pd.DataFrame): DataFrame containing the magnetic moment data for a configuration.
+        ref (pd.DataFrame): DataFrame containing the reference tot_sign values.
+        filtered_df (pd.DataFrame): DataFrame containing the filtered configurations.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the filtered configurations.
+    """
+    # Gets the maximum number of True values in a row.
+    max_true = 0
+    count = 0
+    for match in match_list:
+        if match == True:
+            count += 1
+            if count > max_true:
+                max_true = count
+        else:
+            break
+
+    # Only keep the configuration if it has at least 8 True values in a row.
+    if max_true > 8:
+        first_false = index_list[match_list.index(False)]
+        config_df = config_df.loc[: first_false - 1]
+        multiplicity = ref["multiplicity"].values[0]
+        config_df.insert(1, "multiplicity", multiplicity)
+        new_index_list = index_list[: match_list.index(False)]
+        filtered_df = pd.concat([filtered_df, config_df.loc[new_index_list]])
+
+    return filtered_df
+
+
+def identify_relaxed_config(
+    unstable_initial_states: list[tuple[str, int, int]],
+    df_copy: pd.DataFrame,
+    filtered_df: pd.DataFrame,
+) -> None:
+    """Prints the configurations that the unstable states relaxed to.
+
+    Args:
+        unstable_initial_states (list[tuple[str, int, int]]): list of unstable initial states.
+        df_copy (pd.DataFrame): DataFrame containing the relaxed energy-volume data.
+        filtered_df (pd.DataFrame): DataFrame containing the filtered configurations.
+    """
+    for (
+        unstable_config,
+        unstable_spin_up,
+        unstable_spin_down,
+    ) in unstable_initial_states:
+        config_df = df_copy[df_copy["config"] == unstable_config]
+        unstable_config_volume = unstable_config["volume_per_atom"].reset_index(
+            drop=True
+        )
+        unstable_config_energy = unstable_config["energy_per_atom"].reset_index(
+            drop=True
+        )
+
+        unique_filtered_configs = filtered_df["config"].unique()
+        for filtered_config in unique_filtered_configs:
+            filtered_config_df = filtered_df[filtered_df["config"] == filtered_config]
+            filtered_tot_sign = filtered_config_df["mag_data"].values[0]["tot_sign"]
+            filtered_spin_up = (filtered_tot_sign[filtered_tot_sign == 1]).count()
+            filtered_spin_down = (filtered_tot_sign[filtered_tot_sign == -1]).count()
+            filtered_config_volume = filtered_config_df["volume_per_atom"].reset_index(
+                drop=True
+            )
+            filtered_config_energy = filtered_config_df["energy_per_atom"].reset_index(
+                drop=True
+            )
+
+            if unstable_config_volume.equals(filtered_config_volume):
+                energy_difference = abs(unstable_config_energy - filtered_config_energy)
+
+                if all(energy_difference < 0.001):
+                    if (
+                        unstable_spin_up == filtered_spin_up
+                        or unstable_spin_up == filtered_spin_down
+                    ):
+                        print(
+                            f"config {unstable_config} relaxed to config {filtered_config} for all volumes."
+                        )
+
+
+# TODO: What other cases to cover?
+# TODO: For all unstable states, report which configurations they relaxed to.
+def filter_magmom_configs(
+    df: pd.DataFrame, spin_configs: pd.DataFrame, species: list[str]
+) -> pd.DataFrame:
+    """
+    Filters the magnetic moment configurations by filtering species of interest,
+    assigning total sign columns, and checking for discontinuities in magmom.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing the relaxed energy-volume data.
+        spin_configs (pd.DataFrame): DataFrame containing the original spin configurations from ATAT icamag.
+        species (list): List of species to filter by.
+
+    Returns:
+        pd.DataFrame: Filtered DataFrame with consistent magnetic moment configurations.
+    """
+    # Keep only species of interest in df_copy and spin_configs_copy.
+    df_copy = df.copy()
+    df_copy["mag_data"] = df_copy.apply(
+        filter_mag_data_by_species, species=species, axis=1
+    )
+    spin_configs_copy = spin_configs.copy()
+    spin_configs_copy["mag_data"] = spin_configs_copy.apply(
+        filter_mag_data_by_species, species=species, axis=1
+    )
+
+    # Assign a tot_sign column to each mag_data.
+    df_copy["mag_data"] = df_copy.apply(assign_tot_sign, axis=1)
+    spin_configs_copy["mag_data"] = spin_configs_copy.apply(assign_tot_sign, axis=1)
+
+    unique_configs = spin_configs_copy["config"].unique()
+    unstable_initial_states = []
+    filtered_df = pd.DataFrame()
+    for config in unique_configs:
+        config_df = df_copy[df_copy["config"] == config]
+        ref = spin_configs_copy[spin_configs_copy["config"] == config]
+        ref_tot_sign = ref["mag_data"].values[0]["tot_sign"]
+
+        # Check for any discontinuities.
+        match_list, index_list = check_discontinuities(config_df, ref_tot_sign)
+
+        if all(match_list):
+            filtered_df = handle_no_discontinuity(
+                match_list, index_list, config_df, ref, filtered_df
+            )
+
+        elif match_list[0] == False and all(match_list[1:]):
+            unstable_intial_states = handle_initial_jump(
+                config, config_df, unstable_initial_states
+            )
+
+        else:
+            print(
+                f"There is a jump in config {config} at volume {config_df.loc[index_list[match_list.index(False)]]['volume']}."
+            )
+
+            filtered_df = handle_later_jump(
+                match_list, index_list, config_df, ref, filtered_df
+            )
+
+    # For the unstable states, report which configurations they relaxed to.
+    identify_relaxed_config(unstable_initial_states, df_copy, filtered_df)
+
+    return filtered_df

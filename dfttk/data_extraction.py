@@ -11,7 +11,7 @@ import pandas as pd
 
 # Local application/library specific imports
 from pymatgen.core.structure import Structure
-
+from pymatgen.io.vasp import Poscar
 
 # TODO: If some of these functions can be replaced by just using pymatgen, then we should do that.
 def extract_volume(path: str) -> float:
@@ -248,11 +248,12 @@ def extract_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
 
 
 # TODO just get mag data for all the ions
-def extract_tot_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
+def extract_tot_mag_data(outcar_path: str = "OUTCAR", contcar_path: str = "CONTCAR") -> pd.DataFrame:
     """Returns only the 'tot' magnetization of the last step for each specified ion.
 
     Args:
         outcar_path: Path to an OUTCAR file. Defaults to "OUTCAR".
+        contcar_path: Path to a CONTCAR file. Defaults to "CONTCAR".
 
     Returns:
         a pandas DataFrame containing the 'tot' magnetization data
@@ -262,6 +263,13 @@ def extract_tot_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
     last_step_data = all_mag_data[all_mag_data["step"] == all_mag_data["step"].max()]
     tot_data = last_step_data[["#_of_ion", "tot"]]
     tot_data.reset_index(drop=True, inplace=True)
+    
+    contcar = Poscar.from_file(contcar_path)
+    species = [site.specie.symbol for site in contcar.structure]
+    
+    tot_data = tot_data.copy()
+    tot_data.loc[:, "species"] = species
+    
     return tot_data
 
 

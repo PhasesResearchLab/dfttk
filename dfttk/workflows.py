@@ -17,6 +17,7 @@ from natsort import natsorted
 from custodian.custodian import Custodian
 from custodian.vasp.jobs import VaspJob
 from pymatgen.core.structure import Structure
+from pymatgen.io.vasp import Incar
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Chgcar
 from pymatgen.transformations.standard_transformations import SupercellTransformation
@@ -24,440 +25,98 @@ from pymatgen.transformations.standard_transformations import SupercellTransform
 # DFTTK imports
 from dfttk.data_extraction import extract_volume
 from dfttk.magnetism import get_magnetic_structure
+from dfttk.data_extraction import extract_tot_mag_data
 
 
-def three_step_relaxation(
-    path: str,
-    vasp_cmd: list[str],
-    handlers: list[str],
-    copy_magmom: bool = False,
-    backup: bool = False,
-    default_settings: bool = True,
-    settings_override_2relax: list = None,
-    settings_override_3static: list = None,
+def move_folders(src_path: str, dest_path: str, folders: list[str]) -> None:
+    """Moves folders from the source path to the destination path. It is used to move previous error folders when restarting
+    a job to a temporary folder. 
+
+    Args:
+        src_path (str): path to the source folder containing the error folders.
+        dest_path (str): path to the destination folder to move the error folders.
+        folders (list[str]): list of error folders to move.
+    """
+    for folder in folders:
+        src = os.path.join(src_path, folder)
+        dest = os.path.join(dest_path, folder)
+        subprocess.run(["mv", src, dest], check=True)
+
+
+def rename_error_folders(
+    path: str, error_folders_old: list[str], prev_error_folders_count: int
 ) -> None:
-    """Runs a three-step relaxation - two consecutive relaxations followed by
-       one static.
+    """Renames the error folders in the path. It is used to rename the error folders when restarting a job according
+    to the number of error folders that were moved to a temporary folder from the previous run. For example, if the 
+    error folders in the temporary folder are error.1.tar and error.2.tar, the error folders in the path will be renamed
+    from error.1.tar to error.3.tar and error.2.tar to error.4.tar. 
 
     Args:
-        path (str): path to the folder containing the VASP input files
-        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
-        file of the next run. Defaults to False.
-        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
-        .orig. Defaults to False.
-        default_settings (bool, optional): if True, uses the default settings for the relaxation and static steps. Defaults to True.
-        settings_override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
-        settings_override_3static (list, optional): override settings for the final static step. Defaults to None.
+        path (str): path to the folder containing the error folders.
+        error_folders_old (list[str]): list of error folders to rename.
+        prev_error_folders_count (int): count of error folders that was moved using move_folders.
     """
+    for error_folder_old in error_folders_old:
+        error_folder_new = error_folder_old.copy()
+        index = int(error_folder_new[1])
+        error_folder_new[1] = str(index + prev_error_folders_count)
+        error_folder_new = ".".join(error_folder_new)
+        error_folder_old = ".".join(error_folder_old)
 
-    if default_settings:
-        settings_override_2relax = [
-            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}}
-        ]
-        settings_override_3static = [
-            {
-                "dict": "INCAR",
-                "action": {
-                    "_set": {"ALGO": "Normal", "IBRION": -1, "NSW": 0, "ISMEAR": -5}
-                },
-            },
-            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
-        ]
-
-    original_dir = os.getcwd()
-    os.chdir(path)
-    step1 = VaspJob(
-        vasp_cmd=vasp_cmd,
-        copy_magmom=copy_magmom,
-        final=False,
-        suffix=".1relax",
-        backup=backup,
-    )
-
-    step2 = VaspJob(
-        vasp_cmd=vasp_cmd,
-        copy_magmom=copy_magmom,
-        final=False,
-        suffix=".2relax",
-        backup=backup,
-        settings_override=settings_override_2relax,
-    )
-
-    step3 = VaspJob(
-        vasp_cmd=vasp_cmd,
-        copy_magmom=copy_magmom,
-        final=True,
-        suffix=".3static",
-        backup=backup,
-        settings_override=settings_override_3static,
-    )
-
-    jobs = [step1, step2, step3]
-    c = Custodian(handlers, jobs, max_errors=3)
-    c.run()
-    os.chdir(original_dir)
+        src_path = os.path.join(path, error_folder_old)
+        dest_path = os.path.join(path, error_folder_new)
+        subprocess.run(["mv", src_path, dest_path], check=True)
 
 
-def ev_curve_series(
-    path: str,
-    volumes: list[float],
-    vasp_cmd: list[str],
-    handlers: list[str],
-    restarting: bool = False,
-    keep_wavecar: bool = False,
-    keep_chgcar: bool = False,
-    copy_magmom: bool = False,
-    default_settings: bool = True,
-    settings_override_2relax: list = None,
-    settings_override_3static: list = None,
-) -> None:
-    """Runs a series of three_step_relaxation calculations for a list of volumes.
+def process_error_folders(path: str, prev_error_folders_count: int) -> None:
+    """Processes the error folders in the path by renaming and moving them. It is used to rename the error folders when restarting a job according
+    to the number of error folders that were moved to a temporary folder from the previous run. For example, if the 
+    error folders in the temporary folder are error.1.tar and error.2.tar, the error folders in the path will be renamed
+    from error.1.tar to error.3.tar and error.2.tar to error.4.tar. Then, the error folders in the temporary folder will be moved to the path 
+    and the temporary folder will be removed.
 
     Args:
-        path (str): path to the folder containing the VASP input files.
-        volumes (list[float]): list of volumes
-        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        restarting (bool, optional): for restarting failed jobs. Defaults to False.
-        keep_wavecar (bool, optional): if True, does not delete WAVECAR.3static. Defaults to False.
-        keep_chgcar (bool, optional): if True, does not delete CHGCAR.3static. Defaults to False.
-        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
-        file of the next run. Defaults to False.
-        default_settings (bool, optional): Use the default settings for three_step_relaxation. Defaults to True.
-        settings_override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
-        settings_override_3static (list, optional): override settings for the final static step. Defaults to None.
+        path (str): path to the folder containing the error folders.
+        prev_error_folders_count (int): count of error folders that was moved using move_folders.
     """
+    error_folders_old = [f for f in os.listdir(path) if f.startswith("error.")]
+    error_folders_old = [f.split(".") for f in error_folders_old]
+    error_folders_old.reverse()
+    rename_error_folders(path, error_folders_old, prev_error_folders_count)
 
-    # Writes a params.json file to keep track of the parameters used
-    errors_subset_list = [handler.errors_subset_to_catch for handler in handlers]
-    params = {
-        "path": path,
-        "volumes": volumes,
-        "vasp_cmd": vasp_cmd,
-        "handlers": errors_subset_list[0],
-        "restarting": restarting,
-    }
+    error_temp_path = os.path.join(path, "error_temp")
+    error_temp_folders = [f for f in os.listdir(error_temp_path)]
+    move_folders(error_temp_path, path, error_temp_folders)
 
-    n = 0
-    params_json_path = os.path.join(path, "params_" + str(n) + ".json")
-    while os.path.isfile(params_json_path):
-        n += 1
-        params_json_path = os.path.join(path, "params_" + str(n) + ".json")
-
-    with open(params_json_path, "w") as file:
-        json.dump(params, file)
-
-    # Currently, restarting only supports:
-    # 1) Volumes list greater than or equal to the number of vol folders
-    # 2) The volumes in the vol folders should match the volumes list in order
-    if restarting:
-
-        vol_folders = [
-            folder
-            for folder in os.listdir(path)
-            if os.path.isdir(folder) and folder.startswith("vol")
-        ]
-        vol_folders = natsorted(vol_folders)
-
-        volumes_started = []
-        for vol_folder in vol_folders:
-            try:
-                volume_started = extract_volume(
-                    os.path.join(path, vol_folder, "POSCAR.1relax")
-                )
-            except Exception as e:
-                print(f"possible error: {e}, trying POSCAR")
-                try:
-                    volume_started = extract_volume(
-                        os.path.join(path, vol_folder, "POSCAR")
-                    )
-                except Exception as e:
-                    print(
-                        f"Error: {e}. Could not extract volumes from POSCAR files. Do the files POSCAR.1relax or POSCAR exist in each volume folder?"
-                    )
-                    sys.exit(1)
-
-            volumes_started.append(volume_started)
-            rounded_volumes_supplied = [round(volume, 6) for volume in volumes]
-
-        if not volumes_started == rounded_volumes_supplied[: len(volumes_started)]:
-            print(
-                f"Error: The volumes completed do not match the inputed volumes list of the same number starting from the beginning. \n rounded_input_volumes: {rounded_volumes_supplied} \n volumes_started (rounded): {volumes_started} \n Exiting."
-            )
-            sys.exit(1)
-        else:
-            print(
-                "The volumes completed match the inputed volumes list of the same number starting from the beginning. Continuing restart"
-            )
-
-        j = len(vol_folders) - 1
-        last_vol_folder_name = "vol_" + str(j)
-        last_vol_folder_path = os.path.join(path, last_vol_folder_name)
-
-        # If the job failed at the third step of three_step_relaxation, restart using the files from the second step
-        if all(
-            os.path.isfile(os.path.join(last_vol_folder_path, file))
-            for file in ["INCAR.2relax", "POSCAR.2relax", "KPOINTS.2relax"]
-        ):
-            source_name_dest_name = [
-                ("INCAR.2relax", "INCAR"),
-                ("CONTCAR.2relax", "POSCAR"),
-                ("KPOINTS.2relax", "KPOINTS"),
-                ("CHGCAR.2relax", "CHGCAR"),
-                ("WAVECAR.2relax", "WAVECAR"),
-            ]
-            for file_name in source_name_dest_name:
-                file_source = os.path.join(last_vol_folder_path, file_name[0])
-                file_dest = os.path.join(last_vol_folder_path, file_name[1])
-                if os.path.isfile(file_source):
-                    shutil.copy2(file_source, file_dest)
-
-            keep_files = [name[1] for name in source_name_dest_name] + ["POTCAR"]
-            for filename in os.listdir(last_vol_folder_path):
-                file_path = os.path.join(last_vol_folder_path, filename)
-                if filename not in keep_files:
-                    os.remove(file_path)
-
-            print("Running three step relaxation for volume " + str(volumes[j]))
-            three_step_relaxation(
-                last_vol_folder_path,
-                vasp_cmd,
-                handlers,
-                copy_magmom=copy_magmom,
-                backup=False,
-                default_settings=True,
-                settings_override_2relax=settings_override_2relax,
-                settings_override_3static=settings_override_3static,
-            )
-
-            last_vol_index = j + 1
-
-        # If the job failed at the second step of three_step_relaxation, restart using the files from the first step
-        elif all(
-            os.path.isfile(os.path.join(last_vol_folder_path, file))
-            for file in ["INCAR.1relax", "POSCAR.1relax", "KPOINTS.1relax"]
-        ):
-            source_name_dest_name = [
-                ("INCAR.1relax", "INCAR"),
-                ("CONTCAR.1relax", "POSCAR"),
-                ("KPOINTS.1relax", "KPOINTS"),
-                ("CHGCAR.1relax", "CHGCAR"),
-                ("WAVECAR.1relax", "WAVECAR"),
-            ]
-            for file_name in source_name_dest_name:
-                file_source = os.path.join(last_vol_folder_path, file_name[0])
-                file_dest = os.path.join(last_vol_folder_path, file_name[1])
-                if os.path.isfile(file_source):
-                    shutil.copy2(file_source, file_dest)
-
-            keep_files = [name[1] for name in source_name_dest_name] + ["POTCAR"]
-            for filename in os.listdir(last_vol_folder_path):
-                file_path = os.path.join(last_vol_folder_path, filename)
-                if filename not in keep_files:
-                    os.remove(file_path)
-
-            print("Running three step relaxation for volume " + str(volumes[j]))
-            three_step_relaxation(
-                last_vol_folder_path,
-                vasp_cmd,
-                handlers,
-                copy_magmom=copy_magmom,
-                backup=False,
-                default_settings=True,
-                settings_override_2relax=settings_override_2relax,
-                settings_override_3static=settings_override_3static,
-            )
-            last_vol_index = j + 1
-
-        # If the job failed at the first step of three_step_relaxation, delete the folder
-        else:
-            shutil.rmtree(last_vol_folder_path)
-            last_vol_index = j
-
-    files_to_delete = [
-        "WAVECAR.1relax",
-        "WAVECAR.2relax",
-        "WAVECAR.3static",
-        "CHGCAR.3static",
-        "CHGCAR.1relax",
-        "CHGCAR.2relax",
-        "CHG.1relax",
-        "CHG.2relax",
-        "CHG.3static",
-        "PROCAR.1relax",
-        "PROCAR.2relax",
-        "PROCAR.3static",
-    ]
-    if keep_wavecar:
-        files_to_delete.remove("WAVECAR.3static")
-    if keep_chgcar:
-        files_to_delete.remove("CHGCAR.3static")
-
-    # This starts the EV curve calculations in series. If restarting, skip the volumes that have already been completed.
-    for i, vol in enumerate(volumes):
-        if restarting and i < last_vol_index:
-            continue
-
-        vol_folder_name = "vol_" + str(i)
-        vol_folder_path = os.path.join(path, vol_folder_name)
-        os.makedirs(vol_folder_path)
-
-        if i == 0:
-            files_to_copy = ["INCAR", "KPOINTS", "POSCAR", "POTCAR"]
-            for file_name in files_to_copy:
-                if os.path.isfile(os.path.join(path, file_name)):
-                    shutil.copy2(
-                        os.path.join(path, file_name),
-                        os.path.join(vol_folder_path, file_name),
-                    )
-        else:
-            previous_vol_folder_path = os.path.join(path, "vol_" + str(i - 1))
-            source_name_dest_name = [
-                ("CONTCAR.3static", "POSCAR"),
-                ("INCAR.2relax", "INCAR"),
-                ("KPOINTS.1relax", "KPOINTS"),
-                ("POTCAR", "POTCAR"),
-                ("WAVECAR.3static", "WAVECAR"),
-                ("CHGCAR.3static", "CHGCAR"),
-            ]
-            for file_name in source_name_dest_name:
-                file_source = os.path.join(previous_vol_folder_path, file_name[0])
-                file_dest = os.path.join(vol_folder_path, file_name[1])
-                if os.path.isfile(file_source):
-                    shutil.copy2(file_source, file_dest)
-
-            paths_to_delete = []
-
-            for file_name in files_to_delete:
-                file_path = os.path.join(previous_vol_folder_path, file_name)
-                paths_to_delete.append(file_path)
-
-            for file_path in paths_to_delete:
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-                elif restarting and i == last_vol_index:
-                    pass
-
-        poscar = os.path.join(vol_folder_path, "POSCAR")
-        struct = Structure.from_file(poscar)
-        struct.scale_lattice(vol)
-        struct.to_file(poscar, "POSCAR")
-
-        print("Running three step relaxation for volume " + str(vol))
-        three_step_relaxation(
-            vol_folder_path,
-            vasp_cmd,
-            handlers,
-            backup=False,
-            copy_magmom=copy_magmom,
-            default_settings=default_settings,
-            settings_override_2relax=settings_override_2relax,
-            settings_override_3static=settings_override_3static,
-        )
-
-    previous_vol_folder_path = os.path.join(path, "vol_" + str(i))
-    paths_to_delete = []
-    for file_name in files_to_delete:
-        file_path = os.path.join(previous_vol_folder_path, file_name)
-        paths_to_delete.append(file_path)
-
-    for file_path in paths_to_delete:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+    subprocess.run(["rm", "-r", error_temp_path])
 
 
-def charge_density_difference(
-    path: str, vasp_cmd: list[str], handlers: list[str], backup: bool = False
-) -> Chgcar:
-    """Runs a charge density difference calculation. The charge_density_difference is calculated as the difference between the
-    charge density of the final electronic step and the charge density of a single step.
+def merge_custodian_json_files(path: str) -> None:
+    """Merges the custodian.json and prev_custodian.json files in the path. The prev_custodian.json file is
+    the custodian.json file from the previous run, while the custodian.json file is the custodian.json file from 
+    the current restart run. The merged custodian.json file will contain the combined settings from the two files.
 
     Args:
-        path (str): path that contains the VASP input files.
-        vasp_cmd (list[str]):  VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
-        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        backup (bool, optional): If True, the starting INCAR, KPOINTS, POSCAR and POTCAR files will be copied with a “.orig”
-        appended. Defaults to False.
-
-    Returns:
-        Chgcar: The charge density difference between the final electronic step and a single step.
+        path (str): path to the folder containing the custodian.json and prev_custodian.json files.
     """
+    custodian_json_path = os.path.join(path, "custodian.json")
+    prev_custodian_json_path = os.path.join(path, "prev_custodian.json")
+    if os.path.isfile(prev_custodian_json_path):
+        with open(custodian_json_path, "r") as f:
+            custodian_json = json.load(f)
+        with open(prev_custodian_json_path, "r") as f:
+            prev_custodian_json = json.load(f)
 
-    original_dir = os.getcwd()
-    os.chdir(path)
-    os.mkdir("charge_density_difference")
-    shutil.copy2("POSCAR", "charge_density_difference/POSCAR")
-    shutil.copy2("POTCAR", "charge_density_difference/POTCAR")
-    shutil.copy2("INCAR", "charge_density_difference/INCAR")
-    shutil.copy2("KPOINTS", "charge_density_difference/KPOINTS")
-    os.chdir("charge_density_difference")
+        custodian_json[0].update({"restart": True})
+        combined_custodian_json = prev_custodian_json + custodian_json
+        with open(custodian_json_path, "w") as f:
+            json.dump(combined_custodian_json, f, indent=4)
 
-    reference_job = VaspJob(
-        vasp_cmd=vasp_cmd,
-        final=False,
-        suffix=".reference",
-        backup=backup,
-        settings_override=[
-            {
-                "dict": "INCAR",
-                "action": {
-                    "_set": {
-                        "EDIFF": "1E-6",
-                        "IBRION": -1,
-                        "NSW": 1,
-                        "ISIF": 2,
-                        "NELM": 1,
-                        "ISMEAR": -5,
-                        "SIGMA": 0.05,
-                        "LCHARG": True,
-                    }
-                },
-            },
-        ],
-    )
-
-    charge_density_job = VaspJob(
-        vasp_cmd=vasp_cmd,
-        final=True,
-        suffix=".charge_density",
-        backup=backup,
-        settings_override=[
-            {
-                "dict": "INCAR",
-                "action": {
-                    "_set": {
-                        "EDIFF": "1E-6",
-                        "IBRION": -1,
-                        "NSW": 1,
-                        "ISIF": 2,
-                        "NELM": 100,
-                        "ISMEAR": -5,
-                        "SIGMA": 0.05,
-                        "LCHARG": True,
-                    }
-                },
-            },
-        ],
-    )
-
-    jobs = [reference_job, charge_density_job]
-    c = Custodian(handlers, jobs, max_errors=3)
-    c.run()
-
-    final = Chgcar.from_file("CHGCAR.charge_density")
-    reference = Chgcar.from_file("CHGCAR.reference")
-    difference = final - reference
-    difference.write_file("CHGCAR.difference")
-
-    os.chdir(original_dir)
-
-    return difference
-
+        os.remove(prev_custodian_json_path)
+        
 
 def custodian_errors_location(path: str) -> list[str]:
-    """Prints the location of the custodian errors in the path.
+    """Prints the calculation folders containing the custodian errors in the specified path.
 
     Args:
         path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
@@ -489,6 +148,7 @@ def custodian_errors_location(path: str) -> list[str]:
         for d in os.listdir(path)
         if d.startswith("phonon") and os.path.isdir(os.path.join(path, d))
     ]
+    phonon_folders = natsorted(phonon_folders)
     for phonon_folder in phonon_folders:
         error_folders = [
             f
@@ -496,6 +156,7 @@ def custodian_errors_location(path: str) -> list[str]:
             if f.startswith("error")
         ]
         if len(error_folders) > 0:
+            error_folders = natsorted(error_folders)
             print(f"In {phonon_folder} there are error folders: {error_folders}")
             phonon_folders_errors.append(phonon_folder)
 
@@ -521,6 +182,412 @@ def NELM_reached(path: str) -> None:
                         break
 
 
+def three_step_relaxation(
+    path: str,
+    vasp_cmd: list[str],
+    handlers: list[str],
+    copy_magmom: bool = False,
+    backup: bool = False,
+    default_settings: bool = True,
+    override_2relax: list = None,
+    override_3static: list = None,
+    max_errors: int = 10,
+    restart: str = None,
+) -> None:
+    """Runs a three-step relaxation - two consecutive relaxations followed by
+       one static.
+
+    Args:
+        path (str): path to the folder containing the VASP input files
+        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        file of the next run. Defaults to False.
+        backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
+        .orig. Defaults to False.
+        default_settings (bool, optional): if True, uses the default settings for the relaxation and static steps. Defaults to True.
+        override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
+        override_3static (list, optional): override settings for the final static step. Defaults to None.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
+        restart (str, optional): if not None, restarts the calculation from the specified step. Defaults to None.
+    """
+
+    if default_settings:
+        override_2relax = [
+            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}}
+        ]
+        override_3static = [
+            {
+                "dict": "INCAR",
+                "action": {
+                    "_set": {"ALGO": "Normal", "IBRION": -1, "NSW": 0, "ISMEAR": -5}
+                },
+            },
+            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
+        ]
+
+    original_dir = os.getcwd()
+    os.chdir(path)
+    step1 = VaspJob(
+        vasp_cmd=vasp_cmd,
+        copy_magmom=copy_magmom,
+        final=False,
+        suffix=".1relax",
+        backup=backup,
+    )
+    step2 = VaspJob(
+        vasp_cmd=vasp_cmd,
+        copy_magmom=copy_magmom,
+        final=False,
+        suffix=".2relax",
+        backup=backup,
+        settings_override=override_2relax,
+    )
+    step3 = VaspJob(
+        vasp_cmd=vasp_cmd,
+        copy_magmom=copy_magmom,
+        final=True,
+        suffix=".3static",
+        backup=backup,
+        settings_override=override_3static,
+    )
+
+    if restart is None:
+        jobs = [step1, step2, step3]
+        c = Custodian(handlers, jobs, max_errors=max_errors)
+        c.run()
+
+    elif restart == "step2":
+        jobs = [step2, step3]
+        c = Custodian(handlers, jobs, max_errors=max_errors)
+        c.run()
+
+    elif restart == "step3":
+        jobs = [step3]
+        c = Custodian(handlers, jobs, max_errors=max_errors)
+        c.run()
+
+    os.chdir(original_dir)
+
+
+def ev_curve_series(
+    path: str,
+    volumes: list[float],
+    vasp_cmd: list[str],
+    handlers: list[str],
+    restarting: bool = False,
+    keep_wavecar: bool = False,
+    keep_chgcar: bool = False,
+    copy_magmom: bool = False,
+    default_settings: bool = True,
+    override_2relax: list = None,
+    override_3static: list = None,
+    max_errors: int = 10,
+) -> None:
+    """Runs a series of three_step_relaxation calculations for a list of volumes.
+
+    Args:
+        path (str): path to the folder containing the VASP input files.
+        volumes (list[float]): list of volumes
+        vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        restarting (bool, optional): for restarting failed jobs. Defaults to False.
+        keep_wavecar (bool, optional): if True, does not delete WAVECAR.3static. Defaults to False.
+        keep_chgcar (bool, optional): if True, does not delete CHGCAR.3static. Defaults to False.
+        copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
+        file of the next run. Defaults to False.
+        default_settings (bool, optional): Use the default settings for three_step_relaxation. Defaults to True.
+        override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
+        override_3static (list, optional): override settings for the final static step. Defaults to None.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
+    """
+
+    # Write a params.json file to track the parameters used
+    errors_subset = handlers[0].errors_subset_to_catch
+    params = {
+        "path": path,
+        "volumes": volumes,
+        "vasp_cmd": vasp_cmd,
+        "handlers": errors_subset,
+        "restarting": restarting,
+    }
+
+    n = 0
+    params_json_path = os.path.join(path, "params_" + str(n) + ".json")
+    while os.path.isfile(params_json_path):
+        n += 1
+        params_json_path = os.path.join(path, "params_" + str(n) + ".json")
+    with open(params_json_path, "w") as file:
+        json.dump(params, file)
+
+    # Currently, restarting supports the following conditions:
+    # 1) The volumes list must be greater than or equal to the number of volume folders.
+    # 2) The volumes in the volume folders must match the volumes list in order.
+    if restarting:
+        vol_folders = [
+            folder
+            for folder in os.listdir(path)
+            if os.path.isdir(folder) and folder.startswith("vol")
+        ]
+        vol_folders = natsorted(vol_folders)
+
+        volumes_started = []
+        for vol_folder in vol_folders:
+            try:
+                volume_started = extract_volume(
+                    os.path.join(path, vol_folder, "POSCAR.1relax")
+                )
+            except Exception as e:
+                print(f"possible error: {e}, trying POSCAR")
+                try:
+                    volume_started = extract_volume(
+                        os.path.join(path, vol_folder, "POSCAR")
+                    )
+                except Exception as e:
+                    print(
+                        f"Error: {e}. Failed to extract volumes from POSCAR files. Ensure that POSCAR.1relax or POSCAR exists in each volume folder."
+                    )
+                    sys.exit(1)
+
+            volumes_started.append(volume_started)
+            rounded_volumes_supplied = [round(volume, 6) for volume in volumes]
+
+        if not volumes_started == rounded_volumes_supplied[: len(volumes_started)]:
+            print(
+                f"Error: The completed volumes do not match the input volumes list from the beginning. \n"
+                f"Rounded input volumes: {rounded_volumes_supplied} \n"
+                f"Started volumes: {volumes_started} \n"
+                "Exiting."
+            )
+            sys.exit(1)
+        else:
+            print(
+                "The completed volumes match the input volumes list from the beginning. Continuing restart."
+            )
+
+        j = len(vol_folders) - 1
+        last_vol_folder_name = "vol_" + str(j)
+        last_vol_folder_path = os.path.join(path, last_vol_folder_name)
+
+        # If the job failed at the second step of three_step_relaxation, restart from step 3.
+        files = os.listdir(last_vol_folder_path)
+        files_exist = any(file.endswith(".1relax") for file in files) and any(
+            file.endswith(".2relax") for file in files
+        )
+        files_missing = not any(file.endswith(".3static") for file in files)
+
+        if files_exist and files_missing:
+
+            custodian_json_path = os.path.join(last_vol_folder_path, "custodian.json")
+            custodian_old_json_path = os.path.join(
+                last_vol_folder_path, "custodian_old.json"
+            )
+            if os.path.isfile(custodian_json_path):
+                os.rename(custodian_json_path, custodian_old_json_path)
+
+            error_folders = [
+                f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
+            ]
+            prev_error_folders_count = len(error_folders)
+            error_temp_path = os.path.join(last_vol_folder_path, "error_temp")
+            if not os.path.exists(error_temp_path):
+                os.makedirs(error_temp_path)
+
+            move_folders(last_vol_folder_path, error_temp_path, error_folders)
+
+            print(
+                f"Running three step relaxation for volume {str(volumes[j])} at step 3"
+            )
+            three_step_relaxation(
+                last_vol_folder_path,
+                vasp_cmd,
+                handlers,
+                copy_magmom=copy_magmom,
+                backup=False,
+                default_settings=True,
+                override_2relax=override_2relax,
+                override_3static=override_3static,
+                max_errors=max_errors,
+                restart="step3",
+            )
+
+            process_error_folders(last_vol_folder_path, prev_error_folders_count)
+            merge_custodian_json_files(last_vol_folder_path)
+
+            error_folders = [
+                f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
+            ]
+
+            last_vol_index = j + 1
+
+        # If the job failed at the second step of three_step_relaxation, restart from step 2.
+        files_exist = any(file.endswith(".1relax") for file in files)
+        files_missing = not any(
+            file.endswith(".3static") for file in files
+        ) and not any(file.endswith(".2relax") for file in files)
+
+        if files_exist and files_missing:
+
+            custodian_json_path = os.path.join(last_vol_folder_path, "custodian.json")
+            custodian_old_json_path = os.path.join(
+                last_vol_folder_path, "custodian_old.json"
+            )
+            if os.path.isfile(custodian_json_path):
+                os.rename(custodian_json_path, custodian_old_json_path)
+
+            error_folders = [
+                f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
+            ]
+            prev_error_folders_count = len(error_folders)
+            error_temp_path = os.path.join(last_vol_folder_path, "error_temp")
+            if not os.path.exists(error_temp_path):
+                os.makedirs(error_temp_path)
+
+            move_folders(last_vol_folder_path, error_temp_path, error_folders)
+
+            print(
+                f"Running three step relaxation for volume {str(volumes[j])} at step 2"
+            )
+            three_step_relaxation(
+                last_vol_folder_path,
+                vasp_cmd,
+                handlers,
+                copy_magmom=copy_magmom,
+                backup=False,
+                default_settings=True,
+                override_2relax=override_2relax,
+                override_3static=override_3static,
+                max_errors=max_errors,
+                restart="step2",
+            )
+
+            process_error_folders(last_vol_folder_path, prev_error_folders_count)
+            merge_custodian_json_files(last_vol_folder_path)
+
+            error_folders = [
+                f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
+            ]
+
+            last_vol_index = j + 1
+
+        # If the job failed at the first step of three_step_relaxation, delete the folder.
+        files_missing = (
+            not any(file.endswith(".3static") for file in files)
+            and not any(file.endswith(".2relax") for file in files)
+            and not any(file.endswith(".1relax") for file in files)
+        )
+        if files_missing:
+            shutil.rmtree(last_vol_folder_path)
+            last_vol_index = j
+
+    files_to_delete = [
+        "WAVECAR.1relax",
+        "WAVECAR.2relax",
+        "WAVECAR.3static",
+        "CHGCAR.3static",
+        "CHGCAR.1relax",
+        "CHGCAR.2relax",
+        "CHG.1relax",
+        "CHG.2relax",
+        "CHG.3static",
+        "PROCAR.1relax",
+        "PROCAR.2relax",
+        "PROCAR.3static",
+    ]
+    if keep_wavecar:
+        files_to_delete.remove("WAVECAR.3static")
+    if keep_chgcar:
+        files_to_delete.remove("CHGCAR.3static")
+
+    # Start the EV curve calculations in series. If restarting, skip the volumes that have already been completed.
+    for i, vol in enumerate(volumes):
+        if restarting and i < last_vol_index:
+            continue
+
+        vol_folder_name = "vol_" + str(i)
+        vol_folder_path = os.path.join(path, vol_folder_name)
+        os.makedirs(vol_folder_path)
+
+        if i == 0:
+            files_to_copy = ["INCAR", "KPOINTS", "POSCAR", "POTCAR"]
+            for file_name in files_to_copy:
+                if os.path.isfile(os.path.join(path, file_name)):
+                    shutil.copy2(
+                        os.path.join(path, file_name),
+                        os.path.join(vol_folder_path, file_name),
+                    )
+
+        else:
+            previous_vol_folder_path = os.path.join(path, f"vol_{i - 1}")
+            source_name_dest_name = [
+                ("CONTCAR.3static", "POSCAR"),
+                ("KPOINTS.3static", "KPOINTS"),
+                ("POTCAR", "POTCAR"),
+                ("WAVECAR.3static", "WAVECAR"),
+                ("CHGCAR.3static", "CHGCAR"),
+            ]
+
+            for file_name in source_name_dest_name:
+                file_source = os.path.join(previous_vol_folder_path, file_name[0])
+                file_dest = os.path.join(vol_folder_path, file_name[1])
+                if os.path.isfile(file_source):
+                    shutil.copy2(file_source, file_dest)
+
+            incar_path = os.path.join(path, "INCAR")
+            shutil.copy2(incar_path, os.path.join(vol_folder_path, "INCAR"))
+
+            if copy_magmom:
+                outcar_path = os.path.join(previous_vol_folder_path, "OUTCAR.3static")
+                contcar_path = os.path.join(previous_vol_folder_path, "CONTCAR.3static")
+                tot_data = extract_tot_mag_data(outcar_path, contcar_path)
+                magmom = tot_data["tot"].to_list()
+                incar = Incar.from_file(os.path.join(vol_folder_path, "INCAR"))
+                incar["MAGMOM"] = magmom
+                incar.write_file(os.path.join(vol_folder_path, "INCAR"))
+
+            paths_to_delete = []
+            for file_name in files_to_delete:
+                file_path = os.path.join(previous_vol_folder_path, file_name)
+                paths_to_delete.append(file_path)
+
+            for file_path in paths_to_delete:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                elif restarting and i == last_vol_index:
+                    pass
+
+        poscar = os.path.join(vol_folder_path, "POSCAR")
+        struct = Structure.from_file(poscar)
+        struct.scale_lattice(vol)
+        struct.to_file(poscar, "POSCAR")
+
+        print("Running three step relaxation for volume " + str(vol))
+        three_step_relaxation(
+            vol_folder_path,
+            vasp_cmd,
+            handlers,
+            backup=False,
+            copy_magmom=copy_magmom,
+            default_settings=default_settings,
+            override_2relax=override_2relax,
+            override_3static=override_3static,
+        )
+
+        error_folders = [
+            f for f in os.listdir(vol_folder_path) if f.startswith("error.")
+        ]
+
+    previous_vol_folder_path = os.path.join(path, "vol_" + str(i))
+    paths_to_delete = []
+    for file_name in files_to_delete:
+        file_path = os.path.join(previous_vol_folder_path, file_name)
+        paths_to_delete.append(file_path)
+
+    for file_path in paths_to_delete:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+
 # TODO: add a way to restart the job if it has failed
 # TODO: add a way to override the default settings
 def run_phonons(
@@ -528,6 +595,7 @@ def run_phonons(
     handlers: list[str],
     copy_magmom: bool = False,
     backup: bool = False,
+    max_errors: int = 10,
 ):
     """Runs a relaxation followed by a phonon calculation.
 
@@ -538,6 +606,7 @@ def run_phonons(
         file of the next run. Defaults to False.
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
     """
 
     step1 = VaspJob(
@@ -574,7 +643,7 @@ def run_phonons(
     )
 
     jobs = [step1, step2]
-    c = Custodian(handlers, jobs, max_errors=3)
+    c = Custodian(handlers, jobs, max_errors=max_errors)
     c.run()
 
 
@@ -802,14 +871,13 @@ def process_phonon_dos_YPHON(path: str):
             os.remove(log_file_path)
 
 
-# TODO: Create two steps. 1) Get the whole electron DOS to compute Fel. 2) Get a very fine electron DOS
-# to compute Sel and Cv,el. 
 def run_elec_dos(
     vasp_cmd: list[str],
     handlers: list[str],
     NEDOS: int = 10001,
     copy_magmom: bool = False,
     backup: bool = False,
+    max_errors: int = 10,
 ):
     """Runs an electronic DOS calculation.
 
@@ -820,6 +888,7 @@ def run_elec_dos(
         file of the next run. Defaults to False.
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
     """
 
     step1 = VaspJob(
@@ -842,11 +911,12 @@ def run_elec_dos(
                         "NEDOS": NEDOS,
                     }
                 },
-            },],
+            },
+        ],
     )
 
     jobs = [step1]
-    c = Custodian(handlers, jobs, max_errors=3)
+    c = Custodian(handlers, jobs, max_errors=max_errors)
     c.run()
 
 
@@ -896,7 +966,7 @@ def elec_dos_parallel(
         if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol")
     ]
     vol_folders = natsorted(vol_folders)
-    
+
     ev_volumes_finished = []
     ev_folder_names = []
     for vol_folder in vol_folders:
@@ -980,8 +1050,101 @@ def elec_dos_parallel(
         with open("run_elec_dos", "w") as file:
             file.write(new_run_file)
         os.system("sbatch run_elec_dos")
-        os.chdir(path)        
-        
+        os.chdir(path)
+
+
+def charge_density_difference(
+    path: str,
+    vasp_cmd: list[str],
+    handlers: list[str],
+    backup: bool = False,
+    max_errors: int = 10,
+) -> Chgcar:
+    """Runs a charge density difference calculation. The charge_density_difference is calculated as the difference between the
+    charge density of the final electronic step and the charge density of a single step.
+
+    Args:
+        path (str): path that contains the VASP input files.
+        vasp_cmd (list[str]):  VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
+        handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
+        backup (bool, optional): If True, the starting INCAR, KPOINTS, POSCAR and POTCAR files will be copied with a “.orig”
+        appended. Defaults to False.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
+
+    Returns:
+        Chgcar: The charge density difference between the final electronic step and a single step.
+    """
+
+    original_dir = os.getcwd()
+    os.chdir(path)
+    os.mkdir("charge_density_difference")
+    shutil.copy2("POSCAR", "charge_density_difference/POSCAR")
+    shutil.copy2("POTCAR", "charge_density_difference/POTCAR")
+    shutil.copy2("INCAR", "charge_density_difference/INCAR")
+    shutil.copy2("KPOINTS", "charge_density_difference/KPOINTS")
+    os.chdir("charge_density_difference")
+
+    reference_job = VaspJob(
+        vasp_cmd=vasp_cmd,
+        final=False,
+        suffix=".reference",
+        backup=backup,
+        settings_override=[
+            {
+                "dict": "INCAR",
+                "action": {
+                    "_set": {
+                        "EDIFF": "1E-6",
+                        "IBRION": -1,
+                        "NSW": 1,
+                        "ISIF": 2,
+                        "NELM": 1,
+                        "ISMEAR": -5,
+                        "SIGMA": 0.05,
+                        "LCHARG": True,
+                    }
+                },
+            },
+        ],
+    )
+
+    charge_density_job = VaspJob(
+        vasp_cmd=vasp_cmd,
+        final=True,
+        suffix=".charge_density",
+        backup=backup,
+        settings_override=[
+            {
+                "dict": "INCAR",
+                "action": {
+                    "_set": {
+                        "EDIFF": "1E-6",
+                        "IBRION": -1,
+                        "NSW": 1,
+                        "ISIF": 2,
+                        "NELM": 100,
+                        "ISMEAR": -5,
+                        "SIGMA": 0.05,
+                        "LCHARG": True,
+                    }
+                },
+            },
+        ],
+    )
+
+    jobs = [reference_job, charge_density_job]
+    c = Custodian(handlers, jobs, max_errors=max_errors)
+    c.run()
+
+    final = Chgcar.from_file("CHGCAR.charge_density")
+    reference = Chgcar.from_file("CHGCAR.reference")
+    difference = final - reference
+    difference.write_file("CHGCAR.difference")
+
+    os.chdir(original_dir)
+
+    return difference
+
 
 def kpoints_conv_test(
     path: str,
@@ -1001,6 +1164,7 @@ def kpoints_conv_test(
     ],
     force_gamma: bool = True,
     backup: bool = False,
+    max_errors: int = 10,
 ):
     """Runs a series of VASP calculations with different k-point densities for convergence testing.
 
@@ -1012,6 +1176,7 @@ def kpoints_conv_test(
         force_gamma (bool, optional):If True, forces a gamma-centered mesh. Defaults to True.
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
     """
 
     original_dir = os.getcwd()
@@ -1042,7 +1207,7 @@ def kpoints_conv_test(
                 {"dict": "INCAR", "action": {"_set": {"IBRION": -1, "NSW": 0}}}
             ],
         )
-        c = Custodian(handlers, [job], max_errors=3)
+        c = Custodian(handlers, [job], max_errors=max_errors)
         c.run()
 
         if os.path.isfile(f"WAVECAR.{kppa}"):
@@ -1075,6 +1240,7 @@ def encut_conv_test(
         820,
     ],
     backup: bool = False,
+    max_errors: int = 10,
 ):
     """Runs a series of VASP calculations with different ENCUT values for convergence testing.
 
@@ -1085,6 +1251,7 @@ def encut_conv_test(
         encut_list (list[int], optional): list of ENCUT values to run the calculations for.
         Defaults to [270, 320 , 370, 420, 470, 520, 570, 620, 670, 720, 770, 820].
         backup (bool, optional):If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with .orig. Defaults to False.
+        max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
     """
 
     original_dir = os.getcwd()
@@ -1115,7 +1282,7 @@ def encut_conv_test(
                 }
             ],
         )
-        c = Custodian(handlers, [job], max_errors=3)
+        c = Custodian(handlers, [job], max_errors=max_errors)
         c.run()
 
         if os.path.isfile(f"WAVECAR.{encut}"):
