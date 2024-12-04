@@ -55,7 +55,7 @@ html_context = {
     "display_github": True,
     "github_user": "lukeamyers",
     "github_repo": "dfttk",
-    "github_version": "documentation2",
+    "github_version": "main",
     "conf_py_path": "/docs/",
 }
 

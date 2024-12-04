@@ -41,7 +41,7 @@ def base_set(
         material_type (str): metal or non_metal
         encut (int, optional): ENCUT value. Defaults to 520.
         kppa (int, optional): k-point mesh per reciprocal atom. Defaults to 4000.
-        magmom_fm (bool, optional): include MAGMOM tag in the INCAR file. Defaults to False.
+        magmom_fm (bool, optional): include ferromagnetic MAGMOM in the INCAR file. Defaults to False.
         potcar_functional (str, optional): type of POTCAR file. Defaults to "PBE_54".
         incar_functional (str, optional): GGA or METAGGA tag in the INCAR file. Defaults to "PBE".
 
@@ -90,7 +90,7 @@ def base_set(
     incar_settings.update(material_settings.get(material_type, {}))
 
     if magmom_fm:
-        magmom = [MAGMOM_DICT[site.specie.symbol] for site in struct.sites]
+        magmom = [MAGMOM_DICT.get(site.specie.symbol, 0) for site in struct.sites]
         incar_settings.update({"MAGMOM": magmom, "ISPIN": 2, "LORBIT": 11})
 
     return incar_settings
@@ -113,7 +113,7 @@ def volume_relax_set(
         material_type (str): metal or non_metal
         encut (int, optional): ENCUT value. Defaults to 520.
         kppa (int, optional): k-point mesh per reciprocal atom. Defaults to 4000.
-        magmom_fm (bool, optional): include MAGMOM tag in the INCAR file. Defaults to False.
+        magmom_fm (bool, optional): include ferromagnetic MAGMOM in the INCAR file. Defaults to False.
         potcar_functional (str, optional): type of POTCAR file. Defaults to "PBE_54".
         incar_functional (str, optional): GGA or METAGGA tag in the INCAR file. Defaults to "PBE".
         other_settings (dict, optional): include other INCAR tags. Defaults to {}.
@@ -151,7 +151,7 @@ def conv_set(
         path (str): path to folder containing POSCAR file
         encut (int, optional): ENCUT value. Defaults to 520.
         kppa (int, optional): k-point mesh per reciprocal atom. Defaults to 4000.
-        magmom_fm (bool, optional): include MAGMOM tag in the INCAR file. Defaults to False.
+        magmom_fm (bool, optional): include ferromagnetic MAGMOM in the INCAR file. Defaults to False.
         potcar_functional (str, optional): type of POTCAR file. Defaults to "PBE_54".
         incar_functional (str, optional): GGA or METAGGA tag in the INCAR file. Defaults to "PBE".
         other_settings (dict, optional): include other INCAR tags. Defaults to {}.
@@ -181,6 +181,7 @@ def ev_curve_set(
     material_type: str,
     encut: int = 520,
     kppa: int = 4000,
+    magmom_fm: bool = False,
     potcar_functional: str = "PBE_54",
     incar_functional: str = "PBE",
     other_settings: dict = {},
@@ -192,13 +193,14 @@ def ev_curve_set(
         material_type (str): metal or non_metal
         encut (int, optional): ENCUT value. Defaults to 520.
         kppa (int, optional): k-point mesh per reciprocal atom. Defaults to 4000.
+        magmom_fm (bool, optional): include ferromagnetic MAGMOM in the INCAR file. Defaults to False.
         potcar_functional (str, optional): type of POTCAR file. Defaults to "PBE_54".
         incar_functional (str, optional): GGA or METAGGA tag in the INCAR file. Defaults to "PBE".
         other_settings (dict, optional): include other INCAR tags. Defaults to {}.
     """
 
     incar_settings = base_set(
-        path, material_type, encut, kppa, potcar_functional, incar_functional
+        path, material_type, encut, kppa, magmom_fm, potcar_functional, incar_functional
     )
     incar_settings.update(
         {
