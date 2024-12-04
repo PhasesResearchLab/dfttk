@@ -371,7 +371,7 @@ def handle_later_jump(
             break
 
     # Only keep the configuration if it has at least 8 True values in a row.
-    if max_true > 8:
+    if max_true > 7:
         first_false = index_list[match_list.index(False)]
         config_df = config_df.loc[: first_false - 1]
         multiplicity = ref["multiplicity"].values[0]
