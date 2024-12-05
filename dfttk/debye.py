@@ -502,10 +502,11 @@ def process_debye_gruneisen(
 
         debye_properties_list.append(debye_properties)
 
-        if plot == config:
-            plot_debye(
-                debye_properties, selected_temperatures_plot=selected_temperatures_plot
-            )
-
     all_debye_properties = pd.concat(debye_properties_list, ignore_index=True)
+    
+    if plot is not None:
+        plot_debye(
+            config, all_debye_properties, selected_temperatures_plot=selected_temperatures_plot
+        )
+        
     return all_debye_properties
