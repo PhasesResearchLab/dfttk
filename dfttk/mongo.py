@@ -195,7 +195,7 @@ class MongoDBStorage:
 
     def store_fvib_debye(self, object_id: str, debye_properties: pd.DataFrame):
 
-        natoms_debye = debye_properties["number_of_atoms"].unique()[0]
+        natoms_debye = int(debye_properties["number_of_atoms"].unique()[0])
         min_temperature = debye_properties["temperatures"].min()
         max_temperature = debye_properties["temperatures"].max()
         dT = debye_properties["temperatures"].diff().unique()[1]
