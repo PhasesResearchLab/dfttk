@@ -26,7 +26,8 @@ from dfttk.data_extraction import (
     extract_energy,
     extract_tot_mag_data,
     extract_kpoints,
-    extract_atomic_masses
+    extract_atomic_masses,
+    extract_average_mass,
 )
 from dfttk.magnetism import determine_magnetic_ordering
 
@@ -39,6 +40,7 @@ def extract_configuration_data(
     collect_mag_data: bool = False,
     magmom_tolerance: float = 1e-12,
     total_magnetic_moment_tolerance: float = 1e-12,
+    mass_average: str = "geometric",
 ) -> pd.DataFrame:
     """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations
     run by ev_curve_series and returns a pandas DataFrame.
@@ -51,7 +53,8 @@ def extract_configuration_data(
         collect_mag_data: if True, collect the magnetization data using extract_tot_mag_data. Defaults to
         False.
         magmom_tolerance: the tolerance for the total magnetic moment to be considered zero. Defaults to 0.
-
+        mass_average: the method used to calculate the average atomic mass. Options are "geometric" and "arithmetic".
+        
     Returns:
         pandas DataFrame: a pandas DataFrame containing the volume, configuration, energy, number of atoms, and
         magnetization data (if specified)
@@ -81,7 +84,6 @@ def extract_configuration_data(
             continue
 
         struct = Structure.from_file(contcar_path)
-        contcar = Poscar.from_file(contcar_path)
         number_of_atoms = len(struct.sites)
         vol = extract_volume(contcar_path)
         energy = extract_energy(oszicar_path)
@@ -89,10 +91,7 @@ def extract_configuration_data(
         vol_per_atom = vol / number_of_atoms
         space_group = SpacegroupAnalyzer(struct).get_space_group_symbol()
         atomic_masses = extract_atomic_masses(outcar_path)
-        species = contcar.site_symbols
-        num_atoms = contcar.natoms
-        specie_num_dict = dict(zip(species, num_atoms))
-        total_mass = sum([specie_num_dict[specie] * atomic_masses[specie] for specie in species])
+        average_mass = extract_average_mass(contcar_path, outcar_path, mass_average)
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(outcar_path, contcar_path)
             total_magnetic_moment = mag_data["tot"].sum()
@@ -110,8 +109,8 @@ def extract_configuration_data(
                 "energy": energy,
                 "energy_per_atom": energy_per_atom,
                 "space_group": space_group,
-                "total_mass": total_mass,
                 "atomic_masses": atomic_masses,
+                "average_mass": average_mass,
                 "total_magnetic_moment": total_magnetic_moment,
                 "magnetic_ordering": magnetic_ordering,
                 "mag_data": mag_data,
@@ -125,9 +124,8 @@ def extract_configuration_data(
                 "energy": energy,
                 "energy_per_atom": energy_per_atom,
                 "space_group": space_group,
-                "total_mass": total_mass,
                 "atomic_masses": atomic_masses,
-                "total_mass": total_mass,
+                "average_mass": average_mass,
             }
         row_list.append(row)
     df = pd.DataFrame(row_list)

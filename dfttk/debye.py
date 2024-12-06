@@ -310,6 +310,7 @@ def vibrational_heat_capacity(
 
 
 def plot_debye(
+    config: str,
     debye_properties: pd.DataFrame,
     selected_temperatures_plot: np.array = None,
     selected_volumes: np.array = None,
@@ -333,14 +334,14 @@ def plot_debye(
         tuple[go.Figure, go.Figure]: Two plotly figures, one for the vibrational properties as a function of temperature and one for the vibrational properties
         as a function of volume
     """
+    config_debye_properties = debye_properties[debye_properties["config"] == config]
+    temperatures = config_debye_properties["temperatures"].values
+    volumes = config_debye_properties["volume"].values[0]
+    number_of_atoms = config_debye_properties["number_of_atoms"].values[0]
 
-    temperatures = debye_properties["temperatures"].values
-    volumes = debye_properties["volume"].values[0]
-    number_of_atoms = debye_properties["number_of_atoms"].values[0]
-
-    f_vib = np.array(debye_properties["f_vib"].tolist()).T
-    s_vib = np.array(debye_properties["s_vib"].tolist()).T
-    cv_vib = np.array(debye_properties["cv_vib"].tolist()).T
+    f_vib = np.array(config_debye_properties["f_vib"].tolist()).T
+    s_vib = np.array(config_debye_properties["s_vib"].tolist()).T
+    cv_vib = np.array(config_debye_properties["cv_vib"].tolist()).T
     y_values = [f_vib, s_vib, cv_vib]
     y_labels = [
         f"F<sub>vib</sub> (eV/{number_of_atoms} atoms)",
@@ -411,213 +412,101 @@ def plot_debye(
         s_v_fig.show()
 
 
-# TODO: provide choice for other EOS fitting functions
 def process_debye_gruneisen(
-    config_path: str,
+    energy_volume_df: pd.DataFrame,
+    eos_parameters_df: pd.DataFrame,
     scaling_factor: float = 0.617,
     gruneisen_x: float = 1,
-    mass_average: str = "geometric",
     volumes: np.array = None,
     temperatures: np.array = np.linspace(0, 1000, 101),
-    outcar_name: str = "OUTCAR.3static",
-    oszicar_name: str = "OSZICAR.3static",
-    contcar_name: str = "CONTCAR.3static",
-    collect_mag_data: bool = False,
-    magmom_tolerance: float = 1e-12,
-    total_magnetic_moment_tolerance: float = 1e-12,
-    eos_fitting=eos_fit.BM4,
-    plot=True,
+    eos: str = "BM4",
+    plot=None,
     selected_temperatures_plot: np.array = None,
 ) -> tuple[np.array, np.array, int, np.array, np.array, np.array]:
     """Applies the Debye-Gruneisen model to a given configuration for which E-V curve calculations have been performed.
 
     Args:
-        config_path: Path to the config folder
+        energy_volume_df: DataFrame containing the energy-volume data
+        eos_parameters_df: DataFrame containing the equation of state parameters
         scaling_factor: s, Scaling factor for the Debye temperature
         gruneisen_x: x = 2/3 for high temperature case and x = 1 for low temperature case
-        mass_average: Type of averaging to use for the atomic masses. Can be 'arithmetic', 'geometric', or 'harmonic'
         volumes: Array of volumes to evaluate the Debye thermal properties at. If None, 100 volumes are linearly spaced between the minimum and maximum volumes
         temperatures: Array of temperatures to evaluate the Debye thermal properties at
-        outcar_name: Name of the OUTCAR file
-        oszicar_name: Name of the OSZICAR file
-        contcar_name: Name of the CONTCAR file
-        collect_mag_data: Whether or not to collect magnetic data
-        magmom_tolerance: Magnetic moment tolerance for each atom
-        total_magnetic_moment_tolerance: Total magnetic moment tolerance
-        eos_fitting: Equation of state fitting function from the eos_fit module
+        eos: Equation of state fitting function from the eos_fit module
+        plot: Whether or not to plot the Debye thermal properties
+        selected_temperatures_plot: Array of selected temperatures curves to plot in the y vs volume plot. If None, 5 linearly spaced temperatures are selected.
 
         Returns:
             tuple[np.array, np.array, int, np.array, np.array, np.array]: temperatures, volumes, number of atoms, and 2D arrays with rows (columns) corresponding
             to volumes (temperatures) vibrational entropy, vibrational Helmholtz energy, vibrational heat capacity
     """
-
-    # Extract the volume and energy from the ev_curve_series
-    df = extract_configuration_data(
-        path=config_path,
-        outcar_name=outcar_name,
-        oszicar_name=oszicar_name,
-        contcar_name=contcar_name,
-        collect_mag_data=collect_mag_data,
-        magmom_tolerance=magmom_tolerance,
-        total_magnetic_moment_tolerance=total_magnetic_moment_tolerance,
-    )
-
-    # Fit the equation of state
-    volume = df["volume"]
-    energy = df["energy"]
-    _, eos_parameters, _, _, _ = eos_fitting(volume, energy)
-    volume_0, energy_0, bulk_modulus, bulk_modulus_prime, bulk_modulus_2prime = (
-        eos_parameters
-    )
 
     s = scaling_factor
-    gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
+    filtered_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos]
+    configs = filtered_eos_parameters_df["config"].unique()
 
-    if volumes is None:
-        volume_min = volume.min() * 0.98
-        volume_max = volume.max() * 1.02
-        volumes = np.linspace(volume_min, volume_max, 1000)
-
-    for dir in os.listdir(config_path):
-        if dir.startswith("vol"):
-            contcar = os.path.join(config_path, dir, contcar_name)
-            outcar = os.path.join(config_path, dir, outcar_name)
-            break
-
-    atomic_mass = extract_average_mass(contcar, outcar, mass_average)
-
-    theta = debye_temperature(volumes, eos_parameters, atomic_mass, gru_param, s)
-
-    s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-    f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-    cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-    number_of_atoms = df["number_of_atoms"][0]
-
-    for i, volume in enumerate(volumes):
-        s_vib = vibrational_entropy(temperatures, theta[i], number_of_atoms)
-        f_vib = vibrational_helmholtz_energy(temperatures, theta[i], number_of_atoms)
-        cv_vib = vibrational_heat_capacity(temperatures, theta[i], number_of_atoms)
-        s_vib_v_t[i, :] = s_vib
-        f_vib_v_t[i, :] = f_vib
-        cv_vib_v_t[i, :] = cv_vib
-
-    f_vib_transposed = f_vib_v_t.T
-    s_vib_transposed = s_vib_v_t.T
-    cv_vib_transposed = cv_vib_v_t.T
-
-    debye_properties = pd.DataFrame(
-        {
-            "temperatures": temperatures,
-            "number_of_atoms": number_of_atoms,
-            "scaling_factor": [s] * len(temperatures),
-            "gruneisen_x": [gruneisen_x] * len(temperatures),
-            "volume": [volumes] * len(temperatures),
-            "f_vib": [col for col in f_vib_transposed],
-            "s_vib": [col for col in s_vib_transposed],
-            "cv_vib": [col for col in cv_vib_transposed],
-        }
-    )
-
-    if plot:
-        plot_debye(
-            debye_properties, selected_temperatures_plot=selected_temperatures_plot
-        )
-
-    return debye_properties
-
-
-def get_config_paths(configurations_dir: str) -> list[str]:
-    """Get all the configuration paths in the configurations directory.
-
-    Args:
-        configurations_dir: Path to the configurations directory
-
-    Returns:
-        list[str]: List of configuration paths
-    """
-    config_paths = []
-    for dir in os.listdir(configurations_dir):
-        if os.path.isdir(os.path.join(configurations_dir, dir)) and "config_" in dir:
-            config_paths.append(os.path.join(configurations_dir, dir))
-    return config_paths
-
-
-def process_all_configs_debye_gruneisen(
-    configurations_dir: str,
-    scaling_factor: float = 0.617,
-    gruneisen_x: float = 1,
-    mass_average: str = "geometric",
-    volumes: np.array = None,
-    temperatures: np.array = np.linspace(0, 1000, 101),
-    outcar_name: str = "OUTCAR.3static",
-    oszicar_name: str = "OSZICAR.3static",
-    contcar_name: str = "CONTCAR.3static",
-    collect_mag_data: bool = False,
-    magmom_tolerance: float = 1e-12,
-    total_magnetic_moment_tolerance: float = 1e-12,
-    eos_fitting=eos_fit.BM4,
-    plot=True,
-    selected_temperatures_plot: np.array = None,
-) -> tuple[np.array, np.array, int, np.array, np.array, np.array]:
-    """Applies the Debye-Gruneisen model to a given configuration for which E-V curve calculations have been performed.
-
-    Args:
-        config_path: Path to the config folder
-        scaling_factor: s, Scaling factor for the Debye temperature
-        gruneisen_x: x = 2/3 for high temperature case and x = 1 for low temperature case
-        mass_average: Type of averaging to use for the atomic masses. Can be 'arithmetic', 'geometric', or 'harmonic'
-        volumes: Array of volumes to evaluate the Debye thermal properties at. If None, 100 volumes are linearly spaced between the minimum and maximum volumes
-        temperatures: Array of temperatures to evaluate the Debye thermal properties at
-        outcar_name: Name of the OUTCAR file
-        oszicar_name: Name of the OSZICAR file
-        contcar_name: Name of the CONTCAR file
-        collect_mag_data: Weather or not to collect magnetic data
-        magmom_tolerance: Magnetic moment tolerance for each atom
-        total_magnetic_moment_tolerance: Total magnetic moment tolerance
-        eos_fitting: Equation of state fitting function from the eos_fit module
-
-        Returns:
-            tuple[np.array, np.array, int, np.array, np.array, np.array]: temperatures, volumes, number of atoms, and 2D arrays with rows (columns) corresponding
-            to volumes (temperatures) vibrational entropy, vibrational Helmholtz energy, vibrational heat capacity
-    """
-    debye_properties = pd.DataFrame(
-        columns=[
-            "config",
-            "temperatures",
-            "number_of_atoms",
-            "scaling_factor",
-            "gruneisen_x",
-            "volume",
-            "f_vib",
-            "s_vib",
-            "cv_vib",
+    debye_properties_list = []
+    for config in configs:
+        config_eos_parameters_df = filtered_eos_parameters_df[
+            filtered_eos_parameters_df["config"] == config
         ]
-    )
+        bulk_modulus_prime = config_eos_parameters_df["BP"].values[0]
+        gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
 
-    config_paths = get_config_paths(configurations_dir)
-    config_paths = natsorted(config_paths)
+        config_energy_volume_df = energy_volume_df[energy_volume_df["config"] == config]
+        volume = config_energy_volume_df["volume"].values
 
-    for config_path in config_paths:
-        debye_properties_config = process_debye_gruneisen(
-            config_path,
-            scaling_factor,
-            gruneisen_x,
-            mass_average,
-            volumes,
-            temperatures,
-            outcar_name,
-            oszicar_name,
-            contcar_name,
-            collect_mag_data,
-            magmom_tolerance,
-            total_magnetic_moment_tolerance,
-            eos_fitting,
-            plot=plot,
+        if volumes is None:
+            volume_min = volume.min() * 0.98
+            volume_max = volume.max() * 1.02
+            volumes = np.linspace(volume_min, volume_max, 1000)
+
+        atomic_mass = config_energy_volume_df["average_mass"].values[0]
+        eos_parameters = config_eos_parameters_df[
+            ["V0", "E0", "B", "BP", "B2P"]
+        ].values[0]
+        theta = debye_temperature(volumes, eos_parameters, atomic_mass, gru_param, s)
+
+        s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+        f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+        cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+        number_of_atoms = energy_volume_df["number_of_atoms"][0]
+
+        for i, volume in enumerate(volumes):
+            s_vib = vibrational_entropy(temperatures, theta[i], number_of_atoms)
+            f_vib = vibrational_helmholtz_energy(
+                temperatures, theta[i], number_of_atoms
+            )
+            cv_vib = vibrational_heat_capacity(temperatures, theta[i], number_of_atoms)
+            s_vib_v_t[i, :] = s_vib
+            f_vib_v_t[i, :] = f_vib
+            cv_vib_v_t[i, :] = cv_vib
+
+        f_vib_transposed = f_vib_v_t.T
+        s_vib_transposed = s_vib_v_t.T
+        cv_vib_transposed = cv_vib_v_t.T
+
+        debye_properties = pd.DataFrame(
+            {
+                "config": [config] * len(temperatures),
+                "temperatures": temperatures,
+                "number_of_atoms": number_of_atoms,
+                "scaling_factor": [s] * len(temperatures),
+                "gruneisen_x": [gruneisen_x] * len(temperatures),
+                "volume": [volumes] * len(temperatures),
+                "f_vib": [col for col in f_vib_transposed],
+                "s_vib": [col for col in s_vib_transposed],
+                "cv_vib": [col for col in cv_vib_transposed],
+            }
         )
-        config_name = config_path.split("_")[-1]
-        debye_properties_config.insert(0, "config", config_name)
 
-        for _, row in debye_properties_config.iterrows():
-            debye_properties.loc[len(debye_properties)] = row
+        debye_properties_list.append(debye_properties)
 
-    return debye_properties
+    all_debye_properties = pd.concat(debye_properties_list, ignore_index=True)
+    
+    if plot is not None:
+        plot_debye(
+            config, all_debye_properties, selected_temperatures_plot=selected_temperatures_plot
+        )
+        
+    return all_debye_properties
