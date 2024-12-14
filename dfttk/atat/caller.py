@@ -287,8 +287,19 @@ class Icamag:
         spin_configs["space_group"] = space_group_list
         spin_configs["magnetic_ordering"] = magnetic_ordering_list
         spin_configs["mag_data"] = mag_data_list
+        self.spin_configs = spin_configs
 
         return spin_configs, poscar_object_list
+
+    def get_multiplicity(self) -> np.ndarray:
+        """Get the multiplicities of the spin configurations.
+
+        Returns:
+            np.ndarray: multiplicity of the spin configurations
+        """
+        multiplicity = self.spin_configs["multiplicity"].values
+
+        return multiplicity
 
     def write_spin_configs(
         self,
