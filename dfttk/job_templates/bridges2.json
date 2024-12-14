@@ -1,0 +1,24 @@
+{
+    "job_name": "Fe3Pt",
+    "account": "dmr190011p",
+    "partition": "RM",
+    "nodes": 1,
+    "ntasks_per_node": 128,
+    "time": "48:00:00",
+    "output_file": "vasp.out",
+    "error_file": "vasp.err",
+    "commands": [
+        "ulimit -s unlimited",
+        "export OMP_NUM_THREADS=1",
+        "echo \"SLURM_NTASKS: \" $SLURM_NTASKS",
+        "module purge",
+        "module load intel-oneapi",
+        "module load hdf5/1.12.0-intel20.4",
+        "module load anaconda3",
+        "conda activate dfttk",
+        "module load VASP/6.4.3-intel",
+        "python ev_curves.py",
+        "echo \"Current SLURM JobID: $SLURM_JOB_ID\"",
+        "sacct --job=$SLURM_JOB_ID"
+    ]
+}
