@@ -3,6 +3,7 @@ import json
 import subprocess
 import importlib.resources
 import dfttk.vasp_input as vasp_input
+from dfttk.aggregate_extraction import calculate_encut_conv, calculate_kpoint_conv
 
 
 class Configuration:
@@ -147,3 +148,15 @@ class Configuration:
 
         # Run the job
         subprocess.run(["sbatch", "job.sh"], cwd=self.config_path)
+
+    def analyze_encut_conv(self, plot: bool = True):
+        encut_conv_path = os.path.join(self.config_path, "encut_conv")
+        encut_conv_df, fig = calculate_encut_conv(encut_conv_path, plot)
+
+        return encut_conv_df, fig
+    
+    def analyze_kpoints_conv(self, plot: bool = True):
+        kpoints_conv_path = os.path.join(self.config_path, "kpoints_conv")
+        kpoints_conv_df, fig = calculate_kpoint_conv(kpoints_conv_path, plot)
+
+        return kpoints_conv_df, fig
