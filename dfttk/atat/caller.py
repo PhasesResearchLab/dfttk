@@ -340,6 +340,7 @@ class Icamag:
 
             magmom_settings = poscar_object.structure.site_properties
             other_settings.update(magmom_settings)
+            other_settings.update({"ISPIN": 2, "LORBIT": 11})
             vasp_input.ev_curve_set(
                 config_dir,
                 material_type=material_type,
