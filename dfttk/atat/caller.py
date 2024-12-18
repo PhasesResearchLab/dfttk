@@ -297,7 +297,7 @@ class Icamag:
         Returns:
             np.ndarray: multiplicity of the spin configurations
         """
-        multiplicity = self.spin_configs["multiplicity"].values
+        multiplicity = self.spin_configs["multiplicity"].values.tolist()
 
         return multiplicity
 
