@@ -1,26 +1,229 @@
+"""
+Configuration class for DFTTK.
+"""
+
+# Standard Library Imports
 import os
 import json
 import subprocess
 import importlib.resources
+from collections import namedtuple
+
+# Third-Party Library Imports
+import pandas as pd
+from pymongo import MongoClient
+from natsort import natsorted
+from pymatgen.core.structure import Structure
+from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
+
+# DFTTK imports
 import dfttk.vasp_input as vasp_input
-from dfttk.aggregate_extraction import calculate_encut_conv, calculate_kpoint_conv
+from dfttk.aggregate_extraction import (
+    extract_configuration_data,
+    recursive_extract_configuration_data,
+    calculate_encut_conv,
+    calculate_kpoint_conv,
+)
+from dfttk.eos_fit import fit_to_all_eos, plot_ev
+
+
+class EvCurvesData:
+    def __init__(self, path: str):
+        self.path = path
+        self.incars = []
+        self.kpoints = None
+        self.potcar = None
+        self.number_of_atoms = None
+        self.volumes = []
+        self.energies = []
+        self.atomic_masses = None
+        self.average_mass = None
+        self.total_magnetic_moment = None
+        self.magnetic_ordering = None
+        self.mag_data = []
+        self.energy_volume_df = None
+        self.eos_parameters = {
+            "eos_name": None,
+            "a": None,
+            "b": None,
+            "c": None,
+            "d": None,
+            "e": None,
+            "V0": None,
+            "E0": None,
+            "B": None,
+            "BP": None,
+            "B2P": None,
+        }
+        self.relaxed_structures = []
+
+    def _get_volume_folders(self):
+        return natsorted([f for f in os.listdir(self.path) if f.startswith("vol_")])
+
+    def get_vasp_input(self, volumes: list[float] = None):
+        vol_folders = self._get_volume_folders()
+        incar_keys = ["1relax", "2relax", "3static"]
+
+        if volumes is not None:
+            volumes = [round(volume, 2) for volume in volumes]
+            filtered_vol_folders = []
+            for vol_folder in vol_folders:
+                contcar_path = os.path.join(self.path, vol_folder, "CONTCAR.3static")
+                if os.path.exists(contcar_path):
+                    structure = Structure.from_file(contcar_path)
+                    if round(structure.volume, 2) in volumes:
+                        filtered_vol_folders.append(vol_folder)
+            vol_folders = filtered_vol_folders
+
+        for vol_folder in vol_folders:
+            incar_data = {}
+            for key in incar_keys:
+                file_path = os.path.join(self.path, vol_folder, f"INCAR.{key}")
+                incar_data[key] = Incar.from_file(file_path)
+            self.incars.append(incar_data)
+
+        self.kpoints = Kpoints.from_file(os.path.join(self.path, "KPOINTS"))
+        self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
+
+    def get_energy_volume_data(
+        self,
+        volumes: list[float] = None,
+        outcar_name: str = "OUTCAR.3static",
+        oszicar_name: str = "OSZICAR.3static",
+        contcar_name: str = "CONTCAR.3static",
+        collect_mag_data: bool = False,
+        magmom_tolerance: float = 1e-12,
+        total_magnetic_moment_tolerance: float = 1e-12,
+        mass_average: str = "geometric",
+    ) -> None:
+        self.energy_volume_df = extract_configuration_data(
+            self.path,
+            outcar_name,
+            oszicar_name,
+            contcar_name,
+            collect_mag_data,
+            magmom_tolerance,
+            total_magnetic_moment_tolerance,
+            mass_average,
+        )
+
+        if volumes is not None:
+            volumes = [round(volume, 2) for volume in volumes]
+            self.energy_volume_df["volume"] = self.energy_volume_df["volume"].round(2)
+            self.energy_volume_df = self.energy_volume_df[
+                self.energy_volume_df["volume"].isin(volumes)
+            ]
+
+        self.number_of_atoms = self.energy_volume_df["number_of_atoms"].values.tolist()[
+            0
+        ]
+        self.volumes = self.energy_volume_df["volume"].values.tolist()
+        self.energies = self.energy_volume_df["energy"].values.tolist()
+        self.atomic_masses = self.energy_volume_df["atomic_masses"].values[0]
+        self.average_mass = self.energy_volume_df["average_mass"].values[0]
+
+        if collect_mag_data:
+            self.total_magnetic_moment = self.energy_volume_df[
+                "total_magnetic_moment"
+            ].values.tolist()
+            self.magnetic_ordering = self.energy_volume_df[
+                "magnetic_ordering"
+            ].values.tolist()
+            self.mag_data = [
+                series.astype({"#_of_ion": str}).set_index("#_of_ion").to_dict()
+                for series in self.energy_volume_df["mag_data"].values.tolist()
+            ]
+        vol_folders = self._get_volume_folders()
+        if volumes is not None:
+            volumes = [round(volume, 2) for volume in volumes]
+            filtered_vol_folders = []
+            for vol_folder in vol_folders:
+                contcar_path = os.path.join(self.path, vol_folder, contcar_name)
+                if os.path.exists(contcar_path):
+                    structure = Structure.from_file(contcar_path)
+                    if round(structure.volume, 2) in volumes:
+                        filtered_vol_folders.append(vol_folder)
+            vol_folders = filtered_vol_folders
+
+        for vol_folder in vol_folders:
+            contcar_path = os.path.join(self.path, vol_folder, contcar_name)
+            structure = Structure.from_file(contcar_path)
+            self.relaxed_structures.append(structure)
+
+    def fit_energy_volume_data(
+        self,
+        eos_name: str = "BM4",
+    ) -> None:
+        __, eos_parameters_df = fit_to_all_eos(self.energy_volume_df)
+        one_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos_name]
+        a = one_eos_parameters_df["a"].values[0]
+        b = one_eos_parameters_df["b"].values[0]
+        c = one_eos_parameters_df["c"].values[0]
+        d = one_eos_parameters_df["d"].values[0]
+        e = one_eos_parameters_df["e"].values[0]
+        V0 = one_eos_parameters_df["V0"].values[0]
+        E0 = one_eos_parameters_df["E0"].values[0]
+        B = one_eos_parameters_df["B"].values[0]
+        BP = one_eos_parameters_df["BP"].values[0]
+        B2P = one_eos_parameters_df["B2P"].values[0]
+        self.eos_parameters = {
+            "eos_name": eos_name,
+            "a": a,
+            "b": b,
+            "c": c,
+            "d": d,
+            "e": e,
+            "V0": V0,
+            "E0": E0,
+            "B": B,
+            "BP": BP,
+            "B2P": B2P,
+        }
+
+    def plot(
+        self,
+        eos_name: str = "BM4",
+        highlight_minimum: bool = True,
+        per_atom: bool = False,
+        title: str = None,
+        show_fig: bool = True,
+        cmap: str = "plotly",
+        marker_alpha: float = 1,
+        marker_size: int = 10,
+    ) -> None:
+        plot_ev(
+            self.energy_volume_df,
+            eos_name=eos_name,
+            highlight_minimum=highlight_minimum,
+            per_atom=per_atom,
+            title=title,
+            show_fig=show_fig,
+            cmap=cmap,
+            marker_alpha=marker_alpha,
+            marker_size=marker_size,
+        )
 
 
 class Configuration:
-    def __init__(self, config_path):
-        self.config_path = config_path
+    def __init__(self, path, name, multiplicity=None):
+        self.path = path
+        self.name = name
+        self.multiplicity = multiplicity
         self.batch_script = {}
         self.template = None
         self.vasp_cmd = None
 
-    def set_vasp_cmd(self, vasp_cmd):
+    def set_vasp_cmd(self, vasp_cmd: list[str]):
         self.vasp_cmd = vasp_cmd
 
-    def read_batch_script(self, template):
+    def read_batch_script(self, template: str):
         self.template = template
-        if template == "bridges2":
+        templates_map = {
+            "bridges2": "bridges2.json",
+        }
+        if template in templates_map:
             with importlib.resources.path(
-                "dfttk.job_templates", "bridges2.json"
+                "dfttk.job_templates", templates_map[template]
             ) as batch_script_path:
                 with open(batch_script_path, "r") as file:
                     self.batch_script = json.load(file)
@@ -39,7 +242,7 @@ class Configuration:
                     self.batch_script["commands"].pop(position)
 
     def write_batch_script(self, batch_script_file="job.sh"):
-        batch_script_path = os.path.join(self.config_path, batch_script_file)
+        batch_script_path = os.path.join(self.path, batch_script_file)
         if self.template == "bridges2":
             with open(batch_script_path, "w") as file:
                 file.write("#!/bin/bash\n")
@@ -68,7 +271,7 @@ class Configuration:
     ):
 
         vasp_input.volume_relax_set(
-            self.config_path,
+            self.path,
             material_type,
             encut,
             kppa,
@@ -78,8 +281,7 @@ class Configuration:
             other_settings,
         )
 
-        # Run the job
-        subprocess.run(["sbatch", "job.sh"], cwd=self.config_path)
+        subprocess.run(["sbatch", "job.sh"], cwd=self.path)
 
     # TODO: add a way to select the custodian handlers
     def run_conv_test(
@@ -122,7 +324,7 @@ class Configuration:
     ):
 
         vasp_input.conv_set(
-            self.config_path,
+            self.path,
             encut,
             kppa,
             magmom_fm,
@@ -132,7 +334,7 @@ class Configuration:
         )
 
         # Prepare the run_dfttk.py script
-        with open(os.path.join(self.config_path, "run_dfttk.py"), "w") as file:
+        with open(os.path.join(self.path, "run_dfttk.py"), "w") as file:
             file.write("import os\n")
             file.write("from custodian.vasp.handlers import VaspErrorHandler\n")
             file.write("import dfttk.workflows as workflows\n")
@@ -147,16 +349,141 @@ class Configuration:
             )
 
         # Run the job
-        subprocess.run(["sbatch", "job.sh"], cwd=self.config_path)
+        subprocess.run(["sbatch", "job.sh"], cwd=self.path)
 
     def analyze_encut_conv(self, plot: bool = True):
-        encut_conv_path = os.path.join(self.config_path, "encut_conv")
+        encut_conv_path = os.path.join(self.path, "encut_conv")
         encut_conv_df, fig = calculate_encut_conv(encut_conv_path, plot)
 
         return encut_conv_df, fig
-    
+
     def analyze_kpoints_conv(self, plot: bool = True):
-        kpoints_conv_path = os.path.join(self.config_path, "kpoints_conv")
+        kpoints_conv_path = os.path.join(self.path, "kpoints_conv")
         kpoints_conv_df, fig = calculate_kpoint_conv(kpoints_conv_path, plot)
 
         return kpoints_conv_df, fig
+
+    # TODO: add a way to select the custodian handlers
+    def run_ev_curves(
+        self,
+        volumes: list[float],
+        restarting: bool = False,
+        keep_wavecar: bool = False,
+        keep_chgcar: bool = False,
+        copy_magmom: bool = False,
+        default_settings: bool = True,
+        override_2relax: list = None,
+        override_3static: list = None,
+        max_errors: int = 10,
+    ) -> None:
+
+        # Prepare the run_dfttk.py script
+        with open(os.path.join(self.path, "run_dfttk.py"), "w") as file:
+            file.write("import os\n")
+            file.write("from custodian.vasp.handlers import VaspErrorHandler\n")
+            file.write("import dfttk.workflows as workflows\n")
+            file.write("subset = list(VaspErrorHandler.error_msgs.keys())\n")
+            file.write("handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]\n")
+            file.write(f"vasp_cmd = {self.vasp_cmd}\n")
+            file.write(f"volumes = {volumes} \n")
+            file.write(
+                f"workflows.ev_curve_series(os.getcwd(), volumes, vasp_cmd, handlers, restarting={restarting}, keep_wavecar={keep_wavecar}, keep_chgcar={keep_chgcar}, copy_magmom={copy_magmom}, default_settings={default_settings}, override_2relax={override_2relax}, override_3static={override_3static}, max_errors={max_errors})\n"
+            )
+            file.write("workflows.custodian_errors_location(os.getcwd())\n")
+            file.write("workflows.NELM_reached(os.getcwd())")
+
+        # Run the job
+        subprocess.run(["sbatch", "job.sh"], cwd=self.path)
+
+    def process_ev_curves(
+        self,
+        volumes: list[float] = None,
+        outcar_name: str = "OUTCAR.3static",
+        oszicar_name: str = "OSZICAR.3static",
+        contcar_name: str = "CONTCAR.3static",
+        collect_mag_data: bool = False,
+        magmom_tolerance: float = 1e-12,
+        total_magnetic_moment_tolerance: float = 1e-12,
+        mass_average: str = "geometric",
+        eos_name: str = "BM4",
+    ):
+        self.ev_curves = EvCurvesData(self.path)
+        self.ev_curves.get_vasp_input(volumes)
+        self.ev_curves.get_energy_volume_data(
+            volumes,
+            outcar_name,
+            oszicar_name,
+            contcar_name,
+            collect_mag_data,
+            magmom_tolerance,
+            total_magnetic_moment_tolerance,
+            mass_average,
+        )
+        self.ev_curves.fit_energy_volume_data(eos_name=eos_name)
+
+    def to_mongodb(self, connection_string: str, db_name: str, collection_name: str):
+        self.cluster = MongoClient(connection_string)
+        self.db = self.cluster[db_name]
+        self.collection = self.db[collection_name]
+
+        document = {
+            "name": self.name,
+            "reduced_formula": self.ev_curves.relaxed_structures[
+                0
+            ].composition.reduced_formula,
+            "multiplicity": self.multiplicity,
+        }
+
+        if hasattr(self, "ev_curves"):
+            document["ev_curves"] = {
+                "vasp_input": {
+                    "incars": self.ev_curves.incars,
+                    "kpoints": self.ev_curves.kpoints.as_dict(),
+                    "potcar": self.ev_curves.potcar.as_dict(),
+                },
+                "number_of_atoms": self.ev_curves.number_of_atoms,
+                "volumes": self.ev_curves.volumes,
+                "energies": self.ev_curves.energies,
+                "relaxed_structures": [
+                    s.as_dict() for s in self.ev_curves.relaxed_structures
+                ],
+                "total_magnetic_moment": self.ev_curves.total_magnetic_moment,
+                "magnetic_ordering": self.ev_curves.magnetic_ordering,
+                "mag_data": self.ev_curves.mag_data,
+                "eos_parameters": self.ev_curves.eos_parameters,
+            }
+
+        self.collection.insert_one(document)
+
+
+def plot_multiple_ev(
+    config_objects: dict[str, Configuration],
+    config_names: list[str],
+    eos_name: str = "BM4",
+    highlight_minimum: bool = True,
+    per_atom: bool = False,
+    title: str = None,
+    show_fig: bool = True,
+    cmap: str = "plotly",
+    marker_alpha: float = 1,
+    marker_size: int = 10,
+):
+
+    dataframes = []
+    for config_name in config_names:
+        dataframes.append(config_objects[config_name].ev_curves.energy_volume_df)
+    dataframes = pd.concat(dataframes)
+
+    fig = plot_ev(
+        dataframes,
+        eos_name=eos_name,
+        highlight_minimum=highlight_minimum,
+        per_atom=per_atom,
+        title=title,
+        show_fig=show_fig,
+        cmap=cmap,
+        marker_alpha=marker_alpha,
+        marker_size=marker_size,
+    )
+
+    return fig
