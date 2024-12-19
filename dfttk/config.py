@@ -7,6 +7,7 @@ import os
 import json
 import subprocess
 import importlib.resources
+import numpy as np
 from collections import namedtuple
 
 # Third-Party Library Imports
@@ -25,6 +26,7 @@ from dfttk.aggregate_extraction import (
     calculate_kpoint_conv,
 )
 from dfttk.eos_fit import fit_to_all_eos, plot_ev
+from dfttk.debye import process_debye_gruneisen
 
 
 class EvCurvesData:
@@ -55,6 +57,7 @@ class EvCurvesData:
             "BP": None,
             "B2P": None,
         }
+        self.eos_parameters_df = None # Temporary
         self.relaxed_structures = []
 
     def _get_volume_folders(self):
@@ -179,7 +182,8 @@ class EvCurvesData:
             "BP": BP,
             "B2P": B2P,
         }
-
+        self.eos_parameters_df = eos_parameters_df
+        
     def plot(
         self,
         eos_name: str = "BM4",
@@ -203,7 +207,52 @@ class EvCurvesData:
             marker_size=marker_size,
         )
 
-
+#TODO: work on plotting next
+class DebyeData:
+    def __init__(self):
+        self.number_of_atoms = None
+        self.scaling_factor = None
+        self.gruneisen_x = None
+        self.temperatures = None
+        self.volumes = None
+        self.free_energy = None
+        self.entropy = None
+        self.heat_capacity = None
+        
+    def get_debye_gruneisen_data(
+        self,
+        energy_volume_df: pd.DataFrame,
+        eos_parameters_df: pd.DataFrame,
+        scaling_factor: float = 0.617,
+        gruneisen_x: float = 1,
+        volumes: np.array = None,
+        temperatures: np.array = np.linspace(0, 1000, 101),
+        eos: str = "BM4",
+        plot=None,
+        selected_temperatures_plot: np.array = None,
+        ):
+        
+        debye_df = process_debye_gruneisen(
+            energy_volume_df,
+            eos_parameters_df,
+            scaling_factor,
+            gruneisen_x,
+            volumes,
+            temperatures,
+            eos,
+            plot,
+            selected_temperatures_plot,
+        )
+        self.number_of_atoms = int(debye_df["number_of_atoms"].values.tolist()[0])
+        self.scaling_factor = scaling_factor
+        self.gruneisen_x = gruneisen_x
+        self.temperatures = debye_df["temperatures"].values.tolist()
+        self.volumes = debye_df["volume"][0].tolist()
+        self.free_energy = debye_df["f_vib"].apply(lambda x: x.tolist()).tolist()
+        self.entropy = debye_df["s_vib"].apply(lambda x: x.tolist()).tolist()
+        self.heat_capacity = debye_df["cv_vib"].apply(lambda x: x.tolist()).tolist()
+        
+        
 class Configuration:
     def __init__(self, path, name, multiplicity=None):
         self.path = path
@@ -420,7 +469,25 @@ class Configuration:
             mass_average,
         )
         self.ev_curves.fit_energy_volume_data(eos_name=eos_name)
-
+    
+    def process_debye(
+        self,
+        scaling_factor: float = 0.617,
+        gruneisen_x: float = 1,
+    ):
+        energy_volume_df = self.ev_curves.energy_volume_df
+        eos_parameters_df = self.ev_curves.eos_parameters_df
+        eos = self.ev_curves.eos_parameters["eos_name"] 
+        self.debye = DebyeData()
+        self.debye.get_debye_gruneisen_data(
+            energy_volume_df,
+            eos_parameters_df,
+            scaling_factor = scaling_factor,
+            gruneisen_x = gruneisen_x,
+            eos = eos,
+        )
+        
+    
     def to_mongodb(self, connection_string: str, db_name: str, collection_name: str):
         self.cluster = MongoClient(connection_string)
         self.db = self.cluster[db_name]
