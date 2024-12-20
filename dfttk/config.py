@@ -534,8 +534,12 @@ class Configuration:
                 "eos_parameters": self.ev_curves.eos_parameters,
             }
         
-        # Next, add the Debye data
-
+        if hasattr(self, "debye"):
+            document["debye"] = {
+                "number_of_atoms": self.debye.number_of_atoms,
+                "scaling_factor": self.debye.scaling_factor,
+                "gruneisen_x": self.debye.gruneisen_x,
+            }
         self.collection.insert_one(document)
 
 
