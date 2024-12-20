@@ -26,7 +26,7 @@ from dfttk.aggregate_extraction import (
     calculate_kpoint_conv,
 )
 from dfttk.eos_fit import fit_to_all_eos, plot_ev
-from dfttk.debye import process_debye_gruneisen
+from dfttk.debye import process_debye_gruneisen, plot_debye
 
 
 class EvCurvesData:
@@ -57,7 +57,7 @@ class EvCurvesData:
             "BP": None,
             "B2P": None,
         }
-        self.eos_parameters_df = None # Temporary
+        self.eos_parameters_df = None  # Temporary
         self.relaxed_structures = []
 
     def _get_volume_folders(self):
@@ -183,7 +183,7 @@ class EvCurvesData:
             "B2P": B2P,
         }
         self.eos_parameters_df = eos_parameters_df
-        
+
     def plot(
         self,
         eos_name: str = "BM4",
@@ -207,9 +207,10 @@ class EvCurvesData:
             marker_size=marker_size,
         )
 
-#TODO: work on plotting next
+
 class DebyeData:
     def __init__(self):
+        self.debye_df = None
         self.number_of_atoms = None
         self.scaling_factor = None
         self.gruneisen_x = None
@@ -218,7 +219,7 @@ class DebyeData:
         self.free_energy = None
         self.entropy = None
         self.heat_capacity = None
-        
+
     def get_debye_gruneisen_data(
         self,
         energy_volume_df: pd.DataFrame,
@@ -230,8 +231,8 @@ class DebyeData:
         eos: str = "BM4",
         plot=None,
         selected_temperatures_plot: np.array = None,
-        ):
-        
+    ):
+
         debye_df = process_debye_gruneisen(
             energy_volume_df,
             eos_parameters_df,
@@ -243,6 +244,8 @@ class DebyeData:
             plot,
             selected_temperatures_plot,
         )
+        self.debye_df = debye_df
+
         self.number_of_atoms = int(debye_df["number_of_atoms"].values.tolist()[0])
         self.scaling_factor = scaling_factor
         self.gruneisen_x = gruneisen_x
@@ -251,8 +254,20 @@ class DebyeData:
         self.free_energy = debye_df["f_vib"].apply(lambda x: x.tolist()).tolist()
         self.entropy = debye_df["s_vib"].apply(lambda x: x.tolist()).tolist()
         self.heat_capacity = debye_df["cv_vib"].apply(lambda x: x.tolist()).tolist()
-        
-        
+
+    def plot(
+        self, selected_temperatures: np.array = None, selected_volumes: np.array = None
+    ):
+
+        config = self.debye_df["config"].values.tolist()[0]
+        plot_debye(
+            config,
+            self.debye_df,
+            selected_temperatures,
+            selected_volumes,
+        )
+
+
 class Configuration:
     def __init__(self, path, name, multiplicity=None):
         self.path = path
@@ -469,7 +484,7 @@ class Configuration:
             mass_average,
         )
         self.ev_curves.fit_energy_volume_data(eos_name=eos_name)
-    
+
     def process_debye(
         self,
         scaling_factor: float = 0.617,
@@ -477,17 +492,16 @@ class Configuration:
     ):
         energy_volume_df = self.ev_curves.energy_volume_df
         eos_parameters_df = self.ev_curves.eos_parameters_df
-        eos = self.ev_curves.eos_parameters["eos_name"] 
+        eos = self.ev_curves.eos_parameters["eos_name"]
         self.debye = DebyeData()
         self.debye.get_debye_gruneisen_data(
             energy_volume_df,
             eos_parameters_df,
-            scaling_factor = scaling_factor,
-            gruneisen_x = gruneisen_x,
-            eos = eos,
+            scaling_factor=scaling_factor,
+            gruneisen_x=gruneisen_x,
+            eos=eos,
         )
-        
-    
+
     def to_mongodb(self, connection_string: str, db_name: str, collection_name: str):
         self.cluster = MongoClient(connection_string)
         self.db = self.cluster[db_name]
@@ -519,6 +533,8 @@ class Configuration:
                 "mag_data": self.ev_curves.mag_data,
                 "eos_parameters": self.ev_curves.eos_parameters,
             }
+        
+        # Next, add the Debye data
 
         self.collection.insert_one(document)
 
@@ -530,7 +546,7 @@ def plot_multiple_ev(
     highlight_minimum: bool = True,
     per_atom: bool = False,
     title: str = None,
-    show_fig: bool = True,
+    show_fig: bool = False,
     cmap: str = "plotly",
     marker_alpha: float = 1,
     marker_size: int = 10,
