@@ -156,8 +156,11 @@ class EvCurvesData:
     def fit_energy_volume_data(
         self,
         eos_name: str = "BM4",
+        volume_min: float = None,
+        volume_max: float = None,
+        num_volumes: int = 1000,
     ) -> None:
-        __, eos_parameters_df = fit_to_all_eos(self.energy_volume_df)
+        __, eos_parameters_df = fit_to_all_eos(self.energy_volume_df, volume_min, volume_max, num_volumes)
         one_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos_name]
         a = one_eos_parameters_df["a"].values[0]
         b = one_eos_parameters_df["b"].values[0]
