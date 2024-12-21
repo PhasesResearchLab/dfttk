@@ -25,8 +25,21 @@ from dfttk.aggregate_extraction import (
     calculate_encut_conv,
     calculate_kpoint_conv,
 )
-from dfttk.eos_fit import fit_to_all_eos, plot_ev
+from dfttk.eos_fit import (
+    mBM4_equation,
+    mBM5_equation,
+    BM4_equation,
+    BM5_equation,
+    LOG4_equation,
+    LOG5_equation,
+    murnaghan_equation,
+    vinet_equation,
+    morse_equation,
+    fit_to_all_eos,
+    plot_ev,
+)
 from dfttk.debye import process_debye_gruneisen, plot_debye
+from dfttk.quasi_harmonic import process_quasi_harmonic, plot_quasi_harmonic
 
 
 class EvCurvesData:
@@ -59,6 +72,8 @@ class EvCurvesData:
         }
         self.eos_parameters_df = None  # Temporary
         self.relaxed_structures = []
+        self.volume_range = None
+        self.eos_energies = None
 
     def _get_volume_folders(self):
         return natsorted([f for f in os.listdir(self.path) if f.startswith("vol_")])
@@ -160,7 +175,9 @@ class EvCurvesData:
         volume_max: float = None,
         num_volumes: int = 1000,
     ) -> None:
-        __, eos_parameters_df = fit_to_all_eos(self.energy_volume_df, volume_min, volume_max, num_volumes)
+        __, eos_parameters_df = fit_to_all_eos(
+            self.energy_volume_df, volume_min, volume_max, num_volumes
+        )
         one_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos_name]
         a = one_eos_parameters_df["a"].values[0]
         b = one_eos_parameters_df["b"].values[0]
@@ -186,6 +203,49 @@ class EvCurvesData:
             "B2P": B2P,
         }
         self.eos_parameters_df = eos_parameters_df
+
+    # TODO: this method might not be necessary
+    def get_eos_energies(
+        self, volume_min: float, volume_max: float, num_volumes: int = 1000
+    ) -> np.ndarray:
+        if not hasattr(self, "eos_parameters"):
+            raise ValueError(
+                "EOS parameters not found. Please run fit_energy_volume_data first."
+            )
+
+        volume_range = np.linspace(volume_min, volume_max, num_volumes)
+        eos_name = self.eos_parameters["eos_name"]
+        a = self.eos_parameters["a"]
+        b = self.eos_parameters["b"]
+        c = self.eos_parameters["c"]
+        d = self.eos_parameters["d"]
+        e = self.eos_parameters["e"]
+        V0 = self.eos_parameters["V0"]
+        E0 = self.eos_parameters["E0"]
+        B = self.eos_parameters["B"]
+        BP = self.eos_parameters["BP"]
+
+        eos_equations = {
+            "mBM4": mBM4_equation,
+            "mBM5": mBM5_equation,
+            "BM4": BM4_equation,
+            "BM5": BM5_equation,
+            "LOG4": LOG4_equation,
+            "LOG5": LOG5_equation,
+            "murnaghan": murnaghan_equation,
+            "vinet": vinet_equation,
+            "morse": morse_equation,
+        }
+        
+        if eos_name == "mBM4" or eos_name == 'BM4' or eos_name == 'LOG4':
+            eos_energies = eos_equations[eos_name](volume_range, a, b, c, d)
+        elif eos_name == "mBM5" or eos_name == 'BM5' or eos_name == 'LOG5':
+            eos_energies = eos_equations[eos_name](volume_range, a, b, c, d, e)
+        elif eos_name == "murnaghan" or eos_name == 'vinet' or eos_name == 'morse':
+            eos_energies = eos_equations[eos_name](volume_range, V0, E0, B, BP)
+
+        self.volume_range = volume_range
+        self.eos_energies = eos_energies
 
     def plot(
         self,
@@ -270,6 +330,57 @@ class DebyeData:
             selected_volumes,
         )
 
+# TODO: incorporate other pressures
+class QuasiHarmonicData:
+    def get_quasi_harmonic_data(
+        self,
+        methods,
+        eos: str,
+        volume_range: np.ndarray,
+        eos_parameters_df: pd.DataFrame,
+        harmonic_properties_fit: pd.DataFrame = None,
+        debye_properties: pd.DataFrame = None,
+        thermal_electronic_properties_fit: pd.DataFrame = None,
+        P: int = 0,
+        plot: bool = True,
+        plot_type: str = "default",
+        selected_temperatures_plot: list = None,
+    ) -> pd.DataFrame:
+        
+        quasi_harmonic_properties = process_quasi_harmonic(
+            volume_range,
+            eos_parameters_df,
+            harmonic_properties_fit,
+            debye_properties,
+            thermal_electronic_properties_fit,
+            P,
+            eos,
+            plot,
+            plot_type,
+            selected_temperatures_plot,
+        )
+        self.quasi_harmonic_df = quasi_harmonic_properties
+        self.methods = methods
+        self.pressure = quasi_harmonic_properties["pressure"].values.tolist()[0]
+        self.number_of_atoms = int(quasi_harmonic_properties["number_of_atoms"].values.tolist()[0])
+        self.temperatures = quasi_harmonic_properties["temperature"].values.tolist()
+        self.volume_range = quasi_harmonic_properties["volume_range"].values[0].tolist()
+        eos_constants = [arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]]
+        self.gibbs_energy = {
+            "eos_parameters": {
+                "eos_name": eos, 
+            }
+        }
+        for temp, constants in zip(self.temperatures, eos_constants):
+            self.gibbs_energy["eos_parameters"][f"{temp}K"] = {
+                "a": constants[0],
+                "b": constants[1],
+                "c": constants[2],
+                "d": constants[3],
+                "e": constants[4],
+            }
+        
+        return quasi_harmonic_properties
 
 class Configuration:
     def __init__(self, path, name, multiplicity=None):
@@ -504,6 +615,39 @@ class Configuration:
             gruneisen_x=gruneisen_x,
             eos=eos,
         )
+    
+    def process_qha(
+        self,
+        methods: str,
+        volume_range: np.ndarray,
+        P: int = 0,
+        plot: bool = False,
+        plot_type: str = "default",
+        selected_temperatures_plot: list = None,
+    ):
+        self.qha = QuasiHarmonicData()
+        
+        if methods == "debye":
+            debye_properties = self.debye.debye_df
+            harmonic_properties_fit = None
+            thermal_electronic_properties_fit = None
+        else:
+            raise ValueError(f"Unknown option: {methods}")
+        
+        eos = self.ev_curves.eos_parameters["eos_name"]
+        self.qha.get_quasi_harmonic_data(
+            methods,
+            eos,
+            volume_range,
+            self.ev_curves.eos_parameters_df,
+            harmonic_properties_fit = harmonic_properties_fit,
+            debye_properties=debye_properties,
+            thermal_electronic_properties_fit = thermal_electronic_properties_fit,
+            P=P,
+            plot=plot,
+            plot_type=plot_type,
+            selected_temperatures_plot=selected_temperatures_plot,
+            )
 
     def to_mongodb(self, connection_string: str, db_name: str, collection_name: str):
         self.cluster = MongoClient(connection_string)
@@ -536,7 +680,7 @@ class Configuration:
                 "mag_data": self.ev_curves.mag_data,
                 "eos_parameters": self.ev_curves.eos_parameters,
             }
-        
+
         if hasattr(self, "debye"):
             document["debye"] = {
                 "number_of_atoms": self.debye.number_of_atoms,
