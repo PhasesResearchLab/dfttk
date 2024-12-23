@@ -72,7 +72,7 @@ class EvCurvesData:
         }
         self.eos_parameters_df = None  # Temporary
         self.relaxed_structures = []
-        self.volume_range = None
+        self.volumes = None
         self.eos_energies = None
 
     def _get_volume_folders(self):
@@ -244,7 +244,7 @@ class EvCurvesData:
         elif eos_name == "murnaghan" or eos_name == 'vinet' or eos_name == 'morse':
             eos_energies = eos_equations[eos_name](volume_range, V0, E0, B, BP)
 
-        self.volume_range = volume_range
+        self.volumes = volume_range
         self.eos_energies = eos_energies
 
     def plot(
@@ -334,7 +334,7 @@ class DebyeData:
 class QuasiHarmonicData:
     def get_quasi_harmonic_data(
         self,
-        methods,
+        method,
         eos: str,
         volume_range: np.ndarray,
         eos_parameters_df: pd.DataFrame,
@@ -342,7 +342,7 @@ class QuasiHarmonicData:
         debye_properties: pd.DataFrame = None,
         thermal_electronic_properties_fit: pd.DataFrame = None,
         P: int = 0,
-        plot: bool = True,
+        plot: bool = False,
         plot_type: str = "default",
         selected_temperatures_plot: list = None,
     ) -> pd.DataFrame:
@@ -360,27 +360,46 @@ class QuasiHarmonicData:
             selected_temperatures_plot,
         )
         self.quasi_harmonic_df = quasi_harmonic_properties
-        self.methods = methods
+        self.method = method
         self.pressure = quasi_harmonic_properties["pressure"].values.tolist()[0]
         self.number_of_atoms = int(quasi_harmonic_properties["number_of_atoms"].values.tolist()[0])
         self.temperatures = quasi_harmonic_properties["temperature"].values.tolist()
-        self.volume_range = quasi_harmonic_properties["volume_range"].values[0].tolist()
+        self.volumes = quasi_harmonic_properties["volume_range"].values[0].tolist()
         eos_constants = [arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]]
-        self.gibbs_energy = {
+        s_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["s_coefficients"]]
+        self.helmholtz_energy = {
             "eos_parameters": {
                 "eos_name": eos, 
             }
         }
         for temp, constants in zip(self.temperatures, eos_constants):
-            self.gibbs_energy["eos_parameters"][f"{temp}K"] = {
+            self.helmholtz_energy["eos_parameters"][f"{temp}K"] = {
                 "a": constants[0],
                 "b": constants[1],
                 "c": constants[2],
                 "d": constants[3],
                 "e": constants[4],
             }
+        self.entropy = {
+            "polynomial_coefficients": {}
+        }
+        for temp, entropy in zip(self.temperatures, s_coefficients):
+            self.entropy["polynomial_coefficients"][f"{temp}K"] = entropy
         
-        return quasi_harmonic_properties
+        cv_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["cv_coefficients"]]
+        self.heat_capacity = {
+            "polynomial_coefficients": {}
+        }
+        for temp, cv in zip(self.temperatures, cv_coefficients):
+            self.heat_capacity["polynomial_coefficients"][f"{temp}K"] = cv
+    
+    def plot(self, plot_type: str = "default", selected_temperatures_plot: list = None):
+        plot_quasi_harmonic(
+            self.quasi_harmonic_df,
+            plot_type,
+            selected_temperatures_plot,
+        )
+    
 
 class Configuration:
     def __init__(self, path, name, multiplicity=None):
@@ -618,7 +637,7 @@ class Configuration:
     
     def process_qha(
         self,
-        methods: str,
+        method: str,
         volume_range: np.ndarray,
         P: int = 0,
         plot: bool = False,
@@ -627,16 +646,16 @@ class Configuration:
     ):
         self.qha = QuasiHarmonicData()
         
-        if methods == "debye":
+        if method == "debye":
             debye_properties = self.debye.debye_df
             harmonic_properties_fit = None
             thermal_electronic_properties_fit = None
         else:
-            raise ValueError(f"Unknown option: {methods}")
+            raise ValueError(f"Unknown option: {method}")
         
         eos = self.ev_curves.eos_parameters["eos_name"]
         self.qha.get_quasi_harmonic_data(
-            methods,
+            method,
             eos,
             volume_range,
             self.ev_curves.eos_parameters_df,
@@ -687,6 +706,18 @@ class Configuration:
                 "scaling_factor": self.debye.scaling_factor,
                 "gruneisen_x": self.debye.gruneisen_x,
             }
+        
+        if hasattr(self, "qha"):
+            document["qha"] = {
+                "method": self.qha.method,
+                "number_of_atoms": self.qha.number_of_atoms,
+                "volumes": self.qha.volumes,
+                "temperatures": self.qha.temperatures,
+                "helmholtz_energy":self.qha.helmholtz_energy,
+                "entropy": self.qha.entropy,
+                "heat_capacity": self.qha.heat_capacity,
+            }
+        
         self.collection.insert_one(document)
 
 
