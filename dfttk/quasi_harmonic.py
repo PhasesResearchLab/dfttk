@@ -104,6 +104,8 @@ def process_quasi_harmonic(
     f_plus_pv_list = []
     volume_range_list = []
     eos_constants_list = []
+    s_coefficients_list = []
+    cv_coefficients_list = []
     V0_list = []
     F0_list = []
     B_list = []
@@ -195,24 +197,43 @@ def process_quasi_harmonic(
             order = s_vib_poly.order
             s_vib_fit = s_vib_poly(volume_range)
             s_vib = s_vib_fit
+            
+            cv_vib_poly = harmonic_properties_fit.loc[temperature]["cv_vib_poly"]
+            order = cv_vib_poly.order
+            cv_vib_fit = cv_vib_poly(volume_range)
+            cv_vib = cv_vib_fit
 
         elif debye_properties is not None and harmonic_properties_fit is None:
             s_vib = debye_properties[debye_properties["temperatures"] == temperature][
                 "s_vib"
             ].values[0]
+            
+            cv_vib = debye_properties[debye_properties["temperatures"] == temperature][
+                "cv_vib"
+            ].values[0]
             order = 2
-
+            
         if thermal_electronic_properties_fit is not None:
             s_el_poly = thermal_electronic_properties_fit.loc[temperature]["s_el_poly"]
             s_el_fit = s_el_poly(volume_range)
             s_el = s_el_fit
+            
+            cv_el_poly = thermal_electronic_properties_fit.loc[temperature]["cv_el_poly"]
+            cv_el_fit = cv_el_poly(volume_range)
+            cv_el = cv_el_fit
 
         elif thermal_electronic_properties_fit is None:
             s_el = 0
-
+            cv_el = 0
+            
         s = s_vib + s_el
         s_coefficients = np.polyfit(volume_range, s, order)
+        s_coefficients_list.append(s_coefficients)
         s_poly = np.poly1d(s_coefficients)
+        
+        cv = cv_vib + cv_el
+        cv_coefficients = np.polyfit(volume_range, cv, order)
+        cv_coefficients_list.append(cv_coefficients)
 
         S0 = s_poly(V0)
         S0_list.append(S0)
@@ -226,6 +247,8 @@ def process_quasi_harmonic(
             "volume_range": volume_range_list,
             "f_plus_pv": f_plus_pv_list,
             "eos_constants": eos_constants_list,
+            "s_coefficients": s_coefficients_list,
+            "cv_coefficients": cv_coefficients_list,
             "V0": V0_list,
             "G0": F0_list,
             "B": B_list,
