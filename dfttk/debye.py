@@ -14,9 +14,6 @@ from scipy import constants
 from scipy.special import bernoulli, gamma
 
 # DFTTK imports
-from dfttk import eos_fit
-from dfttk.aggregate_extraction import extract_configuration_data
-from dfttk.data_extraction import extract_average_mass
 from dfttk.plotly_format import plot_format
 
 
