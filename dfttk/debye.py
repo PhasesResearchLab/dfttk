@@ -451,6 +451,11 @@ def calculate_debye_gruneisen(
         f_vib_v_t[i, :] = f_vib
         cv_vib_v_t[i, :] = cv_vib
 
+        f_vib_v_t = f_vib_v_t.T
+        s_vib_v_t = s_vib_v_t.T
+        cv_vib_v_t = cv_vib_v_t.T
+
+
     return s_vib_v_t, f_vib_v_t, cv_vib_v_t
 
 
