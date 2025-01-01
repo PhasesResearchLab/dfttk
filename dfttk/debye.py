@@ -412,6 +412,53 @@ def plot_debye(
         s_v_fig.show()
 
 
+def calculate_debye_gruneisen(
+        volume_0,
+        energy_0,
+        bulk_modulus_0,
+        bulk_modulus_derivative_0,
+        volumes,
+        temperatures,
+        atomic_mass,
+        number_of_atoms,
+        gruneisen_x=1,
+        scaling_factor=0.617
+):
+    eos_parameters = (
+        volume_0,
+        energy_0,
+        bulk_modulus_0,
+        bulk_modulus_derivative_0,
+    )
+    bp0 = bulk_modulus_derivative_0
+    gru_par = gruneisen_parameter(bp0, gruneisen_x)
+    theta = debye_temperature(
+        volumes,
+        eos_parameters,
+        atomic_mass,
+        gru_par,
+        scaling_factor
+    )
+
+    s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+    f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+    cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+
+    for i, volume in enumerate(volumes):
+        s_vib = vibrational_entropy(temperatures, theta[i], number_of_atoms)
+        f_vib = vibrational_helmholtz_energy(
+            temperatures, theta[i], number_of_atoms
+        )
+        cv_vib = vibrational_heat_capacity(temperatures, theta[i], number_of_atoms)
+        s_vib_v_t[i, :] = s_vib
+        f_vib_v_t[i, :] = f_vib
+        cv_vib_v_t[i, :] = cv_vib
+
+    return s_vib_v_t, f_vib_v_t, cv_vib_v_t
+
+
+
+
 def process_debye_gruneisen(
     energy_volume_df: pd.DataFrame,
     eos_parameters_df: pd.DataFrame,
