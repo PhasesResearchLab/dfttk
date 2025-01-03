@@ -16,8 +16,8 @@ from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Poscar, Potcar
 
 yaml_dir = os.path.dirname(__file__)
-potcar_dict_path = os.path.join(yaml_dir, "potcar_dict.yaml")
-magmom_dict_path = os.path.join(yaml_dir, "magmom_dict.yaml")
+potcar_dict_path = os.path.join(yaml_dir, "settings/potcar_dict.yaml")
+magmom_dict_path = os.path.join(yaml_dir, "settings/magmom_dict.yaml")
 with open(potcar_dict_path, "r") as file:
     POTCAR_DICT = yaml.safe_load(file)
 
