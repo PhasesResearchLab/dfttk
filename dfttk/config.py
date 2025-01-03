@@ -563,7 +563,13 @@ class Configuration:
     # TODO: add a way to select the custodian handlers
     def run_ev_curves(
         self,
+        material_type: str,
         volumes: list[float],
+        encut: int = 520,
+        kppa: int = 4000,
+        potcar_functional: str = "PBE_54",
+        incar_functional: str = "PBE",
+        other_settings: dict = {},
         restarting: bool = False,
         keep_wavecar: bool = False,
         keep_chgcar: bool = False,
@@ -574,6 +580,17 @@ class Configuration:
         max_errors: int = 10,
     ) -> None:
 
+        # Prepare the VASP input files
+        vasp_input.ev_curve_set(
+            self.path,
+            material_type=material_type,
+            encut=encut,
+            kppa=kppa,
+            potcar_functional=potcar_functional,
+            incar_functional=incar_functional,
+            other_settings=other_settings,
+        )
+        
         # Prepare the run_dfttk.py script
         with open(os.path.join(self.path, "run_dfttk.py"), "w") as file:
             file.write("import os\n")
