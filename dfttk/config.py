@@ -21,7 +21,6 @@ from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 import dfttk.vasp_input as vasp_input
 from dfttk.aggregate_extraction import (
     extract_configuration_data,
-    recursive_extract_configuration_data,
     calculate_encut_conv,
     calculate_kpoint_conv,
 )
@@ -39,6 +38,8 @@ from dfttk.eos_fit import (
     plot_ev,
 )
 from dfttk.debye import process_debye_gruneisen, plot_debye
+from dfttk.workflows import process_phonon_dos_YPHON
+from dfttk.phonons import harmonic, scale_phonon_dos, plot_phonon_dos, plot_harmonic, plot_fit_harmonic
 from dfttk.quasi_harmonic import process_quasi_harmonic, plot_quasi_harmonic
 
 
@@ -236,12 +237,12 @@ class EvCurvesData:
             "vinet": vinet_equation,
             "morse": morse_equation,
         }
-        
-        if eos_name == "mBM4" or eos_name == 'BM4' or eos_name == 'LOG4':
+
+        if eos_name == "mBM4" or eos_name == "BM4" or eos_name == "LOG4":
             eos_energies = eos_equations[eos_name](volume_range, a, b, c, d)
-        elif eos_name == "mBM5" or eos_name == 'BM5' or eos_name == 'LOG5':
+        elif eos_name == "mBM5" or eos_name == "BM5" or eos_name == "LOG5":
             eos_energies = eos_equations[eos_name](volume_range, a, b, c, d, e)
-        elif eos_name == "murnaghan" or eos_name == 'vinet' or eos_name == 'morse':
+        elif eos_name == "murnaghan" or eos_name == "vinet" or eos_name == "morse":
             eos_energies = eos_equations[eos_name](volume_range, V0, E0, B, BP)
 
         self.volumes = volume_range
@@ -330,6 +331,95 @@ class DebyeData:
             selected_volumes,
         )
 
+
+class PhononsData:
+    def __init__(self, path: str):
+        self.path = path
+        self.number_of_atoms = None
+        self.temperatures = None
+        self.volumes = None
+        self.helmholtz_energy = None
+        self.internal_energy = None
+        self.entropy = None
+        self.heat_capacity = None
+        self.helmholtz_energy_fit = None
+        self.internal_energy_fit = None
+        self.entropy_fit = None
+        self.harmonic_df = None
+        self.harmonic_fit_df = None
+
+    def process_phonon_dos(self):
+        process_phonon_dos_YPHON(self.path)
+
+    def get_harmonic_data(
+        self,
+        scale_atoms: int,
+        temp_range: list,
+        order: int,
+        plot: bool,
+        selected_temperatures_plot: np.ndarray,
+    ):
+
+        yphon_results_path = os.path.join(self.path, "YPHON_results")
+        harmonic_df, harmonic_fit_df = harmonic(
+            yphon_results_path,
+            scale_atoms,
+            temp_range,
+            order,
+            plot,
+            selected_temperatures_plot,
+        )
+        
+        self.harmonic_df = harmonic_df
+        self.harmonic_fit_df = harmonic_fit_df
+        
+        self.number_of_atoms = int(harmonic_df["number_of_atoms"].values[0])
+        self.temperatures = harmonic_df["temperature"].unique().tolist()
+        self.volumes = harmonic_df["volume"].unique().tolist()
+        
+        self.helmholtz_energy = {}
+        self.internal_energy = {}
+        self.entropy = {}
+        self.heat_capacity = {}
+        for temp in self.temperatures:
+            self.helmholtz_energy[f"{temp}K"] = self.harmonic_df[self.harmonic_df["temperature"] == temp]["f_vib"].values.tolist()
+            self.internal_energy[f"{temp}K"] = self.harmonic_df[self.harmonic_df["temperature"] == temp]["e_vib"].values.tolist()
+            self.entropy[f"{temp}K"] = self.harmonic_df[self.harmonic_df["temperature"] == temp]["s_vib"].values.tolist()
+            self.heat_capacity[f"{temp}K"] = self.harmonic_df[self.harmonic_df["temperature"] == temp]["cv_vib"].values.tolist()
+        
+        self.helmholtz_energy_fit = {"polynomial_coefficients": {}}
+        fvib_coefficients =[
+            arr.coeffs.tolist() for arr in self.harmonic_fit_df["f_vib_poly"]
+        ]
+        for temp, coefficients in zip(self.temperatures, fvib_coefficients):
+            self.helmholtz_energy_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
+        
+        self.entropy_fit = {"polynomial_coefficients": {}}
+        svib_coefficients =[
+            arr.coeffs.tolist() for arr in self.harmonic_fit_df["s_vib_poly"]
+        ]
+        for temp, coefficients in zip(self.temperatures, svib_coefficients):
+            self.entropy_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
+        
+        self.heat_capacity_fit = {"polynomial_coefficients": {}}
+        cvib_coefficients =[
+            arr.coeffs.tolist() for arr in self.harmonic_fit_df["cv_vib_poly"]
+        ]
+        for temp, coefficients in zip(self.temperatures, cvib_coefficients):
+            self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
+        
+    def plot_scaled_dos(self, num_atoms: int, plot=True):
+        yphon_results_path = os.path.join(self.path, "YPHON_results")
+        scale_phonon_dos(yphon_results_path, num_atoms, plot)
+        
+    def plot_multiple_dos(self, num_atoms: int):
+        yphon_results_path = os.path.join(self.path, "YPHON_results")
+        plot_phonon_dos(yphon_results_path, num_atoms)
+    
+    def plot_harmonic(self, selected_temperatures_plot: np.ndarray = None):
+        plot_harmonic(self.harmonic_df)
+        plot_fit_harmonic(self.harmonic_fit_df, selected_temperatures_plot)
+        
 # TODO: incorporate other pressures
 class QuasiHarmonicData:
     def get_quasi_harmonic_data(
@@ -346,7 +436,7 @@ class QuasiHarmonicData:
         plot_type: str = "default",
         selected_temperatures_plot: list = None,
     ) -> pd.DataFrame:
-        
+
         quasi_harmonic_properties = process_quasi_harmonic(
             volume_range,
             eos_parameters_df,
@@ -362,14 +452,20 @@ class QuasiHarmonicData:
         self.quasi_harmonic_df = quasi_harmonic_properties
         self.method = method
         self.pressure = quasi_harmonic_properties["pressure"].values.tolist()[0]
-        self.number_of_atoms = int(quasi_harmonic_properties["number_of_atoms"].values.tolist()[0])
+        self.number_of_atoms = int(
+            quasi_harmonic_properties["number_of_atoms"].values.tolist()[0]
+        )
         self.temperatures = quasi_harmonic_properties["temperature"].values.tolist()
         self.volumes = quasi_harmonic_properties["volume_range"].values[0].tolist()
-        eos_constants = [arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]]
-        s_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["s_coefficients"]]
+        eos_constants = [
+            arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]
+        ]
+        s_coefficients = [
+            arr.tolist() for arr in quasi_harmonic_properties["s_coefficients"]
+        ]
         self.helmholtz_energy = {
             "eos_parameters": {
-                "eos_name": eos, 
+                "eos_name": eos,
             }
         }
         for temp, constants in zip(self.temperatures, eos_constants):
@@ -380,26 +476,24 @@ class QuasiHarmonicData:
                 "d": constants[3],
                 "e": constants[4],
             }
-        self.entropy = {
-            "polynomial_coefficients": {}
-        }
+        self.entropy = {"polynomial_coefficients": {}}
         for temp, entropy in zip(self.temperatures, s_coefficients):
             self.entropy["polynomial_coefficients"][f"{temp}K"] = entropy
-        
-        cv_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["cv_coefficients"]]
-        self.heat_capacity = {
-            "polynomial_coefficients": {}
-        }
+
+        cv_coefficients = [
+            arr.tolist() for arr in quasi_harmonic_properties["cv_coefficients"]
+        ]
+        self.heat_capacity = {"polynomial_coefficients": {}}
         for temp, cv in zip(self.temperatures, cv_coefficients):
             self.heat_capacity["polynomial_coefficients"][f"{temp}K"] = cv
-    
+
     def plot(self, plot_type: str = "default", selected_temperatures_plot: list = None):
         plot_quasi_harmonic(
             self.quasi_harmonic_df,
             plot_type,
             selected_temperatures_plot,
         )
-    
+
 
 class Configuration:
     def __init__(self, path, name, multiplicity=None):
@@ -590,7 +684,7 @@ class Configuration:
             incar_functional=incar_functional,
             other_settings=other_settings,
         )
-        
+
         # Prepare the run_dfttk.py script
         with open(os.path.join(self.path, "run_dfttk.py"), "w") as file:
             file.write("import os\n")
@@ -651,7 +745,61 @@ class Configuration:
             gruneisen_x=gruneisen_x,
             eos=eos,
         )
-    
+
+    def run_phonons(
+        self,
+        phonon_volumes: list[float],
+        kppa: float,
+        run_file: str = "run_dfttk_phonons.py",
+        scaling_matrix: tuple[tuple[int]] = ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    ):
+
+        # Prepare the run_file script
+        with open(os.path.join(self.path, run_file), "w") as file:
+            file.write("import os\n")
+            file.write("from custodian.vasp.handlers import VaspErrorHandler\n")
+            file.write("import dfttk.workflows as workflows\n")
+            file.write("subset = list(VaspErrorHandler.error_msgs.keys())\n")
+            file.write("handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]\n")
+            file.write(f"vasp_cmd = {self.vasp_cmd}\n")
+            file.write(f"phonon_volumes = {phonon_volumes} \n")
+            file.write(f"scaling_matrix = {scaling_matrix} \n")
+            file.write(f"kppa = {kppa} \n")
+            file.write(
+                f"workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_matrix = scaling_matrix)\n"
+            )
+            file.write("workflows.custodian_errors_location(os.getcwd())\n")
+            file.write("workflows.NELM_reached(os.getcwd())\n")
+
+        # Run the phonon jobs in parallel
+        subprocess.run(["python", run_file], cwd=self.path)
+
+        # Delete the run_file script
+        os.remove(os.path.join(self.path, run_file))
+
+    def generate_phonon_dos(self):
+        self.phonons = PhononsData()
+        self.phonons.process_phonon_dos(self.path)
+
+    def process_phonons(
+        self,
+        scale_atoms: int,
+        temp_range: list,
+        order: int = 2,
+        plot: bool = False,
+        selected_temperatures_plot: np.ndarray = None,
+    ):
+        self.phonons = PhononsData(self.path)
+        self.phonons.get_harmonic_data(
+            scale_atoms,
+            temp_range,
+            order=order,
+            plot=plot,
+            selected_temperatures_plot=selected_temperatures_plot,
+        )
+        
+            
+
     def process_qha(
         self,
         method: str,
@@ -662,28 +810,28 @@ class Configuration:
         selected_temperatures_plot: list = None,
     ):
         self.qha = QuasiHarmonicData()
-        
+
         if method == "debye":
             debye_properties = self.debye.debye_df
             harmonic_properties_fit = None
             thermal_electronic_properties_fit = None
         else:
             raise ValueError(f"Unknown option: {method}")
-        
+
         eos = self.ev_curves.eos_parameters["eos_name"]
         self.qha.get_quasi_harmonic_data(
             method,
             eos,
             volume_range,
             self.ev_curves.eos_parameters_df,
-            harmonic_properties_fit = harmonic_properties_fit,
+            harmonic_properties_fit=harmonic_properties_fit,
             debye_properties=debye_properties,
-            thermal_electronic_properties_fit = thermal_electronic_properties_fit,
+            thermal_electronic_properties_fit=thermal_electronic_properties_fit,
             P=P,
             plot=plot,
             plot_type=plot_type,
             selected_temperatures_plot=selected_temperatures_plot,
-            )
+        )
 
     def to_mongodb(self, connection_string: str, db_name: str, collection_name: str):
         self.cluster = MongoClient(connection_string)
@@ -723,18 +871,18 @@ class Configuration:
                 "scaling_factor": self.debye.scaling_factor,
                 "gruneisen_x": self.debye.gruneisen_x,
             }
-        
+
         if hasattr(self, "qha"):
             document["qha"] = {
                 "method": self.qha.method,
                 "number_of_atoms": self.qha.number_of_atoms,
                 "volumes": self.qha.volumes,
                 "temperatures": self.qha.temperatures,
-                "helmholtz_energy":self.qha.helmholtz_energy,
+                "helmholtz_energy": self.qha.helmholtz_energy,
                 "entropy": self.qha.entropy,
                 "heat_capacity": self.qha.heat_capacity,
             }
-        
+
         self.collection.insert_one(document)
 
 
