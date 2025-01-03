@@ -39,7 +39,13 @@ from dfttk.eos_fit import (
 )
 from dfttk.debye import process_debye_gruneisen, plot_debye
 from dfttk.workflows import process_phonon_dos_YPHON
-from dfttk.phonons import harmonic, scale_phonon_dos, plot_phonon_dos, plot_harmonic, plot_fit_harmonic
+from dfttk.phonons import (
+    harmonic,
+    scale_phonon_dos,
+    plot_phonon_dos,
+    plot_harmonic,
+    plot_fit_harmonic,
+)
 from dfttk.quasi_harmonic import process_quasi_harmonic, plot_quasi_harmonic
 
 
@@ -335,6 +341,10 @@ class DebyeData:
 class PhononsData:
     def __init__(self, path: str):
         self.path = path
+        self.incars = []
+        self.kpoints = None
+        self.potcar = None
+        self.phonon_structures = []
         self.number_of_atoms = None
         self.temperatures = None
         self.volumes = None
@@ -351,6 +361,37 @@ class PhononsData:
     def process_phonon_dos(self):
         process_phonon_dos_YPHON(self.path)
 
+    def _get_phonon_folders(self):
+        return natsorted([f for f in os.listdir(self.path) if f.startswith("phonon_")])
+    
+    def get_vasp_input(self, volumes: list[float] = None):
+        phonon_folders = self._get_phonon_folders()
+        incar_keys = ["1relax", "2phonons"]
+
+        if volumes is not None:
+            volumes = [round(volume, 2) for volume in volumes]
+            filtered_phonon_folders = []
+            for phonon_folder in phonon_folders:
+                contcar_path = os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
+                if os.path.exists(contcar_path):
+                    structure = Structure.from_file(contcar_path)
+                    if round(structure.volume, 2) in volumes:
+                        filtered_phonon_folders.append(phonon_folder)
+            phonon_folders = phonon_folders
+
+        for phonon_folder in phonon_folders:
+            incar_data = {}
+            for key in incar_keys:
+                file_path = os.path.join(self.path, phonon_folder, f"INCAR.{key}")
+                incar_data[key] = Incar.from_file(file_path)
+            self.incars.append(incar_data)
+            
+            structure = Structure.from_file(os.path.join(self.path, phonon_folder, "CONTCAR.2phonons"))
+            self.phonon_structures.append(structure)
+
+        self.kpoints = Kpoints.from_file(os.path.join(self.path, phonon_folders[0], "KPOINTS.2phonons"))
+        self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
+    
     def get_harmonic_data(
         self,
         scale_atoms: int,
@@ -369,57 +410,68 @@ class PhononsData:
             plot,
             selected_temperatures_plot,
         )
-        
+
         self.harmonic_df = harmonic_df
         self.harmonic_fit_df = harmonic_fit_df
-        
+
         self.number_of_atoms = int(harmonic_df["number_of_atoms"].values[0])
         self.temperatures = harmonic_df["temperature"].unique().tolist()
         self.volumes = harmonic_df["volume"].unique().tolist()
-        
+
         self.helmholtz_energy = {}
         self.internal_energy = {}
         self.entropy = {}
         self.heat_capacity = {}
         for temp in self.temperatures:
-            self.helmholtz_energy[f"{temp}K"] = self.harmonic_df[self.harmonic_df["temperature"] == temp]["f_vib"].values.tolist()
-            self.internal_energy[f"{temp}K"] = self.harmonic_df[self.harmonic_df["temperature"] == temp]["e_vib"].values.tolist()
-            self.entropy[f"{temp}K"] = self.harmonic_df[self.harmonic_df["temperature"] == temp]["s_vib"].values.tolist()
-            self.heat_capacity[f"{temp}K"] = self.harmonic_df[self.harmonic_df["temperature"] == temp]["cv_vib"].values.tolist()
-        
+            self.helmholtz_energy[f"{temp}K"] = self.harmonic_df[
+                self.harmonic_df["temperature"] == temp
+            ]["f_vib"].values.tolist()
+            self.internal_energy[f"{temp}K"] = self.harmonic_df[
+                self.harmonic_df["temperature"] == temp
+            ]["e_vib"].values.tolist()
+            self.entropy[f"{temp}K"] = self.harmonic_df[
+                self.harmonic_df["temperature"] == temp
+            ]["s_vib"].values.tolist()
+            self.heat_capacity[f"{temp}K"] = self.harmonic_df[
+                self.harmonic_df["temperature"] == temp
+            ]["cv_vib"].values.tolist()
+
         self.helmholtz_energy_fit = {"polynomial_coefficients": {}}
-        fvib_coefficients =[
+        fvib_coefficients = [
             arr.coeffs.tolist() for arr in self.harmonic_fit_df["f_vib_poly"]
         ]
         for temp, coefficients in zip(self.temperatures, fvib_coefficients):
-            self.helmholtz_energy_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
-        
+            self.helmholtz_energy_fit["polynomial_coefficients"][
+                f"{temp}K"
+            ] = coefficients
+
         self.entropy_fit = {"polynomial_coefficients": {}}
-        svib_coefficients =[
+        svib_coefficients = [
             arr.coeffs.tolist() for arr in self.harmonic_fit_df["s_vib_poly"]
         ]
         for temp, coefficients in zip(self.temperatures, svib_coefficients):
             self.entropy_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
-        
+
         self.heat_capacity_fit = {"polynomial_coefficients": {}}
-        cvib_coefficients =[
+        cvib_coefficients = [
             arr.coeffs.tolist() for arr in self.harmonic_fit_df["cv_vib_poly"]
         ]
         for temp, coefficients in zip(self.temperatures, cvib_coefficients):
             self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
-        
+
     def plot_scaled_dos(self, num_atoms: int, plot=True):
         yphon_results_path = os.path.join(self.path, "YPHON_results")
         scale_phonon_dos(yphon_results_path, num_atoms, plot)
-        
+
     def plot_multiple_dos(self, num_atoms: int):
         yphon_results_path = os.path.join(self.path, "YPHON_results")
         plot_phonon_dos(yphon_results_path, num_atoms)
-    
+
     def plot_harmonic(self, selected_temperatures_plot: np.ndarray = None):
         plot_harmonic(self.harmonic_df)
         plot_fit_harmonic(self.harmonic_fit_df, selected_temperatures_plot)
-        
+
+
 # TODO: incorporate other pressures
 class QuasiHarmonicData:
     def get_quasi_harmonic_data(
@@ -785,11 +837,13 @@ class Configuration:
         self,
         scale_atoms: int,
         temp_range: list,
+        volumes: list[float] = None,
         order: int = 2,
         plot: bool = False,
         selected_temperatures_plot: np.ndarray = None,
     ):
         self.phonons = PhononsData(self.path)
+        self.phonons.get_vasp_input(volumes)
         self.phonons.get_harmonic_data(
             scale_atoms,
             temp_range,
@@ -797,8 +851,6 @@ class Configuration:
             plot=plot,
             selected_temperatures_plot=selected_temperatures_plot,
         )
-        
-            
 
     def process_qha(
         self,
@@ -853,12 +905,12 @@ class Configuration:
                     "kpoints": self.ev_curves.kpoints.as_dict(),
                     "potcar": self.ev_curves.potcar.as_dict(),
                 },
-                "number_of_atoms": self.ev_curves.number_of_atoms,
-                "volumes": self.ev_curves.volumes,
-                "energies": self.ev_curves.energies,
                 "relaxed_structures": [
                     s.as_dict() for s in self.ev_curves.relaxed_structures
                 ],
+                "number_of_atoms": self.ev_curves.number_of_atoms,
+                "volumes": self.ev_curves.volumes,
+                "energies": self.ev_curves.energies,
                 "total_magnetic_moment": self.ev_curves.total_magnetic_moment,
                 "magnetic_ordering": self.ev_curves.magnetic_ordering,
                 "mag_data": self.ev_curves.mag_data,
@@ -872,6 +924,24 @@ class Configuration:
                 "gruneisen_x": self.debye.gruneisen_x,
             }
 
+        if hasattr(self, "phonons"):
+            document["phonons"] = {
+                "vasp_input": {
+                    "incars": self.phonons.incars,
+                    "kpoints": self.phonons.kpoints.as_dict(),
+                    "potcar": self.phonons.potcar.as_dict(),
+                },
+                "phonon_structures": [
+                    s.as_dict() for s in self.phonons.phonon_structures
+                ],
+                "number_of_atoms": self.phonons.number_of_atoms,
+                "volumes": self.phonons.volumes,
+                "temperatures": self.phonons.temperatures,
+                "helmholtz_energy": self.phonons.helmholtz_energy_fit,
+                "entropy": self.phonons.entropy_fit,
+                "heat_capacity": self.phonons.heat_capacity_fit,
+            }
+            
         if hasattr(self, "qha"):
             document["qha"] = {
                 "method": self.qha.method,
