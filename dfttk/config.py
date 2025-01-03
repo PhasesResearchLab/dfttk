@@ -46,6 +46,12 @@ from dfttk.phonons import (
     plot_harmonic,
     plot_fit_harmonic,
 )
+from dfttk.thermal_electronic import (
+    thermal_electronic,
+    read_total_electron_dos,
+    plot_thermal_electronic,
+    plot_thermal_electronic_properties_fit,
+)
 from dfttk.quasi_harmonic import process_quasi_harmonic, plot_quasi_harmonic
 
 
@@ -363,7 +369,7 @@ class PhononsData:
 
     def _get_phonon_folders(self):
         return natsorted([f for f in os.listdir(self.path) if f.startswith("phonon_")])
-    
+
     def get_vasp_input(self, volumes: list[float] = None):
         phonon_folders = self._get_phonon_folders()
         incar_keys = ["1relax", "2phonons"]
@@ -372,12 +378,14 @@ class PhononsData:
             volumes = [round(volume, 2) for volume in volumes]
             filtered_phonon_folders = []
             for phonon_folder in phonon_folders:
-                contcar_path = os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
+                contcar_path = os.path.join(
+                    self.path, phonon_folder, "CONTCAR.2phonons"
+                )
                 if os.path.exists(contcar_path):
                     structure = Structure.from_file(contcar_path)
                     if round(structure.volume, 2) in volumes:
                         filtered_phonon_folders.append(phonon_folder)
-            phonon_folders = phonon_folders
+            phonon_folders = filtered_phonon_folders
 
         for phonon_folder in phonon_folders:
             incar_data = {}
@@ -385,13 +393,17 @@ class PhononsData:
                 file_path = os.path.join(self.path, phonon_folder, f"INCAR.{key}")
                 incar_data[key] = Incar.from_file(file_path)
             self.incars.append(incar_data)
-            
-            structure = Structure.from_file(os.path.join(self.path, phonon_folder, "CONTCAR.2phonons"))
+
+            structure = Structure.from_file(
+                os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
+            )
             self.phonon_structures.append(structure)
 
-        self.kpoints = Kpoints.from_file(os.path.join(self.path, phonon_folders[0], "KPOINTS.2phonons"))
+        self.kpoints = Kpoints.from_file(
+            os.path.join(self.path, phonon_folders[0], "KPOINTS.2phonons")
+        )
         self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
-    
+
     def get_harmonic_data(
         self,
         scale_atoms: int,
@@ -471,6 +483,133 @@ class PhononsData:
         plot_harmonic(self.harmonic_df)
         plot_fit_harmonic(self.harmonic_fit_df, selected_temperatures_plot)
 
+
+class ThermalElectronicData:
+    def __init__(self, path: str):
+        self.path = path
+        self.incars = []
+        self.kpoints = None
+        self.potcar = None
+        self.electron_dos_data = None
+        self.thermal_electronic_df = None
+        self.thermal_electronic_fit_df = None
+        self.number_of_atoms = None
+        self.volumes = None
+        self.temperatures = None
+        self.helmholtz_energy = None
+        self.internal_energy = None
+        self.entropy = None
+        self.heat_capacity = None
+        self.helmholtz_energy_fit = None
+        self.entropy_fit = None
+        self.heat_capacity_fit = None
+
+    def get_total_electron_dos(self):
+        self.electron_dos_data = read_total_electron_dos(self.path)
+
+    def _get_elec_folders(self):
+        return natsorted([f for f in os.listdir(self.path) if f.startswith("elec_")])
+    
+    def get_vasp_input(self, volumes: list[float] = None):
+        elec_folders = self._get_elec_folders()
+        incar_keys = ["elec_dos"]
+
+        if volumes is not None:
+            volumes = [round(volume, 2) for volume in volumes]
+            filtered_elec_folders = []
+            for elec_folder in elec_folders:
+                contcar_path = os.path.join(
+                    self.path, elec_folder, "CONTCAR.elec_dos"
+                )
+                if os.path.exists(contcar_path):
+                    structure = Structure.from_file(contcar_path)
+                    if round(structure.volume, 2) in volumes:
+                        filtered_elec_folders.append(elec_folder)
+            elec_folders = filtered_elec_folders
+
+        for elec_folder in elec_folders:
+            incar_data = {}
+            for key in incar_keys:
+                file_path = os.path.join(self.path, elec_folder, f"INCAR.{key}")
+                incar_data[key] = Incar.from_file(file_path)
+            self.incars.append(incar_data)
+
+        self.kpoints = Kpoints.from_file(
+            os.path.join(self.path, elec_folders[0], "KPOINTS.elec_dos")
+        )
+        self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
+        
+    def get_thermal_electronic_data(
+        self,
+        temperature_range: np.ndarray,
+        order: int,
+        plot: bool,
+        selected_temperatures_plot: np.ndarray,
+    ):
+        self.get_total_electron_dos()
+        thermal_electronic_df, thermal_electronic_fit_df = thermal_electronic(
+            self.electron_dos_data,
+            temperature_range,
+            order,
+            plot,
+            selected_temperatures_plot,
+        )
+
+        self.thermal_electronic_df = thermal_electronic_df
+        self.thermal_electronic_fit_df = thermal_electronic_fit_df
+        self.number_of_atoms = int(thermal_electronic_df["number_of_atoms"].values[0])
+        self.volumes = thermal_electronic_df["volume"].unique().tolist()
+        self.temperatures = thermal_electronic_df["temperature"].unique().tolist()
+
+        self.helmholtz_energy = {}
+        self.internal_energy = {}
+        self.entropy = {}
+        self.heat_capacity = {}
+        for temp in self.temperatures:
+            self.helmholtz_energy[f"{temp}K"] = thermal_electronic_df[
+                thermal_electronic_df["temperature"] == temp
+            ]["f_el"].values.tolist()
+            self.internal_energy[f"{temp}K"] = thermal_electronic_df[
+                thermal_electronic_df["temperature"] == temp
+            ]["e_el"].values.tolist()
+            self.entropy[f"{temp}K"] = thermal_electronic_df[
+                thermal_electronic_df["temperature"] == temp
+            ]["s_el"].values.tolist()
+            self.heat_capacity[f"{temp}K"] = thermal_electronic_df[
+                thermal_electronic_df["temperature"] == temp
+            ]["cv_el"].values.tolist()
+
+        self.helmholtz_energy_fit = {"polynomial_coefficients": {}}
+        fel_coefficients = [
+            arr.coeffs.tolist() for arr in self.thermal_electronic_fit_df["f_el_poly"]
+        ]
+        for temp, coefficients in zip(self.temperatures, fel_coefficients):
+            self.helmholtz_energy_fit["polynomial_coefficients"][
+                f"{temp}K"
+            ] = coefficients
+
+        self.entropy_fit = {"polynomial_coefficients": {}}
+        sel_coefficients = [
+            arr.coeffs.tolist() for arr in self.thermal_electronic_fit_df["s_el_poly"]
+        ]
+        for temp, coefficients in zip(self.temperatures, sel_coefficients):
+            self.entropy_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
+
+        self.heat_capacity_fit = {"polynomial_coefficients": {}}
+        cvel_coefficients = [
+            arr.coeffs.tolist() for arr in self.thermal_electronic_fit_df["cv_el_poly"]
+        ]
+        for temp, coefficients in zip(self.temperatures, cvel_coefficients):
+            self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
+
+    def plot(self, selected_temperatures_plot: np.ndarray = None):
+        plot_thermal_electronic(
+            self.thermal_electronic_df
+        )
+        plot_thermal_electronic_properties_fit(
+            self.thermal_electronic_fit_df,
+            selected_temperatures_plot,
+        )
 
 # TODO: incorporate other pressures
 class QuasiHarmonicData:
@@ -852,6 +991,54 @@ class Configuration:
             selected_temperatures_plot=selected_temperatures_plot,
         )
 
+    def run_thermal_electronic(
+        self,
+        volumes: list[float],
+        kppa: float,
+        run_file: str = "run_dfttk_thermal_electronic.py",
+        scaling_matrix: tuple[tuple[int]] = ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    ):
+
+        # Prepare the run_file script
+        with open(os.path.join(self.path, run_file), "w") as file:
+            file.write("import os\n")
+            file.write("from custodian.vasp.handlers import VaspErrorHandler\n")
+            file.write("import dfttk.workflows as workflows\n")
+            file.write("subset = list(VaspErrorHandler.error_msgs.keys())\n")
+            file.write("handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]\n")
+            file.write(f"vasp_cmd = {self.vasp_cmd}\n")
+            file.write(f"volumes = {volumes} \n")
+            file.write(f"scaling_matrix = {scaling_matrix} \n")
+            file.write(f"kppa = {kppa} \n")
+            file.write(
+                f"workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh')\n"
+            )
+            file.write("workflows.custodian_errors_location(os.getcwd())\n")
+            file.write("workflows.NELM_reached(os.getcwd())\n")
+
+        # Run the phonon jobs in parallel
+        subprocess.run(["python", run_file], cwd=self.path)
+
+        # Delete the run_file script
+        os.remove(os.path.join(self.path, run_file))
+
+    def process_thermal_electronic(
+        self,
+        temperature_range: np.ndarray,
+        volumes: list[float] = None,
+        order: int = 2,
+        plot: bool = False,
+        selected_temperatures_plot: np.ndarray = None,
+    ):
+        self.thermal_electronic = ThermalElectronicData(self.path)
+        self.thermal_electronic.get_vasp_input(volumes)
+        self.thermal_electronic.get_thermal_electronic_data(
+            temperature_range,
+            order=order,
+            plot=plot,
+            selected_temperatures_plot=selected_temperatures_plot,
+        )
+
     def process_qha(
         self,
         method: str,
@@ -941,7 +1128,22 @@ class Configuration:
                 "entropy": self.phonons.entropy_fit,
                 "heat_capacity": self.phonons.heat_capacity_fit,
             }
-            
+
+        if hasattr(self, "thermal_electronic"):
+            document["thermal_electronic"] = {
+                "vasp_input": {
+                    "incars": self.thermal_electronic.incars,
+                    "kpoints": self.thermal_electronic.kpoints.as_dict(),
+                    "potcar": self.thermal_electronic.potcar.as_dict(),
+                },
+                "number_of_atoms": self.thermal_electronic.number_of_atoms,
+                "volumes": self.thermal_electronic.volumes,
+                "temperatures": self.thermal_electronic.temperatures,
+                "helmholtz_energy": self.thermal_electronic.helmholtz_energy_fit,
+                "entropy": self.thermal_electronic.entropy_fit,
+                "heat_capacity": self.thermal_electronic.heat_capacity_fit,
+            }
+                
         if hasattr(self, "qha"):
             document["qha"] = {
                 "method": self.qha.method,
