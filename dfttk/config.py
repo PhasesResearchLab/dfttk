@@ -1060,7 +1060,9 @@ class Configuration:
             plot=plot,
             selected_temperatures_plot=selected_temperatures_plot,
         )
-
+    def add_experiments(self, experiments: dict):
+        self.experiments = experiments
+        
     def process_qha(
         self,
         method: str,
@@ -1197,6 +1199,9 @@ class Configuration:
                 "temperatures": self.qha.temperatures,
                 "methods": methods_copy,
             }
+        
+        if hasattr(self, "experiments"):
+            document["experiments"] = self.experiments
 
         self.collection.insert_one(document)
 
