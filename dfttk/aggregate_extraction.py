@@ -298,7 +298,7 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
             )
         ]
     )
-    plot_format(fig, "encut", "Energy (eV/atom)")
+    plot_format(fig, "ENCUT (eV)", "Energy (eV/atom)")
     kpoints = df["kpoint_grid"].iloc[0]
     fig.update_layout(
         title=dict(

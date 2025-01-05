@@ -23,9 +23,6 @@ def process_quasi_harmonic(
     thermal_electronic_properties_fit: pd.DataFrame = None,
     P: int = 0,
     eos: str = "BM4",
-    plot: bool = True,
-    plot_type: str = "default",
-    selected_temperatures_plot: list = None,
 ) -> pd.DataFrame:
     """Calculates the quasi-harmonic properties
 
@@ -278,13 +275,6 @@ def process_quasi_harmonic(
     )
     quasi_harmonic_properties["CTE"] = CTE
     quasi_harmonic_properties["Cp"] = Cp
-
-    if plot == True:
-        plot_quasi_harmonic(
-            quasi_harmonic_properties,
-            plot_type,
-            selected_temperatures_plot=selected_temperatures_plot,
-        )
 
     return quasi_harmonic_properties
 

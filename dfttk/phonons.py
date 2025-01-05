@@ -243,8 +243,6 @@ def harmonic(
     scale_atoms: int,
     temp_range: list,
     order: int = 2,
-    plot: bool = True,
-    selected_temperatures_plot: np.ndarray = None,
 ) -> pd.DataFrame:
     """Calculate the harmonic properties at different volumes and temperatures
 
@@ -397,13 +395,6 @@ def harmonic(
     )
 
     harmonic_properties_fit = fit_harmonic(harmonic_properties, order=order)
-
-    if plot == True:
-        plot_harmonic(harmonic_properties)
-        plot_fit_harmonic(
-            harmonic_properties_fit,
-            selected_temperatures_plot=selected_temperatures_plot,
-        )
 
     return harmonic_properties, harmonic_properties_fit
 

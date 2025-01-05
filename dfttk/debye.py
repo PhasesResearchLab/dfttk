@@ -420,8 +420,6 @@ def process_debye_gruneisen(
     volumes: np.array = None,
     temperatures: np.array = np.linspace(0, 1000, 101),
     eos: str = "BM4",
-    plot=None,
-    selected_temperatures_plot: np.array = None,
 ) -> tuple[np.array, np.array, int, np.array, np.array, np.array]:
     """Applies the Debye-Gruneisen model to a given configuration for which E-V curve calculations have been performed.
 
@@ -504,9 +502,4 @@ def process_debye_gruneisen(
 
     all_debye_properties = pd.concat(debye_properties_list, ignore_index=True)
     
-    if plot is not None:
-        plot_debye(
-            config, all_debye_properties, selected_temperatures_plot=selected_temperatures_plot
-        )
-        
     return all_debye_properties

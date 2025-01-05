@@ -668,8 +668,6 @@ def thermal_electronic(
     electron_dos_data: pd.DataFrame,
     temperature_range: np.ndarray,
     order: int = 2,
-    plot: bool = True,
-    selected_temperatures_plot: np.ndarray = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Calculates the thermal electronic properties
 
@@ -729,12 +727,6 @@ def thermal_electronic(
     thermal_electronic_properties_fit = fit_thermal_electronic(
         thermal_electronic_properties, order
     )
-
-    if plot == True:
-        plot_thermal_electronic(thermal_electronic_properties)
-        plot_thermal_electronic_properties_fit(
-            thermal_electronic_properties_fit, selected_temperatures_plot
-        )
 
     return thermal_electronic_properties, thermal_electronic_properties_fit
 

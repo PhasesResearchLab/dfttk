@@ -305,8 +305,6 @@ class DebyeData:
         volumes: np.array = None,
         temperatures: np.array = np.linspace(0, 1000, 101),
         eos: str = "BM4",
-        plot=None,
-        selected_temperatures_plot: np.array = None,
     ):
 
         debye_df = process_debye_gruneisen(
@@ -317,8 +315,6 @@ class DebyeData:
             volumes,
             temperatures,
             eos,
-            plot,
-            selected_temperatures_plot,
         )
         self.debye_df = debye_df
 
@@ -409,8 +405,6 @@ class PhononsData:
         scale_atoms: int,
         temp_range: list,
         order: int,
-        plot: bool,
-        selected_temperatures_plot: np.ndarray,
     ):
 
         yphon_results_path = os.path.join(self.path, "YPHON_results")
@@ -419,8 +413,6 @@ class PhononsData:
             scale_atoms,
             temp_range,
             order,
-            plot,
-            selected_temperatures_plot,
         )
 
         self.harmonic_df = harmonic_df
@@ -541,16 +533,12 @@ class ThermalElectronicData:
         self,
         temperature_range: np.ndarray,
         order: int,
-        plot: bool,
-        selected_temperatures_plot: np.ndarray,
     ):
         self.get_total_electron_dos()
         thermal_electronic_df, thermal_electronic_fit_df = thermal_electronic(
             self.electron_dos_data,
             temperature_range,
             order,
-            plot,
-            selected_temperatures_plot,
         )
 
         self.thermal_electronic_df = thermal_electronic_df
@@ -631,9 +619,6 @@ class QuasiHarmonicData:
         debye_properties: pd.DataFrame = None,
         thermal_electronic_properties_fit: pd.DataFrame = None,
         P: float = 0,
-        plot: bool = False,
-        plot_type: str = "default",
-        selected_temperatures_plot: list = None,
     ) -> pd.DataFrame:
 
         quasi_harmonic_properties = process_quasi_harmonic(
@@ -644,9 +629,6 @@ class QuasiHarmonicData:
             thermal_electronic_properties_fit,
             P,
             eos,
-            plot,
-            plot_type,
-            selected_temperatures_plot,
         )
         self.quasi_harmonic_df = quasi_harmonic_properties
         self.method = method
@@ -1000,8 +982,6 @@ class Configuration:
         temp_range: list,
         volumes: list[float] = None,
         order: int = 2,
-        plot: bool = False,
-        selected_temperatures_plot: np.ndarray = None,
     ):
         self.phonons = PhononsData(self.path)
         self.phonons.get_vasp_input(volumes)
@@ -1009,8 +989,6 @@ class Configuration:
             scale_atoms,
             temp_range,
             order=order,
-            plot=plot,
-            selected_temperatures_plot=selected_temperatures_plot,
         )
 
     def run_thermal_electronic(
@@ -1049,16 +1027,12 @@ class Configuration:
         temperature_range: np.ndarray,
         volumes: list[float] = None,
         order: int = 2,
-        plot: bool = False,
-        selected_temperatures_plot: np.ndarray = None,
     ):
         self.thermal_electronic = ThermalElectronicData(self.path)
         self.thermal_electronic.get_vasp_input(volumes)
         self.thermal_electronic.get_thermal_electronic_data(
             temperature_range,
             order=order,
-            plot=plot,
-            selected_temperatures_plot=selected_temperatures_plot,
         )
     def add_experiments(self, experiments: dict):
         self.experiments = experiments
@@ -1068,11 +1042,8 @@ class Configuration:
         method: str,
         volume_range: np.ndarray,
         P: float = 0,
-        plot: bool = False,
-        plot_type: str = "default",
-        selected_temperatures_plot: list = None,
     ):
-        if self.qha is None:
+        if not hasattr(self, 'qha'):
             self.qha = QuasiHarmonicData()
 
         if method == "debye":
@@ -1108,9 +1079,6 @@ class Configuration:
             debye_properties=debye_properties,
             thermal_electronic_properties_fit=thermal_electronic_properties_fit,
             P=P,
-            plot=plot,
-            plot_type=plot_type,
-            selected_temperatures_plot=selected_temperatures_plot,
         )
 
     def to_mongodb(self, connection_string: str, db_name: str, collection_name: str):
