@@ -509,7 +509,7 @@ class ThermalElectronicData:
 
     def _get_elec_folders(self):
         return natsorted([f for f in os.listdir(self.path) if f.startswith("elec_")])
-    
+
     def get_vasp_input(self, volumes: list[float] = None):
         elec_folders = self._get_elec_folders()
         incar_keys = ["elec_dos"]
@@ -518,9 +518,7 @@ class ThermalElectronicData:
             volumes = [round(volume, 2) for volume in volumes]
             filtered_elec_folders = []
             for elec_folder in elec_folders:
-                contcar_path = os.path.join(
-                    self.path, elec_folder, "CONTCAR.elec_dos"
-                )
+                contcar_path = os.path.join(self.path, elec_folder, "CONTCAR.elec_dos")
                 if os.path.exists(contcar_path):
                     structure = Structure.from_file(contcar_path)
                     if round(structure.volume, 2) in volumes:
@@ -538,7 +536,7 @@ class ThermalElectronicData:
             os.path.join(self.path, elec_folders[0], "KPOINTS.elec_dos")
         )
         self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
-        
+
     def get_thermal_electronic_data(
         self,
         temperature_range: np.ndarray,
@@ -603,16 +601,26 @@ class ThermalElectronicData:
             self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
 
     def plot(self, selected_temperatures_plot: np.ndarray = None):
-        plot_thermal_electronic(
-            self.thermal_electronic_df
-        )
+        plot_thermal_electronic(self.thermal_electronic_df)
         plot_thermal_electronic_properties_fit(
             self.thermal_electronic_fit_df,
             selected_temperatures_plot,
         )
 
+
 # TODO: incorporate other pressures
 class QuasiHarmonicData:
+    def __init__(self):
+        self.methods = {
+            "debye": {},
+            "debye + thermal_electronic": {},
+            "phonons": {},
+            "phonons + thermal_electronic": {},
+        }
+        self.number_of_atoms = None
+        self.temperatures = None
+        self.volumes = None
+
     def get_quasi_harmonic_data(
         self,
         method,
@@ -622,7 +630,7 @@ class QuasiHarmonicData:
         harmonic_properties_fit: pd.DataFrame = None,
         debye_properties: pd.DataFrame = None,
         thermal_electronic_properties_fit: pd.DataFrame = None,
-        P: int = 0,
+        P: float = 0,
         plot: bool = False,
         plot_type: str = "default",
         selected_temperatures_plot: list = None,
@@ -678,9 +686,23 @@ class QuasiHarmonicData:
         for temp, cv in zip(self.temperatures, cv_coefficients):
             self.heat_capacity["polynomial_coefficients"][f"{temp}K"] = cv
 
-    def plot(self, plot_type: str = "default", selected_temperatures_plot: list = None):
+        self.methods[method][P] = {
+            "quasi_harmonic_df": self.quasi_harmonic_df,
+            "helmholtz_energy": self.helmholtz_energy,
+            "entropy": self.entropy,
+            "heat_capacity": self.heat_capacity,
+        }
+
+    def plot(
+        self,
+        method: str,
+        pressure: float,
+        plot_type: str = "default",
+        selected_temperatures_plot: list = None,
+    ):
+
         plot_quasi_harmonic(
-            self.quasi_harmonic_df,
+            self.methods[method][pressure]["quasi_harmonic_df"],
             plot_type,
             selected_temperatures_plot,
         )
@@ -1043,17 +1065,34 @@ class Configuration:
         self,
         method: str,
         volume_range: np.ndarray,
-        P: int = 0,
+        P: float = 0,
         plot: bool = False,
         plot_type: str = "default",
         selected_temperatures_plot: list = None,
     ):
-        self.qha = QuasiHarmonicData()
+        if self.qha is None:
+            self.qha = QuasiHarmonicData()
 
         if method == "debye":
             debye_properties = self.debye.debye_df
             harmonic_properties_fit = None
             thermal_electronic_properties_fit = None
+        elif method == "debye + thermal_electronic":
+            debye_properties = self.debye.debye_df
+            harmonic_properties_fit = None
+            thermal_electronic_properties_fit = (
+                self.thermal_electronic.thermal_electronic_fit_df
+            )
+        elif method == "phonons":
+            debye_properties = None
+            harmonic_properties_fit = self.phonons.harmonic_fit_df
+            thermal_electronic_properties_fit = None
+        elif method == "phonons + thermal_electronic":
+            debye_properties = None
+            harmonic_properties_fit = self.phonons.harmonic_fit_df
+            thermal_electronic_properties_fit = (
+                self.thermal_electronic.thermal_electronic_fit_df
+            )
         else:
             raise ValueError(f"Unknown option: {method}")
 
@@ -1143,16 +1182,20 @@ class Configuration:
                 "entropy": self.thermal_electronic.entropy_fit,
                 "heat_capacity": self.thermal_electronic.heat_capacity_fit,
             }
-                
+
         if hasattr(self, "qha"):
+            methods_copy = {
+                method: {
+                    str(P) + " GPa": {k: v for k, v in data.items() if k != "quasi_harmonic_df"}
+                    for P, data in pressures.items()
+                }
+                for method, pressures in self.qha.methods.items()
+            }
             document["qha"] = {
-                "method": self.qha.method,
                 "number_of_atoms": self.qha.number_of_atoms,
                 "volumes": self.qha.volumes,
                 "temperatures": self.qha.temperatures,
-                "helmholtz_energy": self.qha.helmholtz_energy,
-                "entropy": self.qha.entropy,
-                "heat_capacity": self.qha.heat_capacity,
+                "methods": methods_copy,
             }
 
         self.collection.insert_one(document)
