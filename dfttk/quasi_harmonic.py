@@ -241,7 +241,7 @@ def process_quasi_harmonic(
     # Create a quasi-harmonic dataframe
     quasi_harmonic_properties = pd.DataFrame(
         data={
-            "pressure": [P] * len(temperature_list),
+            "pressure": [P * EV_PER_CUBIC_ANGSTROM_TO_GPA] * len(temperature_list),
             "number_of_atoms": [num_atoms_eos] * len(temperature_list),
             "temperature": temperature_list,
             "volume_range": volume_range_list,
