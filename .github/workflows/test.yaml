@@ -1,4 +1,4 @@
-name: dfttk tests
+name: Tests
 
 on:
   push:
