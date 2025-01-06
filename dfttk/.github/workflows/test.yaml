@@ -1,0 +1,15 @@
+name: dfttk tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    - name: Hello Step
+      run: echo "Hello World"
