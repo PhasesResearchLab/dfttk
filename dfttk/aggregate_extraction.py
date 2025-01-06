@@ -10,7 +10,6 @@ import glob
 from natsort import natsorted
 import pandas as pd
 import numpy as np
-import plotly.express as px
 import plotly.graph_objects as go
 
 
@@ -18,7 +17,6 @@ import plotly.graph_objects as go
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.io.vasp.inputs import Incar
-from pymatgen.io.vasp.outputs import Poscar
 
 # DFTTK imports
 from dfttk.data_extraction import (
