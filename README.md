@@ -3,6 +3,8 @@
     <img src="docs/logo.png" alt="DFTTK Logo">
 </p>
 
+[![codecov](https://codecov.io/gh/PhasesResearchLab/dfttk/branch/master/graph/badge.svg?token=S2J0KR0WKQ)](https://codecov.io/gh/PhasesResearchLab/dfttk)
+
 ## Overview
 The **D**ensity **F**unctional **T**heory **T**ool**K**it is a Python package for automating VASP jobs and storing relevant results on MongoDB. The VASP workflows are based on [Custodian](https://github.com/materialsproject/custodian), and [PyMongo](https://github.com/mongodb/mongo-python-driver) is used to store the results on MongoDB.
 
