@@ -32,5 +32,7 @@ jobs:
         pip install pytest
 
     - name: Run tests
+      env:
+        PYTHONPATH: ${{ github.workspace }}
       run: |
         pytest tests/test_config.py
