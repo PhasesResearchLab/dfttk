@@ -3,13 +3,15 @@ name: dfttk tests
 on:
   push:
     branches:
-      - master
+      - 'master'
   pull_request:
     branches:
-      - master
+      - 'master'
 
 jobs:
-  test:
+  hello:
     runs-on: ubuntu-latest
+
+    steps:
     - name: Hello Step
       run: echo "Hello World"
