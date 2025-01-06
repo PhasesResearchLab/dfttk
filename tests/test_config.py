@@ -1,5 +1,5 @@
 def test_import():
     try:
-        import config
+        import dfttk.config
     except ImportError:
-        assert False, "Failed to import config module"
+        assert False, "Failed to import dfttk.config module"
