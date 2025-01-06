@@ -1,4 +1,4 @@
-name: dfttk tests
+name: Run tests
 
 on:
   push:
@@ -9,9 +9,17 @@ on:
       - 'master'
 
 jobs:
-  hello:
+  tests: 
     runs-on: ubuntu-latest
 
     steps:
-    - name: Hello Step
-      run: echo "Hello World"
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup Node
+      uses: actions/setup-node@v2
+      with:
+        node-version: 16.18
+    - name: Install Dependencies
+      run: npm ci
+    - name: Run tests
+      run: npm test
