@@ -1,6 +1,12 @@
+# Standard library imports
 import os
-import pytest
+import json
+
+# Third-party library imports
 import numpy as np
+import pytest
+
+# DFTTK imports
 from dfttk.config import Configuration
 
 
@@ -167,6 +173,108 @@ def test_analyze_kpoints_conv():
     assert np.allclose(
         difference_mev_per_atom, expected_difference_mev_per_atom, equal_nan=True
     ), f"Expected {expected_difference_mev_per_atom}, but got {difference_mev_per_atom}"
+
+
+def _convert_pbc_lists_to_tuples(data):
+    data["lattice"]["pbc"] = tuple(data["lattice"]["pbc"])
+    return data
+
+
+def test_process_ev_curves():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(current_dir, "tests_data/Al/config_Al")
+    config_Al = Configuration(path, "config_Al")
+
+    config_Al.process_ev_curves()
+
+    with open(os.path.join(current_dir, "expected_incars.json"), "r") as f:
+        expected_incars = json.load(f)
+
+    for actual_incar, expected_incar in zip(
+        config_Al.ev_curves.incars, expected_incars
+    ):
+        assert (
+            actual_incar == expected_incar
+        ), f"Expected {expected_incar}, but got {actual_incar}"
+
+    with open(os.path.join(current_dir, "expected_kpoints.json"), "r") as f:
+        expected_kpoints = json.load(f)
+
+    for actual_kpoint, expected_kpoint in zip(
+        config_Al.ev_curves.kpoints.as_dict(), expected_kpoints
+    ):
+        assert (
+            actual_kpoint == expected_kpoint
+        ), f"Expected {expected_kpoint}, but got {actual_kpoint}"
+
+    assert (
+        config_Al.ev_curves.number_of_atoms == 4
+    ), f"Expected 4, but got {config_Al.ev_curves.number_of_atoms}"
+    assert config_Al.ev_curves.volumes == [
+        74.0,
+        72.0,
+        70.0,
+        68.0,
+        66.0,
+        64.0,
+        62.0,
+        60.0,
+    ], f"Expected [74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0], but got {config_Al.ev_curves.volumes}"
+    assert config_Al.ev_curves.energies == [
+        -14.787067,
+        -14.863567,
+        -14.92244,
+        -14.960229,
+        -14.973035,
+        -14.955434,
+        -14.902786,
+        -14.808673,
+    ], f"Expected [-14.787067, -14.863567, -14.92244, -14.960229, -14.973035, -14.955434, -14.902786, -14.808673], but got {config_Al.ev_curves.energies}"
+
+    assert config_Al.ev_curves.atomic_masses == {
+        "Al": 26.981
+    }, f"Expected {'Al': 26.981}, but got {config_Al.ev_curves.atomic_masses}"
+    assert (
+        config_Al.ev_curves.average_mass == 26.981
+    ), f"Expected 26.981, but got {config_Al.ev_curves.average_mass}"
+    assert (
+        config_Al.ev_curves.total_magnetic_moment == None
+    ), f"Expected None, but got {config_Al.ev_curves.total_magnetic_moment}"
+    assert (
+        config_Al.ev_curves.magnetic_ordering == None
+    ), f"Expected None, but got {config_Al.ev_curves.magnetic_ordering}"
+    assert (
+        config_Al.ev_curves.mag_data == []
+    ), f"Expected [], but got {config_Al.ev_curves.mag_data}"
+    assert config_Al.ev_curves.eos_parameters == {
+        "eos_name": "BM4",
+        "a": 10.115871836386141,
+        "b": -639.1561876497228,
+        "c": 781.9858370675397,
+        "d": 48419.8400405475,
+        "e": 0.0,
+        "V0": 66.10191547034127,
+        "E0": -14.972775074363833,
+        "B": 77.92792067011315,
+        "BP": 4.612739661291564,
+        "B2P": -0.06258448064264342,
+    }, f"Expected {'eos_name': 'BM4', 'a': 10.115871836386141, 'b': -639.1561876497228, 'c': 781.9858370675397, 'd': 48419.8400405475, 'e': 0.0, 'V0': 66.10191547034127, 'E0': -14.972775074363833, 'B': 77.92792067011315, 'BP': 4.612739661291564, 'B2P': -0.06258448064264342}, but got {config_Al.ev_curves.eos_parameters}"
+
+    actual_relaxed_structures = [
+        structure.as_dict() for structure in config_Al.ev_curves.relaxed_structures
+    ]
+
+    with open(os.path.join(current_dir, "expected_relaxed_structures.json"), "r") as f:
+        expected_relaxed_structures = json.load(f)
+
+    for i, expected_relaxed_structure in enumerate(expected_relaxed_structures):
+        expected_relaxed_structures[i] = _convert_pbc_lists_to_tuples(
+            expected_relaxed_structure
+        )
+
+    assert (
+        actual_relaxed_structures == expected_relaxed_structures
+    ), f"Expected {expected_relaxed_structures}, but got {actual_relaxed_structures}"
 
 
 if __name__ == "__main__":

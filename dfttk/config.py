@@ -85,8 +85,6 @@ class EvCurvesData:
         }
         self.eos_parameters_df = None  # Temporary
         self.relaxed_structures = []
-        self.volumes = None
-        self.eos_energies = None
 
     def _get_volume_folders(self):
         return natsorted([f for f in os.listdir(self.path) if f.startswith("vol_")])
@@ -114,7 +112,11 @@ class EvCurvesData:
             self.incars.append(incar_data)
 
         self.kpoints = Kpoints.from_file(os.path.join(self.path, "KPOINTS"))
-        self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
+        
+        try:
+            self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
+        except FileNotFoundError:
+            self.potcar = None
 
     def get_energy_volume_data(
         self,
@@ -217,6 +219,7 @@ class EvCurvesData:
         }
         self.eos_parameters_df = eos_parameters_df
 
+    '''
     # TODO: this method might not be necessary
     def get_eos_energies(
         self, volume_min: float, volume_max: float, num_volumes: int = 1000
@@ -259,7 +262,7 @@ class EvCurvesData:
 
         self.volumes = volume_range
         self.eos_energies = eos_energies
-
+    '''
     def plot(
         self,
         eos_name: str = "BM4",
@@ -398,7 +401,11 @@ class PhononsData:
         self.kpoints = Kpoints.from_file(
             os.path.join(self.path, phonon_folders[0], "KPOINTS.2phonons")
         )
-        self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
+        try:
+            self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
+        except FileNotFoundError:
+            self.potcar = None
+
 
     def get_harmonic_data(
         self,
@@ -527,7 +534,11 @@ class ThermalElectronicData:
         self.kpoints = Kpoints.from_file(
             os.path.join(self.path, elec_folders[0], "KPOINTS.elec_dos")
         )
-        self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
+        try:
+            self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
+        except FileNotFoundError:
+            self.potcar = None
+
 
     def get_thermal_electronic_data(
         self,
