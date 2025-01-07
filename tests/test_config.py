@@ -258,8 +258,7 @@ def test_process_ev_curves():
         "B": 77.92792067011315,
         "BP": 4.612739661291564,
         "B2P": -0.06258448064264342,
-    }, f"Expected {'eos_name': 'BM4', 'a': 10.115871836386141, 'b': -639.1561876497228, 'c': 781.9858370675397, 'd': 48419.8400405475, 'e': 0.0, 'V0': 66.10191547034127, 'E0': -14.972775074363833, 'B': 77.92792067011315, 'BP': 4.612739661291564, 'B2P': -0.06258448064264342}, but got {config_Al.ev_curves.eos_parameters}"
-
+    }, f"Expected {repr({'eos_name': 'BM4', 'a': 10.115871836386141, 'b': -639.1561876497228, 'c': 781.9858370675397, 'd': 48419.8400405475, 'e': 0.0, 'V0': 66.10191547034127, 'E0': -14.972775074363833, 'B': 77.92792067011315, 'BP': 4.612739661291564, 'B2P': -0.06258448064264342})}, but got {repr(config_Al.ev_curves.eos_parameters)}"
     actual_relaxed_structures = [
         structure.as_dict() for structure in config_Al.ev_curves.relaxed_structures
     ]
