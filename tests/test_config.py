@@ -334,6 +334,21 @@ def test_process_phonons():
     assert (
         actual_phonon_structures == expected_phonon_structures
     ), f"Expected {expected_phonon_structures}, but got {actual_phonon_structures}"
-        
+    
+    expected_number_of_atoms = 4
+    assert (
+        config_Al.phonons.number_of_atoms == expected_number_of_atoms
+    ), f"Expected 4, but got {config_Al.phonons.number_of_atoms}"
+    
+    expected_temperatures = list(range(0, 1010, 10))
+    assert (
+        config_Al.phonons.temperatures == expected_temperatures
+    ), f"Expected {temp_range}, but got {config_Al.phonons.temperatures}"
+    
+    expected_volumes = [60.0, 62.0, 64.0, 66.0, 68.0, 70.0, 72.0, 74.0]
+    assert (
+        config_Al.phonons.volumes == expected_volumes
+    ), f"Expected {expected_volumes}, but got {config_Al.phonons.volumes}"
+    
 if __name__ == "__main__":
     pytest.main()
