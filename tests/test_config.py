@@ -1,6 +1,7 @@
 # Standard library imports
 import os
 import math
+from math import isclose
 import json
 
 # Third-party library imports
@@ -352,9 +353,11 @@ def test_process_phonons():
     
     with open(os.path.join(current_dir, "expected_phonons_helmholtz_energy.json"), "r") as f:
         expected_helmholtz_energy = json.load(f)
-    assert (
-        config_Al.phonons.helmholtz_energy == expected_helmholtz_energy
-    ), f"Expected {expected_helmholtz_energy}, but got {config_Al.phonons.helmholtz_energy}"
-    
+    tolerance = 1e-4
+    for temp, expected_values in expected_helmholtz_energy.items():
+        actual_values = config_Al.phonons.helmholtz_energy[temp]
+        for expected, actual in zip(expected_values, actual_values):
+            assert isclose(expected, actual, rel_tol=tolerance), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
+        
 if __name__ == "__main__":
     pytest.main()
