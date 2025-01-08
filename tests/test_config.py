@@ -278,16 +278,16 @@ def test_process_ev_curves():
     ]
 
     with open(os.path.join(current_dir, "expected_ev_curves_relaxed_structures.json"), "r") as f:
-        expected_relaxed_structures = json.load(f)
+        expected_phonon_structures = json.load(f)
 
-    for i, expected_relaxed_structure in enumerate(expected_relaxed_structures):
-        expected_relaxed_structures[i] = _convert_pbc_lists_to_tuples(
+    for i, expected_relaxed_structure in enumerate(expected_phonon_structures):
+        expected_phonon_structures[i] = _convert_pbc_lists_to_tuples(
             expected_relaxed_structure
         )
 
     assert (
-        actual_relaxed_structures == expected_relaxed_structures
-    ), f"Expected {expected_relaxed_structures}, but got {actual_relaxed_structures}"
+        actual_relaxed_structures == expected_phonon_structures
+    ), f"Expected {expected_phonon_structures}, but got {actual_relaxed_structures}"
 
 
 def test_process_phonons():
@@ -309,5 +309,31 @@ def test_process_phonons():
             actual_incar == expected_incar
         ), f"Expected {expected_incar}, but got {actual_incar}"
 
+    with open(os.path.join(current_dir, "expected_ev_curves_kpoints.json"), "r") as f:
+        expected_kpoints = json.load(f)
+
+    for actual_kpoint, expected_kpoint in zip(
+        config_Al.phonons.kpoints.as_dict(), expected_kpoints
+    ):
+        assert (
+            actual_kpoint == expected_kpoint
+        ), f"Expected {expected_kpoint}, but got {actual_kpoint}"
+    
+    actual_phonon_structures = [
+        structure.as_dict() for structure in config_Al.phonons.phonon_structures
+    ]
+
+    with open(os.path.join(current_dir, "expected_phonons_phonon_structures.json"), "r") as f:
+        expected_phonon_structures = json.load(f)
+
+    for i, expected_relaxed_structure in enumerate(expected_phonon_structures):
+        expected_phonon_structures[i] = _convert_pbc_lists_to_tuples(
+            expected_relaxed_structure
+        )
+
+    assert (
+        actual_phonon_structures == expected_phonon_structures
+    ), f"Expected {expected_phonon_structures}, but got {actual_phonon_structures}"
+        
 if __name__ == "__main__":
     pytest.main()
