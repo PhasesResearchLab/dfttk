@@ -351,13 +351,35 @@ def test_process_phonons():
         config_Al.phonons.volumes == expected_volumes
     ), f"Expected {expected_volumes}, but got {config_Al.phonons.volumes}"
     
+    tolerance = 1e-4
     with open(os.path.join(current_dir, "expected_phonons_helmholtz_energy.json"), "r") as f:
         expected_helmholtz_energy = json.load(f)
-    tolerance = 1e-4
     for temp, expected_values in expected_helmholtz_energy.items():
         actual_values = config_Al.phonons.helmholtz_energy[temp]
         for expected, actual in zip(expected_values, actual_values):
             assert isclose(expected, actual, rel_tol=tolerance), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
+    
+    with open(os.path.join(current_dir, "expected_phonons_internal_energy.json"), "r") as f:
+        expected_internal_energy = json.load(f)
+    for temp, expected_values in expected_internal_energy.items():
+        actual_values = config_Al.phonons.internal_energy[temp]
+        for expected, actual in zip(expected_values, actual_values):
+            assert isclose(expected, actual, rel_tol=tolerance), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
+    
+    with open(os.path.join(current_dir, "expected_phonons_entropy.json"), "r") as f:
+        expected_entropy = json.load(f)
+    for temp, expected_values in expected_entropy.items():
+        actual_values = config_Al.phonons.entropy[temp]
+        for expected, actual in zip(expected_values, actual_values):
+            assert isclose(expected, actual, rel_tol=tolerance), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
+    
+    with open(os.path.join(current_dir, "expected_phonons_heat_capacity.json"), "r") as f:
+        expected_heat_capacity = json.load(f)
+    for temp, expected_values in expected_heat_capacity.items():
+        actual_values = config_Al.phonons.heat_capacity[temp]
+        for expected, actual in zip(expected_values, actual_values):
+            assert isclose(expected, actual, rel_tol=tolerance), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
+    
         
 if __name__ == "__main__":
     pytest.main()
