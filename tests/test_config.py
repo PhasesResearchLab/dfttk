@@ -201,7 +201,7 @@ def test_process_ev_curves():
 
     config_Al.process_ev_curves()
 
-    with open(os.path.join(current_dir, "expected_incars.json"), "r") as f:
+    with open(os.path.join(current_dir, "expected_ev_curves_incars.json"), "r") as f:
         expected_incars = json.load(f)
 
     for actual_incar, expected_incar in zip(
@@ -211,7 +211,7 @@ def test_process_ev_curves():
             actual_incar == expected_incar
         ), f"Expected {expected_incar}, but got {actual_incar}"
 
-    with open(os.path.join(current_dir, "expected_kpoints.json"), "r") as f:
+    with open(os.path.join(current_dir, "expected_ev_curves_kpoints.json"), "r") as f:
         expected_kpoints = json.load(f)
 
     for actual_kpoint, expected_kpoint in zip(
@@ -261,21 +261,6 @@ def test_process_ev_curves():
         config_Al.ev_curves.mag_data == []
     ), f"Expected [], but got {config_Al.ev_curves.mag_data}"
 
-    """
-    assert config_Al.ev_curves.eos_parameters == {
-        "eos_name": "BM4",
-        "a": 10.115871836386141,
-        "b": -639.1561876497228,
-        "c": 781.9858370675397,
-        "d": 48419.8400405475,
-        "e": 0.0,
-        "V0": 66.10191547034127,
-        "E0": -14.972775074363833,
-        "B": 77.92792067011315,
-        "BP": 4.612739661291564,
-        "B2P": -0.06258448064264342,
-    }, f"Expected {repr({'eos_name': 'BM4', 'a': 10.115871836386141, 'b': -639.1561876497228, 'c': 781.9858370675397, 'd': 48419.8400405475, 'e': 0.0, 'V0': 66.10191547034127, 'E0': -14.972775074363833, 'B': 77.92792067011315, 'BP': 4.612739661291564, 'B2P': -0.06258448064264342})}, but got {repr(config_Al.ev_curves.eos_parameters)}"
-    """
     expected_eos_parameters = {
         "V0": 66.10191547034127,
         "E0": -14.972775074363833,
@@ -292,7 +277,7 @@ def test_process_ev_curves():
         structure.as_dict() for structure in config_Al.ev_curves.relaxed_structures
     ]
 
-    with open(os.path.join(current_dir, "expected_relaxed_structures.json"), "r") as f:
+    with open(os.path.join(current_dir, "expected_ev_curves_relaxed_structures.json"), "r") as f:
         expected_relaxed_structures = json.load(f)
 
     for i, expected_relaxed_structure in enumerate(expected_relaxed_structures):
@@ -304,6 +289,25 @@ def test_process_ev_curves():
         actual_relaxed_structures == expected_relaxed_structures
     ), f"Expected {expected_relaxed_structures}, but got {actual_relaxed_structures}"
 
+
+def test_process_phonons():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(current_dir, "tests_data/Al/config_Al")
+    config_Al = Configuration(path, "config_Al")
+
+    num_atoms = 4
+    temp_range = list(range(0, 1010, 10))
+    config_Al.process_phonons(num_atoms, temp_range)
+
+    with open(os.path.join(current_dir, "expected_phonons_incars.json"), "r") as f:
+        expected_incars = json.load(f)
+
+    for actual_incar, expected_incar in zip(
+        config_Al.phonons.incars, expected_incars
+    ):
+        assert (
+            actual_incar == expected_incar
+        ), f"Expected {expected_incar}, but got {actual_incar}"
 
 if __name__ == "__main__":
     pytest.main()
