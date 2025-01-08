@@ -350,5 +350,11 @@ def test_process_phonons():
         config_Al.phonons.volumes == expected_volumes
     ), f"Expected {expected_volumes}, but got {config_Al.phonons.volumes}"
     
+    with open(os.path.join(current_dir, "expected_phonons_helmholtz_energy.json"), "r") as f:
+        expected_helmholtz_energy = json.load(f)
+    assert (
+        config_Al.phonons.helmholtz_energy == expected_helmholtz_energy
+    ), f"Expected {expected_helmholtz_energy}, but got {config_Al.phonons.helmholtz_energy}"
+    
 if __name__ == "__main__":
     pytest.main()
