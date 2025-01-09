@@ -357,7 +357,6 @@ class PhononsData:
         self.entropy = None
         self.heat_capacity = None
         self.helmholtz_energy_fit = None
-        self.internal_energy_fit = None
         self.entropy_fit = None
         self.heat_capacity_fit = None
         self.harmonic_df = None

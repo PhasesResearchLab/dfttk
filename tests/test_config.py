@@ -278,7 +278,9 @@ def test_process_ev_curves():
         structure.as_dict() for structure in config_Al.ev_curves.relaxed_structures
     ]
 
-    with open(os.path.join(current_dir, "expected_ev_curves_relaxed_structures.json"), "r") as f:
+    with open(
+        os.path.join(current_dir, "expected_ev_curves_relaxed_structures.json"), "r"
+    ) as f:
         expected_phonon_structures = json.load(f)
 
     for i, expected_relaxed_structure in enumerate(expected_phonon_structures):
@@ -303,9 +305,7 @@ def test_process_phonons():
     with open(os.path.join(current_dir, "expected_phonons_incars.json"), "r") as f:
         expected_incars = json.load(f)
 
-    for actual_incar, expected_incar in zip(
-        config_Al.phonons.incars, expected_incars
-    ):
+    for actual_incar, expected_incar in zip(config_Al.phonons.incars, expected_incars):
         assert (
             actual_incar == expected_incar
         ), f"Expected {expected_incar}, but got {actual_incar}"
@@ -319,12 +319,14 @@ def test_process_phonons():
         assert (
             actual_kpoint == expected_kpoint
         ), f"Expected {expected_kpoint}, but got {actual_kpoint}"
-    
+
     actual_phonon_structures = [
         structure.as_dict() for structure in config_Al.phonons.phonon_structures
     ]
 
-    with open(os.path.join(current_dir, "expected_phonons_phonon_structures.json"), "r") as f:
+    with open(
+        os.path.join(current_dir, "expected_phonons_phonon_structures.json"), "r"
+    ) as f:
         expected_phonon_structures = json.load(f)
 
     for i, expected_relaxed_structure in enumerate(expected_phonon_structures):
@@ -335,80 +337,106 @@ def test_process_phonons():
     assert (
         actual_phonon_structures == expected_phonon_structures
     ), f"Expected {expected_phonon_structures}, but got {actual_phonon_structures}"
-    
+
     expected_number_of_atoms = 4
     assert (
         config_Al.phonons.number_of_atoms == expected_number_of_atoms
     ), f"Expected 4, but got {config_Al.phonons.number_of_atoms}"
-    
+
     expected_temperatures = list(range(0, 1010, 10))
     assert (
         config_Al.phonons.temperatures == expected_temperatures
     ), f"Expected {temp_range}, but got {config_Al.phonons.temperatures}"
-    
+
     expected_volumes = [60.0, 62.0, 64.0, 66.0, 68.0, 70.0, 72.0, 74.0]
     assert (
         config_Al.phonons.volumes == expected_volumes
     ), f"Expected {expected_volumes}, but got {config_Al.phonons.volumes}"
-    
+
     tolerance = 1e-4
-    with open(os.path.join(current_dir, "expected_phonons_helmholtz_energy.json"), "r") as f:
+    with open(
+        os.path.join(current_dir, "expected_phonons_helmholtz_energy.json"), "r"
+    ) as f:
         expected_helmholtz_energy = json.load(f)
     for temp, expected_values in expected_helmholtz_energy.items():
         actual_values = config_Al.phonons.helmholtz_energy[temp]
         for expected, actual in zip(expected_values, actual_values):
-            assert isclose(expected, actual, rel_tol=tolerance), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
-    
-    with open(os.path.join(current_dir, "expected_phonons_internal_energy.json"), "r") as f:
+            assert isclose(
+                expected, actual, rel_tol=tolerance
+            ), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
+
+    with open(
+        os.path.join(current_dir, "expected_phonons_internal_energy.json"), "r"
+    ) as f:
         expected_internal_energy = json.load(f)
     for temp, expected_values in expected_internal_energy.items():
         actual_values = config_Al.phonons.internal_energy[temp]
         for expected, actual in zip(expected_values, actual_values):
-            assert isclose(expected, actual, rel_tol=tolerance), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
-    
+            assert isclose(
+                expected, actual, rel_tol=tolerance
+            ), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
+
     with open(os.path.join(current_dir, "expected_phonons_entropy.json"), "r") as f:
         expected_entropy = json.load(f)
     for temp, expected_values in expected_entropy.items():
         actual_values = config_Al.phonons.entropy[temp]
         for expected, actual in zip(expected_values, actual_values):
-            assert isclose(expected, actual, rel_tol=tolerance), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
-    
-    with open(os.path.join(current_dir, "expected_phonons_heat_capacity.json"), "r") as f:
+            assert isclose(
+                expected, actual, rel_tol=tolerance
+            ), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
+
+    with open(
+        os.path.join(current_dir, "expected_phonons_heat_capacity.json"), "r"
+    ) as f:
         expected_heat_capacity = json.load(f)
     for temp, expected_values in expected_heat_capacity.items():
         actual_values = config_Al.phonons.heat_capacity[temp]
         for expected, actual in zip(expected_values, actual_values):
-            assert isclose(expected, actual, rel_tol=tolerance), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
-    
-    with open(os.path.join(current_dir, "expected_phonons_helmholtz_energy_fit.json"), "r") as f:
+            assert isclose(
+                expected, actual, rel_tol=tolerance
+            ), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
+
+    with open(
+        os.path.join(current_dir, "expected_phonons_helmholtz_energy_fit.json"), "r"
+    ) as f:
         expected_helmholtz_energy_fit = json.load(f)
-    for temp, expected_values in expected_helmholtz_energy_fit["polynomial_coefficients"].items():
-        actual_values = config_Al.phonons.helmholtz_energy_fit["polynomial_coefficients"][temp]
+    for temp, expected_values in expected_helmholtz_energy_fit[
+        "polynomial_coefficients"
+    ].items():
+        actual_values = config_Al.phonons.helmholtz_energy_fit[
+            "polynomial_coefficients"
+        ][temp]
         for expected, actual in zip(expected_values, actual_values):
-            assert isclose(expected, actual, rel_tol=tolerance), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
-    
-    '''
-    with open(os.path.join(current_dir, "expected_phonons_internal_energy.json"), "r") as f:
-        expected_internal_energy = json.load(f)
-    for temp, expected_values in expected_internal_energy.items():
-        actual_values = config_Al.phonons.internal_energy[temp]
+            assert isclose(
+                expected, actual, rel_tol=tolerance
+            ), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
+
+    with open(os.path.join(current_dir, "expected_phonons_entropy_fit.json"), "r") as f:
+        expected_entropy_fit = json.load(f)
+    for temp, expected_values in expected_entropy_fit[
+        "polynomial_coefficients"
+    ].items():
+        actual_values = config_Al.phonons.entropy_fit["polynomial_coefficients"][temp]
         for expected, actual in zip(expected_values, actual_values):
-            assert isclose(expected, actual, rel_tol=tolerance), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
-    
-    with open(os.path.join(current_dir, "expected_phonons_entropy.json"), "r") as f:
-        expected_entropy = json.load(f)
-    for temp, expected_values in expected_entropy.items():
-        actual_values = config_Al.phonons.entropy[temp]
+            assert isclose(
+                expected, actual, rel_tol=tolerance
+            ), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
+
+    with open(
+        os.path.join(current_dir, "expected_phonons_heat_capacity_fit.json"), "r"
+    ) as f:
+        expected_heat_capacity_fit = json.load(f)
+    for temp, expected_values in expected_heat_capacity_fit[
+        "polynomial_coefficients"
+    ].items():
+        actual_values = config_Al.phonons.heat_capacity_fit["polynomial_coefficients"][
+            temp
+        ]
         for expected, actual in zip(expected_values, actual_values):
-            assert isclose(expected, actual, rel_tol=tolerance), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
-    
-    with open(os.path.join(current_dir, "expected_phonons_heat_capacity.json"), "r") as f:
-        expected_heat_capacity = json.load(f)
-    for temp, expected_values in expected_heat_capacity.items():
-        actual_values = config_Al.phonons.heat_capacity[temp]
-        for expected, actual in zip(expected_values, actual_values):
-            assert isclose(expected, actual, rel_tol=tolerance), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
-    '''
- 
+            assert isclose(
+                expected, actual, rel_tol=tolerance
+            ), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
+
+
 if __name__ == "__main__":
     pytest.main()
