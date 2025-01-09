@@ -438,5 +438,57 @@ def test_process_phonons():
             ), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
 
 
+def test_process_debye():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(current_dir, "tests_data/Al/config_Al")
+    config_Al = Configuration(path, "config_Al")
+
+    config_Al.process_ev_curves()
+    config_Al.process_debye(scaling_factor=0.617, gruneisen_x=2 / 3)
+
+    expected_number_of_atoms = 4
+    assert (
+        config_Al.debye.number_of_atoms == expected_number_of_atoms
+    ), f"Expected 4, but got {config_Al.debye.number_of_atoms}"
+
+    expected_scaling_factor = 0.617
+    assert (
+        config_Al.debye.scaling_factor == expected_scaling_factor
+    ), f"Expected 0.617, but got {config_Al.debye.scaling_factor}"
+
+    expected_gruneisen_x = 2 / 3
+    assert (
+        config_Al.debye.gruneisen_x == expected_gruneisen_x
+    ), f"Expected 2/3, but got {config_Al.debye.gruneisen_x}"
+
+    expected_temperatures = list(range(0, 1010, 10))
+    assert (
+        config_Al.debye.temperatures == expected_temperatures
+    ), f"Expected {expected_temperatures}, but got {config_Al.debye.temperatures}"
+
+    expected_volumes = np.linspace(0.98 * 60.0, 1.02 * 74.0, 1000)
+    assert np.allclose(
+        config_Al.debye.volumes, expected_volumes, rtol=1e-4
+    ), f"Expected {expected_volumes}, but got {config_Al.debye.volumes}"
+
+    with open(os.path.join(current_dir, "expected_debye_free_energy.json"), "r") as f:
+        expected_free_energy = json.load(f)
+    assert np.allclose(
+        config_Al.debye.free_energy, expected_free_energy, rtol=1e-4
+    ), f"Expected {expected_free_energy}, but got {config_Al.debye.free_energy}"
+
+    with open(os.path.join(current_dir, "expected_debye_entropy.json"), "r") as f:
+        expected_entropy = json.load(f)
+    assert np.allclose(
+        config_Al.debye.entropy, expected_entropy, rtol=1e-4
+    ), f"Expected {expected_entropy}, but got {config_Al.debye.entropy}"
+
+    with open(os.path.join(current_dir, "expected_debye_heat_capacity.json"), "r") as f:
+        expected_heat_capacity = json.load(f)
+    assert np.allclose(
+        config_Al.debye.heat_capacity, expected_heat_capacity, rtol=1e-4
+    ), f"Expected {expected_heat_capacity}, but got {config_Al.debye.heat_capacity}"
+
+
 if __name__ == "__main__":
     pytest.main()

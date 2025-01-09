@@ -606,7 +606,6 @@ class ThermalElectronicData:
         )
 
 
-# TODO: incorporate other pressures
 class QuasiHarmonicData:
     def __init__(self):
         self.methods = {
