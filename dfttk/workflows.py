@@ -23,7 +23,6 @@ from pymatgen.io.vasp.outputs import Chgcar
 from pymatgen.transformations.standard_transformations import SupercellTransformation
 
 # DFTTK imports
-from dfttk.data_extraction import extract_volume
 from dfttk.magnetism import get_magnetic_structure
 from dfttk.data_extraction import extract_tot_mag_data
 
@@ -334,15 +333,17 @@ def ev_curve_series(
         volumes_started = []
         for vol_folder in vol_folders:
             try:
-                volume_started = extract_volume(
+                struct = Structure.from_file(
                     os.path.join(path, vol_folder, "POSCAR.1relax")
                 )
+                volume_started = round(struct.volume, 6)
             except Exception as e:
                 print(f"possible error: {e}, trying POSCAR")
                 try:
-                    volume_started = extract_volume(
+                    struct = Structure.from_file(
                         os.path.join(path, vol_folder, "POSCAR")
                     )
+                    volume_started = round(struct.volume, 6)
                 except Exception as e:
                     print(
                         f"Error: {e}. Failed to extract volumes from POSCAR files. Ensure that POSCAR.1relax or POSCAR exists in each volume folder."
@@ -697,7 +698,8 @@ def phonons_parallel(
     ev_folder_names = []
     for vol_folder in vol_folders:
         structure_path = os.path.join(path, vol_folder, "CONTCAR.3static")
-        ev_volumes_finished.append(extract_volume(structure_path))
+        struct = Structure.from_file(structure_path)
+        ev_volumes_finished.append(round(struct.volume, 6))
         ev_folder_names.append(vol_folder)
 
     ev_volumes_and_folders_finished = [
@@ -832,7 +834,7 @@ def process_phonon_dos_YPHON(path: str):
             index = phonon_folder.split("_")[-1]
             structure = Structure.from_file(os.path.join(phonon_dos_folder, "CONTCAR"))
             number_of_atoms = structure.num_sites
-            volume = extract_volume(os.path.join(phonon_dos_folder, "CONTCAR"))
+            volume = round(structure.volume, 6)
             volume_per_atom = volume / number_of_atoms
 
             with open(os.path.join(phonon_dos_folder, "volph_" + index), "w") as f:
@@ -971,7 +973,8 @@ def elec_dos_parallel(
     ev_folder_names = []
     for vol_folder in vol_folders:
         structure_path = os.path.join(path, vol_folder, "CONTCAR.3static")
-        ev_volumes_finished.append(extract_volume(structure_path))
+        struct = Structure.from_file(structure_path)
+        ev_volumes_finished.append(round(struct.volume, 6))
         ev_folder_names.append(vol_folder)
 
     ev_volumes_and_folders_finished = [
