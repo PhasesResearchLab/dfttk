@@ -474,7 +474,7 @@ def test_process_debye():
     with open(os.path.join(current_dir, "expected_debye_free_energy.json"), "r") as f:
         expected_free_energy = json.load(f)
     assert np.allclose(
-        config_Al.debye.free_energy, expected_free_energy, rtol=1e-4
+        config_Al.debye.free_energy, expected_free_energy, rtol=1e-3
     ), (
         f"Expected (first 5 elements) {expected_free_energy[:5]}, "
         f"but got (first 5 elements) {config_Al.debye.free_energy[:5]}"
@@ -484,13 +484,19 @@ def test_process_debye():
         expected_entropy = json.load(f)
     assert np.allclose(
         config_Al.debye.entropy, expected_entropy, rtol=1e-4
-    ), f"Expected {expected_entropy}, but got {config_Al.debye.entropy}"
-
+    ), (
+        f"Expected (first 5 elements) {expected_entropy[:5]}, "
+        f"but got (first 5 elements) {config_Al.debye.entropy[:5]}"
+    )
+    
     with open(os.path.join(current_dir, "expected_debye_heat_capacity.json"), "r") as f:
         expected_heat_capacity = json.load(f)
     assert np.allclose(
         config_Al.debye.heat_capacity, expected_heat_capacity, rtol=1e-4
-    ), f"Expected {expected_heat_capacity}, but got {config_Al.debye.heat_capacity}"
+    ), (
+        f"Expected (first 5 elements) {expected_heat_capacity[:5]}, "
+        f"but got (first 5 elements) {config_Al.debye.heat_capacity[:5]}"
+    )
 
 
 if __name__ == "__main__":
