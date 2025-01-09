@@ -30,28 +30,6 @@ def extract_volume(path: str) -> float:
     return volume
 
 
-def extract_pressure(path: str) -> float:
-    """Extract the last occurrence of pressure from an OUTCAR file
-
-    Args:
-        path: the path to an OUTCAR file
-
-    Returns:
-        the pressure from an OUTCAR file
-    """
-
-    with open(path, "r") as file:
-        file_name = os.path.basename(path)
-        assert file_name.startswith("OUTCAR"), "File name does not start with 'OUTCAR'"
-
-        lines = file.readlines()
-        for line in reversed(lines):
-            if "pressure" in line:
-                pressure = float(line.split()[3])
-                break
-    return pressure
-
-
 def extract_kpoints(path: str) -> list[str]:
     """Extract kpoints from an OUTCAR file
 
@@ -137,69 +115,6 @@ def extract_average_mass(
     else:
         raise ValueError(f"Average type {average} not recognized. Must be 'arithmetic', 'geometric', or 'harmonic'.")
     return average_mass
-    
-def write_ev(path: str) -> None:
-    """Function to write the volumes and energies obtained from ev_curve_series to a text file.
-    The data will be obtained from vol_* folders.
-
-    Args:
-        path (str): the path to the directory containing the vol_* folders
-    """
-
-    original_dir = os.getcwd()
-    os.chdir(path)
-
-    folders = [
-        name
-        for name in os.listdir(os.getcwd())
-        if os.path.isdir(name) and name.startswith("vol")
-    ]
-
-    data = []
-    for folder in folders:
-        os.chdir(folder)
-        volume = extract_volume("CONTCAR.3static")
-        energy = extract_energy("OSZICAR.3static")
-        data.append([volume, energy])
-        os.chdir("../")
-
-    data = np.array(data)
-    sorted_indices = np.argsort(data[:, 0])
-    sorted_data = data[sorted_indices]
-    np.savetxt("e-v.dat", sorted_data, fmt="%f")
-    os.chdir(original_dir)
-
-
-def write_pv(path: str) -> None:
-    """Function to write the volumes and pressures obtained from ev_curve_series to a text file.
-    The data will be obtained from vol_* folders.
-
-    Args:
-        path (str): the path to the directory containing the vol_* folders
-    """
-
-    original_dir = os.getcwd()
-    os.chdir(path)
-
-    folders = [
-        name
-        for name in os.listdir(os.getcwd())
-        if os.path.isdir(name) and name.startswith("vol")
-    ]
-
-    data = []
-    for folder in folders:
-        os.chdir(folder)
-        volume = extract_volume("CONTCAR.3static")
-        pressure = extract_pressure("OUTCAR.3static")
-        data.append([volume, pressure])
-        os.chdir("../")
-
-    data = np.array(data)
-    sorted_indices = np.argsort(data[:, 0])
-    sorted_data = data[sorted_indices]
-    np.savetxt("volume_pressure.txt", sorted_data, fmt="%f")
-    os.chdir(original_dir)
 
 
 def extract_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:

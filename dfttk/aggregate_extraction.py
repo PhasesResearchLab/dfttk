@@ -20,7 +20,6 @@ from pymatgen.io.vasp.inputs import Incar
 
 # DFTTK imports
 from dfttk.data_extraction import (
-    extract_volume,
     extract_energy,
     extract_tot_mag_data,
     extract_kpoints,
@@ -83,7 +82,7 @@ def extract_configuration_data(
 
         struct = Structure.from_file(contcar_path)
         number_of_atoms = len(struct.sites)
-        vol = extract_volume(contcar_path)
+        vol = round(struct.volume, 6)
         energy = extract_energy(oszicar_path)
         energy_per_atom = energy / number_of_atoms
         vol_per_atom = vol / number_of_atoms
