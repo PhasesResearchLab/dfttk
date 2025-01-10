@@ -1355,59 +1355,6 @@ def fit_to_all_eos(
     return eos_values_df, eos_parameters_df
 
 
-# TODO: Consider moving to magnetism.py. Not related to EOS fitting.
-def plot_mv(df: pd.DataFrame, show_fig: bool = True) -> go.Figure:
-    """Plot the magnetic moment vs volume
-
-    Args:
-        df (pd.DataFrame): single pandas data frame or a list of pandas dataframes with columns ['config', '# of ion', 'volume', 'tot']
-        show_fig (bool, optional): Defaults to True.
-
-    Returns:
-        go.Figure: plotly figure
-    """
-
-    # Create a new dataframe where each 'mag_data' dataframe is associated with its corresponding 'volume' and 'config' values
-    df_new = pd.concat(
-        [
-            df_mag.assign(volume=v, config=c)
-            for v, c, df_mag in zip(df["volume"], df["config"], df["mag_data"])
-        ]
-    )
-    fig = px.line(
-        df_new.sort_values(
-            [
-                "# of ion",
-                "volume",
-            ]
-        ),
-        x="volume",
-        y="tot",
-        color="# of ion",
-        symbol="# of ion",
-        hover_data=["config", "# of ion", "volume", "tot"],
-        template="plotly_white",
-    )
-    fig.update_layout(xaxis_title="Volume [A^3]", yaxis_title="Magnetic Moment [mu_B]")
-    fig.update_yaxes(nticks=10)
-    fig.update_xaxes(nticks=10)
-
-    # Loop over each trace and update dash length
-    for i, trace in enumerate(fig.data):
-        dash_length = (
-            f"{2+(i+1)}px,{2+2*(i+1)}px"  # Dash length changes with each iteration
-        )
-        fig.data[-i - 1].update(
-            mode="markers+lines",
-            marker=dict(size=8, line=dict(width=1), opacity=0.5),
-            line=dict(width=3, dash=dash_length),
-        )
-
-    if show_fig:
-        fig.show()
-    return fig
-
-
 def assign_colors_to_configs(
     df: pd.DataFrame, alpha: float = 1, cmap: str = "plotly"
 ) -> dict:

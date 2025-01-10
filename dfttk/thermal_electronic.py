@@ -15,11 +15,11 @@ from natsort import natsorted
 from scipy.interpolate import UnivariateSpline
 
 # Local application/library specific imports
+from pymatgen.core import Structure 
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.electronic_structure.core import Spin
 
 # DFTTK imports
-from dfttk.data_extraction import extract_volume
 from dfttk.plotly_format import plot_format
 
 BOLTZMANN_CONSTANT = (
@@ -50,12 +50,12 @@ def read_total_electron_dos(path: str, plot: bool = False) -> pd.DataFrame:
     energy_minus_fermi_energy_list = []
     total_dos_list = []
     for elec_folder in elec_folders:
-        volume = extract_volume(os.path.join(path, elec_folder, "CONTCAR.elec_dos"))
+        struct = Structure.from_file(os.path.join(path, elec_folder, "CONTCAR.elec_dos"))
+        volume = round(struct.volume, 6)
 
         vasprun_path = os.path.join(path, elec_folder, "vasprun.xml.elec_dos")
         vasprun = Vasprun(vasprun_path)
 
-        volume = extract_volume(os.path.join(path, elec_folder, "CONTCAR.elec_dos"))
         num_atoms = vasprun.final_structure.num_sites
 
         # TODO: Implement this for magnetic systems as well

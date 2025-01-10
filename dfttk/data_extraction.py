@@ -13,22 +13,6 @@ import pandas as pd
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp import Poscar
 
-# TODO: If some of these functions can be replaced by just using pymatgen, then we should do that.
-def extract_volume(path: str) -> float:
-    """Extract the volume of a structure from a POSCAR/CONTCAR file
-
-    Args:
-        path: the path to a POSCAR/CONTCAR file
-
-    Returns:
-        The the volume of the structure
-    """
-
-    structure = Structure.from_file(path)
-    volume = round(structure.volume, 6)
-
-    return volume
-
 
 def extract_kpoints(path: str) -> list[str]:
     """Extract kpoints from an OUTCAR file
