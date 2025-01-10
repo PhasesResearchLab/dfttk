@@ -937,6 +937,9 @@ class Configuration:
         self,
         scaling_factor: float = 0.617,
         gruneisen_x: float = 1,
+        volumes: np.array = None,
+        temperatures: np.array = np.linspace(0, 1000, 101),
+        eos: str = "BM4",
     ):
         energy_volume_df = self.ev_curves.energy_volume_df
         eos_parameters_df = self.ev_curves.eos_parameters_df
@@ -947,6 +950,8 @@ class Configuration:
             eos_parameters_df,
             scaling_factor=scaling_factor,
             gruneisen_x=gruneisen_x,
+            volumes=volumes,
+            temperatures=temperatures,
             eos=eos,
         )
 
