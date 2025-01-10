@@ -470,7 +470,7 @@ def test_process_debye():
     assert np.allclose(
         config_Al.debye.volumes, expected_volumes, rtol=1e-4
     ), f"Expected {expected_volumes}, but got {config_Al.debye.volumes}"
-    
+    '''
     with open(os.path.join(current_dir, "expected_debye_free_energy.json"), "r") as f:
         expected_free_energy = json.load(f)
     for i, (expected, actual) in enumerate(zip(expected_free_energy, config_Al.debye.free_energy)):
@@ -486,8 +486,8 @@ def test_process_debye():
     assert np.allclose(
         config_Al.debye.entropy, expected_entropy, rtol=1e-4
     ), (
-        f"Expected (first 5 elements) {expected_entropy[:5]}, "
-        f"but got (first 5 elements) {config_Al.debye.entropy[:5]}"
+        f"Expected {expected_entropy}, "
+        f"but got {config_Al.debye.entropy}"
     )
     
     with open(os.path.join(current_dir, "expected_debye_heat_capacity.json"), "r") as f:
@@ -495,10 +495,10 @@ def test_process_debye():
     assert np.allclose(
         config_Al.debye.heat_capacity, expected_heat_capacity, rtol=1e-4
     ), (
-        f"Expected (first 5 elements) {expected_heat_capacity[:5]}, "
-        f"but got (first 5 elements) {config_Al.debye.heat_capacity[:5]}"
+        f"Expected {expected_heat_capacity}, "
+        f"but got {config_Al.debye.heat_capacity}"
     )
-    '''
+    
 
 if __name__ == "__main__":
     pytest.main()
