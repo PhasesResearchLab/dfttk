@@ -11,7 +11,7 @@ import pytest
 # DFTTK imports
 from dfttk.config import Configuration
 
-# Don't need to test too many temperatures
+
 def test_analyze_encut_conv():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(current_dir, "tests_data/Al/conv_test")
@@ -292,7 +292,7 @@ def test_process_ev_curves():
         actual_relaxed_structures == expected_phonon_structures
     ), f"Expected {expected_phonon_structures}, but got {actual_relaxed_structures}"
 
-
+# Don't need to test too many temperatures
 def test_process_phonons():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(current_dir, "tests_data/Al/config_Al")
@@ -475,9 +475,14 @@ def test_process_debye():
 
     with open(os.path.join(current_dir, "expected_debye_free_energy.json"), "r") as f:
         expected_free_energy = json.load(f)
-    assert np.allclose(
-        config_Al.debye.free_energy, expected_free_energy, rtol=1e-4
-    ), f"Expected {expected_free_energy}, but got {config_Al.debye.free_energy}"
+    for i, (expected_list, actual_list) in enumerate(zip(expected_free_energy, config_Al.debye.free_energy)):
+        for j, (expected, actual) in enumerate(zip(expected_list, actual_list)):
+            if not np.allclose(actual, expected, rtol=1e-4):
+                max_diff = np.max(np.abs(np.array(actual) - np.array(expected)))
+                print(f"Mismatch at index [{i}][{j}]: Expected {expected}, but got {actual}. Max difference: {max_diff}")
+            assert np.allclose(
+                actual, expected, rtol=1e-4
+            ), f"Expected {expected}, but got {actual}. Max difference: {max_diff}"
     '''
     
     with open(os.path.join(current_dir, "expected_debye_entropy.json"), "r") as f:
