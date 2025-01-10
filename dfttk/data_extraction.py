@@ -41,7 +41,7 @@ def extract_atomic_masses(outcar_path: str) -> float:
     """
     Extract the mass of each atom (POMASS values) from an OUTCAR file as a dictionary.
     """
-    
+
     atoms = []
     masses = []
     with open(outcar_path, "r") as file:
@@ -50,31 +50,32 @@ def extract_atomic_masses(outcar_path: str) -> float:
             if "TITEL" in line:
                 atoms.append(line.split()[-2])
             elif "POMASS" and "mass and valenz" in line:
-                mass = line.split()[2].replace(';', '')
+                mass = line.split()[2].replace(";", "")
                 masses.append(float(mass))
-                
+
     # Clean atoms so that only the species is contained. e.g. 'Fe_pv' -> 'Fe'
-    atoms = [atom.split('_')[0] for atom in atoms]
-    
+    atoms = [atom.split("_")[0] for atom in atoms]
+
     atomic_masses = dict(zip(atoms, masses))
     return atomic_masses
 
+
 def extract_average_mass(
-    contcar_path: str,
-    outcar_path: str,
-    average: str = 'arithmetic'
+    contcar_path: str, outcar_path: str, average: str = "arithmetic"
 ) -> float:
     atomic_masses = extract_atomic_masses(outcar_path)
     structure = Structure.from_file(contcar_path)
     masses = [atomic_masses[site.specie.symbol] for site in structure]
-    if average == 'arithmetic':
+    if average == "arithmetic":
         average_mass = sum(masses) / len(masses)
-    elif average == 'geometric':
-        average_mass = np.prod(masses)**(1/len(masses))
-    elif average == 'harmonic':
-        average_mass = len(masses) / sum([1/mass for mass in masses])
+    elif average == "geometric":
+        average_mass = np.prod(masses) ** (1 / len(masses))
+    elif average == "harmonic":
+        average_mass = len(masses) / sum([1 / mass for mass in masses])
     else:
-        raise ValueError(f"Average type {average} not recognized. Must be 'arithmetic', 'geometric', or 'harmonic'.")
+        raise ValueError(
+            f"Average type {average} not recognized. Must be 'arithmetic', 'geometric', or 'harmonic'."
+        )
     return average_mass
 
 
@@ -124,7 +125,9 @@ def extract_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
 
 
 # TODO just get mag data for all the ions
-def extract_tot_mag_data(outcar_path: str = "OUTCAR", contcar_path: str = "CONTCAR") -> pd.DataFrame:
+def extract_tot_mag_data(
+    outcar_path: str = "OUTCAR", contcar_path: str = "CONTCAR"
+) -> pd.DataFrame:
     """Returns only the 'tot' magnetization of the last step for each specified ion.
 
     Args:
@@ -139,11 +142,11 @@ def extract_tot_mag_data(outcar_path: str = "OUTCAR", contcar_path: str = "CONTC
     last_step_data = all_mag_data[all_mag_data["step"] == all_mag_data["step"].max()]
     tot_data = last_step_data[["#_of_ion", "tot"]]
     tot_data.reset_index(drop=True, inplace=True)
-    
+
     contcar = Poscar.from_file(contcar_path)
     species = [site.specie.symbol for site in contcar.structure]
-    
+
     tot_data = tot_data.copy()
     tot_data.loc[:, "species"] = species
-    
+
     return tot_data
