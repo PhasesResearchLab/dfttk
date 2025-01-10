@@ -17,6 +17,7 @@ import plotly.graph_objects as go
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.io.vasp.inputs import Incar
+from pymatgen.io.vasp.outputs import Oszicar
 
 # DFTTK imports
 from dfttk.data_extraction import (
@@ -83,7 +84,9 @@ def extract_configuration_data(
         struct = Structure.from_file(contcar_path)
         number_of_atoms = len(struct.sites)
         vol = round(struct.volume, 6)
-        energy = extract_energy(oszicar_path)
+        oszicar = Oszicar(oszicar_path)
+        energy = oszicar.final_energy
+        #energy = extract_energy(oszicar_path)
         energy_per_atom = energy / number_of_atoms
         vol_per_atom = vol / number_of_atoms
         space_group = SpacegroupAnalyzer(struct).get_space_group_symbol()
@@ -200,7 +203,9 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
         struct = Structure.from_file(poscar_path)
 
         encut_list.append(incar.get("ENCUT", None))
-        energy_list.append(extract_energy(oszicar_path))
+        oszicar = Oszicar(oszicar_path)
+        energy_list.append(oszicar.final_energy)
+        #energy_list.append(extract_energy(oszicar_path))
         number_of_atoms_list.append(len(struct.sites))
         kpoint_grid_list.append(extract_kpoints(outcar_path))
     energy_per_atom_list = [
