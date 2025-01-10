@@ -359,7 +359,7 @@ def test_process_phonons():
             assert np.allclose(
                 expected, actual, atol=1e-6
             ), f"Expected {expected}, but got {actual}"
-    '''
+    
     with open(
         os.path.join(current_dir, "expected_phonons_internal_energy.json"), "r"
     ) as f:
@@ -367,19 +367,19 @@ def test_process_phonons():
     for temp, expected_values in expected_internal_energy.items():
         actual_values = config_Al.phonons.internal_energy[temp]
         for expected, actual in zip(expected_values, actual_values):
-            assert isclose(
-                expected, actual, rel_tol=tolerance
-            ), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
+            assert np.allclose(
+                expected, actual, atol=1e-6
+            ), f"Expected {expected}, but got {actual}"
 
     with open(os.path.join(current_dir, "expected_phonons_entropy.json"), "r") as f:
         expected_entropy = json.load(f)
     for temp, expected_values in expected_entropy.items():
         actual_values = config_Al.phonons.entropy[temp]
         for expected, actual in zip(expected_values, actual_values):
-            assert isclose(
-                expected, actual, rel_tol=tolerance
-            ), f"Expected {expected}, but got {actual} with tolerance {tolerance}"
-
+            assert np.allclose(
+                expected, actual, atol=1e-6
+            ), f"Expected {expected}, but got {actual}"
+    '''
     with open(
         os.path.join(current_dir, "expected_phonons_heat_capacity.json"), "r"
     ) as f:
