@@ -292,6 +292,7 @@ def test_process_ev_curves():
         actual_relaxed_structures == expected_phonon_structures
     ), f"Expected {expected_phonon_structures}, but got {actual_relaxed_structures}"
 
+
 # Don't need to test too many temperatures
 def test_process_phonons():
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -444,9 +445,11 @@ def test_process_debye():
     config_Al = Configuration(path, "config_Al")
 
     config_Al.process_ev_curves()
-    
+
     temperatures = np.linspace(0, 1000, 11)
-    config_Al.process_debye(scaling_factor=0.617, gruneisen_x=2 / 3, temperatures=temperatures)
+    config_Al.process_debye(
+        scaling_factor=0.617, gruneisen_x=2 / 3, temperatures=temperatures
+    )
 
     expected_number_of_atoms = 4
     assert (
@@ -480,8 +483,8 @@ def test_process_debye():
         for expected, actual in zip(expected_values, actual_values):
             assert np.allclose(
                 expected, actual, atol=1e-6
-            ), f"Expected {expected}, but got {actual} with tolerance 1e-4"
-            
+            ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
+
     with open(os.path.join(current_dir, "expected_debye_entropy.json"), "r") as f:
         expected_entropy = json.load(f)
     for i, expected_values in enumerate(expected_entropy):
@@ -489,7 +492,17 @@ def test_process_debye():
         for expected, actual in zip(expected_values, actual_values):
             assert np.allclose(
                 expected, actual, atol=1e-6
-            ), f"Expected {expected}, but got {actual} with tolerance 1e-4"
+            ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
+
+    with open(os.path.join(current_dir, "expected_debye_heat_capacity.json"), "r") as f:
+        expected_heat_capacity = json.load(f)
+    for i, expected_values in enumerate(expected_heat_capacity):
+        actual_values = config_Al.debye.heat_capacity[i]
+        for expected, actual in zip(expected_values, actual_values):
+            assert np.allclose(
+                expected, actual, atol=1e-6
+            ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
+
 
 if __name__ == "__main__":
     pytest.main()
