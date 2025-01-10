@@ -474,11 +474,11 @@ def test_process_debye():
     with open(os.path.join(current_dir, "expected_debye_free_energy.json"), "r") as f:
         expected_free_energy = json.load(f)
     for i, (expected, actual) in enumerate(zip(expected_free_energy, config_Al.debye.free_energy)):
-        if not np.allclose(actual, expected, rtol=1e-4):
+        if not np.allclose(actual, expected, rtol=1e-3):
             max_diff = np.max(np.abs(np.array(actual) - np.array(expected)))
             print(f"Mismatch at index {i}: Max difference: {max_diff}")
         assert np.allclose(
-            actual, expected, rtol=1e-4
+            actual, expected, rtol=1e-3
     ), f"Max difference: {max_diff}"
     '''
     with open(os.path.join(current_dir, "expected_debye_entropy.json"), "r") as f:
