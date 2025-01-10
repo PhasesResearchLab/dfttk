@@ -10,10 +10,10 @@ import pytest
 # DFTTK imports
 from dfttk.config import Configuration
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# TODO: simplify code
+
 def test_analyze_encut_conv():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(current_dir, "vasp_data/Al/conv_test")
     config_Al = Configuration(path, "config_Al")
     encut_conv_df, fig = config_Al.analyze_encut_conv(plot=False)
@@ -103,7 +103,6 @@ def test_analyze_encut_conv():
 
 
 def test_analyze_kpoints_conv():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(current_dir, "vasp_data/Al/conv_test")
     config_Al = Configuration(path, "config_Al")
     kpoints_conv_df, fig = config_Al.analyze_kpoints_conv(plot=False)
@@ -196,37 +195,27 @@ def _assert_selected_keys_almost_equal(dict1, dict2, keys, tol=1e-4):
 
 
 def test_process_ev_curves():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(current_dir, "vasp_data/Al/config_Al")
     config_Al = Configuration(path, "config_Al")
 
     config_Al.process_ev_curves()
 
-    with open(
-        os.path.join(current_dir, "test_config_data/expected_ev_curves_incars.json"),
-        "r",
-    ) as f:
-        expected_incars = json.load(f)
+    ev_curves_files_and_attributes = [
+        ("test_config_data/expected_ev_curves_incars.json", "incars"),
+        ("test_config_data/expected_ev_curves_kpoints.json", "kpoints"),
+    ]
 
-    for actual_incar, expected_incar in zip(
-        config_Al.ev_curves.incars, expected_incars
-    ):
-        assert (
-            actual_incar == expected_incar
-        ), f"Expected {expected_incar}, but got {actual_incar}"
+    for filename, attribute in ev_curves_files_and_attributes:
+        with open(os.path.join(current_dir, filename), "r") as f:
+            expected_data = json.load(f)
 
-    with open(
-        os.path.join(current_dir, "test_config_data/expected_ev_curves_kpoints.json"),
-        "r",
-    ) as f:
-        expected_kpoints = json.load(f)
+        actual_data = getattr(config_Al.ev_curves, attribute)
 
-    for actual_kpoint, expected_kpoint in zip(
-        config_Al.ev_curves.kpoints.as_dict(), expected_kpoints
-    ):
-        assert (
-            actual_kpoint == expected_kpoint
-        ), f"Expected {expected_kpoint}, but got {actual_kpoint}"
+        if attribute == "kpoints":
+            actual_data = actual_data.as_dict()
+
+        for actual, expected in zip(actual_data, expected_data):
+            assert actual == expected, f"Expected {expected}, but got {actual}"
 
     assert (
         config_Al.ev_curves.number_of_atoms == 4
@@ -303,7 +292,6 @@ def test_process_ev_curves():
 
 
 def test_process_phonons():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(current_dir, "vasp_data/Al/config_Al")
     config_Al = Configuration(path, "config_Al")
 
@@ -311,26 +299,22 @@ def test_process_phonons():
     temp_range = list(range(0, 1010, 100))
     config_Al.process_phonons(num_atoms, temp_range)
 
-    with open(
-        os.path.join(current_dir, "test_config_data/expected_phonons_incars.json"), "r"
-    ) as f:
-        expected_incars = json.load(f)
-    for actual_incar, expected_incar in zip(config_Al.phonons.incars, expected_incars):
-        assert (
-            actual_incar == expected_incar
-        ), f"Expected {expected_incar}, but got {actual_incar}"
+    phonons_files_and_attributes = [
+        ("test_config_data/expected_phonons_incars.json", "incars"),
+        ("test_config_data/expected_ev_curves_kpoints.json", "kpoints"),
+    ]
 
-    with open(
-        os.path.join(current_dir, "test_config_data/expected_ev_curves_kpoints.json"),
-        "r",
-    ) as f:
-        expected_kpoints = json.load(f)
-    for actual_kpoint, expected_kpoint in zip(
-        config_Al.phonons.kpoints.as_dict(), expected_kpoints
-    ):
-        assert (
-            actual_kpoint == expected_kpoint
-        ), f"Expected {expected_kpoint}, but got {actual_kpoint}"
+    for filename, attribute in phonons_files_and_attributes:
+        with open(os.path.join(current_dir, filename), "r") as f:
+            expected_data = json.load(f)
+
+        actual_data = getattr(config_Al.phonons, attribute)
+
+        if attribute == "kpoints":
+            actual_data = actual_data.as_dict()
+
+        for actual, expected in zip(actual_data, expected_data):
+            assert actual == expected, f"Expected {expected}, but got {actual}"
 
     actual_phonon_structures = [
         structure.as_dict() for structure in config_Al.phonons.phonon_structures
@@ -402,7 +386,6 @@ def test_process_phonons():
 
 
 def test_process_debye():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(current_dir, "vasp_data/Al/config_Al")
     config_Al = Configuration(path, "config_Al")
 
@@ -459,40 +442,27 @@ def test_process_debye():
 
 
 def test_process_thermal_electronic():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(current_dir, "vasp_data/Al/config_Al")
     config_Al = Configuration(path, "config_Al")
 
     temperature_range = np.arange(0, 1010, 100)
     config_Al.process_thermal_electronic(temperature_range)
 
-    with open(
-        os.path.join(
-            current_dir, "test_config_data/expected_thermal_electronic_incars.json"
-        ),
-        "r",
-    ) as f:
-        expected_incars = json.load(f)
-    for actual_incar, expected_incar in zip(
-        config_Al.thermal_electronic.incars, expected_incars
-    ):
-        assert (
-            actual_incar == expected_incar
-        ), f"Expected {expected_incar}, but got {actual_incar}"
+    thermal_electronic_files_and_attributes = [
+        ("test_config_data/expected_thermal_electronic_incars.json", "incars"),
+        ("test_config_data/expected_thermal_electronic_kpoints.json", "kpoints"),
+    ]
+    for filename, attribute in thermal_electronic_files_and_attributes:
+        with open(os.path.join(current_dir, filename), "r") as f:
+            expected_data = json.load(f)
 
-    with open(
-        os.path.join(
-            current_dir, "test_config_data/expected_thermal_electronic_kpoints.json"
-        ),
-        "r",
-    ) as f:
-        expected_kpoints = json.load(f)
-    for actual_kpoint, expected_kpoint in zip(
-        config_Al.thermal_electronic.kpoints.as_dict(), expected_kpoints
-    ):
-        assert (
-            actual_kpoint == expected_kpoint
-        ), f"Expected {expected_kpoint}, but got {actual_kpoint}"
+        actual_data = getattr(config_Al.thermal_electronic, attribute)
+
+        if attribute == "kpoints":
+            actual_data = actual_data.as_dict()
+
+        for actual, expected in zip(actual_data, expected_data):
+            assert actual == expected, f"Expected {expected}, but got {actual}"
 
     expected_number_of_atoms = 4
     assert (
