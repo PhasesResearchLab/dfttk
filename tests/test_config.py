@@ -444,7 +444,7 @@ def test_process_debye():
     config_Al = Configuration(path, "config_Al")
 
     config_Al.process_ev_curves()
-    config_Al.process_debye(scaling_factor=0.617, gruneisen_x=2/3)
+    config_Al.process_debye(scaling_factor=0.617, gruneisen_x=2 / 3)
 
     expected_number_of_atoms = 4
     assert (
@@ -470,26 +470,19 @@ def test_process_debye():
     assert np.allclose(
         config_Al.debye.volumes, expected_volumes, rtol=1e-4
     ), f"Expected {expected_volumes}, but got {config_Al.debye.volumes}"
-    '''
+
     with open(os.path.join(current_dir, "expected_debye_free_energy.json"), "r") as f:
         expected_free_energy = json.load(f)
-    for i, (expected, actual) in enumerate(zip(expected_free_energy, config_Al.debye.free_energy)):
-        if not np.allclose(actual, expected, rtol=1e-3):
-            max_diff = np.max(np.abs(np.array(actual) - np.array(expected)))
-            print(f"Mismatch at index {i}: Max difference: {max_diff}")
-        assert np.allclose(
-            actual, expected, rtol=1e-3
-    ), f"Max difference: {max_diff}"
-    '''
+    assert np.allclose(config_Al.debye.free_energy, expected_free_energy, rtol=1e-4), (
+        f"Expected {expected_free_energy}, " f"but got {config_Al.debye.free_energy}"
+    )
+
     with open(os.path.join(current_dir, "expected_debye_entropy.json"), "r") as f:
         expected_entropy = json.load(f)
-    assert np.allclose(
-        config_Al.debye.entropy, expected_entropy, rtol=1e-4
-    ), (
-        f"Expected {expected_entropy}, "
-        f"but got {config_Al.debye.entropy}"
+    assert np.allclose(config_Al.debye.entropy, expected_entropy, rtol=1e-4), (
+        f"Expected {expected_entropy}, " f"but got {config_Al.debye.entropy}"
     )
-    
+
     with open(os.path.join(current_dir, "expected_debye_heat_capacity.json"), "r") as f:
         expected_heat_capacity = json.load(f)
     assert np.allclose(
@@ -498,7 +491,7 @@ def test_process_debye():
         f"Expected {expected_heat_capacity}, "
         f"but got {config_Al.debye.heat_capacity}"
     )
-    
+
 
 if __name__ == "__main__":
     pytest.main()
