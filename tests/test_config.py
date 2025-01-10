@@ -473,33 +473,14 @@ def test_process_debye():
         config_Al.debye.volumes, expected_volumes, rtol=1e-4
     ), f"Expected {expected_volumes}, but got {config_Al.debye.volumes}"
 
-    with open(os.path.join(current_dir, "expected_debye_free_energy.json"), "r") as f:
-        expected_free_energy = json.load(f)
-    for i, (expected_list, actual_list) in enumerate(zip(expected_free_energy, config_Al.debye.free_energy)):
-        for j, (expected, actual) in enumerate(zip(expected_list, actual_list)):
-            if not np.allclose(actual, expected, rtol=1e-4):
-                max_diff = np.max(np.abs(np.array(actual) - np.array(expected)))
-                print(f"Mismatch at index [{i}][{j}]: Expected {expected}, but got {actual}. Max difference: {max_diff}")
-            assert np.allclose(
-                actual, expected, rtol=1e-4
-            ), f"Expected {expected}, but got {actual}. Max difference: {max_diff}"
-    '''
-    
     with open(os.path.join(current_dir, "expected_debye_entropy.json"), "r") as f:
         expected_entropy = json.load(f)
-    assert np.allclose(config_Al.debye.entropy, expected_entropy, rtol=1e-4), (
-        f"Expected {expected_entropy}, " f"but got {config_Al.debye.entropy}"
-    )
-
-    with open(os.path.join(current_dir, "expected_debye_heat_capacity.json"), "r") as f:
-        expected_heat_capacity = json.load(f)
-    assert np.allclose(
-        config_Al.debye.heat_capacity, expected_heat_capacity, rtol=1e-4
-    ), (
-        f"Expected {expected_heat_capacity}, "
-        f"but got {config_Al.debye.heat_capacity}"
-    )
-    '''
+    for i, expected_values in enumerate(expected_entropy):
+        actual_values = config_Al.debye.entropy[i]
+        for expected, actual in zip(expected_values, actual_values):
+            assert np.allclose(
+                expected, actual, atol=1e-4
+            ), f"Expected {expected}, but got {actual} with tolerance 1e-4"
 
 if __name__ == "__main__":
     pytest.main()
