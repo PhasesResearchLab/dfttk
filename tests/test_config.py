@@ -10,7 +10,7 @@ import pytest
 # DFTTK imports
 from dfttk.config import Configuration
 
-
+#TODO: simplify code
 def test_analyze_encut_conv():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(current_dir, "vasp_data/Al/conv_test")
@@ -449,6 +449,29 @@ def test_process_thermal_electronic():
             actual_incar == expected_incar
         ), f"Expected {expected_incar}, but got {actual_incar}"
 
+    with open(os.path.join(current_dir, "test_config_data/expected_thermal_electronic_kpoints.json"), "r") as f:
+        expected_kpoints = json.load(f)
+    for actual_kpoint, expected_kpoint in zip(
+        config_Al.thermal_electronic.kpoints.as_dict(), expected_kpoints
+    ):
+        assert (
+            actual_kpoint == expected_kpoint
+        ), f"Expected {expected_kpoint}, but got {actual_kpoint}"
+    
+    expected_number_of_atoms = 4
+    assert (
+        config_Al.thermal_electronic.number_of_atoms == expected_number_of_atoms
+    ), f"Expected 4, but got {config_Al.thermal_electronic.number_of_atoms}"
+    
+    expected_volumes = [60.0, 62.0, 64.0, 66.0, 68.0, 70.0, 72.0, 74.0]
+    assert (
+        config_Al.thermal_electronic.volumes == expected_volumes
+    ), f"Expected {expected_volumes}, but got {config_Al.thermal_electronic.volumes}"
+    
+    expected_temperatures = list(range(0, 1010, 100))
+    assert (
+        config_Al.thermal_electronic.temperatures == expected_temperatures
+    ), f"Expected {expected_temperatures}, but got {config_Al.thermal_electronic.temperatures}"
 
 if __name__ == "__main__":
     pytest.main()
