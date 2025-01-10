@@ -10,10 +10,9 @@ see https://github.com/materialsproject/pymatgen/blob/master/src/pymatgen/io/vas
 import os
 
 # Third-party imports
-import numpy as np
 import yaml
 from pymatgen.core.structure import Structure
-from pymatgen.io.vasp.inputs import Incar, Kpoints, Poscar, Potcar
+from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 
 yaml_dir = os.path.dirname(__file__)
 potcar_dict_path = os.path.join(yaml_dir, "settings/potcar_dict.yaml")

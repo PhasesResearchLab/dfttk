@@ -2,21 +2,14 @@
 Debye-Grüneisen module to calculate the vibrational contribution to the Helmholtz energy, entropy, and heat capacity.    
 """
 
-# Standard library imports
-import os
-
 # Related third party imports
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from natsort import natsorted
 from scipy import constants
 from scipy.special import bernoulli, gamma
 
 # DFTTK imports
-from dfttk import eos_fit
-from dfttk.aggregate_extraction import extract_configuration_data
-from dfttk.data_extraction import extract_average_mass
 from dfttk.plotly_format import plot_format
 
 
