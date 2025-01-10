@@ -475,7 +475,7 @@ def test_process_debye():
         expected_free_energy = json.load(f)
     for i, (expected, actual) in enumerate(zip(expected_free_energy, config_Al.debye.free_energy)):
         if not np.allclose(actual, expected, rtol=1e-4):
-            print(f"Mismatch at index {i}: Expected, but got")
+            print(f"Mismatch at index {i}: Expected {expected}, but got {actual}")
         assert np.allclose(
             actual, expected, rtol=1e-4
         ), f"Expected , but got"
