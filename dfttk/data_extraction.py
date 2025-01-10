@@ -37,29 +37,6 @@ def extract_kpoints(path: str) -> list[str]:
     return kpoints
 
 
-def extract_energy(path: str) -> float:
-    """Extract the final energy from an OSZICAR file
-
-    Args:
-        path: the path to an OSZICAR file
-
-    Returns:
-        The final energy from an OSZICAR file
-    """
-
-    with open(path, "r") as file:
-        file_name = os.path.basename(path)
-        assert file_name.startswith(
-            "OSZICAR"
-        ), "File name does not start with 'OSZICAR'"
-
-        lines = file.readlines()
-        for line in reversed(lines):
-            if "F=" in line:
-                energy = float(line.split()[4])
-                break
-    return energy
-
 def extract_atomic_masses(outcar_path: str) -> float:
     """
     Extract the mass of each atom (POMASS values) from an OUTCAR file as a dictionary.
