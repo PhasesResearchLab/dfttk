@@ -473,6 +473,15 @@ def test_process_debye():
         config_Al.debye.volumes, expected_volumes, rtol=1e-4
     ), f"Expected {expected_volumes}, but got {config_Al.debye.volumes}"
 
+    with open(os.path.join(current_dir, "expected_debye_free_energy.json"), "r") as f:
+        expected_free_energy = json.load(f)
+    for i, expected_values in enumerate(expected_free_energy):
+        actual_values = config_Al.debye.free_energy[i]
+        for expected, actual in zip(expected_values, actual_values):
+            assert np.allclose(
+                expected, actual, atol=1e-4
+            ), f"Expected {expected}, but got {actual} with tolerance 1e-4"
+            
     with open(os.path.join(current_dir, "expected_debye_entropy.json"), "r") as f:
         expected_entropy = json.load(f)
     for i, expected_values in enumerate(expected_entropy):
