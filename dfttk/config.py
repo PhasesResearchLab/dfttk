@@ -1048,6 +1048,7 @@ class Configuration:
             temperature_range,
             order=order,
         )
+        
     def add_experiments(self, experiments: dict):
         self.experiments = experiments
         
