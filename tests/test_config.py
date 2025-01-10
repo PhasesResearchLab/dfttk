@@ -10,7 +10,8 @@ import pytest
 # DFTTK imports
 from dfttk.config import Configuration
 
-#TODO: simplify code
+
+# TODO: simplify code
 def test_analyze_encut_conv():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(current_dir, "vasp_data/Al/conv_test")
@@ -201,7 +202,10 @@ def test_process_ev_curves():
 
     config_Al.process_ev_curves()
 
-    with open(os.path.join(current_dir, "test_config_data/expected_ev_curves_incars.json"), "r") as f:
+    with open(
+        os.path.join(current_dir, "test_config_data/expected_ev_curves_incars.json"),
+        "r",
+    ) as f:
         expected_incars = json.load(f)
 
     for actual_incar, expected_incar in zip(
@@ -211,7 +215,10 @@ def test_process_ev_curves():
             actual_incar == expected_incar
         ), f"Expected {expected_incar}, but got {actual_incar}"
 
-    with open(os.path.join(current_dir, "test_config_data/expected_ev_curves_kpoints.json"), "r") as f:
+    with open(
+        os.path.join(current_dir, "test_config_data/expected_ev_curves_kpoints.json"),
+        "r",
+    ) as f:
         expected_kpoints = json.load(f)
 
     for actual_kpoint, expected_kpoint in zip(
@@ -278,7 +285,10 @@ def test_process_ev_curves():
     ]
 
     with open(
-        os.path.join(current_dir, "test_config_data/expected_ev_curves_relaxed_structures.json"), "r"
+        os.path.join(
+            current_dir, "test_config_data/expected_ev_curves_relaxed_structures.json"
+        ),
+        "r",
     ) as f:
         expected_phonon_structures = json.load(f)
 
@@ -296,19 +306,24 @@ def test_process_phonons():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(current_dir, "vasp_data/Al/config_Al")
     config_Al = Configuration(path, "config_Al")
-    
+
     num_atoms = 4
     temp_range = list(range(0, 1010, 100))
     config_Al.process_phonons(num_atoms, temp_range)
 
-    with open(os.path.join(current_dir, "test_config_data/expected_phonons_incars.json"), "r") as f:
+    with open(
+        os.path.join(current_dir, "test_config_data/expected_phonons_incars.json"), "r"
+    ) as f:
         expected_incars = json.load(f)
     for actual_incar, expected_incar in zip(config_Al.phonons.incars, expected_incars):
         assert (
             actual_incar == expected_incar
         ), f"Expected {expected_incar}, but got {actual_incar}"
 
-    with open(os.path.join(current_dir, "test_config_data/expected_ev_curves_kpoints.json"), "r") as f:
+    with open(
+        os.path.join(current_dir, "test_config_data/expected_ev_curves_kpoints.json"),
+        "r",
+    ) as f:
         expected_kpoints = json.load(f)
     for actual_kpoint, expected_kpoint in zip(
         config_Al.phonons.kpoints.as_dict(), expected_kpoints
@@ -321,7 +336,10 @@ def test_process_phonons():
         structure.as_dict() for structure in config_Al.phonons.phonon_structures
     ]
     with open(
-        os.path.join(current_dir, "test_config_data/expected_phonons_phonon_structures.json"), "r"
+        os.path.join(
+            current_dir, "test_config_data/expected_phonons_phonon_structures.json"
+        ),
+        "r",
     ) as f:
         expected_phonon_structures = json.load(f)
     for i, expected_relaxed_structure in enumerate(expected_phonon_structures):
@@ -352,9 +370,15 @@ def test_process_phonons():
         ("test_config_data/expected_phonons_internal_energy.json", "internal_energy"),
         ("test_config_data/expected_phonons_entropy.json", "entropy"),
         ("test_config_data/expected_phonons_heat_capacity.json", "heat_capacity"),
-        ("test_config_data/expected_phonons_helmholtz_energy_fit.json", "helmholtz_energy_fit"),
+        (
+            "test_config_data/expected_phonons_helmholtz_energy_fit.json",
+            "helmholtz_energy_fit",
+        ),
         ("test_config_data/expected_phonons_entropy_fit.json", "entropy_fit"),
-        ("test_config_data/expected_phonons_heat_capacity_fit.json", "heat_capacity_fit"),
+        (
+            "test_config_data/expected_phonons_heat_capacity_fit.json",
+            "heat_capacity_fit",
+        ),
     ]
 
     for filename, attribute in files_and_attributes:
@@ -423,9 +447,9 @@ def test_process_debye():
     for filename, attribute in debye_files_and_attributes:
         with open(os.path.join(current_dir, filename), "r") as f:
             expected_data = json.load(f)
-        
+
         actual_data = getattr(config_Al.debye, attribute)
-        
+
         for i, expected_values in enumerate(expected_data):
             actual_values = actual_data[i]
             for expected, actual in zip(expected_values, actual_values):
@@ -438,18 +462,30 @@ def test_process_thermal_electronic():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(current_dir, "vasp_data/Al/config_Al")
     config_Al = Configuration(path, "config_Al")
-    
+
     temperature_range = np.arange(0, 1010, 100)
     config_Al.process_thermal_electronic(temperature_range)
-    
-    with open(os.path.join(current_dir, "test_config_data/expected_thermal_electronic_incars.json"), "r") as f:
+
+    with open(
+        os.path.join(
+            current_dir, "test_config_data/expected_thermal_electronic_incars.json"
+        ),
+        "r",
+    ) as f:
         expected_incars = json.load(f)
-    for actual_incar, expected_incar in zip(config_Al.thermal_electronic.incars, expected_incars):
+    for actual_incar, expected_incar in zip(
+        config_Al.thermal_electronic.incars, expected_incars
+    ):
         assert (
             actual_incar == expected_incar
         ), f"Expected {expected_incar}, but got {actual_incar}"
 
-    with open(os.path.join(current_dir, "test_config_data/expected_thermal_electronic_kpoints.json"), "r") as f:
+    with open(
+        os.path.join(
+            current_dir, "test_config_data/expected_thermal_electronic_kpoints.json"
+        ),
+        "r",
+    ) as f:
         expected_kpoints = json.load(f)
     for actual_kpoint, expected_kpoint in zip(
         config_Al.thermal_electronic.kpoints.as_dict(), expected_kpoints
@@ -457,21 +493,69 @@ def test_process_thermal_electronic():
         assert (
             actual_kpoint == expected_kpoint
         ), f"Expected {expected_kpoint}, but got {actual_kpoint}"
-    
+
     expected_number_of_atoms = 4
     assert (
         config_Al.thermal_electronic.number_of_atoms == expected_number_of_atoms
     ), f"Expected 4, but got {config_Al.thermal_electronic.number_of_atoms}"
-    
+
     expected_volumes = [60.0, 62.0, 64.0, 66.0, 68.0, 70.0, 72.0, 74.0]
     assert (
         config_Al.thermal_electronic.volumes == expected_volumes
     ), f"Expected {expected_volumes}, but got {config_Al.thermal_electronic.volumes}"
-    
+
     expected_temperatures = list(range(0, 1010, 100))
     assert (
         config_Al.thermal_electronic.temperatures == expected_temperatures
     ), f"Expected {expected_temperatures}, but got {config_Al.thermal_electronic.temperatures}"
+
+    files_and_attributes = [
+        (
+            "test_config_data/expected_thermal_electronic_helmholtz_energy.json",
+            "helmholtz_energy",
+        ),
+        (
+            "test_config_data/expected_thermal_electronic_internal_energy.json",
+            "internal_energy",
+        ),
+        ("test_config_data/expected_thermal_electronic_entropy.json", "entropy"),
+        (
+            "test_config_data/expected_thermal_electronic_heat_capacity.json",
+            "heat_capacity",
+        ),
+        (
+            "test_config_data/expected_thermal_electronic_helmholtz_energy_fit.json",
+            "helmholtz_energy_fit",
+        ),
+        (
+            "test_config_data/expected_thermal_electronic_entropy_fit.json",
+            "entropy_fit",
+        ),
+        (
+            "test_config_data/expected_thermal_electronic_heat_capacity_fit.json",
+            "heat_capacity_fit",
+        ),
+    ]
+
+    for filename, attribute in files_and_attributes:
+        with open(os.path.join(current_dir, filename), "r") as f:
+            expected_data = json.load(f)
+
+        if "fit" in attribute:
+            expected_data = expected_data["polynomial_coefficients"]
+            actual_data = getattr(config_Al.thermal_electronic, attribute)[
+                "polynomial_coefficients"
+            ]
+        else:
+            actual_data = getattr(config_Al.thermal_electronic, attribute)
+
+        for temp, expected_values in expected_data.items():
+            actual_values = actual_data[temp]
+            for expected, actual in zip(expected_values, actual_values):
+                assert np.allclose(
+                    expected, actual, atol=1e-6
+                ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
+
 
 if __name__ == "__main__":
     pytest.main()
