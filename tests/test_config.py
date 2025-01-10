@@ -444,7 +444,7 @@ def test_process_debye():
     config_Al = Configuration(path, "config_Al")
 
     config_Al.process_ev_curves()
-    config_Al.process_debye(scaling_factor=0.617, gruneisen_x=2 / 3)
+    config_Al.process_debye(scaling_factor=0.617, gruneisen_x=2/3)
 
     expected_number_of_atoms = 4
     assert (
@@ -473,10 +473,12 @@ def test_process_debye():
     
     with open(os.path.join(current_dir, "expected_debye_free_energy.json"), "r") as f:
         expected_free_energy = json.load(f)
-    for expected, actual in zip(expected_free_energy, config_Al.debye.free_energy):
+    for i, (expected, actual) in enumerate(zip(expected_free_energy, config_Al.debye.free_energy)):
+        if not np.allclose(actual, expected, rtol=1e-4):
+            print(f"Mismatch at index {i}: Expected, but got")
         assert np.allclose(
             actual, expected, rtol=1e-4
-        ), f"Expected {expected}, but got {actual}" 
+        ), f"Expected , but got"
     '''
     with open(os.path.join(current_dir, "expected_debye_entropy.json"), "r") as f:
         expected_entropy = json.load(f)
