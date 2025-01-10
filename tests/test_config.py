@@ -1,7 +1,6 @@
 # Standard library imports
 import os
 import math
-from math import isclose
 import json
 
 # Third-party library imports
@@ -14,7 +13,7 @@ from dfttk.config import Configuration
 
 def test_analyze_encut_conv():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(current_dir, "tests_data/Al/conv_test")
+    path = os.path.join(current_dir, "vasp_data/Al/conv_test")
     config_Al = Configuration(path, "config_Al")
     encut_conv_df, fig = config_Al.analyze_encut_conv(plot=False)
 
@@ -104,7 +103,7 @@ def test_analyze_encut_conv():
 
 def test_analyze_kpoints_conv():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(current_dir, "tests_data/Al/conv_test")
+    path = os.path.join(current_dir, "vasp_data/Al/conv_test")
     config_Al = Configuration(path, "config_Al")
     kpoints_conv_df, fig = config_Al.analyze_kpoints_conv(plot=False)
 
@@ -197,7 +196,7 @@ def _assert_selected_keys_almost_equal(dict1, dict2, keys, tol=1e-4):
 
 def test_process_ev_curves():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(current_dir, "tests_data/Al/config_Al")
+    path = os.path.join(current_dir, "vasp_data/Al/config_Al")
     config_Al = Configuration(path, "config_Al")
 
     config_Al.process_ev_curves()
@@ -293,10 +292,9 @@ def test_process_ev_curves():
     ), f"Expected {expected_phonon_structures}, but got {actual_relaxed_structures}"
 
 
-# Don't need to test too many temperatures
 def test_process_phonons():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(current_dir, "tests_data/Al/config_Al")
+    path = os.path.join(current_dir, "vasp_data/Al/config_Al")
     config_Al = Configuration(path, "config_Al")
 
     num_atoms = 4
@@ -381,7 +379,7 @@ def test_process_phonons():
 
 def test_process_debye():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(current_dir, "tests_data/Al/config_Al")
+    path = os.path.join(current_dir, "vasp_data/Al/config_Al")
     config_Al = Configuration(path, "config_Al")
 
     config_Al.process_ev_curves()
@@ -434,34 +432,7 @@ def test_process_debye():
                 assert np.allclose(
                     expected, actual, atol=1e-6
                 ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
-    '''
-    with open(os.path.join(current_dir, "expected_debye_free_energy.json"), "r") as f:
-        expected_free_energy = json.load(f)
-    for i, expected_values in enumerate(expected_free_energy):
-        actual_values = config_Al.debye.free_energy[i]
-        for expected, actual in zip(expected_values, actual_values):
-            assert np.allclose(
-                expected, actual, atol=1e-6
-            ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
 
-    with open(os.path.join(current_dir, "expected_debye_entropy.json"), "r") as f:
-        expected_entropy = json.load(f)
-    for i, expected_values in enumerate(expected_entropy):
-        actual_values = config_Al.debye.entropy[i]
-        for expected, actual in zip(expected_values, actual_values):
-            assert np.allclose(
-                expected, actual, atol=1e-6
-            ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
-
-    with open(os.path.join(current_dir, "expected_debye_heat_capacity.json"), "r") as f:
-        expected_heat_capacity = json.load(f)
-    for i, expected_values in enumerate(expected_heat_capacity):
-        actual_values = config_Al.debye.heat_capacity[i]
-        for expected, actual in zip(expected_values, actual_values):
-            assert np.allclose(
-                expected, actual, atol=1e-6
-            ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
-    '''
 
 def test_process_thermal_electronic():
     pass
