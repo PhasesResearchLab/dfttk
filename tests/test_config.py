@@ -362,103 +362,22 @@ def test_process_phonons():
     for filename, attribute in files_and_attributes:
         with open(os.path.join(current_dir, filename), "r") as f:
             expected_data = json.load(f)
-        
+
         if "fit" in attribute:
             expected_data = expected_data["polynomial_coefficients"]
-            actual_data = getattr(config_Al.phonons, attribute)["polynomial_coefficients"]
+            actual_data = getattr(config_Al.phonons, attribute)[
+                "polynomial_coefficients"
+            ]
         else:
             actual_data = getattr(config_Al.phonons, attribute)
-        
+
         for temp, expected_values in expected_data.items():
             actual_values = actual_data[temp]
             for expected, actual in zip(expected_values, actual_values):
                 assert np.allclose(
                     expected, actual, atol=1e-6
                 ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
-    '''
-    with open(
-        os.path.join(current_dir, "expected_phonons_helmholtz_energy.json"), "r"
-    ) as f:
-        expected_helmholtz_energy = json.load(f)
-    for temp, expected_values in expected_helmholtz_energy.items():
-        actual_values = config_Al.phonons.helmholtz_energy[temp]
-        for expected, actual in zip(expected_values, actual_values):
-            assert np.allclose(
-                expected, actual, atol=1e-6
-            ), f"Expected {expected}, but got {actual}"
-    
-    with open(
-        os.path.join(current_dir, "expected_phonons_internal_energy.json"), "r"
-    ) as f:
-        expected_internal_energy = json.load(f)
-    for temp, expected_values in expected_internal_energy.items():
-        actual_values = config_Al.phonons.internal_energy[temp]
-        for expected, actual in zip(expected_values, actual_values):
-            assert np.allclose(
-                expected, actual, atol=1e-6
-            ), f"Expected {expected}, but got {actual}"
 
-    with open(os.path.join(current_dir, "expected_phonons_entropy.json"), "r") as f:
-        expected_entropy = json.load(f)
-    for temp, expected_values in expected_entropy.items():
-        actual_values = config_Al.phonons.entropy[temp]
-        for expected, actual in zip(expected_values, actual_values):
-            assert np.allclose(
-                expected, actual, atol=1e-6
-            ), f"Expected {expected}, but got {actual}"
-    
-    with open(
-        os.path.join(current_dir, "expected_phonons_heat_capacity.json"), "r"
-    ) as f:
-        expected_heat_capacity = json.load(f)
-    for temp, expected_values in expected_heat_capacity.items():
-        actual_values = config_Al.phonons.heat_capacity[temp]
-        for expected, actual in zip(expected_values, actual_values):
-            assert np.allclose(
-                expected, actual, atol=1e-6
-            ), f"Expected {expected}, but got {actual}"
-
-    with open(
-        os.path.join(current_dir, "expected_phonons_helmholtz_energy_fit.json"), "r"
-    ) as f:
-        expected_helmholtz_energy_fit = json.load(f)
-    for temp, expected_values in expected_helmholtz_energy_fit[
-        "polynomial_coefficients"
-    ].items():
-        actual_values = config_Al.phonons.helmholtz_energy_fit[
-            "polynomial_coefficients"
-        ][temp]
-        for expected, actual in zip(expected_values, actual_values):
-            assert np.allclose(
-                expected, actual, atol=1e-6
-            ), f"Expected {expected}, but got {actual}"
-
-    with open(os.path.join(current_dir, "expected_phonons_entropy_fit.json"), "r") as f:
-        expected_entropy_fit = json.load(f)
-    for temp, expected_values in expected_entropy_fit[
-        "polynomial_coefficients"
-    ].items():
-        actual_values = config_Al.phonons.entropy_fit["polynomial_coefficients"][temp]
-        for expected, actual in zip(expected_values, actual_values):
-            assert np.allclose(
-                expected, actual, atol=1e-6
-            ), f"Expected {expected}, but got {actual}"
-
-    with open(
-        os.path.join(current_dir, "expected_phonons_heat_capacity_fit.json"), "r"
-    ) as f:
-        expected_heat_capacity_fit = json.load(f)
-    for temp, expected_values in expected_heat_capacity_fit[
-        "polynomial_coefficients"
-    ].items():
-        actual_values = config_Al.phonons.heat_capacity_fit["polynomial_coefficients"][
-            temp
-        ]
-        for expected, actual in zip(expected_values, actual_values):
-            assert np.allclose(
-                expected, actual, atol=1e-6
-            ), f"Expected {expected}, but got {actual} with tolerance"
-    '''
 
 def test_process_debye():
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -497,6 +416,25 @@ def test_process_debye():
         config_Al.debye.volumes, expected_volumes, rtol=1e-4
     ), f"Expected {expected_volumes}, but got {config_Al.debye.volumes}"
 
+    debye_files_and_attributes = [
+        ("expected_debye_free_energy.json", "free_energy"),
+        ("expected_debye_entropy.json", "entropy"),
+        ("expected_debye_heat_capacity.json", "heat_capacity"),
+    ]
+
+    for filename, attribute in debye_files_and_attributes:
+        with open(os.path.join(current_dir, filename), "r") as f:
+            expected_data = json.load(f)
+        
+        actual_data = getattr(config_Al.debye, attribute)
+        
+        for i, expected_values in enumerate(expected_data):
+            actual_values = actual_data[i]
+            for expected, actual in zip(expected_values, actual_values):
+                assert np.allclose(
+                    expected, actual, atol=1e-6
+                ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
+    '''
     with open(os.path.join(current_dir, "expected_debye_free_energy.json"), "r") as f:
         expected_free_energy = json.load(f)
     for i, expected_values in enumerate(expected_free_energy):
@@ -523,10 +461,11 @@ def test_process_debye():
             assert np.allclose(
                 expected, actual, atol=1e-6
             ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
-
+    '''
 
 def test_process_thermal_electronic():
     pass
+
 
 if __name__ == "__main__":
     pytest.main()
