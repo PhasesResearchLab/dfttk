@@ -435,7 +435,19 @@ def test_process_debye():
 
 
 def test_process_thermal_electronic():
-    pass
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(current_dir, "vasp_data/Al/config_Al")
+    config_Al = Configuration(path, "config_Al")
+    
+    temperature_range = np.arange(0, 1010, 100)
+    config_Al.process_thermal_electronic(temperature_range)
+    
+    with open(os.path.join(current_dir, "test_config_data/expected_thermal_electronic_incars.json"), "r") as f:
+        expected_incars = json.load(f)
+    for actual_incar, expected_incar in zip(config_Al.thermal_electronic.incars, expected_incars):
+        assert (
+            actual_incar == expected_incar
+        ), f"Expected {expected_incar}, but got {actual_incar}"
 
 
 if __name__ == "__main__":
