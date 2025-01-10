@@ -479,7 +479,7 @@ def test_process_debye():
         actual_values = config_Al.debye.free_energy[i]
         for expected, actual in zip(expected_values, actual_values):
             assert np.allclose(
-                expected, actual, atol=1e-4
+                expected, actual, atol=1e-6
             ), f"Expected {expected}, but got {actual} with tolerance 1e-4"
             
     with open(os.path.join(current_dir, "expected_debye_entropy.json"), "r") as f:
@@ -488,7 +488,7 @@ def test_process_debye():
         actual_values = config_Al.debye.entropy[i]
         for expected, actual in zip(expected_values, actual_values):
             assert np.allclose(
-                expected, actual, atol=1e-4
+                expected, actual, atol=1e-6
             ), f"Expected {expected}, but got {actual} with tolerance 1e-4"
 
 if __name__ == "__main__":
