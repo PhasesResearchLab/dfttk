@@ -473,10 +473,10 @@ def test_process_debye():
     
     with open(os.path.join(current_dir, "expected_debye_free_energy.json"), "r") as f:
         expected_free_energy = json.load(f)
-    assert np.allclose(
-        config_Al.debye.free_energy, expected_free_energy, rtol=1e-4
-    ), f"Expected {expected_free_energy}, but got {config_Al.debye.free_energy}"
-    # If it doesn't work out, just try another time. 
+    for expected, actual in zip(expected_free_energy, config_Al.debye.free_energy):
+        assert np.allclose(
+            actual, expected, rtol=1e-4
+        ), f"Expected {expected}, but got {actual}" 
     '''
     with open(os.path.join(current_dir, "expected_debye_entropy.json"), "r") as f:
         expected_entropy = json.load(f)
