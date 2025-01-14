@@ -11,12 +11,11 @@ import pytest
 from dfttk.config import Configuration
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-
+conv_test_path = os.path.join(current_dir, "vasp_data/Al/conv_test")
+config_Al_conv = Configuration(conv_test_path, "config_Al")
 
 def test_analyze_encut_conv():
-    path = os.path.join(current_dir, "vasp_data/Al/conv_test")
-    config_Al = Configuration(path, "config_Al")
-    encut_conv_df, fig = config_Al.analyze_encut_conv(plot=False)
+    encut_conv_df, fig = config_Al_conv.analyze_encut_conv(plot=False)
 
     encut = encut_conv_df["encut"].values
     kpoints_grid = encut_conv_df["kpoint_grid"].values[0]
@@ -103,9 +102,7 @@ def test_analyze_encut_conv():
 
 
 def test_analyze_kpoints_conv():
-    path = os.path.join(current_dir, "vasp_data/Al/conv_test")
-    config_Al = Configuration(path, "config_Al")
-    kpoints_conv_df, fig = config_Al.analyze_kpoints_conv(plot=False)
+    kpoints_conv_df, fig = config_Al_conv.analyze_kpoints_conv(plot=False)
 
     encut = kpoints_conv_df["encut"].values[0]
     kpoints_grid = np.array([list(x) for x in kpoints_conv_df["kpoint_grid"].values])
@@ -526,6 +523,8 @@ def test_process_thermal_electronic():
                     expected, actual, atol=1e-6
                 ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
 
-
+def test_process_qha():
+    
+    pass
 if __name__ == "__main__":
     pytest.main()

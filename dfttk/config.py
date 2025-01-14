@@ -608,16 +608,16 @@ class ThermalElectronicData:
 
 class QuasiHarmonicData:
     def __init__(self):
+        self.number_of_atoms = None
+        self.temperatures = None
+        self.volumes = None
         self.methods = {
             "debye": {},
             "debye + thermal_electronic": {},
             "phonons": {},
             "phonons + thermal_electronic": {},
         }
-        self.number_of_atoms = None
-        self.temperatures = None
-        self.volumes = None
-
+    
     def get_quasi_harmonic_data(
         self,
         method,
