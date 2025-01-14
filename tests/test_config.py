@@ -15,6 +15,19 @@ config_Al_conv = Configuration(conv_test_path, "config_Al")
 
 config_Al_path = os.path.join(current_dir, "vasp_data/Al/config_Al")
 config_Al = Configuration(config_Al_path, "config_Al")
+config_Al.process_ev_curves()
+
+num_atoms = 4
+# TODO: Consolidate the temperatures
+temp_range = list(range(0, 1010, 100))
+temperatures = np.linspace(0, 1000, 11)
+config_Al.process_phonons(num_atoms, temp_range)
+config_Al.process_debye(
+    scaling_factor=0.617, gruneisen_x=2 / 3, temperatures=temperatures
+)
+temperature_range = np.arange(0, 1010, 100)
+config_Al.process_thermal_electronic(temperature_range)
+    
 
 def test_analyze_encut_conv():
     encut_conv_df, fig = config_Al_conv.analyze_encut_conv(plot=False)
@@ -194,8 +207,6 @@ def _assert_selected_keys_almost_equal(dict1, dict2, keys, atol=1e-4):
 
 
 def test_process_ev_curves():
-    config_Al.process_ev_curves()
-
     ev_curves_files_and_attributes = [
         ("test_config_data/expected_ev_curves_incars.json", "incars"),
         ("test_config_data/expected_ev_curves_kpoints.json", "kpoints"),
@@ -288,10 +299,6 @@ def test_process_ev_curves():
 
 
 def test_process_phonons():
-    num_atoms = 4
-    temp_range = list(range(0, 1010, 100))
-    config_Al.process_phonons(num_atoms, temp_range)
-
     phonons_files_and_attributes = [
         ("test_config_data/expected_phonons_incars.json", "incars"),
         ("test_config_data/expected_ev_curves_kpoints.json", "kpoints"),
@@ -379,13 +386,6 @@ def test_process_phonons():
 
 
 def test_process_debye():
-    config_Al.process_ev_curves()
-
-    temperatures = np.linspace(0, 1000, 11)
-    config_Al.process_debye(
-        scaling_factor=0.617, gruneisen_x=2 / 3, temperatures=temperatures
-    )
-
     expected_number_of_atoms = 4
     assert (
         config_Al.debye.number_of_atoms == expected_number_of_atoms
@@ -432,9 +432,6 @@ def test_process_debye():
 
 
 def test_process_thermal_electronic():
-    temperature_range = np.arange(0, 1010, 100)
-    config_Al.process_thermal_electronic(temperature_range)
-
     thermal_electronic_files_and_attributes = [
         ("test_config_data/expected_thermal_electronic_incars.json", "incars"),
         ("test_config_data/expected_thermal_electronic_kpoints.json", "kpoints"),
@@ -513,8 +510,11 @@ def test_process_thermal_electronic():
                     expected, actual, atol=1e-6
                 ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
 
+
 def test_process_qha():
-    
+
     pass
+
+
 if __name__ == "__main__":
     pytest.main()
