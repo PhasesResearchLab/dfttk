@@ -14,29 +14,6 @@ from pymatgen.core.structure import Structure
 from pymatgen.io.vasp import Poscar
 
 
-def extract_kpoints(path: str) -> list[str]:
-    """Extract kpoints from an OUTCAR file
-
-    Args:
-        path (str): the path to an OUTCAR file
-
-    Returns:
-        list[int]: kpoints in the format [9, 9, 9]
-    """
-
-    with open(path, "r") as file:
-        file_name = os.path.basename(path)
-        assert file_name.startswith("OUTCAR"), "File name does not start with 'OUTCAR'"
-
-        lines = file.readlines()
-        for line in lines:
-            if "generate k-points for" in line:
-                kpoints = line.split()[3:6]
-                kpoints = [int(x) for x in kpoints]
-                break
-    return kpoints
-
-
 def extract_atomic_masses(outcar_path: str) -> float:
     """
     Extract the mass of each atom (POMASS values) from an OUTCAR file as a dictionary.

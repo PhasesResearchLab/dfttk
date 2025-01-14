@@ -16,13 +16,12 @@ import plotly.graph_objects as go
 # Local application/library specific imports
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-from pymatgen.io.vasp.inputs import Incar
+from pymatgen.io.vasp.inputs import Incar, Kpoints
 from pymatgen.io.vasp.outputs import Oszicar
 
 # DFTTK imports
 from dfttk.data_extraction import (
     extract_tot_mag_data,
-    extract_kpoints,
     extract_atomic_masses,
     extract_average_mass,
 )
@@ -194,7 +193,7 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
     kpoint_grid_list = []
     for item in conv_items:
         oszicar_path = os.path.join(path, f"OSZICAR.{item}")
-        outcar_path = os.path.join(path, f"OUTCAR.{item}")
+        kpoints_path = os.path.join(path, f"KPOINTS.{item}")
         incar_path = os.path.join(path, f"INCAR.{item}")
         poscar_path = os.path.join(path, f"POSCAR.{item}")
         incar = Incar.from_file(incar_path)
@@ -204,7 +203,9 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
         oszicar = Oszicar(oszicar_path)
         energy_list.append(oszicar.final_energy)
         number_of_atoms_list.append(len(struct.sites))
-        kpoint_grid_list.append(extract_kpoints(outcar_path))
+        kpoints = Kpoints.from_file(kpoints_path)
+        kpoints = [item for sublist in kpoints.kpts for item in sublist]
+        kpoint_grid_list.append(kpoints)
     energy_per_atom_list = [
         energy / num_atoms
         for energy, num_atoms in zip(energy_list, number_of_atoms_list)
