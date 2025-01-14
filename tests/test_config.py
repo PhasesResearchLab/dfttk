@@ -1,11 +1,10 @@
 # Standard library imports
 import os
-import math
 import json
 
 # Third-party library imports
-import numpy as np
 import pytest
+import numpy as np
 
 # DFTTK imports
 from dfttk.config import Configuration
@@ -13,6 +12,9 @@ from dfttk.config import Configuration
 current_dir = os.path.dirname(os.path.abspath(__file__))
 conv_test_path = os.path.join(current_dir, "vasp_data/Al/conv_test")
 config_Al_conv = Configuration(conv_test_path, "config_Al")
+
+config_Al_path = os.path.join(current_dir, "vasp_data/Al/config_Al")
+config_Al = Configuration(config_Al_path, "config_Al")
 
 def test_analyze_encut_conv():
     encut_conv_df, fig = config_Al_conv.analyze_encut_conv(plot=False)
@@ -178,12 +180,12 @@ def _convert_pbc_lists_to_tuples(data):
     return data
 
 
-def _assert_selected_keys_almost_equal(dict1, dict2, keys, tol=1e-4):
+def _assert_selected_keys_almost_equal(dict1, dict2, keys, atol=1e-4):
     for key in keys:
         if key in dict1 and key in dict2:
             if isinstance(dict1[key], float) and isinstance(dict2[key], float):
-                assert math.isclose(
-                    dict1[key], dict2[key], rel_tol=tol
+                assert np.isclose(
+                    dict1[key], dict2[key], atol=atol
                 ), f"Expected {dict2[key]} for key '{key}', but got {dict1[key]}"
             else:
                 assert (
@@ -192,9 +194,6 @@ def _assert_selected_keys_almost_equal(dict1, dict2, keys, tol=1e-4):
 
 
 def test_process_ev_curves():
-    path = os.path.join(current_dir, "vasp_data/Al/config_Al")
-    config_Al = Configuration(path, "config_Al")
-
     config_Al.process_ev_curves()
 
     ev_curves_files_and_attributes = [
@@ -289,9 +288,6 @@ def test_process_ev_curves():
 
 
 def test_process_phonons():
-    path = os.path.join(current_dir, "vasp_data/Al/config_Al")
-    config_Al = Configuration(path, "config_Al")
-
     num_atoms = 4
     temp_range = list(range(0, 1010, 100))
     config_Al.process_phonons(num_atoms, temp_range)
@@ -383,9 +379,6 @@ def test_process_phonons():
 
 
 def test_process_debye():
-    path = os.path.join(current_dir, "vasp_data/Al/config_Al")
-    config_Al = Configuration(path, "config_Al")
-
     config_Al.process_ev_curves()
 
     temperatures = np.linspace(0, 1000, 11)
@@ -439,9 +432,6 @@ def test_process_debye():
 
 
 def test_process_thermal_electronic():
-    path = os.path.join(current_dir, "vasp_data/Al/config_Al")
-    config_Al = Configuration(path, "config_Al")
-
     temperature_range = np.arange(0, 1010, 100)
     config_Al.process_thermal_electronic(temperature_range)
 
