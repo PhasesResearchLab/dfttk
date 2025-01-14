@@ -28,13 +28,14 @@ config_Al.process_debye(
 temperature_range = np.arange(0, 1010, 100)
 config_Al.process_thermal_electronic(temperature_range)
 
-volume_range = np.linspace(0.98*60, 1.02*74, 1000)
-config_Al.process_qha("debye", volume_range, P = 0)
-config_Al.process_qha("debye + thermal_electronic", volume_range, P = 0)
-config_Al.process_qha("phonons", volume_range, P = 0)
-config_Al.process_qha("phonons + thermal_electronic", volume_range, P = 0)
-    
+volume_range = np.linspace(0.98 * 60, 1.02 * 74, 1000)
+config_Al.process_qha("debye", volume_range, P=0)
+config_Al.process_qha("debye + thermal_electronic", volume_range, P=0)
+config_Al.process_qha("phonons", volume_range, P=0)
+config_Al.process_qha("phonons + thermal_electronic", volume_range, P=0)
 
+
+# TODO: double check that all the tests are printing out the right values
 def test_analyze_encut_conv():
     encut_conv_df, fig = config_Al_conv.analyze_encut_conv(plot=False)
 
@@ -518,8 +519,81 @@ def test_process_thermal_electronic():
 
 
 def test_process_qha():
+    expected_number_of_atoms = 4
+    assert (
+        config_Al.qha.number_of_atoms == expected_number_of_atoms,
+        f"Expected 4, but got {config_Al.qha.number_of_atoms}",
+    )
 
-    pass
+    expected_temperatures = list(range(0, 1010, 100))
+    assert (
+        config_Al.qha.temperatures == expected_temperatures,
+        f"Expected {expected_temperatures}, but got {config_Al.qha.temperatures}",
+    )
+
+    expected_volumes = np.linspace(0.98 * 60, 1.02 * 74, 1000)
+    assert (
+        np.allclose(config_Al.qha.volumes, expected_volumes, atol=1e-6),
+        f"Expected {expected_volumes}, but got {config_Al.qha.volumes}",
+    )
+
+    files_and_attributes = [
+        ("test_config_data/expected_qha_debye.json", "debye"),
+        (
+            "test_config_data/expected_qha_debye_thermal_electronic.json",
+            "debye + thermal_electronic",
+        ),
+        ("test_config_data/expected_qha_phonons.json", "phonons"),
+        (
+            "test_config_data/expected_qha_phonons_thermal_electronic.json",
+            "phonons + thermal_electronic",
+        ),
+    ]
+    methods_copy = {
+        method: {
+            str(P) + " GPa": {k: v for k, v in data.items() if k != "quasi_harmonic_df"}
+            for P, data in pressures.items()
+        }
+        for method, pressures in config_Al.qha.methods.items()
+    }
+
+    for filename, attribute in files_and_attributes:
+        with open(os.path.join(current_dir, filename), "r") as f:
+            expected_data = json.load(f)
+
+        properties = ["helmholtz_energy", "entropy", "heat_capacity"]
+        for property in properties:
+            if property == "helmholtz_energy":
+                expected_property_data = expected_data["0 GPa"][property][
+                    "eos_parameters"
+                ]
+                actual_property_data = methods_copy[attribute]["0 GPa"][property][
+                    "eos_parameters"
+                ]
+                expected_property_data.pop("eos_name", None)
+                actual_property_data.pop("eos_name", None)
+            else:
+                expected_property_data = expected_data["0 GPa"][property][
+                    "polynomial_coefficients"
+                ]
+                actual_property_data = methods_copy[attribute]["0 GPa"][property][
+                    "polynomial_coefficients"
+                ]
+
+            for temp, expected_values in expected_property_data.items():
+                actual_values = actual_property_data[temp]
+                if property == "helmholtz_energy":
+                    for expected, actual in zip(
+                        expected_values.values(), actual_values.values()
+                    ):
+                        assert np.allclose(
+                            expected, actual, atol=1e-6
+                        ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
+                else:
+                    for expected, actual in zip(expected_values, actual_values):
+                        assert np.allclose(
+                            expected, actual, atol=1e-6
+                        ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
 
 
 if __name__ == "__main__":
