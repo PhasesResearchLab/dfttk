@@ -128,46 +128,6 @@ def extract_configuration_data(
     df = pd.DataFrame(row_list)
     return df
 
-def recursive_extract_configuration_data(
-    config_dirs: list[str],
-    outcar_name: str = "OUTCAR",
-    oszicar_name: str = "OSZICAR",
-    contcar_name: str = "CONTCAR",
-    collect_mag_data: bool = False,
-    magmom_tolerance: float = 0,
-    total_magnetic_moment_tolerance: float = 1e-12,
-) -> pd.DataFrame:
-    """Convenience function to extract configuration data from multiple config directories.
-    Runs extract_configuration_data for each config directory in a list.
-
-    Args:
-        config_dirs: list of paths to config directories that will be passed to extract_configuration_data()
-        outcar_name: name of the OUTCAR file. Defaults to "OUTCAR".
-        oszicar_name: name of the OSZICAR file. Defaults to "OSZICAR".
-        contcar_name: name of the CONTCAR file. Defaults to "CONTCAR".
-        collect_mag_data: if True, collect the magnetization data using extract_tot_mag_data. Defaults to
-        False.
-        magmom_tolerance: the tolerance for the total magnetic moment to be considered zero. Defaults to 0.
-
-    """
-    df_list = []
-    for config_dir in config_dirs:
-        try:
-            config_df = extract_configuration_data(
-                config_dir,
-                outcar_name=outcar_name,
-                oszicar_name=oszicar_name,
-                contcar_name=contcar_name,
-                collect_mag_data=collect_mag_data,
-                magmom_tolerance=magmom_tolerance,
-                total_magnetic_moment_tolerance=total_magnetic_moment_tolerance,
-            )
-            df_list.append(config_df)
-        except Exception as e:
-            print(f"Error in {config_dir}: {e}")
-    df = pd.concat(df_list, ignore_index=True)
-    return df
-
 
 def extract_convergence_data(path: str) -> pd.DataFrame:
     """extracts and calculates energy convergence data for a series of VASP convergence calculations
