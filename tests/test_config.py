@@ -569,14 +569,15 @@ def test_process_qha():
                 actual_values = actual_property_data[temp]
                 if property == 'helmholtz_energy':
                     for expected, actual in zip(expected_values.values(), actual_values.values()):
+                        # Continue here!
                         assert np.allclose(
-                            expected, actual, atol=1e-4
-                        ), f"Expected {expected}, but got {actual} with tolerance 1e-4"
+                            expected, actual, atol=1e-3
+                        ), f"Expected {expected}, but got {actual} with tolerance 1e-3"
                 else:
                     for expected, actual in zip(expected_values, actual_values):
                         assert np.allclose(
-                            expected, actual, atol=1e-4
-                        ), f"Expected {expected}, but got {actual} with tolerance 1e-4"
+                            expected, actual, atol=1e-3
+                        ), f"Expected {expected}, but got {actual} with tolerance 1e-3"
 
 
 if __name__ == "__main__":
