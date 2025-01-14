@@ -190,7 +190,7 @@ class EvCurvesData:
         num_volumes: int = 1000,
     ) -> None:
         __, eos_parameters_df = fit_to_all_eos(
-            self.energy_volume_df, volume_min, volume_max, num_volumes
+            self.energy_volume_df, eos_name, volume_min, volume_max, num_volumes
         )
         one_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos_name]
         a = one_eos_parameters_df["a"].values[0]

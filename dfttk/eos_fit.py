@@ -1267,14 +1267,15 @@ def morse(
 
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
-
+# Fit to one eos only
 def fit_to_all_eos(
     df: pd.DataFrame,
+    eos_name: str = "BM4",
     volume_min: float = None,
     volume_max: float = None,
     num_volumes: int = 1000,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Fits the volume and energies of configurations to all EOS functions and returns the results in a dataframe.
+    """Fits the volume and energies of configurations to one EOS function and returns the results in a dataframe.
 
     Args:
         df: Dataframe from extract_configuration_data in dfttk.aggregate_extraction
@@ -1282,17 +1283,32 @@ def fit_to_all_eos(
     Returns:
         tuple(eos_values_df, eos_parameters_df)
     """
+    
+    eos_functions = {
+        "mBM4": mBM4,
+        "mBM5": mBM5,
+        "BM4": BM4,
+        "BM5": BM5,
+        "LOG4": LOG4,
+        "LOG5": LOG5,
+        "murnaghan": murnaghan,
+        "vinet": vinet,
+        "morse": morse,
+    }
+    # Debug print statement
+    print(f"Received eos_name: {eos_name}")
+    eos_function = eos_functions.get(eos_name)
+    if eos_function is None:
+        raise ValueError(f"EOS function '{eos_name}' not recognized.")
 
-    eos_functions = [mBM4, mBM5, BM4, BM5, LOG4, LOG5, murnaghan, vinet, morse]
     dataframes = []
-
     for config in df["config"].unique():
         config_df = df[df["config"] == config]
         volumes = config_df["volume"].values
         energies = config_df["energy"].values
         number_of_atoms = config_df["number_of_atoms"].values[0]
+        
         try:
-            for eos_function in eos_functions:
                 (
                     eos_constants,
                     eos_parameters,
