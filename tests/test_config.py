@@ -27,6 +27,12 @@ config_Al.process_debye(
 )
 temperature_range = np.arange(0, 1010, 100)
 config_Al.process_thermal_electronic(temperature_range)
+
+volume_range = np.linspace(0.98*60, 1.02*74, 1000)
+config_Al.process_qha("debye", volume_range, P = 0)
+config_Al.process_qha("debye + thermal_electronic", volume_range, P = 0)
+config_Al.process_qha("phonons", volume_range, P = 0)
+config_Al.process_qha("phonons + thermal_electronic", volume_range, P = 0)
     
 
 def test_analyze_encut_conv():
