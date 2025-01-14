@@ -33,7 +33,7 @@ from dfttk.eos_fit import (
     murnaghan_equation,
     vinet_equation,
     morse_equation,
-    fit_to_all_eos,
+    fit_to_eos,
     plot_ev,
 )
 from dfttk.debye import process_debye_gruneisen, plot_debye
@@ -189,7 +189,7 @@ class EvCurvesData:
         volume_max: float = None,
         num_volumes: int = 1000,
     ) -> None:
-        __, eos_parameters_df = fit_to_all_eos(
+        __, eos_parameters_df = fit_to_eos(
             self.energy_volume_df, eos_name, volume_min, volume_max, num_volumes
         )
         one_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos_name]

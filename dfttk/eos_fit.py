@@ -1268,7 +1268,7 @@ def morse(
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 # Fit to one eos only
-def fit_to_all_eos(
+def fit_to_eos(
     df: pd.DataFrame,
     eos_name: str = "BM4",
     volume_min: float = None,
