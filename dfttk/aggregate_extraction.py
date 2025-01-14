@@ -99,7 +99,7 @@ def extract_configuration_data(
             )
 
             row = {
-                "config": config,
+                #"config": config,
                 "number_of_atoms": number_of_atoms,
                 "volume": vol,
                 "volume_per_atom": vol_per_atom,
@@ -114,7 +114,7 @@ def extract_configuration_data(
             }
         else:
             row = {
-                "config": config,
+                #"config": config,
                 "number_of_atoms": number_of_atoms,
                 "volume": vol,
                 "volume_per_atom": vol_per_atom,

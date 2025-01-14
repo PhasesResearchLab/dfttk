@@ -1295,74 +1295,74 @@ def fit_to_eos(
         "vinet": vinet,
         "morse": morse,
     }
-    # Debug print statement
-    print(f"Received eos_name: {eos_name}")
+
     eos_function = eos_functions.get(eos_name)
     if eos_function is None:
         raise ValueError(f"EOS function '{eos_name}' not recognized.")
 
     dataframes = []
-    for config in df["config"].unique():
-        config_df = df[df["config"] == config]
-        volumes = config_df["volume"].values
-        energies = config_df["energy"].values
-        number_of_atoms = config_df["number_of_atoms"].values[0]
-        
-        try:
-                (
-                    eos_constants,
-                    eos_parameters,
-                    volume_range,
-                    energy_eos,
-                    pressure_eos,
-                ) = eos_function(volumes, energies, volume_min, volume_max, num_volumes)
-                eos_name = eos_function.__name__
+    #for config in df["config"].unique():
+    #    config_df = df[df["config"] == config]
+    config_df = df
+    volumes = config_df["volume"].values
+    energies = config_df["energy"].values
+    number_of_atoms = config_df["number_of_atoms"].values[0]
+    
+    try:
+            (
+                eos_constants,
+                eos_parameters,
+                volume_range,
+                energy_eos,
+                pressure_eos,
+            ) = eos_function(volumes, energies, volume_min, volume_max, num_volumes)
+            eos_name = eos_function.__name__
 
-                dataframes.append(
-                    pd.DataFrame(
+            dataframes.append(
+                pd.DataFrame(
+                    [
                         [
-                            [
-                                config,
-                                eos_name,
-                                number_of_atoms,
-                                eos_constants[0],
-                                eos_constants[1],
-                                eos_constants[2],
-                                eos_constants[3],
-                                eos_constants[4],
-                                eos_parameters[0],
-                                eos_parameters[1],
-                                eos_parameters[2],
-                                eos_parameters[3],
-                                eos_parameters[4],
-                                volume_range,
-                                energy_eos,
-                                pressure_eos,
-                            ]
-                        ],
-                        columns=[
-                            "config",
-                            "eos",
-                            "number_of_atoms",
-                            "a",
-                            "b",
-                            "c",
-                            "d",
-                            "e",
-                            "V0",
-                            "E0",
-                            "B",
-                            "BP",
-                            "B2P",
-                            "volumes",
-                            "energies",
-                            "pressures",
-                        ],
-                    )
+                            eos_name,
+                            number_of_atoms,
+                            eos_constants[0],
+                            eos_constants[1],
+                            eos_constants[2],
+                            eos_constants[3],
+                            eos_constants[4],
+                            eos_parameters[0],
+                            eos_parameters[1],
+                            eos_parameters[2],
+                            eos_parameters[3],
+                            eos_parameters[4],
+                            volume_range,
+                            energy_eos,
+                            pressure_eos,
+                        ]
+                    ],
+                    columns=[
+                        #"config",
+                        "eos",
+                        "number_of_atoms",
+                        "a",
+                        "b",
+                        "c",
+                        "d",
+                        "e",
+                        "V0",
+                        "E0",
+                        "B",
+                        "BP",
+                        "B2P",
+                        "volumes",
+                        "energies",
+                        "pressures",
+                    ],
                 )
-        except Exception as e:
-            print(f"Error fitting config {config}: {e}")
-    eos_df = pd.concat(dataframes, ignore_index=True)
+            )
+    except Exception as e:
+        print(f"Error fitting config: {e}")
+    #eos_df = pd.concat(dataframes, ignore_index=True)
+    eos_df = dataframes[0]
     eos_values_df = eos_df.drop(
         columns=["a", "b", "c", "d", "e", "V0", "E0", "B", "BP", "B2P"]
     )

@@ -434,64 +434,64 @@ def process_debye_gruneisen(
 
     s = scaling_factor
     filtered_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos]
-    configs = filtered_eos_parameters_df["config"].unique()
+    #configs = filtered_eos_parameters_df["config"].unique()
 
     debye_properties_list = []
-    for config in configs:
-        config_eos_parameters_df = filtered_eos_parameters_df[
-            filtered_eos_parameters_df["config"] == config
-        ]
-        bulk_modulus_prime = config_eos_parameters_df["BP"].values[0]
-        gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
+    #for config in configs:
+    config_eos_parameters_df = filtered_eos_parameters_df#[
+    #    filtered_eos_parameters_df["config"] == config
+    #]
+    bulk_modulus_prime = config_eos_parameters_df["BP"].values[0]
+    gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
 
-        config_energy_volume_df = energy_volume_df[energy_volume_df["config"] == config]
-        volume = config_energy_volume_df["volume"].values
+    config_energy_volume_df = energy_volume_df#[energy_volume_df["config"] == config]
+    volume = config_energy_volume_df["volume"].values
 
-        if volumes is None:
-            volume_min = volume.min() * 0.98
-            volume_max = volume.max() * 1.02
-            volumes = np.linspace(volume_min, volume_max, 1000)
+    if volumes is None:
+        volume_min = volume.min() * 0.98
+        volume_max = volume.max() * 1.02
+        volumes = np.linspace(volume_min, volume_max, 1000)
 
-        atomic_mass = config_energy_volume_df["average_mass"].values[0]
-        eos_parameters = config_eos_parameters_df[
-            ["V0", "E0", "B", "BP", "B2P"]
-        ].values[0]
-        theta = debye_temperature(volumes, eos_parameters, atomic_mass, gru_param, s)
+    atomic_mass = config_energy_volume_df["average_mass"].values[0]
+    eos_parameters = config_eos_parameters_df[
+        ["V0", "E0", "B", "BP", "B2P"]
+    ].values[0]
+    theta = debye_temperature(volumes, eos_parameters, atomic_mass, gru_param, s)
 
-        s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-        f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-        cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-        number_of_atoms = energy_volume_df["number_of_atoms"][0]
+    s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+    f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+    cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+    number_of_atoms = energy_volume_df["number_of_atoms"][0]
 
-        for i, volume in enumerate(volumes):
-            s_vib = vibrational_entropy(temperatures, theta[i], number_of_atoms)
-            f_vib = vibrational_helmholtz_energy(
-                temperatures, theta[i], number_of_atoms
-            )
-            cv_vib = vibrational_heat_capacity(temperatures, theta[i], number_of_atoms)
-            s_vib_v_t[i, :] = s_vib
-            f_vib_v_t[i, :] = f_vib
-            cv_vib_v_t[i, :] = cv_vib
-
-        f_vib_transposed = f_vib_v_t.T
-        s_vib_transposed = s_vib_v_t.T
-        cv_vib_transposed = cv_vib_v_t.T
-
-        debye_properties = pd.DataFrame(
-            {
-                "config": [config] * len(temperatures),
-                "temperatures": temperatures,
-                "number_of_atoms": number_of_atoms,
-                "scaling_factor": [s] * len(temperatures),
-                "gruneisen_x": [gruneisen_x] * len(temperatures),
-                "volume": [volumes] * len(temperatures),
-                "f_vib": [col for col in f_vib_transposed],
-                "s_vib": [col for col in s_vib_transposed],
-                "cv_vib": [col for col in cv_vib_transposed],
-            }
+    for i, volume in enumerate(volumes):
+        s_vib = vibrational_entropy(temperatures, theta[i], number_of_atoms)
+        f_vib = vibrational_helmholtz_energy(
+            temperatures, theta[i], number_of_atoms
         )
+        cv_vib = vibrational_heat_capacity(temperatures, theta[i], number_of_atoms)
+        s_vib_v_t[i, :] = s_vib
+        f_vib_v_t[i, :] = f_vib
+        cv_vib_v_t[i, :] = cv_vib
 
-        debye_properties_list.append(debye_properties)
+    f_vib_transposed = f_vib_v_t.T
+    s_vib_transposed = s_vib_v_t.T
+    cv_vib_transposed = cv_vib_v_t.T
+
+    debye_properties = pd.DataFrame(
+        {
+            #"config": [config] * len(temperatures),
+            "temperatures": temperatures,
+            "number_of_atoms": number_of_atoms,
+            "scaling_factor": [s] * len(temperatures),
+            "gruneisen_x": [gruneisen_x] * len(temperatures),
+            "volume": [volumes] * len(temperatures),
+            "f_vib": [col for col in f_vib_transposed],
+            "s_vib": [col for col in s_vib_transposed],
+            "cv_vib": [col for col in cv_vib_transposed],
+        }
+    )
+
+    debye_properties_list.append(debye_properties)
 
     all_debye_properties = pd.concat(debye_properties_list, ignore_index=True)
     
