@@ -34,7 +34,8 @@ config_Al.process_qha("debye + thermal_electronic", volume_range, P=0)
 config_Al.process_qha("phonons", volume_range, P=0)
 config_Al.process_qha("phonons + thermal_electronic", volume_range, P=0)
 
-#TODO: double check that all the tests are printing out the right values
+
+# TODO: double check that all the tests are printing out the right values
 def test_analyze_encut_conv():
     encut_conv_df, fig = config_Al_conv.analyze_encut_conv(plot=False)
 
@@ -452,7 +453,6 @@ def test_process_thermal_electronic():
             actual_data = actual_data.as_dict()
 
         for actual, expected in zip(actual_data, expected_data):
-            # Continue here!
             assert actual == expected, f"Expected {expected}, but got {actual}"
 
     expected_number_of_atoms = 4
@@ -539,9 +539,15 @@ def test_process_qha():
 
     files_and_attributes = [
         ("test_config_data/expected_qha_debye.json", "debye"),
-        ("test_config_data/expected_qha_debye_thermal_electronic.json", "debye + thermal_electronic"),
+        (
+            "test_config_data/expected_qha_debye_thermal_electronic.json",
+            "debye + thermal_electronic",
+        ),
         ("test_config_data/expected_qha_phonons.json", "phonons"),
-        ("test_config_data/expected_qha_phonons_thermal_electronic.json", "phonons + thermal_electronic"),
+        (
+            "test_config_data/expected_qha_phonons_thermal_electronic.json",
+            "phonons + thermal_electronic",
+        ),
     ]
     methods_copy = {
         method: {
@@ -555,22 +561,32 @@ def test_process_qha():
         with open(os.path.join(current_dir, filename), "r") as f:
             expected_data = json.load(f)
 
-        properties = ['helmholtz_energy', 'entropy', 'heat_capacity']
+        properties = ["helmholtz_energy", "entropy", "heat_capacity"]
         for property in properties:
-            if property == 'helmholtz_energy':
-                expected_property_data = expected_data["0 GPa"][property]["eos_parameters"]
-                actual_property_data = methods_copy[attribute]["0 GPa"][property]["eos_parameters"]
+            if property == "helmholtz_energy":
+                expected_property_data = expected_data["0 GPa"][property][
+                    "eos_parameters"
+                ]
+                actual_property_data = methods_copy[attribute]["0 GPa"][property][
+                    "eos_parameters"
+                ]
                 expected_property_data.pop("eos_name", None)
                 actual_property_data.pop("eos_name", None)
             else:
-                expected_property_data = expected_data["0 GPa"][property]["polynomial_coefficients"]
-                actual_property_data = methods_copy[attribute]["0 GPa"][property]["polynomial_coefficients"]
+                expected_property_data = expected_data["0 GPa"][property][
+                    "polynomial_coefficients"
+                ]
+                actual_property_data = methods_copy[attribute]["0 GPa"][property][
+                    "polynomial_coefficients"
+                ]
 
-            #TODO: GitHub actions only passes with this low tolerance. Investigate why. 
+            # TODO: GitHub actions only passes with this low tolerance. Investigate why.
             for temp, expected_values in expected_property_data.items():
                 actual_values = actual_property_data[temp]
-                if property == 'helmholtz_energy':
-                    for expected, actual in zip(expected_values.values(), actual_values.values()):
+                if property == "helmholtz_energy":
+                    for expected, actual in zip(
+                        expected_values.values(), actual_values.values()
+                    ):
                         assert np.allclose(
                             expected, actual, rtol=2e-2
                         ), f"Expected {expected}, but got {actual} with tolerance 5e-1"
