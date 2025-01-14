@@ -572,12 +572,12 @@ def test_process_qha():
                 if property == 'helmholtz_energy':
                     for expected, actual in zip(expected_values.values(), actual_values.values()):
                         assert np.allclose(
-                            expected, actual, rtol=1e-1
+                            expected, actual, rtol=1e-2
                         ), f"Expected {expected}, but got {actual} with tolerance 5e-1"
                 else:
                     for expected, actual in zip(expected_values, actual_values):
                         assert np.allclose(
-                            expected, actual, rtol=1e-1
+                            expected, actual, rtol=1e-2
                         ), f"Expected {expected}, but got {actual} with tolerance 5e-1"
 
 
