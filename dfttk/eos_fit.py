@@ -1268,97 +1268,48 @@ def morse(
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
-def fit_to_all_eos(
-    df: pd.DataFrame,
+def fit_to_eos(
+    volumes: np.ndarray,
+    energies: np.ndarray,
+    eos_name: str = "BM4",
     volume_min: float = None,
     volume_max: float = None,
     num_volumes: int = 1000,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Fits the volume and energies of configurations to all EOS functions and returns the results in a dataframe.
 
-    Args:
-        df: Dataframe from extract_configuration_data in dfttk.aggregate_extraction
+    eos_functions = {
+        "mBM4": mBM4,
+        "mBM5": mBM5,
+        "BM4": BM4,
+        "BM5": BM5,
+        "LOG4": LOG4,
+        "LOG5": LOG5,
+        "murnaghan": murnaghan,
+        "vinet": vinet,
+        "morse": morse,
+    }
+    eos_function = eos_functions.get(eos_name)
+    if eos_function is None:
+        raise ValueError(f"EOS function '{eos_name}' not recognized.")
 
-    Returns:
-        tuple(eos_values_df, eos_parameters_df)
-    """
+    try:
+        (
+            eos_constants,
+            eos_parameters,
+            volume_range,
+            energy_eos,
+            pressure_eos,
+        ) = eos_function(volumes, energies, volume_min, volume_max, num_volumes)
+        eos_name = eos_function.__name__
+    except Exception as e:
+        print(f"Error fitting config: {e}")
 
-    eos_functions = [mBM4, mBM5, BM4, BM5, LOG4, LOG5, murnaghan, vinet, morse]
-    dataframes = []
-
-    for config in df["config"].unique():
-        config_df = df[df["config"] == config]
-        volumes = config_df["volume"].values
-        energies = config_df["energy"].values
-        number_of_atoms = config_df["number_of_atoms"].values[0]
-        try:
-            for eos_function in eos_functions:
-                (
-                    eos_constants,
-                    eos_parameters,
-                    volume_range,
-                    energy_eos,
-                    pressure_eos,
-                ) = eos_function(volumes, energies, volume_min, volume_max, num_volumes)
-                eos_name = eos_function.__name__
-
-                dataframes.append(
-                    pd.DataFrame(
-                        [
-                            [
-                                config,
-                                eos_name,
-                                number_of_atoms,
-                                eos_constants[0],
-                                eos_constants[1],
-                                eos_constants[2],
-                                eos_constants[3],
-                                eos_constants[4],
-                                eos_parameters[0],
-                                eos_parameters[1],
-                                eos_parameters[2],
-                                eos_parameters[3],
-                                eos_parameters[4],
-                                volume_range,
-                                energy_eos,
-                                pressure_eos,
-                            ]
-                        ],
-                        columns=[
-                            "config",
-                            "eos",
-                            "number_of_atoms",
-                            "a",
-                            "b",
-                            "c",
-                            "d",
-                            "e",
-                            "V0",
-                            "E0",
-                            "B",
-                            "BP",
-                            "B2P",
-                            "volumes",
-                            "energies",
-                            "pressures",
-                        ],
-                    )
-                )
-        except Exception as e:
-            print(f"Error fitting config {config}: {e}")
-    eos_df = pd.concat(dataframes, ignore_index=True)
-    eos_values_df = eos_df.drop(
-        columns=["a", "b", "c", "d", "e", "V0", "E0", "B", "BP", "B2P"]
-    )
-    eos_parameters_df = eos_df.drop(columns=["volumes", "energies", "pressures"])
-
-    return eos_values_df, eos_parameters_df
+    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
 def assign_colors_to_configs(
-    df: pd.DataFrame, alpha: float = 1, cmap: str = "plotly"
+    unique_configs, alpha: float = 1, cmap: str = "plotly"
 ) -> dict:
-    unique_configs = df["config"].unique()
 
     if cmap == "plotly":
         colors = px.colors.qualitative.Plotly
@@ -1393,8 +1344,8 @@ def assign_colors_to_configs(
     return config_colors
 
 
-def assign_marker_symbols_to_configs(df: pd.DataFrame) -> dict:
-    unique_configs = df["config"].unique()
+def assign_marker_symbols_to_configs(unique_configs):
+
     symbols = [
         "circle",
         "square",
@@ -1443,7 +1394,10 @@ def assign_marker_symbols_to_configs(df: pd.DataFrame) -> dict:
 
 
 def plot_ev(
-    data,
+    name,
+    number_of_atoms,
+    volumes,
+    energies,
     eos_name="BM4",
     highlight_minimum=True,
     per_atom=False,
@@ -1473,31 +1427,17 @@ def plot_ev(
         fig (plotly.graph_objs._figure.Figure): A Plotly figure.
     """
 
-    # Check if data is a pandas DataFrame or a list of pandas DataFrames
-    if isinstance(data, pd.DataFrame):
-        df = data
-
-    # Check if each element of the list is the same type as the zeroth element
-    elif isinstance(data, list) and all(
-        type(element) == type(data[0]) for element in data
-    ):
-        if isinstance(data[0], pd.DataFrame):
-            df = pd.concat(data, ignore_index=True)
-
-    else:
-        raise ValueError(
-            "data must be a pandas DataFrame, list of pandas DataFrames, or a list of input_file names as strings"
-        )
-
-    # Create a data frame with the eos fits for each config
     if eos_name != None:
-        eos_values_df, eos_parameters_df = fit_to_all_eos(df)
+        eos_values_df, eos_parameters_df = fit_to_eos(
+            number_of_atoms, volumes, energies, eos_name=eos_name
+        )
+    unique_configs = [name]
+    config_colors = assign_colors_to_configs(
+        unique_configs, alpha=marker_alpha, cmap=cmap
+    )
+    config_symbols = assign_marker_symbols_to_configs(unique_configs)
 
-    # Assign colors and symbols
-    config_colors = assign_colors_to_configs(df, alpha=marker_alpha, cmap=cmap)
-    config_symbols = assign_marker_symbols_to_configs(df)
-
-    # Plot the data
+    # First, plot the energy vs volume data points.
     fig = go.Figure()
     fig.update_layout(
         font=dict(
@@ -1505,33 +1445,30 @@ def plot_ev(
         )
     )
 
-    for config in df["config"].unique():
-        config_df = df[df["config"] == config]
+    if isinstance(per_atom, bool):
+        x = volumes
+        y = energies
 
-        if isinstance(per_atom, bool):
-            x = config_df["volume"]
-            y = config_df["energy"]
+        if per_atom:
+            x = x / number_of_atoms
+            y = y / number_of_atoms
+    else:
+        raise ValueError("per_atom must be True or False")
 
-            if per_atom:
-                x = x / config_df["number_of_atoms"]
-                y = y / config_df["number_of_atoms"]
-        else:
-            raise ValueError("per_atom must be True or False")
-
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=y,
-                mode="markers",
-                marker=dict(
-                    size=marker_size,
-                    color=config_colors[config],
-                    symbol=config_symbols[config],
-                ),
-                legendgroup="eos",
-                name=f"{config}",
-            )
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=y,
+            mode="markers",
+            marker=dict(
+                size=marker_size,
+                color=config_colors[name],
+                symbol=config_symbols[name],
+            ),
+            legendgroup="eos",
+            name=name,
         )
+    )
 
     if isinstance(per_atom, bool):
         atom_suffix = "/atom" if per_atom else ""
@@ -1547,73 +1484,67 @@ def plot_ev(
             )
         )
 
-    # Loop over configs in the eos data frame and plot the eos fits
+    # Second, plot the EOS fit.
     if eos_name != None:
-        for config in eos_values_df["config"].unique():
-            eos_config_values_df = eos_values_df[eos_values_df["config"] == config]
-            eos_config_parameters_df = eos_parameters_df[
-                eos_parameters_df["config"] == config
-            ]
 
-            if eos_name in eos_config_values_df["eos"].unique():
-                eos_ev_df = eos_config_values_df[
-                    eos_config_values_df["eos"] == eos_name
-                ]
-                eos_min_df = eos_config_parameters_df[
-                    eos_config_parameters_df["eos"] == eos_name
-                ]
+        eos_config_values_df = eos_values_df
+        eos_config_parameters_df = eos_parameters_df
 
-                x = eos_ev_df["volumes"].values[0]
-                y = eos_ev_df["energies"].values[0]
+        eos_ev_df = eos_config_values_df
+        eos_min_df = eos_config_parameters_df[
+            eos_config_parameters_df["eos"] == eos_name
+        ]
 
-                if per_atom:
-                    num_atoms = eos_ev_df["number_of_atoms"].values[0]
+        x = eos_ev_df["volumes"].values[0]
+        y = eos_ev_df["energies"].values[0]
 
-                    x = x / num_atoms
-                    y = y / num_atoms
+        if per_atom:
+            num_atoms = eos_ev_df["number_of_atoms"].values[0]
 
-                fig.add_trace(
-                    go.Scatter(
-                        x=x,
-                        y=y,
-                        mode="lines",
-                        name=f"{eos_name} fit",
-                        line=dict(width=1.75, color=config_colors[config]),
-                        legendgroup="data",
-                        showlegend=False,
-                    )
+            x = x / num_atoms
+            y = y / num_atoms
+
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                name=f"{eos_name} fit",
+                line=dict(width=1.75, color=config_colors[name]),
+                legendgroup="data",
+                showlegend=False,
+            )
+        )
+
+        # Plot the equilibrium energy and volume for each config
+        if highlight_minimum == True:
+
+            x = eos_min_df["V0"].values[0]
+            y = eos_min_df["E0"].values[0]
+
+            if per_atom:
+                num_atoms = eos_ev_df["number_of_atoms"].values[0]
+                x = x / num_atoms
+                y = y / num_atoms
+
+            fig.add_trace(
+                go.Scatter(
+                    x=[x],
+                    y=[y],
+                    mode="markers",
+                    name=f"{eos_name} min energy",
+                    marker=dict(color="black", size=marker_size, symbol="cross"),
+                    legendgroup="minimum",
+                    showlegend=False,
                 )
+            )
 
-                # Plot the equilibrium energy and volume for each config
-                if highlight_minimum == True:
+        elif highlight_minimum == False:
+            pass
 
-                    x = eos_min_df["V0"].values[0]
-                    y = eos_min_df["E0"].values[0]
+        else:
+            raise ValueError("highlight_minimum must be True or False")
 
-                    if per_atom:
-                        num_atoms = eos_ev_df["number_of_atoms"].values[0]
-                        x = x / num_atoms
-                        y = y / num_atoms
-
-                    fig.add_trace(
-                        go.Scatter(
-                            x=[x],
-                            y=[y],
-                            mode="markers",
-                            name=f"{eos_name} min energy",
-                            marker=dict(
-                                color="black", size=marker_size, symbol="cross"
-                            ),
-                            legendgroup="minimum",
-                            showlegend=False,
-                        )
-                    )
-
-                elif highlight_minimum == False:
-                    pass
-
-                else:
-                    raise ValueError("highlight_minimum must be True or False")
     axis_params = dict(
         showline=True,
         linecolor="black",
