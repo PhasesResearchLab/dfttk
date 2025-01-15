@@ -434,17 +434,14 @@ def process_debye_gruneisen(
 
     s = scaling_factor
     filtered_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos]
-    #configs = filtered_eos_parameters_df["config"].unique()
 
     debye_properties_list = []
-    #for config in configs:
-    config_eos_parameters_df = filtered_eos_parameters_df#[
-    #    filtered_eos_parameters_df["config"] == config
-    #]
+    config_eos_parameters_df = filtered_eos_parameters_df
+    
     bulk_modulus_prime = config_eos_parameters_df["BP"].values[0]
     gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
 
-    config_energy_volume_df = energy_volume_df#[energy_volume_df["config"] == config]
+    config_energy_volume_df = energy_volume_df
     volume = config_energy_volume_df["volume"].values
 
     if volumes is None:
@@ -479,7 +476,6 @@ def process_debye_gruneisen(
 
     debye_properties = pd.DataFrame(
         {
-            #"config": [config] * len(temperatures),
             "temperatures": temperatures,
             "number_of_atoms": number_of_atoms,
             "scaling_factor": [s] * len(temperatures),

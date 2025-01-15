@@ -1301,8 +1301,6 @@ def fit_to_eos(
         raise ValueError(f"EOS function '{eos_name}' not recognized.")
 
     dataframes = []
-    #for config in df["config"].unique():
-    #    config_df = df[df["config"] == config]
     config_df = df
     volumes = config_df["volume"].values
     energies = config_df["energy"].values
@@ -1340,7 +1338,6 @@ def fit_to_eos(
                         ]
                     ],
                     columns=[
-                        #"config",
                         "eos",
                         "number_of_atoms",
                         "a",
@@ -1361,7 +1358,6 @@ def fit_to_eos(
             )
     except Exception as e:
         print(f"Error fitting config: {e}")
-    #eos_df = pd.concat(dataframes, ignore_index=True)
     eos_df = dataframes[0]
     eos_values_df = eos_df.drop(
         columns=["a", "b", "c", "d", "e", "V0", "E0", "B", "BP", "B2P"]

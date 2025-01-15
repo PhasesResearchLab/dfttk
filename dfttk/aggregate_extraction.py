@@ -56,10 +56,6 @@ def extract_configuration_data(
         magnetization data (if specified)
     """
 
-    # Find the index where "config_" starts and add its length
-    start = path.find("config_") + len("config_")
-    config = path[start:]  # get the string following "config_"
-
     row_list = []
     vol_dirs = glob.glob(os.path.join(path, "vol_*"))
     vol_dirs = natsorted(vol_dirs)
@@ -99,7 +95,6 @@ def extract_configuration_data(
             )
 
             row = {
-                #"config": config,
                 "number_of_atoms": number_of_atoms,
                 "volume": vol,
                 "volume_per_atom": vol_per_atom,
@@ -114,7 +109,6 @@ def extract_configuration_data(
             }
         else:
             row = {
-                #"config": config,
                 "number_of_atoms": number_of_atoms,
                 "volume": vol,
                 "volume_per_atom": vol_per_atom,
