@@ -1267,7 +1267,7 @@ def morse(
 
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
-# Fit to one eos only
+
 def fit_to_eos(
     df: pd.DataFrame,
     eos_name: str = "BM4",
@@ -1300,11 +1300,9 @@ def fit_to_eos(
     if eos_function is None:
         raise ValueError(f"EOS function '{eos_name}' not recognized.")
 
-    dataframes = []
-    config_df = df
-    volumes = config_df["volume"].values
-    energies = config_df["energy"].values
-    number_of_atoms = config_df["number_of_atoms"].values[0]
+    volumes = df["volume"].values
+    energies = df["energy"].values
+    number_of_atoms = df["number_of_atoms"].values[0]
     
     try:
             (
@@ -1316,8 +1314,7 @@ def fit_to_eos(
             ) = eos_function(volumes, energies, volume_min, volume_max, num_volumes)
             eos_name = eos_function.__name__
 
-            dataframes.append(
-                pd.DataFrame(
+            eos_df = pd.DataFrame(
                     [
                         [
                             eos_name,
@@ -1355,10 +1352,9 @@ def fit_to_eos(
                         "pressures",
                     ],
                 )
-            )
+        
     except Exception as e:
         print(f"Error fitting config: {e}")
-    eos_df = dataframes[0]
     eos_values_df = eos_df.drop(
         columns=["a", "b", "c", "d", "e", "V0", "E0", "B", "BP", "B2P"]
     )
