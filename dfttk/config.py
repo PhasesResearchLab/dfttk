@@ -74,7 +74,6 @@ class EvCurvesData:
             "BP": None,
             "B2P": None,
         }
-        self.eos_parameters_df = None  # Temporary
         self.relaxed_structures = []
 
     def _get_volume_folders(self):
@@ -103,7 +102,7 @@ class EvCurvesData:
             self.incars.append(incar_data)
 
         self.kpoints = Kpoints.from_file(os.path.join(self.path, "KPOINTS"))
-        
+
         try:
             self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
         except FileNotFoundError:
@@ -120,7 +119,16 @@ class EvCurvesData:
         total_magnetic_moment_tolerance: float = 1e-12,
         mass_average: str = "geometric",
     ) -> None:
-        number_of_atoms, volumes, energies, atomic_masses, average_mass, mag_data_list, total_magnetic_moments, magnetic_orderings = extract_configuration_data(
+        (
+            number_of_atoms,
+            volumes,
+            energies,
+            atomic_masses,
+            average_mass,
+            mag_data_list,
+            total_magnetic_moments,
+            magnetic_orderings,
+        ) = extract_configuration_data(
             self.path,
             outcar_name,
             oszicar_name,
@@ -139,7 +147,7 @@ class EvCurvesData:
         self.mag_data = mag_data_list
         self.total_magnetic_moment = total_magnetic_moments
         self.magnetic_ordering = magnetic_orderings
-        
+
         vol_folders = self._get_volume_folders()
         if volumes is not None:
             volumes = [round(volume, 2) for volume in volumes]
@@ -164,8 +172,15 @@ class EvCurvesData:
         volume_max: float = None,
         num_volumes: int = 1000,
     ) -> None:
-        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = fit_to_eos(
-            self.volumes, self.energies, eos_name, volume_min, volume_max, num_volumes
+        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
+            fit_to_eos(
+                self.volumes,
+                self.energies,
+                eos_name,
+                volume_min,
+                volume_max,
+                num_volumes,
+            )
         )
         a = eos_constants[0]
         b = eos_constants[1]
@@ -177,19 +192,7 @@ class EvCurvesData:
         B = eos_parameters[2]
         BP = eos_parameters[3]
         B2P = eos_parameters[4]
-        '''
-        one_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos_name]
-        a = one_eos_parameters_df["a"].values[0]
-        b = one_eos_parameters_df["b"].values[0]
-        c = one_eos_parameters_df["c"].values[0]
-        d = one_eos_parameters_df["d"].values[0]
-        e = one_eos_parameters_df["e"].values[0]
-        V0 = one_eos_parameters_df["V0"].values[0]
-        E0 = one_eos_parameters_df["E0"].values[0]
-        B = one_eos_parameters_df["B"].values[0]
-        BP = one_eos_parameters_df["BP"].values[0]
-        B2P = one_eos_parameters_df["B2P"].values[0]
-        '''
+
         self.eos_parameters = {
             "eos_name": eos_name,
             "a": a,
@@ -203,8 +206,7 @@ class EvCurvesData:
             "BP": BP,
             "B2P": B2P,
         }
-        #self.eos_parameters_df = eos_parameters_df
-        
+
     def plot(
         self,
         eos_name: str = "BM4",
@@ -251,20 +253,18 @@ class DebyeData:
         average_mass: float,
         bulk_modulus_prime: float,
         eos_parameters_array: np.array,
-        #eos_parameters_df: pd.DataFrame,
         scaling_factor: float = 0.617,
         gruneisen_x: float = 1,
         temperatures: np.array = np.linspace(0, 1000, 101),
         eos: str = "BM4",
     ):
-        volumes = np.linspace(0.98*min(volumes), 1.02*max(volumes), 1000)
+        volumes = np.linspace(0.98 * min(volumes), 1.02 * max(volumes), 1000)
         debye_df = process_debye_gruneisen(
             number_of_atoms,
             volumes,
             average_mass,
             bulk_modulus_prime,
             eos_parameters_array,
-            #eos_parameters_df,
             scaling_factor,
             gruneisen_x,
             temperatures,
@@ -354,7 +354,6 @@ class PhononsData:
             self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
         except FileNotFoundError:
             self.potcar = None
-
 
     def get_harmonic_data(
         self,
@@ -488,7 +487,6 @@ class ThermalElectronicData:
         except FileNotFoundError:
             self.potcar = None
 
-
     def get_thermal_electronic_data(
         self,
         temperature_range: np.ndarray,
@@ -567,7 +565,7 @@ class QuasiHarmonicData:
             "phonons": {},
             "phonons + thermal_electronic": {},
         }
-    
+
     def get_quasi_harmonic_data(
         self,
         method,
@@ -575,7 +573,6 @@ class QuasiHarmonicData:
         num_atoms_eos: int,
         volume_range: np.ndarray,
         eos_constants,
-        #eos_parameters_df: pd.DataFrame,
         harmonic_properties_fit: pd.DataFrame = None,
         debye_properties: pd.DataFrame = None,
         thermal_electronic_properties_fit: pd.DataFrame = None,
@@ -586,7 +583,6 @@ class QuasiHarmonicData:
             num_atoms_eos,
             volume_range,
             eos_constants,
-            #eos_parameters_df,
             harmonic_properties_fit,
             debye_properties,
             thermal_electronic_properties_fit,
@@ -894,25 +890,25 @@ class Configuration:
         temperatures: np.array = np.linspace(0, 1000, 101),
         eos: str = "BM4",
     ):
-        eos_parameters_df = self.ev_curves.eos_parameters_df
         eos = self.ev_curves.eos_parameters["eos_name"]
         self.debye = DebyeData()
-        
-        eos_parameters_array = np.array([
-            self.ev_curves.eos_parameters["V0"],
-            self.ev_curves.eos_parameters["E0"],
-            self.ev_curves.eos_parameters["B"],
-            self.ev_curves.eos_parameters["BP"],
-            self.ev_curves.eos_parameters["B2P"],
-        ])
-        
+
+        eos_parameters_array = np.array(
+            [
+                self.ev_curves.eos_parameters["V0"],
+                self.ev_curves.eos_parameters["E0"],
+                self.ev_curves.eos_parameters["B"],
+                self.ev_curves.eos_parameters["BP"],
+                self.ev_curves.eos_parameters["B2P"],
+            ]
+        )
+
         self.debye.get_debye_gruneisen_data(
             self.ev_curves.number_of_atoms,
             self.ev_curves.volumes,
             self.ev_curves.average_mass,
             self.ev_curves.eos_parameters["BP"],
             eos_parameters_array,
-            #eos_parameters_df,
             scaling_factor,
             gruneisen_x,
             temperatures,
@@ -1012,17 +1008,17 @@ class Configuration:
             temperature_range,
             order=order,
         )
-        
+
     def add_experiments(self, experiments: dict):
         self.experiments = experiments
-        
+
     def process_qha(
         self,
         method: str,
         volume_range: np.ndarray,
         P: float = 0,
     ):
-        if not hasattr(self, 'qha'):
+        if not hasattr(self, "qha"):
             self.qha = QuasiHarmonicData()
 
         if method == "debye":
@@ -1049,20 +1045,21 @@ class Configuration:
             raise ValueError(f"Unknown option: {method}")
 
         eos = self.ev_curves.eos_parameters["eos_name"]
-        eos_constants = np.array([
-            self.ev_curves.eos_parameters["a"],
-            self.ev_curves.eos_parameters["b"],
-            self.ev_curves.eos_parameters["c"],
-            self.ev_curves.eos_parameters["d"],
-            self.ev_curves.eos_parameters["e"],
-        ])
+        eos_constants = np.array(
+            [
+                self.ev_curves.eos_parameters["a"],
+                self.ev_curves.eos_parameters["b"],
+                self.ev_curves.eos_parameters["c"],
+                self.ev_curves.eos_parameters["d"],
+                self.ev_curves.eos_parameters["e"],
+            ]
+        )
         self.qha.get_quasi_harmonic_data(
             method,
             eos,
             self.ev_curves.number_of_atoms,
             volume_range,
             eos_constants,
-            #self.ev_curves.eos_parameters_df,
             harmonic_properties_fit=harmonic_properties_fit,
             debye_properties=debye_properties,
             thermal_electronic_properties_fit=thermal_electronic_properties_fit,
@@ -1144,7 +1141,10 @@ class Configuration:
         if hasattr(self, "qha"):
             methods_copy = {
                 method: {
-                    str(P) + " GPa": {k: v for k, v in data.items() if k != "quasi_harmonic_df"}
+                    str(P)
+                    + " GPa": {
+                        k: v for k, v in data.items() if k != "quasi_harmonic_df"
+                    }
                     for P, data in pressures.items()
                 }
                 for method, pressures in self.qha.methods.items()
@@ -1155,7 +1155,7 @@ class Configuration:
                 "temperatures": self.qha.temperatures,
                 "methods": methods_copy,
             }
-        
+
         if hasattr(self, "experiments"):
             document["experiments"] = self.experiments
 

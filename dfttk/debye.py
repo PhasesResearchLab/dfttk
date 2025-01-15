@@ -410,7 +410,6 @@ def process_debye_gruneisen(
     atomic_mass: float,
     bulk_modulus_prime: float,
     eos_parameters: np.array,
-    #eos_parameters_df: pd.DataFrame,
     scaling_factor: float = 0.617,
     gruneisen_x: float = 1,
     temperatures: np.array = np.linspace(0, 1000, 101),
@@ -418,38 +417,25 @@ def process_debye_gruneisen(
 ):
 
     s = scaling_factor
-    #filtered_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos]
 
     debye_properties_list = []
-    #config_eos_parameters_df = filtered_eos_parameters_df
-    
-    bulk_modulus_prime# = config_eos_parameters_df["BP"].values[0]
-    gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
 
-    #config_energy_volume_df = energy_volume_df
-    #volume = config_energy_volume_df["volume"].values
+    gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
 
     if volumes is None:
         volume_min = volume.min() * 0.98
         volume_max = volume.max() * 1.02
         volumes = np.linspace(volume_min, volume_max, 1000)
 
-    #atomic_mass = config_energy_volume_df["average_mass"].values[0]
-    #eos_parameters = config_eos_parameters_df[
-    #    ["V0", "E0", "B", "BP", "B2P"]
-    #].values[0]
     theta = debye_temperature(volumes, eos_parameters, atomic_mass, gru_param, s)
 
     s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
     f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
     cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-    #number_of_atoms = energy_volume_df["number_of_atoms"][0]
 
     for i, volume in enumerate(volumes):
         s_vib = vibrational_entropy(temperatures, theta[i], number_of_atoms)
-        f_vib = vibrational_helmholtz_energy(
-            temperatures, theta[i], number_of_atoms
-        )
+        f_vib = vibrational_helmholtz_energy(temperatures, theta[i], number_of_atoms)
         cv_vib = vibrational_heat_capacity(temperatures, theta[i], number_of_atoms)
         s_vib_v_t[i, :] = s_vib
         f_vib_v_t[i, :] = f_vib
@@ -475,5 +461,5 @@ def process_debye_gruneisen(
     debye_properties_list.append(debye_properties)
 
     all_debye_properties = pd.concat(debye_properties_list, ignore_index=True)
-    
+
     return all_debye_properties

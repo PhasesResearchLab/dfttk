@@ -1267,7 +1267,8 @@ def morse(
 
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
-#TODO: output should not be a dataframe. Currently working on this and related functions
+
+# TODO: output should not be a dataframe. Currently working on this and related functions
 def fit_to_eos(
     volumes: np.ndarray,
     energies: np.ndarray,
@@ -1291,64 +1292,19 @@ def fit_to_eos(
     eos_function = eos_functions.get(eos_name)
     if eos_function is None:
         raise ValueError(f"EOS function '{eos_name}' not recognized.")
-    
+
     try:
-            (
-                eos_constants,
-                eos_parameters,
-                volume_range,
-                energy_eos,
-                pressure_eos,
-            ) = eos_function(volumes, energies, volume_min, volume_max, num_volumes)
-            eos_name = eos_function.__name__
-            '''
-            eos_df = pd.DataFrame(
-                    [
-                        [
-                            eos_name,
-                            number_of_atoms,
-                            eos_constants[0],
-                            eos_constants[1],
-                            eos_constants[2],
-                            eos_constants[3],
-                            eos_constants[4],
-                            eos_parameters[0],
-                            eos_parameters[1],
-                            eos_parameters[2],
-                            eos_parameters[3],
-                            eos_parameters[4],
-                            volume_range,
-                            energy_eos,
-                            pressure_eos,
-                        ]
-                    ],
-                    columns=[
-                        "eos",
-                        "number_of_atoms",
-                        "a",
-                        "b",
-                        "c",
-                        "d",
-                        "e",
-                        "V0",
-                        "E0",
-                        "B",
-                        "BP",
-                        "B2P",
-                        "volumes",
-                        "energies",
-                        "pressures",
-                    ],
-                )
-        '''
+        (
+            eos_constants,
+            eos_parameters,
+            volume_range,
+            energy_eos,
+            pressure_eos,
+        ) = eos_function(volumes, energies, volume_min, volume_max, num_volumes)
+        eos_name = eos_function.__name__
     except Exception as e:
         print(f"Error fitting config: {e}")
-    #eos_values_df = eos_df.drop(
-    #    columns=["a", "b", "c", "d", "e", "V0", "E0", "B", "BP", "B2P"]
-    #)
-    #eos_parameters_df = eos_df.drop(columns=["volumes", "energies", "pressures"])
 
-    #return eos_values_df, eos_parameters_df
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
@@ -1473,9 +1429,13 @@ def plot_ev(
     """
 
     if eos_name != None:
-        eos_values_df, eos_parameters_df = fit_to_eos(number_of_atoms, volumes, energies, eos_name=eos_name)
+        eos_values_df, eos_parameters_df = fit_to_eos(
+            number_of_atoms, volumes, energies, eos_name=eos_name
+        )
     unique_configs = [name]
-    config_colors = assign_colors_to_configs(unique_configs, alpha=marker_alpha, cmap=cmap)
+    config_colors = assign_colors_to_configs(
+        unique_configs, alpha=marker_alpha, cmap=cmap
+    )
     config_symbols = assign_marker_symbols_to_configs(unique_configs)
 
     # First, plot the energy vs volume data points.
@@ -1524,13 +1484,13 @@ def plot_ev(
                 text=f"Energy (eV{atom_suffix})", font=dict(size=22, color="rgb(0,0,0)")
             )
         )
-    
+
     # Second, plot the EOS fit.
     if eos_name != None:
 
         eos_config_values_df = eos_values_df
         eos_config_parameters_df = eos_parameters_df
-        
+
         eos_ev_df = eos_config_values_df
         eos_min_df = eos_config_parameters_df[
             eos_config_parameters_df["eos"] == eos_name
@@ -1544,7 +1504,7 @@ def plot_ev(
 
             x = x / num_atoms
             y = y / num_atoms
-        
+
         fig.add_trace(
             go.Scatter(
                 x=x,
@@ -1574,9 +1534,7 @@ def plot_ev(
                     y=[y],
                     mode="markers",
                     name=f"{eos_name} min energy",
-                    marker=dict(
-                        color="black", size=marker_size, symbol="cross"
-                    ),
+                    marker=dict(color="black", size=marker_size, symbol="cross"),
                     legendgroup="minimum",
                     showlegend=False,
                 )
@@ -1587,7 +1545,7 @@ def plot_ev(
 
         else:
             raise ValueError("highlight_minimum must be True or False")
-        
+
     axis_params = dict(
         showline=True,
         linecolor="black",
