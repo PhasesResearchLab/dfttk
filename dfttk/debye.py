@@ -406,11 +406,14 @@ def plot_debye(
 
 
 def process_debye_gruneisen(
-    energy_volume_df: pd.DataFrame,
+    number_of_atoms: int,
+    volumes: np.array,
+    atomic_mass: float,
+    #energy_volume_df: pd.DataFrame,
     eos_parameters_df: pd.DataFrame,
     scaling_factor: float = 0.617,
     gruneisen_x: float = 1,
-    volumes: np.array = None,
+    #volumes: np.array = None,
     temperatures: np.array = np.linspace(0, 1000, 101),
     eos: str = "BM4",
 ) -> tuple[np.array, np.array, int, np.array, np.array, np.array]:
@@ -441,15 +444,15 @@ def process_debye_gruneisen(
     bulk_modulus_prime = config_eos_parameters_df["BP"].values[0]
     gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
 
-    config_energy_volume_df = energy_volume_df
-    volume = config_energy_volume_df["volume"].values
+    #config_energy_volume_df = energy_volume_df
+    #volume = config_energy_volume_df["volume"].values
 
     if volumes is None:
         volume_min = volume.min() * 0.98
         volume_max = volume.max() * 1.02
         volumes = np.linspace(volume_min, volume_max, 1000)
 
-    atomic_mass = config_energy_volume_df["average_mass"].values[0]
+    #atomic_mass = config_energy_volume_df["average_mass"].values[0]
     eos_parameters = config_eos_parameters_df[
         ["V0", "E0", "B", "BP", "B2P"]
     ].values[0]
@@ -458,7 +461,7 @@ def process_debye_gruneisen(
     s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
     f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
     cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-    number_of_atoms = energy_volume_df["number_of_atoms"][0]
+    #number_of_atoms = energy_volume_df["number_of_atoms"][0]
 
     for i, volume in enumerate(volumes):
         s_vib = vibrational_entropy(temperatures, theta[i], number_of_atoms)

@@ -1269,7 +1269,9 @@ def morse(
 
 
 def fit_to_eos(
-    df: pd.DataFrame,
+    number_of_atoms: int,
+    volumes: np.ndarray,
+    energies: np.ndarray,
     eos_name: str = "BM4",
     volume_min: float = None,
     volume_max: float = None,
@@ -1299,10 +1301,6 @@ def fit_to_eos(
     eos_function = eos_functions.get(eos_name)
     if eos_function is None:
         raise ValueError(f"EOS function '{eos_name}' not recognized.")
-
-    volumes = df["volume"].values
-    energies = df["energy"].values
-    number_of_atoms = df["number_of_atoms"].values[0]
     
     try:
             (

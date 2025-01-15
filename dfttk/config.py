@@ -128,7 +128,7 @@ class EvCurvesData:
         total_magnetic_moment_tolerance: float = 1e-12,
         mass_average: str = "geometric",
     ) -> None:
-        self.energy_volume_df = extract_configuration_data(
+        number_of_atoms, volumes, energies, atomic_masses, average_mass, mag_data_list, total_magnetic_moments, magnetic_orderings = extract_configuration_data(
             self.path,
             outcar_name,
             oszicar_name,
@@ -141,11 +141,20 @@ class EvCurvesData:
 
         if volumes is not None:
             volumes = [round(volume, 2) for volume in volumes]
-            self.energy_volume_df["volume"] = self.energy_volume_df["volume"].round(2)
-            self.energy_volume_df = self.energy_volume_df[
-                self.energy_volume_df["volume"].isin(volumes)
-            ]
+            #self.energy_volume_df["volume"] = self.energy_volume_df["volume"].round(2)
+            #self.energy_volume_df = self.energy_volume_df[
+            #    self.energy_volume_df["volume"].isin(volumes)
+            #]
 
+        self.number_of_atoms = number_of_atoms
+        self.volumes = volumes
+        self.energies = energies
+        self.atomic_masses = atomic_masses
+        self.average_mass = average_mass
+        self.mag_data = mag_data_list
+        self.total_magnetic_moment = total_magnetic_moments
+        self.magnetic_ordering = magnetic_orderings
+        '''
         self.number_of_atoms = self.energy_volume_df["number_of_atoms"].values.tolist()[
             0
         ]
@@ -153,7 +162,7 @@ class EvCurvesData:
         self.energies = self.energy_volume_df["energy"].values.tolist()
         self.atomic_masses = self.energy_volume_df["atomic_masses"].values[0]
         self.average_mass = self.energy_volume_df["average_mass"].values[0]
-
+        
         if collect_mag_data:
             self.total_magnetic_moment = self.energy_volume_df[
                 "total_magnetic_moment"
@@ -165,6 +174,8 @@ class EvCurvesData:
                 series.astype({"#_of_ion": str}).set_index("#_of_ion").to_dict()
                 for series in self.energy_volume_df["mag_data"].values.tolist()
             ]
+        '''
+        
         vol_folders = self._get_volume_folders()
         if volumes is not None:
             volumes = [round(volume, 2) for volume in volumes]
@@ -190,7 +201,7 @@ class EvCurvesData:
         num_volumes: int = 1000,
     ) -> None:
         __, eos_parameters_df = fit_to_eos(
-            self.energy_volume_df, eos_name, volume_min, volume_max, num_volumes
+            self.number_of_atoms, self.volumes, self.energies, eos_name, volume_min, volume_max, num_volumes
         )
         one_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos_name]
         a = one_eos_parameters_df["a"].values[0]
@@ -218,50 +229,6 @@ class EvCurvesData:
         }
         self.eos_parameters_df = eos_parameters_df
 
-    '''
-    # TODO: this method might not be necessary
-    def get_eos_energies(
-        self, volume_min: float, volume_max: float, num_volumes: int = 1000
-    ) -> np.ndarray:
-        if not hasattr(self, "eos_parameters"):
-            raise ValueError(
-                "EOS parameters not found. Please run fit_energy_volume_data first."
-            )
-
-        volume_range = np.linspace(volume_min, volume_max, num_volumes)
-        eos_name = self.eos_parameters["eos_name"]
-        a = self.eos_parameters["a"]
-        b = self.eos_parameters["b"]
-        c = self.eos_parameters["c"]
-        d = self.eos_parameters["d"]
-        e = self.eos_parameters["e"]
-        V0 = self.eos_parameters["V0"]
-        E0 = self.eos_parameters["E0"]
-        B = self.eos_parameters["B"]
-        BP = self.eos_parameters["BP"]
-
-        eos_equations = {
-            "mBM4": mBM4_equation,
-            "mBM5": mBM5_equation,
-            "BM4": BM4_equation,
-            "BM5": BM5_equation,
-            "LOG4": LOG4_equation,
-            "LOG5": LOG5_equation,
-            "murnaghan": murnaghan_equation,
-            "vinet": vinet_equation,
-            "morse": morse_equation,
-        }
-
-        if eos_name == "mBM4" or eos_name == "BM4" or eos_name == "LOG4":
-            eos_energies = eos_equations[eos_name](volume_range, a, b, c, d)
-        elif eos_name == "mBM5" or eos_name == "BM5" or eos_name == "LOG5":
-            eos_energies = eos_equations[eos_name](volume_range, a, b, c, d, e)
-        elif eos_name == "murnaghan" or eos_name == "vinet" or eos_name == "morse":
-            eos_energies = eos_equations[eos_name](volume_range, V0, E0, B, BP)
-
-        self.volumes = volume_range
-        self.eos_energies = eos_energies
-    '''
     def plot(
         self,
         eos_name: str = "BM4",
@@ -300,21 +267,27 @@ class DebyeData:
 
     def get_debye_gruneisen_data(
         self,
-        energy_volume_df: pd.DataFrame,
+        number_of_atoms: int,
+        volumes: np.array,
+        average_mass: float,
+        #energy_volume_df: pd.DataFrame,
         eos_parameters_df: pd.DataFrame,
         scaling_factor: float = 0.617,
         gruneisen_x: float = 1,
-        volumes: np.array = None,
+        #volumes: np.array = None,
         temperatures: np.array = np.linspace(0, 1000, 101),
         eos: str = "BM4",
     ):
-
+        volumes = np.linspace(0.98*min(volumes), 1.02*max(volumes), 1000)
         debye_df = process_debye_gruneisen(
-            energy_volume_df,
+            number_of_atoms,
+            volumes,
+            average_mass,
+            #energy_volume_df,
             eos_parameters_df,
             scaling_factor,
             gruneisen_x,
-            volumes,
+            #volumes,
             temperatures,
             eos,
         )
@@ -324,7 +297,7 @@ class DebyeData:
         self.scaling_factor = scaling_factor
         self.gruneisen_x = gruneisen_x
         self.temperatures = debye_df["temperatures"].values.tolist()
-        self.volumes = debye_df["volume"][0].tolist()
+        self.volumes = debye_df["volume"][0]#.tolist()
         self.free_energy = debye_df["f_vib"].apply(lambda x: x.tolist()).tolist()
         self.entropy = debye_df["s_vib"].apply(lambda x: x.tolist()).tolist()
         self.heat_capacity = debye_df["cv_vib"].apply(lambda x: x.tolist()).tolist()
@@ -937,20 +910,22 @@ class Configuration:
         self,
         scaling_factor: float = 0.617,
         gruneisen_x: float = 1,
-        volumes: np.array = None,
+        #volumes: np.array = None,
         temperatures: np.array = np.linspace(0, 1000, 101),
         eos: str = "BM4",
     ):
-        energy_volume_df = self.ev_curves.energy_volume_df
+        #energy_volume_df = self.ev_curves.energy_volume_df
         eos_parameters_df = self.ev_curves.eos_parameters_df
         eos = self.ev_curves.eos_parameters["eos_name"]
         self.debye = DebyeData()
         self.debye.get_debye_gruneisen_data(
-            energy_volume_df,
+            self.ev_curves.number_of_atoms,
+            self.ev_curves.volumes,
+            self.ev_curves.average_mass,
             eos_parameters_df,
             scaling_factor=scaling_factor,
             gruneisen_x=gruneisen_x,
-            volumes=volumes,
+            #volumes=volumes,
             temperatures=temperatures,
             eos=eos,
         )

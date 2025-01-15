@@ -234,6 +234,28 @@ def test_process_ev_curves():
     assert (
         config_Al.ev_curves.number_of_atoms == 4
     ), f"Expected 4, but got {config_Al.ev_curves.number_of_atoms}"
+
+    assert np.array_equal(
+        config_Al.ev_curves.volumes,
+        np.array([74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0]),
+    ), f"Expected [74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0], but got {config_Al.ev_curves.volumes}"
+
+    assert np.array_equal(
+        config_Al.ev_curves.energies,
+        np.array(
+            [
+                -14.787067,
+                -14.863567,
+                -14.92244,
+                -14.960229,
+                -14.973035,
+                -14.955434,
+                -14.902786,
+                -14.808673,
+            ]
+        ),
+    ), f"Expected [-14.787067, -14.863567, -14.92244, -14.960229, -14.973035, -14.955434, -14.902786, -14.808673], but got {config_Al.ev_curves.energies}"
+    """
     assert config_Al.ev_curves.volumes == [
         74.0,
         72.0,
@@ -254,21 +276,24 @@ def test_process_ev_curves():
         -14.902786,
         -14.808673,
     ], f"Expected [-14.787067, -14.863567, -14.92244, -14.960229, -14.973035, -14.955434, -14.902786, -14.808673], but got {config_Al.ev_curves.energies}"
-
+    """
     assert config_Al.ev_curves.atomic_masses == {
         "Al": 26.981
     }, f"Expected {'Al': 26.981}, but got {config_Al.ev_curves.atomic_masses}"
     assert (
         config_Al.ev_curves.average_mass == 26.981
     ), f"Expected 26.981, but got {config_Al.ev_curves.average_mass}"
-    assert (
-        config_Al.ev_curves.total_magnetic_moment == None
-    ), f"Expected None, but got {config_Al.ev_curves.total_magnetic_moment}"
-    assert (
-        config_Al.ev_curves.magnetic_ordering == None
-    ), f"Expected None, but got {config_Al.ev_curves.magnetic_ordering}"
-    assert (
-        config_Al.ev_curves.mag_data == []
+
+    assert np.array_equal(
+        config_Al.ev_curves.total_magnetic_moment, np.array([])
+    ), f"Expected {np.array([])}, but got {config_Al.ev_curves.total_magnetic_moment}"
+
+    assert np.array_equal(
+        config_Al.ev_curves.magnetic_ordering, np.array([])
+    ), f"Expected {np.array([])}, but got {config_Al.ev_curves.magnetic_ordering}"
+
+    assert np.array_equal(
+        config_Al.ev_curves.mag_data, np.array([])
     ), f"Expected [], but got {config_Al.ev_curves.mag_data}"
 
     expected_eos_parameters = {

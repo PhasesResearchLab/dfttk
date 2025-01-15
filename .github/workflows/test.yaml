@@ -35,5 +35,6 @@ jobs:
       env:
         PYTHONPATH: ${{ github.workspace }}
       run: |
+        pytest tests/test_aggregate_extraction.py
         pytest tests/test_config.py
     

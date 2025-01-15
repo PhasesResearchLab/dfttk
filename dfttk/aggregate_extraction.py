@@ -29,7 +29,7 @@ from dfttk.magnetism import determine_magnetic_ordering
 
 
 def extract_configuration_data(
-    path: list[str],
+    path: str,
     outcar_name: str = "OUTCAR.3static",
     oszicar_name: str = "OSZICAR.3static",
     contcar_name: str = "CONTCAR.3static",
@@ -55,8 +55,13 @@ def extract_configuration_data(
         pandas DataFrame: a pandas DataFrame containing the volume, configuration, energy, number of atoms, and
         magnetization data (if specified)
     """
-
-    row_list = []
+    
+    volumes = np.array([])
+    energies = np.array([])
+    mag_data_list = np.array([])
+    total_magnetic_moments = np.array([])
+    magnetic_orderings = np.array([])
+    
     vol_dirs = glob.glob(os.path.join(path, "vol_*"))
     vol_dirs = natsorted(vol_dirs)
     for vol_dir in vol_dirs:
@@ -80,11 +85,12 @@ def extract_configuration_data(
         vol = round(struct.volume, 6)
         oszicar = Oszicar(oszicar_path)
         energy = oszicar.final_energy
-        energy_per_atom = energy / number_of_atoms
-        vol_per_atom = vol / number_of_atoms
-        space_group = SpacegroupAnalyzer(struct).get_space_group_symbol()
         atomic_masses = extract_atomic_masses(outcar_path)
         average_mass = extract_average_mass(contcar_path, outcar_path, mass_average)
+        
+        volumes = np.append(volumes, vol)
+        energies = np.append(energies, energy)
+        
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(outcar_path, contcar_path)
             total_magnetic_moment = mag_data["tot"].sum()
@@ -93,34 +99,11 @@ def extract_configuration_data(
                 magmom_tolerance=magmom_tolerance,
                 total_magnetic_moment_tolerance=total_magnetic_moment_tolerance,
             )
+            mag_data_list = np.append(mag_data_list, mag_data)
+            total_magnetic_moments = np.append(total_magnetic_moments, total_magnetic_moment)
+            magnetic_orderings = np.append(magnetic_orderings, magnetic_ordering)
 
-            row = {
-                "number_of_atoms": number_of_atoms,
-                "volume": vol,
-                "volume_per_atom": vol_per_atom,
-                "energy": energy,
-                "energy_per_atom": energy_per_atom,
-                "space_group": space_group,
-                "atomic_masses": atomic_masses,
-                "average_mass": average_mass,
-                "total_magnetic_moment": total_magnetic_moment,
-                "magnetic_ordering": magnetic_ordering,
-                "mag_data": mag_data,
-            }
-        else:
-            row = {
-                "number_of_atoms": number_of_atoms,
-                "volume": vol,
-                "volume_per_atom": vol_per_atom,
-                "energy": energy,
-                "energy_per_atom": energy_per_atom,
-                "space_group": space_group,
-                "atomic_masses": atomic_masses,
-                "average_mass": average_mass,
-            }
-        row_list.append(row)
-    df = pd.DataFrame(row_list)
-    return df
+    return number_of_atoms, volumes, energies, atomic_masses, average_mass, mag_data_list, total_magnetic_moments, magnetic_orderings
 
 
 def extract_convergence_data(path: str) -> pd.DataFrame:
