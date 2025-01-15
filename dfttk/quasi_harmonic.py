@@ -16,8 +16,10 @@ EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 # TODO: Consider pulling out parallel code out of this function into separate functions
 def process_quasi_harmonic(
+    num_atoms_eos: int,
     volume_range: np.ndarray,
-    eos_parameters_df: pd.DataFrame,
+    eos_constants: np.ndarray,
+    #eos_parameters_df: pd.DataFrame,
     harmonic_properties_fit: pd.DataFrame = None,
     debye_properties: pd.DataFrame = None,
     thermal_electronic_properties_fit: pd.DataFrame = None,
@@ -42,7 +44,7 @@ def process_quasi_harmonic(
     """
 
     # Check that all properties have the same number of atoms
-    num_atoms_eos = eos_parameters_df["number_of_atoms"].values[0]
+    #num_atoms_eos = eos_parameters_df["number_of_atoms"].values[0]
 
     # Phonons only
     if harmonic_properties_fit is not None and debye_properties is None:
@@ -76,13 +78,18 @@ def process_quasi_harmonic(
             "Not implemented for Murnaghan, Vinet, or Morse EOS yet"
         )
 
-    eos_parameters_one = eos_parameters_df[eos_parameters_df["eos"] == eos]
-    a = eos_parameters_one["a"].values[0]
-    b = eos_parameters_one["b"].values[0]
-    c = eos_parameters_one["c"].values[0]
-    d = eos_parameters_one["d"].values[0]
-    e = eos_parameters_one["e"].values[0]
-
+    #eos_parameters_one = eos_parameters_df[eos_parameters_df["eos"] == eos]
+    #a = eos_parameters_one["a"].values[0]
+    #b = eos_parameters_one["b"].values[0]
+    #c = eos_parameters_one["c"].values[0]
+    #d = eos_parameters_one["d"].values[0]
+    #e = eos_parameters_one["e"].values[0]
+    a = eos_constants[0]
+    b = eos_constants[1]
+    c = eos_constants[2]
+    d = eos_constants[3]
+    e = eos_constants[4]
+    
     # Get the EOS energy at 0 K corresponding to the volume range
     equation_functions = {
         "mBM4": eos_fit.mBM4_equation,

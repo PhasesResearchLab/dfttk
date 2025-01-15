@@ -1267,9 +1267,8 @@ def morse(
 
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
-
+#TODO: output should not be a dataframe. Currently working on this and related functions
 def fit_to_eos(
-    number_of_atoms: int,
     volumes: np.ndarray,
     energies: np.ndarray,
     eos_name: str = "BM4",
@@ -1277,15 +1276,7 @@ def fit_to_eos(
     volume_max: float = None,
     num_volumes: int = 1000,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Fits the volume and energies of configurations to one EOS function and returns the results in a dataframe.
 
-    Args:
-        df: Dataframe from extract_configuration_data in dfttk.aggregate_extraction
-
-    Returns:
-        tuple(eos_values_df, eos_parameters_df)
-    """
-    
     eos_functions = {
         "mBM4": mBM4,
         "mBM5": mBM5,
@@ -1297,7 +1288,6 @@ def fit_to_eos(
         "vinet": vinet,
         "morse": morse,
     }
-
     eos_function = eos_functions.get(eos_name)
     if eos_function is None:
         raise ValueError(f"EOS function '{eos_name}' not recognized.")
@@ -1311,7 +1301,7 @@ def fit_to_eos(
                 pressure_eos,
             ) = eos_function(volumes, energies, volume_min, volume_max, num_volumes)
             eos_name = eos_function.__name__
-
+            '''
             eos_df = pd.DataFrame(
                     [
                         [
@@ -1350,15 +1340,16 @@ def fit_to_eos(
                         "pressures",
                     ],
                 )
-        
+        '''
     except Exception as e:
         print(f"Error fitting config: {e}")
-    eos_values_df = eos_df.drop(
-        columns=["a", "b", "c", "d", "e", "V0", "E0", "B", "BP", "B2P"]
-    )
-    eos_parameters_df = eos_df.drop(columns=["volumes", "energies", "pressures"])
+    #eos_values_df = eos_df.drop(
+    #    columns=["a", "b", "c", "d", "e", "V0", "E0", "B", "BP", "B2P"]
+    #)
+    #eos_parameters_df = eos_df.drop(columns=["volumes", "energies", "pressures"])
 
-    return eos_values_df, eos_parameters_df
+    #return eos_values_df, eos_parameters_df
+    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
 def assign_colors_to_configs(

@@ -303,7 +303,6 @@ def vibrational_heat_capacity(
 
 
 def plot_debye(
-    #config: str,
     debye_properties: pd.DataFrame,
     selected_temperatures_plot: np.array = None,
     selected_volumes: np.array = None,
@@ -327,7 +326,7 @@ def plot_debye(
         tuple[go.Figure, go.Figure]: Two plotly figures, one for the vibrational properties as a function of temperature and one for the vibrational properties
         as a function of volume
     """
-    config_debye_properties = debye_properties#[debye_properties["config"] == config]
+    config_debye_properties = debye_properties
     temperatures = config_debye_properties["temperatures"].values
     volumes = config_debye_properties["volume"].values[0]
     number_of_atoms = config_debye_properties["number_of_atoms"].values[0]
@@ -409,39 +408,22 @@ def process_debye_gruneisen(
     number_of_atoms: int,
     volumes: np.array,
     atomic_mass: float,
-    #energy_volume_df: pd.DataFrame,
-    eos_parameters_df: pd.DataFrame,
+    bulk_modulus_prime: float,
+    eos_parameters: np.array,
+    #eos_parameters_df: pd.DataFrame,
     scaling_factor: float = 0.617,
     gruneisen_x: float = 1,
-    #volumes: np.array = None,
     temperatures: np.array = np.linspace(0, 1000, 101),
     eos: str = "BM4",
-) -> tuple[np.array, np.array, int, np.array, np.array, np.array]:
-    """Applies the Debye-Gruneisen model to a given configuration for which E-V curve calculations have been performed.
-
-    Args:
-        energy_volume_df: DataFrame containing the energy-volume data
-        eos_parameters_df: DataFrame containing the equation of state parameters
-        scaling_factor: s, Scaling factor for the Debye temperature
-        gruneisen_x: x = 2/3 for high temperature case and x = 1 for low temperature case
-        volumes: Array of volumes to evaluate the Debye thermal properties at. If None, 100 volumes are linearly spaced between the minimum and maximum volumes
-        temperatures: Array of temperatures to evaluate the Debye thermal properties at
-        eos: Equation of state fitting function from the eos_fit module
-        plot: Whether or not to plot the Debye thermal properties
-        selected_temperatures_plot: Array of selected temperatures curves to plot in the y vs volume plot. If None, 5 linearly spaced temperatures are selected.
-
-        Returns:
-            tuple[np.array, np.array, int, np.array, np.array, np.array]: temperatures, volumes, number of atoms, and 2D arrays with rows (columns) corresponding
-            to volumes (temperatures) vibrational entropy, vibrational Helmholtz energy, vibrational heat capacity
-    """
+):
 
     s = scaling_factor
-    filtered_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos]
+    #filtered_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos]
 
     debye_properties_list = []
-    config_eos_parameters_df = filtered_eos_parameters_df
+    #config_eos_parameters_df = filtered_eos_parameters_df
     
-    bulk_modulus_prime = config_eos_parameters_df["BP"].values[0]
+    bulk_modulus_prime# = config_eos_parameters_df["BP"].values[0]
     gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
 
     #config_energy_volume_df = energy_volume_df
@@ -453,9 +435,9 @@ def process_debye_gruneisen(
         volumes = np.linspace(volume_min, volume_max, 1000)
 
     #atomic_mass = config_energy_volume_df["average_mass"].values[0]
-    eos_parameters = config_eos_parameters_df[
-        ["V0", "E0", "B", "BP", "B2P"]
-    ].values[0]
+    #eos_parameters = config_eos_parameters_df[
+    #    ["V0", "E0", "B", "BP", "B2P"]
+    #].values[0]
     theta = debye_temperature(volumes, eos_parameters, atomic_mass, gru_param, s)
 
     s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
