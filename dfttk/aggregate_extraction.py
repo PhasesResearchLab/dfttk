@@ -15,7 +15,6 @@ import plotly.graph_objects as go
 
 # Local application/library specific imports
 from pymatgen.core.structure import Structure
-from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.io.vasp.inputs import Incar, Kpoints
 from pymatgen.io.vasp.outputs import Oszicar
 
