@@ -255,28 +255,7 @@ def test_process_ev_curves():
             ]
         ),
     ), f"Expected [-14.787067, -14.863567, -14.92244, -14.960229, -14.973035, -14.955434, -14.902786, -14.808673], but got {config_Al.ev_curves.energies}"
-    """
-    assert config_Al.ev_curves.volumes == [
-        74.0,
-        72.0,
-        70.0,
-        68.0,
-        66.0,
-        64.0,
-        62.0,
-        60.0,
-    ], f"Expected [74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0], but got {config_Al.ev_curves.volumes}"
-    assert config_Al.ev_curves.energies == [
-        -14.787067,
-        -14.863567,
-        -14.92244,
-        -14.960229,
-        -14.973035,
-        -14.955434,
-        -14.902786,
-        -14.808673,
-    ], f"Expected [-14.787067, -14.863567, -14.92244, -14.960229, -14.973035, -14.955434, -14.902786, -14.808673], but got {config_Al.ev_curves.energies}"
-    """
+
     assert config_Al.ev_curves.atomic_masses == {
         "Al": 26.981
     }, f"Expected {'Al': 26.981}, but got {config_Al.ev_curves.atomic_masses}"

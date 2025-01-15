@@ -303,7 +303,7 @@ def vibrational_heat_capacity(
 
 
 def plot_debye(
-    config: str,
+    #config: str,
     debye_properties: pd.DataFrame,
     selected_temperatures_plot: np.array = None,
     selected_volumes: np.array = None,
@@ -327,7 +327,7 @@ def plot_debye(
         tuple[go.Figure, go.Figure]: Two plotly figures, one for the vibrational properties as a function of temperature and one for the vibrational properties
         as a function of volume
     """
-    config_debye_properties = debye_properties[debye_properties["config"] == config]
+    config_debye_properties = debye_properties#[debye_properties["config"] == config]
     temperatures = config_debye_properties["temperatures"].values
     volumes = config_debye_properties["volume"].values[0]
     number_of_atoms = config_debye_properties["number_of_atoms"].values[0]

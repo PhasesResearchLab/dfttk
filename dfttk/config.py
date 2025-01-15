@@ -24,15 +24,6 @@ from dfttk.aggregate_extraction import (
     calculate_kpoint_conv,
 )
 from dfttk.eos_fit import (
-    mBM4_equation,
-    mBM5_equation,
-    BM4_equation,
-    BM5_equation,
-    LOG4_equation,
-    LOG5_equation,
-    murnaghan_equation,
-    vinet_equation,
-    morse_equation,
     fit_to_eos,
     plot_ev,
 )
@@ -55,8 +46,9 @@ from dfttk.quasi_harmonic import process_quasi_harmonic, plot_quasi_harmonic
 
 
 class EvCurvesData:
-    def __init__(self, path: str):
+    def __init__(self, path: str, name: str):
         self.path = path
+        self.name = name
         self.incars = []
         self.kpoints = None
         self.potcar = None
@@ -141,10 +133,6 @@ class EvCurvesData:
 
         if volumes is not None:
             volumes = [round(volume, 2) for volume in volumes]
-            #self.energy_volume_df["volume"] = self.energy_volume_df["volume"].round(2)
-            #self.energy_volume_df = self.energy_volume_df[
-            #    self.energy_volume_df["volume"].isin(volumes)
-            #]
 
         self.number_of_atoms = number_of_atoms
         self.volumes = volumes
@@ -154,27 +142,6 @@ class EvCurvesData:
         self.mag_data = mag_data_list
         self.total_magnetic_moment = total_magnetic_moments
         self.magnetic_ordering = magnetic_orderings
-        '''
-        self.number_of_atoms = self.energy_volume_df["number_of_atoms"].values.tolist()[
-            0
-        ]
-        self.volumes = self.energy_volume_df["volume"].values.tolist()
-        self.energies = self.energy_volume_df["energy"].values.tolist()
-        self.atomic_masses = self.energy_volume_df["atomic_masses"].values[0]
-        self.average_mass = self.energy_volume_df["average_mass"].values[0]
-        
-        if collect_mag_data:
-            self.total_magnetic_moment = self.energy_volume_df[
-                "total_magnetic_moment"
-            ].values.tolist()
-            self.magnetic_ordering = self.energy_volume_df[
-                "magnetic_ordering"
-            ].values.tolist()
-            self.mag_data = [
-                series.astype({"#_of_ion": str}).set_index("#_of_ion").to_dict()
-                for series in self.energy_volume_df["mag_data"].values.tolist()
-            ]
-        '''
         
         vol_folders = self._get_volume_folders()
         if volumes is not None:
@@ -231,6 +198,10 @@ class EvCurvesData:
 
     def plot(
         self,
+        #name: str,
+        #number_of_atoms: int,
+        #volumes: np.array,
+        #energies: np.array,
         eos_name: str = "BM4",
         highlight_minimum: bool = True,
         per_atom: bool = False,
@@ -241,7 +212,11 @@ class EvCurvesData:
         marker_size: int = 10,
     ) -> None:
         plot_ev(
-            self.energy_volume_df,
+            #self.energy_volume_df,
+            self.name,
+            self.number_of_atoms,
+            self.volumes,
+            self.energies,
             eos_name=eos_name,
             highlight_minimum=highlight_minimum,
             per_atom=per_atom,
@@ -270,11 +245,9 @@ class DebyeData:
         number_of_atoms: int,
         volumes: np.array,
         average_mass: float,
-        #energy_volume_df: pd.DataFrame,
         eos_parameters_df: pd.DataFrame,
         scaling_factor: float = 0.617,
         gruneisen_x: float = 1,
-        #volumes: np.array = None,
         temperatures: np.array = np.linspace(0, 1000, 101),
         eos: str = "BM4",
     ):
@@ -283,11 +256,9 @@ class DebyeData:
             number_of_atoms,
             volumes,
             average_mass,
-            #energy_volume_df,
             eos_parameters_df,
             scaling_factor,
             gruneisen_x,
-            #volumes,
             temperatures,
             eos,
         )
@@ -297,7 +268,7 @@ class DebyeData:
         self.scaling_factor = scaling_factor
         self.gruneisen_x = gruneisen_x
         self.temperatures = debye_df["temperatures"].values.tolist()
-        self.volumes = debye_df["volume"][0]#.tolist()
+        self.volumes = debye_df["volume"][0]
         self.free_energy = debye_df["f_vib"].apply(lambda x: x.tolist()).tolist()
         self.entropy = debye_df["s_vib"].apply(lambda x: x.tolist()).tolist()
         self.heat_capacity = debye_df["cv_vib"].apply(lambda x: x.tolist()).tolist()
@@ -306,9 +277,9 @@ class DebyeData:
         self, selected_temperatures: np.array = None, selected_volumes: np.array = None
     ):
 
-        config = self.debye_df["config"].values.tolist()[0]
+        #config = self.debye_df["config"].values.tolist()[0]
         plot_debye(
-            config,
+            #config,
             self.debye_df,
             selected_temperatures,
             selected_volumes,
@@ -892,7 +863,7 @@ class Configuration:
         mass_average: str = "geometric",
         eos_name: str = "BM4",
     ):
-        self.ev_curves = EvCurvesData(self.path)
+        self.ev_curves = EvCurvesData(self.path, self.name)
         self.ev_curves.get_vasp_input(volumes)
         self.ev_curves.get_energy_volume_data(
             volumes,
@@ -910,11 +881,9 @@ class Configuration:
         self,
         scaling_factor: float = 0.617,
         gruneisen_x: float = 1,
-        #volumes: np.array = None,
         temperatures: np.array = np.linspace(0, 1000, 101),
         eos: str = "BM4",
     ):
-        #energy_volume_df = self.ev_curves.energy_volume_df
         eos_parameters_df = self.ev_curves.eos_parameters_df
         eos = self.ev_curves.eos_parameters["eos_name"]
         self.debye = DebyeData()
@@ -925,7 +894,6 @@ class Configuration:
             eos_parameters_df,
             scaling_factor=scaling_factor,
             gruneisen_x=gruneisen_x,
-            #volumes=volumes,
             temperatures=temperatures,
             eos=eos,
         )
