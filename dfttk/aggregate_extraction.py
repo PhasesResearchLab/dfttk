@@ -27,7 +27,7 @@ from dfttk.data_extraction import (
 )
 from dfttk.magnetism import determine_magnetic_ordering
 
-
+#TODO: write tests for the other functions
 def extract_configuration_data(
     path: str,
     outcar_name: str = "OUTCAR.3static",

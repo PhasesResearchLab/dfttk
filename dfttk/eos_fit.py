@@ -1364,7 +1364,6 @@ def fit_to_eos(
 def assign_colors_to_configs(
     unique_configs, alpha: float = 1, cmap: str = "plotly"
 ) -> dict:
-    #unique_configs = df["config"].unique()
 
     if cmap == "plotly":
         colors = px.colors.qualitative.Plotly
@@ -1399,8 +1398,8 @@ def assign_colors_to_configs(
     return config_colors
 
 
-def assign_marker_symbols_to_configs(unique_configs):#df: pd.DataFrame#) -> dict:
-    #unique_configs = df["config"].unique()
+def assign_marker_symbols_to_configs(unique_configs):
+
     symbols = [
         "circle",
         "square",
@@ -1449,7 +1448,6 @@ def assign_marker_symbols_to_configs(unique_configs):#df: pd.DataFrame#) -> dict
 
 
 def plot_ev(
-    #data,
     name,
     number_of_atoms,
     volumes,
@@ -1629,104 +1627,3 @@ def plot_ev(
         fig.show()
 
     return fig
-'''
-    # Loop over configs in the eos data frame and plot the eos fits
-    if eos_name != None:
-        #for config in eos_values_df["config"].unique():
-        #    eos_config_values_df = eos_values_df[eos_values_df["config"] == config]
-        #    eos_config_parameters_df = eos_parameters_df[
-        #        eos_parameters_df["config"] == config
-        #    ]
-        
-        eos_config_parameters_df = eos_parameters_df
-        #if eos_name in eos_config_values_df["eos"].unique():
-        #    eos_ev_df = eos_config_values_df[
-        #        eos_config_values_df["eos"] == eos_name
-        #    ]
-        #    eos_min_df = eos_config_parameters_df[
-        #        eos_config_parameters_df["eos"] == eos_name
-        #    ]
-
-        x = eos_ev_df["volumes"].values[0]
-        y = eos_ev_df["energies"].values[0]
-
-        if per_atom:
-            num_atoms = eos_ev_df["number_of_atoms"].values[0]
-
-            x = x / num_atoms
-            y = y / num_atoms
-
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=y,
-                mode="lines",
-                name=f"{eos_name} fit",
-                line=dict(width=1.75, color=config_colors[config]),
-                legendgroup="data",
-                showlegend=False,
-            )
-        )
-
-        # Plot the equilibrium energy and volume for each config
-        if highlight_minimum == True:
-
-            x = eos_min_df["V0"].values[0]
-            y = eos_min_df["E0"].values[0]
-
-            if per_atom:
-                num_atoms = eos_ev_df["number_of_atoms"].values[0]
-                x = x / num_atoms
-                y = y / num_atoms
-
-            fig.add_trace(
-                go.Scatter(
-                    x=[x],
-                    y=[y],
-                    mode="markers",
-                    name=f"{eos_name} min energy",
-                    marker=dict(
-                        color="black", size=marker_size, symbol="cross"
-                    ),
-                    legendgroup="minimum",
-                    showlegend=False,
-                )
-            )
-
-        elif highlight_minimum == False:
-            pass
-
-        else:
-            raise ValueError("highlight_minimum must be True or False")
- 
-    axis_params = dict(
-        showline=True,
-        linecolor="black",
-        linewidth=1,
-        ticks="outside",
-        mirror="allticks",
-        tickwidth=1,
-        tickcolor="black",
-        showgrid=False,
-        tickfont=dict(color="rgb(0,0,0)", size=20),
-    )
-
-    fig.update_layout(
-        plot_bgcolor="white",
-        width=840,
-        height=600,
-        legend=dict(font=dict(size=20, color="black")),
-        xaxis=axis_params,
-        yaxis=axis_params,
-    )
-
-    if title != None:
-        fig.update_layout(
-            title=dict(text=title, x=0.5, font=dict(color="rgb(0,0,0)", size=30))
-        )
-
-    if show_fig:
-        fig.show()
-
-    return fig
-'''

@@ -198,10 +198,6 @@ class EvCurvesData:
 
     def plot(
         self,
-        #name: str,
-        #number_of_atoms: int,
-        #volumes: np.array,
-        #energies: np.array,
         eos_name: str = "BM4",
         highlight_minimum: bool = True,
         per_atom: bool = False,
@@ -212,7 +208,6 @@ class EvCurvesData:
         marker_size: int = 10,
     ) -> None:
         plot_ev(
-            #self.energy_volume_df,
             self.name,
             self.number_of_atoms,
             self.volumes,
@@ -277,9 +272,7 @@ class DebyeData:
         self, selected_temperatures: np.array = None, selected_volumes: np.array = None
     ):
 
-        #config = self.debye_df["config"].values.tolist()[0]
         plot_debye(
-            #config,
             self.debye_df,
             selected_temperatures,
             selected_volumes,
