@@ -1268,7 +1268,6 @@ def morse(
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
-# TODO: output should not be a dataframe. Currently working on this and related functions
 def fit_to_eos(
     volumes: np.ndarray,
     energies: np.ndarray,
