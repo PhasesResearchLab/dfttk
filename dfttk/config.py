@@ -256,7 +256,6 @@ class DebyeData:
         scaling_factor: float = 0.617,
         gruneisen_x: float = 1,
         temperatures: np.array = np.linspace(0, 1000, 101),
-        eos: str = "BM4",
     ):
         volumes = np.linspace(0.98 * min(volumes), 1.02 * max(volumes), 1000)
         debye_df = process_debye_gruneisen(
@@ -268,7 +267,6 @@ class DebyeData:
             scaling_factor,
             gruneisen_x,
             temperatures,
-            eos,
         )
         self.debye_df = debye_df
 
@@ -912,7 +910,6 @@ class Configuration:
             scaling_factor,
             gruneisen_x,
             temperatures,
-            eos,
         )
 
     def run_phonons(

@@ -37,7 +37,8 @@ def gruneisen_parameter(bulk_modulus_prime: float, gruneisen_x: float) -> float:
 
 def debye_temperature(
     volume: float,
-    eos_parameters: tuple[float],
+    volume_0: float,
+    bulk_modulus: float,
     mass: float,
     gru_param: float,
     scaling_factor: float = 0.617,
@@ -57,8 +58,8 @@ def debye_temperature(
     """
 
     s = scaling_factor
-    volume_0 = eos_parameters[0]
-    bulk_modulus = eos_parameters[2]
+    #volume_0 = eos_parameters[0]
+    #bulk_modulus = eos_parameters[2]
 
     return (
         s
@@ -413,13 +414,9 @@ def process_debye_gruneisen(
     scaling_factor: float = 0.617,
     gruneisen_x: float = 1,
     temperatures: np.array = np.linspace(0, 1000, 101),
-    eos: str = "BM4",
 ):
-
-    s = scaling_factor
-
     debye_properties_list = []
-
+    s = scaling_factor
     gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
 
     if volumes is None:
@@ -427,7 +424,9 @@ def process_debye_gruneisen(
         volume_max = volume.max() * 1.02
         volumes = np.linspace(volume_min, volume_max, 1000)
 
-    theta = debye_temperature(volumes, eos_parameters, atomic_mass, gru_param, s)
+    volume_0 = eos_parameters[0]
+    bulk_modulus = eos_parameters[2]
+    theta = debye_temperature(volumes, volume_0, bulk_modulus, atomic_mass, gru_param, s)
 
     s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
     f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
@@ -459,7 +458,6 @@ def process_debye_gruneisen(
     )
 
     debye_properties_list.append(debye_properties)
-
     all_debye_properties = pd.concat(debye_properties_list, ignore_index=True)
 
     return all_debye_properties
