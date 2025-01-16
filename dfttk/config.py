@@ -288,9 +288,9 @@ class DebyeData:
                 "scaling_factor": [scaling_factor] * len(temperatures),
                 "gruneisen_x": [gruneisen_x] * len(temperatures),
                 "volume": [volumes] * len(temperatures),
-                "f_vib": f_vib,
-                "s_vib": s_vib,
-                "cv_vib": cv_vib,
+                "f_vib": [col for col in f_vib],
+                "s_vib": [col for col in s_vib],
+                "cv_vib": [col for col in cv_vib],
             }
         )
                 
@@ -301,7 +301,12 @@ class DebyeData:
     ):
 
         plot_debye(
-            self.debye_df,
+            self.number_of_atoms,
+            self.temperatures,
+            self.volumes,
+            self.free_energy,
+            self.entropy,
+            self.heat_capacity,
             selected_temperatures,
             selected_volumes,
         )

@@ -298,7 +298,12 @@ def vibrational_heat_capacity(
 
 
 def plot_debye(
-    debye_properties: pd.DataFrame,
+    number_of_atoms,
+    temperatures,
+    volumes,
+    f_vib,
+    s_vib,
+    cv_vib,
     selected_temperatures_plot: np.array = None,
     selected_volumes: np.array = None,
     volume_decimals: int = 2,
@@ -321,14 +326,10 @@ def plot_debye(
         tuple[go.Figure, go.Figure]: Two plotly figures, one for the vibrational properties as a function of temperature and one for the vibrational properties
         as a function of volume
     """
-    config_debye_properties = debye_properties
-    temperatures = config_debye_properties["temperatures"].values
-    volumes = config_debye_properties["volume"].values[0]
-    number_of_atoms = config_debye_properties["number_of_atoms"].values[0]
 
-    f_vib = np.array(config_debye_properties["f_vib"].tolist()).T
-    s_vib = np.array(config_debye_properties["s_vib"].tolist()).T
-    cv_vib = np.array(config_debye_properties["cv_vib"].tolist()).T
+    f_vib = f_vib.T
+    s_vib = s_vib.T
+    cv_vib = cv_vib.T
     y_values = [f_vib, s_vib, cv_vib]
     y_labels = [
         f"F<sub>vib</sub> (eV/{number_of_atoms} atoms)",
@@ -433,12 +434,8 @@ def process_debye_gruneisen(
         f_vib_v_t[i, :] = f_vib
         cv_vib_v_t[i, :] = cv_vib
 
-    f_vib_transposed = f_vib_v_t.T
-    s_vib_transposed = s_vib_v_t.T
-    cv_vib_transposed = cv_vib_v_t.T
-
-    f_vib = [col for col in f_vib_transposed]
-    s_vib = [col for col in s_vib_transposed]
-    cv_vib = [col for col in cv_vib_transposed]
+    f_vib = f_vib_v_t.T
+    s_vib= s_vib_v_t.T
+    cv_vib = cv_vib_v_t.T
 
     return number_of_atoms, scaling_factor, gruneisen_x, temperatures, volumes, f_vib, s_vib, cv_vib
