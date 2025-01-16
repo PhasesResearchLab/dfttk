@@ -297,109 +297,6 @@ def vibrational_heat_capacity(
     return cv_vib
 
 
-def plot_debye(
-    number_of_atoms,
-    temperatures,
-    volumes,
-    f_vib,
-    s_vib,
-    cv_vib,
-    selected_temperatures_plot: np.array = None,
-    selected_volumes: np.array = None,
-    volume_decimals: int = 2,
-    temperature_decimals: int = 0,
-) -> tuple[go.Figure, go.Figure]:
-    """Plots the vibrational properties (S,F,C_V) as a function of temperature and volume
-
-    Args:
-        temperatures: Array of temperatures
-        volumes: Array of volumes
-        number_of_atoms: Number of atoms in the cell
-        y: Array of vibrational properties (S,F,C_V)
-        y_label: Label for the y-axis ('S', 'F', 'C_V')
-        selected_temperatures_plot: Array of selected temperatures curves to plot in the y vs volume plot. If None, 5 linearly spaced temperatures are selected.
-        selected_volumes: Array of selected volumes curves to plot in the y vs temperature plot. If None, 5 linearly spaced volumes are selected.
-        volume_decimals: Number of decimals to display for the volume in the plot
-        temperature_decimals: Number of decimals to display for the temperature in the plot
-
-    Returns:
-        tuple[go.Figure, go.Figure]: Two plotly figures, one for the vibrational properties as a function of temperature and one for the vibrational properties
-        as a function of volume
-    """
-
-    f_vib = f_vib.T
-    s_vib = s_vib.T
-    cv_vib = cv_vib.T
-    y_values = [f_vib, s_vib, cv_vib]
-    y_labels = [
-        f"F<sub>vib</sub> (eV/{number_of_atoms} atoms)",
-        f"S<sub>vib</sub> (eV/K/{number_of_atoms} atoms)",
-        f"C<sub>v,vib</sub> (eV/K/{number_of_atoms} atoms)",
-    ]
-
-    for y, y_label in zip(y_values, y_labels):
-        s_t_fig = go.Figure()
-        if selected_volumes is None:
-            indices = np.linspace(0, len(volumes) - 1, 5, dtype=int)
-
-        else:
-            indices = []
-            for v in selected_volumes:
-                try:
-                    indices.append(np.where(volumes == v)[0][0])
-                except IndexError:
-                    nearest_volume = volumes[np.argmin(np.abs(volumes - v))]
-                    indices.append(np.where(volumes == nearest_volume)[0][0])
-
-        for i, volume in enumerate(volumes):
-            if i in indices:
-                s_t_fig.add_trace(
-                    go.Scatter(
-                        x=temperatures,
-                        y=y[i],
-                        mode="lines",
-                        name=f"{volume:.{volume_decimals}f} \u212B<sup>3</sup>",
-                    )
-                )
-        plot_format(
-            s_t_fig,
-            "Temperature (K)",
-            y_label,
-        )
-        s_t_fig.show()
-
-    for y, y_label in zip(y_values, y_labels):
-        s_v_fig = go.Figure()
-        if selected_temperatures_plot is None:
-            indices = np.linspace(0, len(temperatures) - 1, 5, dtype=int)
-            selected_temperatures_plot = np.array([temperatures[j] for j in indices])
-        else:
-            indices = []
-            for t in selected_temperatures_plot:
-                try:
-                    indices.append(np.where(temperatures == t)[0][0])
-                except IndexError:
-                    nearest_temperature = temperatures[
-                        np.argmin(np.abs(temperatures - t))
-                    ]
-                    indices.append(np.where(temperatures == nearest_temperature)[0][0])
-        for i in indices:
-            s_v_fig.add_trace(
-                go.Scatter(
-                    x=volumes,
-                    y=y[:, i],
-                    mode="lines",
-                    name=f"{temperatures[i]:.{temperature_decimals}f} K",
-                )
-            )
-        plot_format(
-            s_v_fig,
-            "Volume (\u212B<sup>3</sup>)",
-            y_label,
-        )
-        s_v_fig.show()
-
-
 def process_debye_gruneisen(
     number_of_atoms: int,
     volumes: np.array,
@@ -439,3 +336,89 @@ def process_debye_gruneisen(
     cv_vib = cv_vib_v_t.T
 
     return number_of_atoms, scaling_factor, gruneisen_x, temperatures, volumes, f_vib, s_vib, cv_vib
+
+
+def plot_debye(
+    property_to_plot: str,
+    number_of_atoms,
+    temperatures,
+    volumes,
+    f_vib,
+    s_vib,
+    cv_vib,
+    selected_temperatures_plot: np.array = None,
+    selected_volumes: np.array = None,
+    volume_decimals: int = 2,
+) -> tuple[go.Figure, go.Figure]:
+
+    properties = {
+        'free_energy': (f_vib.T, f"F<sub>vib</sub> (eV/{number_of_atoms} atoms)"),
+        'entropy': (s_vib.T, f"S<sub>vib</sub> (eV/K/{number_of_atoms} atoms)"),
+        'heat_capacity': (cv_vib.T, f"C<sub>v,vib</sub> (eV/K/{number_of_atoms} atoms)")
+    }
+
+    if property_to_plot not in properties:
+        raise ValueError("property_to_plot must be one of 'f_vib', 's_vib', or 'cv_vib'")
+
+    y, y_label = properties[property_to_plot]
+
+    s_t_fig = go.Figure()
+    if selected_volumes is None:
+        indices = np.linspace(0, len(volumes) - 1, 5, dtype=int)
+    else:
+        indices = []
+        for v in selected_volumes:
+            try:
+                indices.append(np.where(volumes == v)[0][0])
+            except IndexError:
+                nearest_volume = volumes[np.argmin(np.abs(volumes - v))]
+                indices.append(np.where(volumes == nearest_volume)[0][0])
+
+    for i, volume in enumerate(volumes):
+        if i in indices:
+            s_t_fig.add_trace(
+                go.Scatter(
+                    x=temperatures,
+                    y=y[i],
+                    mode="lines",
+                    name=f"{volume:.{volume_decimals}f} \u212B<sup>3</sup>",
+                )
+            )
+    plot_format(
+        s_t_fig,
+        "Temperature (K)",
+        y_label,
+    )
+    s_t_fig.show()
+
+    s_v_fig = go.Figure()
+    if selected_temperatures_plot is None:
+        indices = np.linspace(0, len(temperatures) - 1, 5, dtype=int)
+        selected_temperatures_plot = np.array([temperatures[j] for j in indices])
+    else:
+        indices = []
+        for t in selected_temperatures_plot:
+            try:
+                indices.append(np.where(temperatures == t)[0][0])
+            except IndexError:
+                nearest_temperature = temperatures[
+                    np.argmin(np.abs(temperatures - t))
+                ]
+                indices.append(np.where(temperatures == nearest_temperature)[0][0])
+    for i in indices:
+        s_v_fig.add_trace(
+            go.Scatter(
+                x=volumes,
+                y=y[:, i],
+                mode="lines",
+                name=f"{temperatures[i]} K",
+            )
+        )
+    plot_format(
+        s_v_fig,
+        "Volume (\u212B<sup>3</sup>)",
+        y_label,
+    )
+    s_v_fig.show()
+
+    return s_t_fig, s_v_fig

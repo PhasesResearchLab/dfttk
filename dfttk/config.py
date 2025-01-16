@@ -297,18 +297,19 @@ class DebyeData:
         self.debye_df = debye_df
         
     def plot(
-        self, selected_temperatures: np.array = None, selected_volumes: np.array = None
+        self, property, temperatures: np.array = None, volumes: np.array = None
     ):
 
         plot_debye(
+            property,
             self.number_of_atoms,
             self.temperatures,
             self.volumes,
             self.free_energy,
             self.entropy,
             self.heat_capacity,
-            selected_temperatures,
-            selected_volumes,
+            temperatures,
+            volumes,
         )
 
 
