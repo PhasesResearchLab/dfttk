@@ -145,41 +145,6 @@ def debye_function(
     return result
 
 
-def vibrational_energy(temperature: float, theta: float, number_of_atoms) -> float:
-    """Evaluates the debye function at x = theta/temperature, then calculates the vibrational energy in eV.
-
-    Args:
-        temperature : Temperature in Kelvin
-        theta: Debye temperature in Kelvin
-        number_of_atoms: Number of atoms in the cell
-
-    Returns:
-        float: Vibrational energy in eV
-    """
-
-    zero_temp_mask = temperature == 0
-    non_zero_temp_mask = temperature > 0
-
-    e_vib = np.zeros_like(temperature)
-    debye_value = np.zeros_like(temperature)
-
-    e_vib[zero_temp_mask] = number_of_atoms * (9 / 8 * BOLTZMANN_CONSTANT * theta)
-
-    debye_value[non_zero_temp_mask] = debye_function(
-        theta / temperature[non_zero_temp_mask]
-    )
-
-    e_vib = (
-        number_of_atoms
-        * BOLTZMANN_CONSTANT
-        * (
-            3 * temperature[non_zero_temp_mask] * debye_value[non_zero_temp_mask]
-            + 9 / 8 * theta
-        )
-    )
-    return e_vib
-
-
 def vibrational_entropy(temperature: float, theta: float, number_of_atoms) -> float:
     """Evaluates the debye function at x = theta/temperature, then calculates the vibrational entropy in eV/K.
 
