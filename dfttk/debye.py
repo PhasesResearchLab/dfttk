@@ -57,12 +57,8 @@ def debye_temperature(
         Debye temperature
     """
 
-    s = scaling_factor
-    #volume_0 = eos_parameters[0]
-    #bulk_modulus = eos_parameters[2]
-
     return (
-        s
+        scaling_factor
         * A
         * volume_0 ** (1 / 6)
         * (bulk_modulus / mass) ** (1 / 2)
@@ -409,8 +405,10 @@ def process_debye_gruneisen(
     number_of_atoms: int,
     volumes: np.array,
     atomic_mass: float,
+    volume_0: float,
+    bulk_modulus: float,
     bulk_modulus_prime: float,
-    eos_parameters: np.array,
+    #eos_parameters: np.array,
     scaling_factor: float = 0.617,
     gruneisen_x: float = 1,
     temperatures: np.array = np.linspace(0, 1000, 101),
@@ -424,8 +422,8 @@ def process_debye_gruneisen(
         volume_max = volume.max() * 1.02
         volumes = np.linspace(volume_min, volume_max, 1000)
 
-    volume_0 = eos_parameters[0]
-    bulk_modulus = eos_parameters[2]
+    #volume_0 = eos_parameters[0]
+    #bulk_modulus = eos_parameters[2]
     theta = debye_temperature(volumes, volume_0, bulk_modulus, atomic_mass, gru_param, s)
 
     s_vib_v_t = np.zeros((len(volumes), len(temperatures)))

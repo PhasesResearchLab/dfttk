@@ -251,8 +251,10 @@ class DebyeData:
         number_of_atoms: int,
         volumes: np.array,
         average_mass: float,
+        volume_0: float,
+        bulk_modulus: float,
         bulk_modulus_prime: float,
-        eos_parameters_array: np.array,
+        #eos_parameters_array: np.array,
         scaling_factor: float = 0.617,
         gruneisen_x: float = 1,
         temperatures: np.array = np.linspace(0, 1000, 101),
@@ -262,8 +264,10 @@ class DebyeData:
             number_of_atoms,
             volumes,
             average_mass,
+            volume_0,
+            bulk_modulus,
             bulk_modulus_prime,
-            eos_parameters_array,
+            #eos_parameters_array,
             scaling_factor,
             gruneisen_x,
             temperatures,
@@ -886,27 +890,27 @@ class Configuration:
         scaling_factor: float = 0.617,
         gruneisen_x: float = 1,
         temperatures: np.array = np.linspace(0, 1000, 101),
-        eos: str = "BM4",
     ):
-        eos = self.ev_curves.eos_parameters["eos_name"]
         self.debye = DebyeData()
 
-        eos_parameters_array = np.array(
-            [
-                self.ev_curves.eos_parameters["V0"],
-                self.ev_curves.eos_parameters["E0"],
-                self.ev_curves.eos_parameters["B"],
-                self.ev_curves.eos_parameters["BP"],
-                self.ev_curves.eos_parameters["B2P"],
-            ]
-        )
+        #eos_parameters_array = np.array(
+        #    [
+        #        self.ev_curves.eos_parameters["V0"],
+        #        self.ev_curves.eos_parameters["E0"],
+        #        self.ev_curves.eos_parameters["B"],
+        #        self.ev_curves.eos_parameters["BP"],
+        #        self.ev_curves.eos_parameters["B2P"],
+        #    ]
+        #)
 
         self.debye.get_debye_gruneisen_data(
             self.ev_curves.number_of_atoms,
             self.ev_curves.volumes,
             self.ev_curves.average_mass,
+            self.ev_curves.eos_parameters["V0"],
+            self.ev_curves.eos_parameters["B"],
             self.ev_curves.eos_parameters["BP"],
-            eos_parameters_array,
+            #eos_parameters_array,
             scaling_factor,
             gruneisen_x,
             temperatures,
