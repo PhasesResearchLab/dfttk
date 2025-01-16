@@ -1507,7 +1507,6 @@ def plot_ev(
             )
         )
 
-        # Plot the equilibrium energy and volume for each config
         if highlight_minimum == True:
 
             x = eos_parameters[0]

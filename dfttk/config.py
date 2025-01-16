@@ -251,44 +251,65 @@ class DebyeData:
         number_of_atoms: int,
         volumes: np.array,
         average_mass: float,
+        volume_0: float,
+        bulk_modulus: float,
         bulk_modulus_prime: float,
-        eos_parameters_array: np.array,
         scaling_factor: float = 0.617,
         gruneisen_x: float = 1,
         temperatures: np.array = np.linspace(0, 1000, 101),
-        eos: str = "BM4",
     ):
         volumes = np.linspace(0.98 * min(volumes), 1.02 * max(volumes), 1000)
-        debye_df = process_debye_gruneisen(
+        number_of_atoms, scaling_factor, gruneisen_x, temperatures, volumes, f_vib, s_vib, cv_vib = process_debye_gruneisen(
             number_of_atoms,
             volumes,
             average_mass,
+            volume_0,
+            bulk_modulus,
             bulk_modulus_prime,
-            eos_parameters_array,
             scaling_factor,
             gruneisen_x,
             temperatures,
-            eos,
         )
-        self.debye_df = debye_df
 
-        self.number_of_atoms = int(debye_df["number_of_atoms"].values.tolist()[0])
+        self.number_of_atoms = number_of_atoms
         self.scaling_factor = scaling_factor
         self.gruneisen_x = gruneisen_x
-        self.temperatures = debye_df["temperatures"].values.tolist()
-        self.volumes = debye_df["volume"][0]
-        self.free_energy = debye_df["f_vib"].apply(lambda x: x.tolist()).tolist()
-        self.entropy = debye_df["s_vib"].apply(lambda x: x.tolist()).tolist()
-        self.heat_capacity = debye_df["cv_vib"].apply(lambda x: x.tolist()).tolist()
+        self.temperatures = temperatures
+        self.volumes = volumes
+        self.free_energy = f_vib
+        self.entropy = s_vib
+        self.heat_capacity = cv_vib
 
+        # Temporary until I fix the quasi_harmonic module
+        debye_df = pd.DataFrame(
+            {
+                "number_of_atoms": number_of_atoms,
+                "temperatures": temperatures,
+                "scaling_factor": [scaling_factor] * len(temperatures),
+                "gruneisen_x": [gruneisen_x] * len(temperatures),
+                "volume": [volumes] * len(temperatures),
+                "f_vib": [col for col in f_vib],
+                "s_vib": [col for col in s_vib],
+                "cv_vib": [col for col in cv_vib],
+            }
+        )
+                
+        self.debye_df = debye_df
+        
     def plot(
-        self, selected_temperatures: np.array = None, selected_volumes: np.array = None
+        self, property, temperatures: np.array = None, volumes: np.array = None
     ):
 
         plot_debye(
-            self.debye_df,
-            selected_temperatures,
-            selected_volumes,
+            property,
+            self.number_of_atoms,
+            self.temperatures,
+            self.volumes,
+            self.free_energy,
+            self.entropy,
+            self.heat_capacity,
+            temperatures,
+            volumes,
         )
 
 
@@ -888,31 +909,19 @@ class Configuration:
         scaling_factor: float = 0.617,
         gruneisen_x: float = 1,
         temperatures: np.array = np.linspace(0, 1000, 101),
-        eos: str = "BM4",
     ):
-        eos = self.ev_curves.eos_parameters["eos_name"]
         self.debye = DebyeData()
-
-        eos_parameters_array = np.array(
-            [
-                self.ev_curves.eos_parameters["V0"],
-                self.ev_curves.eos_parameters["E0"],
-                self.ev_curves.eos_parameters["B"],
-                self.ev_curves.eos_parameters["BP"],
-                self.ev_curves.eos_parameters["B2P"],
-            ]
-        )
 
         self.debye.get_debye_gruneisen_data(
             self.ev_curves.number_of_atoms,
             self.ev_curves.volumes,
             self.ev_curves.average_mass,
+            self.ev_curves.eos_parameters["V0"],
+            self.ev_curves.eos_parameters["B"],
             self.ev_curves.eos_parameters["BP"],
-            eos_parameters_array,
             scaling_factor,
             gruneisen_x,
             temperatures,
-            eos,
         )
 
     def run_phonons(
