@@ -410,7 +410,7 @@ def process_debye_gruneisen(
     gruneisen_x: float = 1,
     temperatures: np.array = np.linspace(0, 1000, 101),
 ):
-    debye_properties_list = []
+
     s = scaling_factor
     gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
 
@@ -440,21 +440,5 @@ def process_debye_gruneisen(
     f_vib = [col for col in f_vib_transposed]
     s_vib = [col for col in s_vib_transposed]
     cv_vib = [col for col in cv_vib_transposed]
-    
-    debye_properties = pd.DataFrame(
-        {
-            "number_of_atoms": number_of_atoms,
-            "temperatures": temperatures,
-            "scaling_factor": [s] * len(temperatures),
-            "gruneisen_x": [gruneisen_x] * len(temperatures),
-            "volume": [volumes] * len(temperatures),
-            "f_vib": [col for col in f_vib_transposed],
-            "s_vib": [col for col in s_vib_transposed],
-            "cv_vib": [col for col in cv_vib_transposed],
-        }
-    )
-
-    debye_properties_list.append(debye_properties)
-    all_debye_properties = pd.concat(debye_properties_list, ignore_index=True)
 
     return number_of_atoms, scaling_factor, gruneisen_x, temperatures, volumes, f_vib, s_vib, cv_vib

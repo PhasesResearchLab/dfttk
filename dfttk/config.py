@@ -279,15 +279,6 @@ class DebyeData:
         self.free_energy = f_vib
         self.entropy = s_vib
         self.heat_capacity = cv_vib
-        
-        #self.number_of_atoms = int(debye_df["number_of_atoms"].values.tolist()[0])
-        #self.scaling_factor = scaling_factor
-        #self.gruneisen_x = gruneisen_x
-        #self.temperatures = debye_df["temperatures"].values.tolist()
-        #self.volumes = debye_df["volume"][0]
-        #self.free_energy = debye_df["f_vib"].apply(lambda x: x.tolist()).tolist()
-        #self.entropy = debye_df["s_vib"].apply(lambda x: x.tolist()).tolist()
-        #self.heat_capacity = debye_df["cv_vib"].apply(lambda x: x.tolist()).tolist()
 
         # Temporary until I fix the quasi_harmonic module
         debye_df = pd.DataFrame(
