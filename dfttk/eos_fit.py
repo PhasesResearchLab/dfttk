@@ -1428,8 +1428,8 @@ def plot_ev(
     """
 
     if eos_name != None:
-        eos_values_df, eos_parameters_df = fit_to_eos(
-            number_of_atoms, volumes, energies, eos_name=eos_name
+        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
+            fit_to_eos(volumes, energies, eos_name=eos_name)
         )
     unique_configs = [name]
     config_colors = assign_colors_to_configs(
@@ -1487,19 +1487,10 @@ def plot_ev(
     # Second, plot the EOS fit.
     if eos_name != None:
 
-        eos_config_values_df = eos_values_df
-        eos_config_parameters_df = eos_parameters_df
-
-        eos_ev_df = eos_config_values_df
-        eos_min_df = eos_config_parameters_df[
-            eos_config_parameters_df["eos"] == eos_name
-        ]
-
-        x = eos_ev_df["volumes"].values[0]
-        y = eos_ev_df["energies"].values[0]
-
+        x = volume_range
+        y = energy_eos
         if per_atom:
-            num_atoms = eos_ev_df["number_of_atoms"].values[0]
+            num_atoms = number_of_atoms
 
             x = x / num_atoms
             y = y / num_atoms
@@ -1519,11 +1510,11 @@ def plot_ev(
         # Plot the equilibrium energy and volume for each config
         if highlight_minimum == True:
 
-            x = eos_min_df["V0"].values[0]
-            y = eos_min_df["E0"].values[0]
+            x = eos_parameters[0]
+            y = eos_parameters[1]
 
             if per_atom:
-                num_atoms = eos_ev_df["number_of_atoms"].values[0]
+                num_atoms = number_of_atoms
                 x = x / num_atoms
                 y = y / num_atoms
 
