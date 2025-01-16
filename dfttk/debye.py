@@ -57,13 +57,11 @@ def debye_temperature(
         Debye temperature
     """
 
-    return (
-        scaling_factor
-        * A
-        * volume_0 ** (1 / 6)
-        * (bulk_modulus / mass) ** (1 / 2)
-        * (volume_0 / volume) ** gru_param
-    )
+    debye_temperature = scaling_factor * A * volume_0 ** (1 / 6) * (
+        bulk_modulus / mass
+    ) ** (1 / 2) * (volume_0 / volume) ** gru_param
+    
+    return debye_temperature
 
 
 def debye_function(
@@ -408,7 +406,6 @@ def process_debye_gruneisen(
     volume_0: float,
     bulk_modulus: float,
     bulk_modulus_prime: float,
-    #eos_parameters: np.array,
     scaling_factor: float = 0.617,
     gruneisen_x: float = 1,
     temperatures: np.array = np.linspace(0, 1000, 101),
@@ -422,8 +419,6 @@ def process_debye_gruneisen(
         volume_max = volume.max() * 1.02
         volumes = np.linspace(volume_min, volume_max, 1000)
 
-    #volume_0 = eos_parameters[0]
-    #bulk_modulus = eos_parameters[2]
     theta = debye_temperature(volumes, volume_0, bulk_modulus, atomic_mass, gru_param, s)
 
     s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
@@ -442,10 +437,14 @@ def process_debye_gruneisen(
     s_vib_transposed = s_vib_v_t.T
     cv_vib_transposed = cv_vib_v_t.T
 
+    f_vib = [col for col in f_vib_transposed]
+    s_vib = [col for col in s_vib_transposed]
+    cv_vib = [col for col in cv_vib_transposed]
+    
     debye_properties = pd.DataFrame(
         {
-            "temperatures": temperatures,
             "number_of_atoms": number_of_atoms,
+            "temperatures": temperatures,
             "scaling_factor": [s] * len(temperatures),
             "gruneisen_x": [gruneisen_x] * len(temperatures),
             "volume": [volumes] * len(temperatures),
@@ -458,4 +457,4 @@ def process_debye_gruneisen(
     debye_properties_list.append(debye_properties)
     all_debye_properties = pd.concat(debye_properties_list, ignore_index=True)
 
-    return all_debye_properties
+    return number_of_atoms, scaling_factor, gruneisen_x, temperatures, volumes, f_vib, s_vib, cv_vib
