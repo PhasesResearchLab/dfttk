@@ -273,7 +273,7 @@ def process_debye_gruneisen(
     gruneisen_x: float = 1,
     temperatures: np.array = np.linspace(0, 1000, 101),
 ):
-
+    temperatures = temperatures.astype(float)
     s = scaling_factor
     gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
 

@@ -18,14 +18,13 @@ config_Al = Configuration(config_Al_path, "config_Al")
 config_Al.process_ev_curves()
 
 num_atoms = 4
-# TODO: Consolidate the temperatures
-temp_range = list(range(0, 1010, 100))
-temperatures = np.linspace(0, 1000, 11)
-config_Al.process_phonons(num_atoms, temp_range)
-config_Al.process_debye(
-    scaling_factor=0.617, gruneisen_x=2 / 3, temperatures=temperatures
-)
+# TODO: rewrite some of the json files to include floats. Eg. 0.0K
 temperature_range = np.arange(0, 1010, 100)
+
+config_Al.process_phonons(num_atoms, temperature_range)
+config_Al.process_debye(
+    scaling_factor=0.617, gruneisen_x=2 / 3, temperatures=temperature_range
+)
 config_Al.process_thermal_electronic(temperature_range)
 
 volume_range = np.linspace(0.98 * 60, 1.02 * 74, 1000)
@@ -353,7 +352,7 @@ def test_process_phonons():
     expected_temperatures = list(range(0, 1010, 100))
     assert (
         config_Al.phonons.temperatures == expected_temperatures
-    ), f"Expected {temp_range}, but got {config_Al.phonons.temperatures}"
+    ), f"Expected {temperature_range}, but got {config_Al.phonons.temperatures}"
 
     expected_volumes = [60.0, 62.0, 64.0, 66.0, 68.0, 70.0, 72.0, 74.0]
     assert (
@@ -412,7 +411,7 @@ def test_process_debye():
         config_Al.debye.gruneisen_x == expected_gruneisen_x
     ), f"Expected 2/3, but got {config_Al.debye.gruneisen_x}"
 
-    expected_temperatures = temperatures
+    expected_temperatures = temperature_range
     assert np.allclose(
         config_Al.debye.temperatures, expected_temperatures, rtol=1e-4
     ), f"Expected {expected_temperatures}, but got {config_Al.debye.temperatures}"
@@ -524,21 +523,18 @@ def test_process_thermal_electronic():
 
 def test_process_qha():
     expected_number_of_atoms = 4
-    assert (
-        config_Al.qha.number_of_atoms == expected_number_of_atoms,
-        f"Expected 4, but got {config_Al.qha.number_of_atoms}",
+    assert config_Al.qha.number_of_atoms == expected_number_of_atoms, (
+        f"Expected {expected_number_of_atoms}, but got {config_Al.qha.number_of_atoms}"
     )
 
     expected_temperatures = list(range(0, 1010, 100))
-    assert (
-        config_Al.qha.temperatures == expected_temperatures,
-        f"Expected {expected_temperatures}, but got {config_Al.qha.temperatures}",
+    assert config_Al.qha.temperatures == expected_temperatures, (
+        f"Expected {expected_temperatures}, but got {config_Al.qha.temperatures}"
     )
 
     expected_volumes = np.linspace(0.98 * 60, 1.02 * 74, 1000)
-    assert (
-        np.allclose(config_Al.qha.volumes, expected_volumes, atol=1e-6),
-        f"Expected {expected_volumes}, but got {config_Al.qha.volumes}",
+    assert np.allclose(config_Al.qha.volumes, expected_volumes, atol=1e-6), (
+        f"Expected {expected_volumes}, but got {config_Al.qha.volumes}"
     )
 
     files_and_attributes = [
