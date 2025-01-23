@@ -57,7 +57,7 @@ def extract_configuration_data(
     
     volumes = np.array([])
     energies = np.array([])
-    mag_data_list = np.array([])
+    mag_data_list = []
     total_magnetic_moments = np.array([])
     magnetic_orderings = np.array([])
     
@@ -98,11 +98,12 @@ def extract_configuration_data(
                 magmom_tolerance=magmom_tolerance,
                 total_magnetic_moment_tolerance=total_magnetic_moment_tolerance,
             )
-            mag_data_list = np.append(mag_data_list, mag_data)
+            mag_data_list.append(mag_data.to_numpy())
             total_magnetic_moments = np.append(total_magnetic_moments, total_magnetic_moment)
             magnetic_orderings = np.append(magnetic_orderings, magnetic_ordering)
-
-    return number_of_atoms, volumes, energies, atomic_masses, average_mass, mag_data_list, total_magnetic_moments, magnetic_orderings
+    mag_data_array = np.array(mag_data_list)
+    
+    return number_of_atoms, volumes, energies, atomic_masses, average_mass, mag_data_array, total_magnetic_moments, magnetic_orderings
 
 
 def extract_convergence_data(path: str) -> pd.DataFrame:

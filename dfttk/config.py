@@ -85,7 +85,6 @@ class EvCurvesData:
     def get_vasp_input(self, volumes: list[float] = None):
         vol_folders = self._get_volume_folders()
         incar_keys = ["1relax", "2relax", "3static"]
-
         if volumes is not None:
             volumes = [round(volume, 2) for volume in volumes]
             filtered_vol_folders = []
@@ -124,13 +123,13 @@ class EvCurvesData:
     ) -> None:
         (
             number_of_atoms,
-            volumes,
-            energies,
+            all_volumes,
+            all_energies,
             atomic_masses,
             average_mass,
-            mag_data_list,
-            total_magnetic_moments,
-            magnetic_orderings,
+            all_mag_data_list,
+            all_total_magnetic_moments,
+            all_magnetic_orderings,
         ) = extract_configuration_data(
             self.path,
             outcar_name,
@@ -143,14 +142,22 @@ class EvCurvesData:
         )
 
         self.number_of_atoms = number_of_atoms
-        self.volumes = volumes
-        self.energies = energies
+        self.volumes = all_volumes
+        self.energies = all_energies
         self.atomic_masses = atomic_masses
         self.average_mass = average_mass
-        self.mag_data = mag_data_list
-        self.total_magnetic_moment = total_magnetic_moments
-        self.magnetic_ordering = magnetic_orderings
+        self.mag_data = all_mag_data_list
+        self.total_magnetic_moment = all_total_magnetic_moments
+        self.magnetic_ordering = all_magnetic_orderings
 
+        if volumes is not None:
+            filtered_indices = [i for i, v in enumerate(all_volumes) if v in volumes]
+            self.volumes = np.array(all_volumes)[filtered_indices]
+            self.energies = np.array(all_energies)[filtered_indices]
+            self.mag_data = np.array(all_mag_data_list)[filtered_indices]
+            self.total_magnetic_moment = np.array(all_total_magnetic_moments)[filtered_indices]
+            self.magnetic_ordering = np.array(all_magnetic_orderings)[filtered_indices]
+        
         vol_folders = self._get_volume_folders()
         if volumes is not None:
             volumes = [round(volume, 2) for volume in volumes]
@@ -1193,6 +1200,7 @@ def plot_multiple_ev(
     config_symbols = assign_marker_symbols_to_configs(config_names)
     
     for config_name in config_names:
+        print(config_objects[config_name])
         fig = config_objects[config_name].ev_curves.plot(
             eos_name=eos_name,
             highlight_minimum=highlight_minimum,
