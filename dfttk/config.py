@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from pymongo import MongoClient
 from natsort import natsorted
+import plotly.graph_objects as go
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 
@@ -26,6 +27,8 @@ from dfttk.aggregate_extraction import (
 from dfttk.eos_fit import (
     fit_to_eos,
     plot_ev,
+    assign_colors_to_configs,
+    assign_marker_symbols_to_configs,
 )
 from dfttk.debye import process_debye_gruneisen, plot_debye
 from dfttk.workflows import process_phonon_dos_YPHON
@@ -217,8 +220,8 @@ class EvCurvesData:
         cmap: str = "plotly",
         marker_alpha: float = 1,
         marker_size: int = 10,
-    ) -> None:
-        plot_ev(
+    ):
+        fig = plot_ev(
             self.name,
             self.number_of_atoms,
             self.volumes,
@@ -232,7 +235,7 @@ class EvCurvesData:
             marker_alpha=marker_alpha,
             marker_size=marker_size,
         )
-
+        return fig
 
 class DebyeData:
     def __init__(self):
@@ -1184,21 +1187,35 @@ def plot_multiple_ev(
     marker_size: int = 10,
 ):
 
-    dataframes = []
+    combined_fig = go.Figure()
+
+    config_colors = assign_colors_to_configs(config_names, alpha=marker_alpha, cmap=cmap)
+    config_symbols = assign_marker_symbols_to_configs(config_names)
+    
     for config_name in config_names:
-        dataframes.append(config_objects[config_name].ev_curves.energy_volume_df)
-    dataframes = pd.concat(dataframes)
+        fig = config_objects[config_name].ev_curves.plot(
+            eos_name=eos_name,
+            highlight_minimum=highlight_minimum,
+            per_atom=per_atom,
+            cmap=cmap,
+            marker_alpha=marker_alpha,
+            marker_size=marker_size,
+            show_fig=False 
+        )
+        if fig is not None:
+            for trace in fig.data:
+                if trace.name != "minimum":
+                    trace.marker.color = config_colors[config_name]
+                    trace.line.color = config_colors[config_name]
+                    trace.marker.symbol = config_symbols[config_name]
+                combined_fig.add_trace(trace)
+            combined_fig.update_layout(fig.layout)
 
-    fig = plot_ev(
-        dataframes,
-        eos_name=eos_name,
-        highlight_minimum=highlight_minimum,
-        per_atom=per_atom,
-        title=title,
-        show_fig=show_fig,
-        cmap=cmap,
-        marker_alpha=marker_alpha,
-        marker_size=marker_size,
-    )
+    if title:
+        combined_fig.update_layout(title=title)
 
-    return fig
+    if show_fig:
+        combined_fig.show()
+
+    return combined_fig
+
