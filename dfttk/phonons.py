@@ -237,11 +237,11 @@ def plot_phonon_dos(path: str, scale_atoms: int = 5):
 
     fig.show()
 
-
+# TODO: Input should be - number_of_atoms, volume, frequency, dos
 def harmonic(
     path: str,
     scale_atoms: int,
-    temp_range: list,
+    temp_range: np.ndarray,
     order: int = 2,
 ) -> pd.DataFrame:
     """Calculate the harmonic properties at different volumes and temperatures
@@ -399,45 +399,49 @@ def harmonic(
     return harmonic_properties, harmonic_properties_fit
 
 
-def plot_harmonic(harmonic_properties: pd.DataFrame):
+def plot_harmonic(harmonic_properties: pd.DataFrame, property_to_plot: str):
     """Plots Fvib, Svib and Cvib as a function of temperature for different fixed volumes
 
     Args:
         harmonic_properties (pd.DataFrame): harmonic properties dataframe from the harmonic function
     """
 
+    if property_to_plot not in ["f_vib", "s_vib", "cv_vib"]:
+        raise ValueError("property_to_plot must be one of 'f_vib', 's_vib', or 'cv_vib'")
+    
+    y_value = property_to_plot
     volumes_per_atom = np.sort(harmonic_properties["volume_per_atom"].unique())
     scale_atoms = harmonic_properties["number_of_atoms"].unique()[0]
-    y_values = ["f_vib", "s_vib", "cv_vib"]
-    for y_value in y_values:
-        fig = go.Figure()
-        for volume_per_atom in volumes_per_atom:
-            temperature = harmonic_properties[
-                harmonic_properties["volume_per_atom"] == volume_per_atom
-            ]["temperature"]
-            y_data = harmonic_properties[
-                harmonic_properties["volume_per_atom"] == volume_per_atom
-            ][y_value]
+    
+    fig = go.Figure()
+    for volume_per_atom in volumes_per_atom:
+        temperature = harmonic_properties[
+            harmonic_properties["volume_per_atom"] == volume_per_atom
+        ]["temperature"]
+        y_data = harmonic_properties[
+            harmonic_properties["volume_per_atom"] == volume_per_atom
+        ][y_value]
 
-            fig.add_trace(
-                go.Scatter(
-                    x=temperature,
-                    y=y_data,
-                    mode="lines",
-                    name=f"{volume_per_atom * scale_atoms} Å³",
-                    showlegend=True,
-                )
+        fig.add_trace(
+            go.Scatter(
+                x=temperature,
+                y=y_data,
+                mode="lines",
+                name=f"{volume_per_atom * scale_atoms} Å³",
+                showlegend=True,
             )
+        )
 
-        if y_value == "f_vib":
-            y_title = f"F<sub>vib</sub> (eV/{scale_atoms} atoms)"
-        elif y_value == "s_vib":
-            y_title = f"S<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
-        elif y_value == "cv_vib":
-            y_title = f"C<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
+    if y_value == "f_vib":
+        y_title = f"F<sub>vib</sub> (eV/{scale_atoms} atoms)"
+    elif y_value == "s_vib":
+        y_title = f"S<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
+    elif y_value == "cv_vib":
+        y_title = f"C<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
 
-        plot_format(fig, "Temperature (K)", y_title)
-        fig.show()
+    plot_format(fig, "Temperature (K)", y_title)
+    fig.show()
+    return fig
 
 
 def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
@@ -505,7 +509,7 @@ def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
 
 
 def plot_fit_harmonic(
-    harmonic_properties_fit: pd.DataFrame, selected_temperatures_plot: np.ndarray = None
+    harmonic_properties_fit: pd.DataFrame, property_to_plot, selected_temperatures_plot: np.ndarray = None
 ):
     """Plots the fitted harmonic properties
 
@@ -514,71 +518,72 @@ def plot_fit_harmonic(
         selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
     """
 
+    if property_to_plot not in ["f_vib", "s_vib", "cv_vib"]:
+        raise ValueError("property_to_plot must be one of 'f_vib', 's_vib', or 'cv_vib'")
+    
     scale_atoms = harmonic_properties_fit["number_of_atoms"].iloc[0]
     temperature_list = harmonic_properties_fit.index.values
     if selected_temperatures_plot is None:
         indices = np.linspace(0, len(temperature_list) - 1, 5, dtype=int)
         selected_temperatures_plot = np.array([temperature_list[j] for j in indices])
-
-    y_values = [
-        ("f_vib", "f_vib_fit"),
-        ("s_vib", "s_vib_fit"),
-        ("cv_vib", "cv_vib_fit"),
+    
+    y_value = property_to_plot
+    y_value_fit = f"{property_to_plot}_fit"
+    
+    fig = go.Figure()
+    colors = [
+        "#636EFA",
+        "#EF553B",
+        "#00CC96",
+        "#AB63FA",
+        "#FFA15A",
+        "#19D3F3",
+        "#FF6692",
+        "#B6E880",
+        "#FF97FF",
+        "#FECB52",
     ]
-    for y_value, y_value_fit in y_values:
-        fig = go.Figure()
-        colors = [
-            "#636EFA",
-            "#EF553B",
-            "#00CC96",
-            "#AB63FA",
-            "#FFA15A",
-            "#19D3F3",
-            "#FF6692",
-            "#B6E880",
-            "#FF97FF",
-            "#FECB52",
-        ]
-        colors = [
-            f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {1})"
-            for color in colors
-        ]
-        i = 0
-        for i, temperature in enumerate(selected_temperatures_plot):
-            x = harmonic_properties_fit.loc[temperature]["volume"]
-            y = harmonic_properties_fit.loc[temperature][y_value]
-            x_fit = harmonic_properties_fit.loc[temperature]["volume_fit"]
-            y_fit = harmonic_properties_fit.loc[temperature][y_value_fit]
+    colors = [
+        f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {1})"
+        for color in colors
+    ]
+    i = 0
+    for i, temperature in enumerate(selected_temperatures_plot):
+        x = harmonic_properties_fit.loc[temperature]["volume"]
+        y = harmonic_properties_fit.loc[temperature][y_value]
+        x_fit = harmonic_properties_fit.loc[temperature]["volume_fit"]
+        y_fit = harmonic_properties_fit.loc[temperature][y_value_fit]
 
-            color = colors[i % len(colors)]
+        color = colors[i % len(colors)]
 
-            fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=y,
-                    mode="markers",
-                    line=dict(color=color),
-                    showlegend=False,
-                )
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="markers",
+                line=dict(color=color),
+                showlegend=False,
             )
-            fig.add_trace(
-                go.Scatter(
-                    x=x_fit,
-                    y=y_fit,
-                    mode="lines",
-                    line=dict(color=color),
-                    name=f"{temperature} K",
-                    showlegend=True,
-                )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=x_fit,
+                y=y_fit,
+                mode="lines",
+                line=dict(color=color),
+                name=f"{temperature} K",
+                showlegend=True,
             )
-            i += 1
+        )
+        i += 1
 
-        if y_value == "f_vib":
-            y_title = f"F<sub>vib</sub> (eV/{scale_atoms} atoms)"
-        elif y_value == "s_vib":
-            y_title = f"S<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
-        elif y_value == "cv_vib":
-            y_title = f"C<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
+    if y_value == "f_vib":
+        y_title = f"F<sub>vib</sub> (eV/{scale_atoms} atoms)"
+    elif y_value == "s_vib":
+        y_title = f"S<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
+    elif y_value == "cv_vib":
+        y_title = f"C<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
 
-        plot_format(fig, f"Volume (Å³/{scale_atoms} atoms)", y_title)
-        fig.show()
+    plot_format(fig, f"Volume (Å³/{scale_atoms} atoms)", y_title)
+    fig.show()
+    return fig

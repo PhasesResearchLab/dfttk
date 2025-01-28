@@ -219,6 +219,9 @@ class EvCurvesData:
 
     def plot(
         self,
+        volume_min: float = None,
+        volume_max: float = None,
+        num_volumes: int = 1000,
         eos_name: str = "BM4",
         highlight_minimum: bool = True,
         per_atom: bool = False,
@@ -233,6 +236,9 @@ class EvCurvesData:
             self.number_of_atoms,
             self.volumes,
             self.energies,
+            volume_min,
+            volume_max,
+            num_volumes,
             eos_name=eos_name,
             highlight_minimum=highlight_minimum,
             per_atom=per_atom,
@@ -309,8 +315,8 @@ class DebyeData:
     def plot(
         self, property, temperatures: np.array = None, volumes: np.array = None
     ):
-
-        plot_debye(
+    
+        fig_t, fig_v = plot_debye(
             property,
             self.number_of_atoms,
             self.temperatures,
@@ -321,7 +327,8 @@ class DebyeData:
             temperatures,
             volumes,
         )
-
+        
+        return fig_t, fig_v
 
 class PhononsData:
     def __init__(self, path: str):
@@ -457,10 +464,10 @@ class PhononsData:
         yphon_results_path = os.path.join(self.path, "YPHON_results")
         plot_phonon_dos(yphon_results_path, num_atoms)
 
-    def plot_harmonic(self, selected_temperatures_plot: np.ndarray = None):
-        plot_harmonic(self.harmonic_df)
-        plot_fit_harmonic(self.harmonic_fit_df, selected_temperatures_plot)
-
+    def plot_harmonic(self, property_to_plot, selected_temperatures_plot: np.ndarray = None):
+        fig_harmonic = plot_harmonic(self.harmonic_df, property_to_plot)
+        fig_fit_harmonic = plot_fit_harmonic(self.harmonic_fit_df, property_to_plot, selected_temperatures_plot)
+        return fig_harmonic, fig_fit_harmonic
 
 class ThermalElectronicData:
     def __init__(self, path: str):
@@ -577,13 +584,15 @@ class ThermalElectronicData:
         for temp, coefficients in zip(self.temperatures, cvel_coefficients):
             self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
 
-    def plot(self, selected_temperatures_plot: np.ndarray = None):
-        plot_thermal_electronic(self.thermal_electronic_df)
-        plot_thermal_electronic_properties_fit(
+    def plot(self, property_to_plot, selected_temperatures_plot: np.ndarray = None):
+        fig = plot_thermal_electronic(self.thermal_electronic_df, property_to_plot)
+        fig_fit = plot_thermal_electronic_properties_fit(
             self.thermal_electronic_fit_df,
+            property_to_plot,
             selected_temperatures_plot,
         )
 
+        return fig, fig_fit
 
 class QuasiHarmonicData:
     def __init__(self):
@@ -899,6 +908,9 @@ class Configuration:
         total_magnetic_moment_tolerance: float = 1e-12,
         mass_average: str = "geometric",
         eos_name: str = "BM4",
+        volume_min: float = None,
+        volume_max: float = None,
+        num_volumes: int = 1000,
     ):
         self.ev_curves = EvCurvesData(self.path, self.name)
         self.ev_curves.get_vasp_input(volumes)
@@ -912,7 +924,7 @@ class Configuration:
             total_magnetic_moment_tolerance,
             mass_average,
         )
-        self.ev_curves.fit_energy_volume_data(eos_name=eos_name)
+        self.ev_curves.fit_energy_volume_data(eos_name=eos_name, volume_min=volume_min, volume_max=volume_max, num_volumes=num_volumes)
 
     def process_debye(
         self,
@@ -1184,6 +1196,9 @@ class Configuration:
 def plot_multiple_ev(
     config_objects: dict[str, Configuration],
     config_names: list[str],
+    volume_min: float,
+    volume_max: float,
+    num_volumes: int,
     eos_name: str = "BM4",
     highlight_minimum: bool = True,
     per_atom: bool = False,
@@ -1200,8 +1215,10 @@ def plot_multiple_ev(
     config_symbols = assign_marker_symbols_to_configs(config_names)
     
     for config_name in config_names:
-        print(config_objects[config_name])
         fig = config_objects[config_name].ev_curves.plot(
+            volume_min,
+            volume_max,
+            num_volumes,
             eos_name=eos_name,
             highlight_minimum=highlight_minimum,
             per_atom=per_atom,
