@@ -349,6 +349,13 @@ class PhononsData:
         self.heat_capacity_fit = None
         self.harmonic_df = None
         self.harmonic_fit_df = None
+        self.f_vib = None
+        self.s_vib = None
+        self.cv_vib = None
+        self.f_vib_fit = None
+        self.s_vib_fit = None
+        self.cv_vib_fit = None
+        self.volume_fit = None
 
     def process_phonon_dos(self):
         process_phonon_dos_YPHON(self.path)
@@ -455,6 +462,14 @@ class PhononsData:
         ]
         for temp, coefficients in zip(self.temperatures, cvib_coefficients):
             self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
+        
+        self.f_vib = self.harmonic_fit_df["f_vib"].values
+        self.s_vib = self.harmonic_fit_df["s_vib"].values
+        self.cv_vib = self.harmonic_fit_df["cv_vib"].values
+        self.f_vib_fit = self.harmonic_fit_df["f_vib_fit"].values
+        self.s_vib_fit = self.harmonic_fit_df["s_vib_fit"].values
+        self.cv_vib_fit = self.harmonic_fit_df["cv_vib_fit"].values
+        self.volume_fit = self.harmonic_fit_df["volume_fit"].values
 
     def plot_scaled_dos(self, num_atoms: int, plot=True):
         yphon_results_path = os.path.join(self.path, "YPHON_results")
@@ -464,9 +479,23 @@ class PhononsData:
         yphon_results_path = os.path.join(self.path, "YPHON_results")
         plot_phonon_dos(yphon_results_path, num_atoms)
 
-    def plot_harmonic(self, property_to_plot, selected_temperatures_plot: np.ndarray = None):
+    def plot_harmonic(
+        self, 
+        property_to_plot,
+        selected_temperatures_plot: np.ndarray = None):
+        
         fig_harmonic = plot_harmonic(self.harmonic_df, property_to_plot)
-        fig_fit_harmonic = plot_fit_harmonic(self.harmonic_fit_df, property_to_plot, selected_temperatures_plot)
+        property_data = getattr(self, property_to_plot)
+        property_fit_data = getattr(self, f"{property_to_plot}_fit")
+        fig_fit_harmonic = plot_fit_harmonic(
+            self.number_of_atoms, 
+            self.temperatures, 
+            self.volumes,
+            property_to_plot,
+            property_data,
+            self.volume_fit,
+            property_fit_data,
+            selected_temperatures_plot)
         return fig_harmonic, fig_fit_harmonic
 
 class ThermalElectronicData:

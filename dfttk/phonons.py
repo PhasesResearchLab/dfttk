@@ -509,7 +509,14 @@ def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
 
 
 def plot_fit_harmonic(
-    harmonic_properties_fit: pd.DataFrame, property_to_plot, selected_temperatures_plot: np.ndarray = None
+    scale_atoms,
+    temperature_list,
+    volume,
+    property_to_plot,
+    y_value,
+    volume_fit,
+    y_value_fit,
+    selected_temperatures_plot: np.ndarray = None
 ):
     """Plots the fitted harmonic properties
 
@@ -521,14 +528,9 @@ def plot_fit_harmonic(
     if property_to_plot not in ["f_vib", "s_vib", "cv_vib"]:
         raise ValueError("property_to_plot must be one of 'f_vib', 's_vib', or 'cv_vib'")
     
-    scale_atoms = harmonic_properties_fit["number_of_atoms"].iloc[0]
-    temperature_list = harmonic_properties_fit.index.values
     if selected_temperatures_plot is None:
         indices = np.linspace(0, len(temperature_list) - 1, 5, dtype=int)
         selected_temperatures_plot = np.array([temperature_list[j] for j in indices])
-    
-    y_value = property_to_plot
-    y_value_fit = f"{property_to_plot}_fit"
     
     fig = go.Figure()
     colors = [
@@ -548,11 +550,12 @@ def plot_fit_harmonic(
         for color in colors
     ]
     i = 0
-    for i, temperature in enumerate(selected_temperatures_plot):
-        x = harmonic_properties_fit.loc[temperature]["volume"]
-        y = harmonic_properties_fit.loc[temperature][y_value]
-        x_fit = harmonic_properties_fit.loc[temperature]["volume_fit"]
-        y_fit = harmonic_properties_fit.loc[temperature][y_value_fit]
+    for temperature in selected_temperatures_plot:
+        index = np.where(temperature_list == temperature)[0][0]
+        x = volume
+        y = y_value[index]
+        x_fit = volume_fit[index]
+        y_fit = y_value_fit[index]
 
         color = colors[i % len(colors)]
 
@@ -577,11 +580,11 @@ def plot_fit_harmonic(
         )
         i += 1
 
-    if y_value == "f_vib":
+    if property_to_plot == "f_vib":
         y_title = f"F<sub>vib</sub> (eV/{scale_atoms} atoms)"
-    elif y_value == "s_vib":
+    elif property_to_plot == "s_vib":
         y_title = f"S<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
-    elif y_value == "cv_vib":
+    elif property_to_plot == "cv_vib":
         y_title = f"C<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
 
     plot_format(fig, f"Volume (Å³/{scale_atoms} atoms)", y_title)
