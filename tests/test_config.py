@@ -349,14 +349,12 @@ def test_process_phonons():
         config_Al.phonons.number_of_atoms == expected_number_of_atoms
     ), f"Expected 4, but got {config_Al.phonons.number_of_atoms}"
 
-    expected_temperatures = list(range(0, 1010, 100))
-    assert (
-        config_Al.phonons.temperatures == expected_temperatures
-    ), f"Expected {temperature_range}, but got {config_Al.phonons.temperatures}"
+    expected_temperatures = np.arange(0, 1010, 100)
+    assert np.array_equal(config_Al.phonons.temperatures, expected_temperatures), f"Expected {expected_temperatures}, but got {config_Al.phonons.temperatures}"
 
     expected_volumes = [60.0, 62.0, 64.0, 66.0, 68.0, 70.0, 72.0, 74.0]
-    assert (
-        config_Al.phonons.volumes == expected_volumes
+    assert np.array_equal(
+        config_Al.phonons.volumes, expected_volumes
     ), f"Expected {expected_volumes}, but got {config_Al.phonons.volumes}"
 
     files_and_attributes = [
