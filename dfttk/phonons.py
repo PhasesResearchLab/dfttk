@@ -237,7 +237,7 @@ def plot_phonon_dos(path: str, scale_atoms: int = 5):
 
     fig.show()
 
-# TODO: Input should be - number_of_atoms, volume, frequency, dos
+# TODO: Input should be - number_of_atoms, volume_per_atom, frequency, dos
 def harmonic(
     path: str,
     scale_atoms: int,
@@ -378,27 +378,19 @@ def harmonic(
                 cv_vib = (BOLTZMANN_CONSTANT * np.sum(integrand)) / 5 * scale_atoms
                 cv_vib_list.append(cv_vib)
 
-    harmonic_properties = pd.DataFrame(
-        {
-            "volume_per_atom": np.repeat(volumes_per_atom, len(temp_range)),
-            "number_of_atoms": np.repeat(
-                scale_atoms, len(volumes_per_atom) * len(temp_range)
-            ),
-            "volume": np.repeat(volumes_per_atom * scale_atoms, len(temp_range)),
-            "temperature": np.tile(temp_range, len(volumes_per_atom)),
-            "f_vib": f_vib_list,
-            "e_vib": e_vib_list,
-            "s_vib": s_vib_list,
-            "cv_vib": cv_vib_list,
-        }
-    )
+    num_temps = len(temp_range)
+    num_volumes = len(volumes_per_atom)
 
-    temp_df = harmonic_properties.groupby("temperature").agg(list)
-    f_vib = temp_df["f_vib"].values
-    e_vib = temp_df["e_vib"].values
-    s_vib = temp_df["s_vib"].values
-    cv_vib = temp_df["cv_vib"].values
+    f_vib = np.reshape(f_vib_list, (num_volumes, num_temps))
+    e_vib = np.reshape(e_vib_list, (num_volumes, num_temps))
+    s_vib = np.reshape(s_vib_list, (num_volumes, num_temps))
+    cv_vib = np.reshape(cv_vib_list, (num_volumes, num_temps))
     
+    f_vib = f_vib.T
+    e_vib = e_vib.T
+    s_vib = s_vib.T
+    cv_vib = cv_vib.T
+            
     return scale_atoms, temp_range, volumes_per_atom*scale_atoms, f_vib, e_vib, s_vib, cv_vib
 
 

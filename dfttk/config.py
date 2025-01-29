@@ -488,7 +488,7 @@ class PhononsData:
         for temp, coefficients in zip(self.temperatures, cvib_coefficients):
             self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
 
-        # Temporary harmonic_fit_df for qha. Continue here!
+        # Temporary harmonic_fit_df for qha.
         harmonic_fit_df = pd.DataFrame(
             {
                 "number_of_atoms": self.number_of_atoms,
