@@ -34,6 +34,7 @@ from dfttk.debye import process_debye_gruneisen, plot_debye
 from dfttk.workflows import process_phonon_dos_YPHON
 from dfttk.phonons import (
     harmonic,
+    fit_harmonic,
     scale_phonon_dos,
     plot_phonon_dos,
     plot_harmonic,
@@ -408,12 +409,14 @@ class PhononsData:
     ):
 
         yphon_results_path = os.path.join(self.path, "YPHON_results")
-        harmonic_df, harmonic_fit_df = harmonic(
+        harmonic_df = harmonic(
             yphon_results_path,
             scale_atoms,
             temp_range,
             order,
         )
+
+        harmonic_fit_df, volume_fit = fit_harmonic(harmonic_df, order)
 
         self.harmonic_df = harmonic_df
         self.harmonic_fit_df = harmonic_fit_df
@@ -469,7 +472,7 @@ class PhononsData:
         self.f_vib_fit = self.harmonic_fit_df["f_vib_fit"].values
         self.s_vib_fit = self.harmonic_fit_df["s_vib_fit"].values
         self.cv_vib_fit = self.harmonic_fit_df["cv_vib_fit"].values
-        self.volume_fit = self.harmonic_fit_df["volume_fit"].values
+        self.volume_fit = volume_fit
 
     def plot_scaled_dos(self, num_atoms: int, plot=True):
         yphon_results_path = os.path.join(self.path, "YPHON_results")

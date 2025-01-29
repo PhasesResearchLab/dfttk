@@ -396,7 +396,7 @@ def harmonic(
 
     harmonic_properties_fit = fit_harmonic(harmonic_properties, order=order)
 
-    return harmonic_properties, harmonic_properties_fit
+    return harmonic_properties
 
 
 def plot_harmonic(
@@ -503,8 +503,8 @@ def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
     ].values[0][0]
     harmonic_properties_fit = harmonic_properties_fit.drop(columns=["volume_per_atom"])
 
-    return harmonic_properties_fit
-
+    return harmonic_properties_fit, volume_fit
+    # Continue modifying the outputs here!
 
 def plot_fit_harmonic(
     scale_atoms,
@@ -552,7 +552,7 @@ def plot_fit_harmonic(
         index = np.where(temperature_list == temperature)[0][0]
         x = volume
         y = y_value[index]
-        x_fit = volume_fit[index]
+        x_fit = volume_fit
         y_fit = y_value_fit[index]
 
         color = colors[i % len(colors)]
