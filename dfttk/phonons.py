@@ -399,7 +399,7 @@ def harmonic(
     s_vib = temp_df["s_vib"].values
     cv_vib = temp_df["cv_vib"].values
     
-    return harmonic_properties, scale_atoms, temp_range, volumes_per_atom*scale_atoms, f_vib, e_vib, s_vib, cv_vib
+    return scale_atoms, temp_range, volumes_per_atom*scale_atoms, f_vib, e_vib, s_vib, cv_vib
 
 
 def plot_harmonic(
@@ -444,8 +444,14 @@ def plot_harmonic(
     fig.show()
     return fig
 
-# TODO: I want the input to not be a dataframe
-def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
+
+def fit_harmonic(
+    volume,
+    temperatures,
+    f_vib: np.ndarray,
+    s_vib: np.ndarray,
+    cv_vib: np.ndarray,
+    order: int) -> pd.DataFrame:
     """Fits the harmonic properties to a polynomial function
 
     Args:
@@ -464,17 +470,11 @@ def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
     entropy_polynomial_list = []
     heat_capacity_polynomial_list = []
 
-    harmonic_properties_fit = harmonic_properties.groupby("temperature").agg(list)
-    temperatures = harmonic_properties_fit.index.tolist()
-    for temperature in temperatures:
-        volume = harmonic_properties_fit.loc[temperature]["volume"]
-        f_vib = harmonic_properties_fit.loc[temperature]["f_vib"]
-        s_vib = harmonic_properties_fit.loc[temperature]["s_vib"]
-        cv_vib = harmonic_properties_fit.loc[temperature]["cv_vib"]
+    for i, temperature in enumerate(temperatures):
 
-        free_energy_coefficients = np.polyfit(volume, f_vib, order)
-        entropy_coefficients = np.polyfit(volume, s_vib, order)
-        heat_capacity_coefficients = np.polyfit(volume, cv_vib, order)
+        free_energy_coefficients = np.polyfit(volume, f_vib[i], order)
+        entropy_coefficients = np.polyfit(volume, s_vib[i], order)
+        heat_capacity_coefficients = np.polyfit(volume, cv_vib[i], order)
 
         free_energy_polynomial = np.poly1d(free_energy_coefficients)
         entropy_polynomial = np.poly1d(entropy_coefficients)
