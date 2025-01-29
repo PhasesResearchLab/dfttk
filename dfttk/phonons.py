@@ -399,7 +399,12 @@ def harmonic(
     return harmonic_properties, harmonic_properties_fit
 
 
-def plot_harmonic(harmonic_properties: pd.DataFrame, property_to_plot: str):
+def plot_harmonic(
+    scale_atoms,
+    temperature,
+    y_data,
+    volumes,
+    property_to_plot: str):
     """Plots Fvib, Svib and Cvib as a function of temperature for different fixed volumes
 
     Args:
@@ -410,24 +415,17 @@ def plot_harmonic(harmonic_properties: pd.DataFrame, property_to_plot: str):
         raise ValueError("property_to_plot must be one of 'f_vib', 's_vib', or 'cv_vib'")
     
     y_value = property_to_plot
-    volumes_per_atom = np.sort(harmonic_properties["volume_per_atom"].unique())
-    scale_atoms = harmonic_properties["number_of_atoms"].unique()[0]
+    y_data = np.vstack(y_data)
     
     fig = go.Figure()
-    for volume_per_atom in volumes_per_atom:
-        temperature = harmonic_properties[
-            harmonic_properties["volume_per_atom"] == volume_per_atom
-        ]["temperature"]
-        y_data = harmonic_properties[
-            harmonic_properties["volume_per_atom"] == volume_per_atom
-        ][y_value]
-
+    for i, volume in enumerate(volumes):
+        
         fig.add_trace(
             go.Scatter(
                 x=temperature,
-                y=y_data,
+                y=y_data[:, i],
                 mode="lines",
-                name=f"{volume_per_atom * scale_atoms} Å³",
+                name=f"{volume} Å³",
                 showlegend=True,
             )
         )

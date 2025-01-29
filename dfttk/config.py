@@ -484,9 +484,16 @@ class PhononsData:
         property_to_plot,
         selected_temperatures_plot: np.ndarray = None):
         
-        fig_harmonic = plot_harmonic(self.harmonic_df, property_to_plot)
         property_data = getattr(self, property_to_plot)
         property_fit_data = getattr(self, f"{property_to_plot}_fit")
+        
+        fig_harmonic = plot_harmonic(
+            self.number_of_atoms,
+            self.temperatures, 
+            property_data,
+            self.volumes,
+            property_to_plot)
+        
         fig_fit_harmonic = plot_fit_harmonic(
             self.number_of_atoms, 
             self.temperatures, 
