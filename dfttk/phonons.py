@@ -444,7 +444,7 @@ def plot_harmonic(
     fig.show()
     return fig
 
-
+# TODO: I want the input to not be a dataframe
 def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
     """Fits the harmonic properties to a polynomial function
 
@@ -493,21 +493,8 @@ def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
         s_vib_fit_list.append(s_vib_fit)
         cv_vib_fit_list.append(cv_vib_fit)
 
-    harmonic_properties_fit["volume_fit"] = volume_fit_list
-    harmonic_properties_fit["f_vib_fit"] = f_vib_fit_list
-    harmonic_properties_fit["s_vib_fit"] = s_vib_fit_list
-    harmonic_properties_fit["cv_vib_fit"] = cv_vib_fit_list
-    harmonic_properties_fit["f_vib_poly"] = free_energy_polynomial_list
-    harmonic_properties_fit["s_vib_poly"] = entropy_polynomial_list
-    harmonic_properties_fit["cv_vib_poly"] = heat_capacity_polynomial_list
+    return volume_fit, f_vib_fit_list, s_vib_fit_list, cv_vib_fit_list, free_energy_polynomial_list, entropy_polynomial_list, heat_capacity_polynomial_list
 
-    harmonic_properties_fit["number_of_atoms"] = harmonic_properties_fit[
-        "number_of_atoms"
-    ].values[0][0]
-    harmonic_properties_fit = harmonic_properties_fit.drop(columns=["volume_per_atom"])
-
-    return harmonic_properties_fit, volume_fit, f_vib_fit_list, s_vib_fit_list, cv_vib_fit_list, free_energy_polynomial_list, entropy_polynomial_list, heat_capacity_polynomial_list
-    # Continue modifying the outputs here!
 
 def plot_fit_harmonic(
     scale_atoms,

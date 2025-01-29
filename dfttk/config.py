@@ -409,16 +409,15 @@ class PhononsData:
     ):
 
         yphon_results_path = os.path.join(self.path, "YPHON_results")
+        # TODO: Need to remove reliance on the dataframes
         harmonic_df, number_of_atoms, temperatures, volumes, f_vib, e_vib, s_vib, cv_vib = harmonic(
             yphon_results_path,
             scale_atoms,
             temp_range,
         )
-        # TODO: Need to remove reliance on the dataframes
-        harmonic_fit_df, volume_fit, f_vib_fit, s_vib_fit, cv_vib_fit, f_vib_poly, s_vib_poly, cv_vib_poly = fit_harmonic(harmonic_df, order)
+        volume_fit, f_vib_fit, s_vib_fit, cv_vib_fit, f_vib_poly, s_vib_poly, cv_vib_poly = fit_harmonic(harmonic_df, order)
 
         self.harmonic_df = harmonic_df
-        self.harmonic_fit_df = harmonic_fit_df
         self.f_vib = f_vib
         self.s_vib = s_vib
         self.cv_vib = cv_vib
@@ -456,7 +455,23 @@ class PhononsData:
         for temp, coefficients in zip(self.temperatures, cvib_coefficients):
             self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
         
-        # Temporary df for qha. Continue here!
+        # Temporary harmonic_fit_df for qha. Continue here!
+        harmonic_fit_df = pd.DataFrame(
+            {
+                "number_of_atoms": self.number_of_atoms,
+                "temperatures": self.temperatures,
+                "f_vib_poly": f_vib_poly,
+                "s_vib_poly": s_vib_poly,
+                "cv_vib_poly": cv_vib_poly,
+            }
+        )
+        harmonic_fit_df = harmonic_fit_df.groupby("temperatures").agg(list)
+        # Remove the outer layer of lists
+        harmonic_fit_df["number_of_atoms"] = harmonic_fit_df["number_of_atoms"].apply(lambda x: x[0])
+        harmonic_fit_df["f_vib_poly"] = harmonic_fit_df["f_vib_poly"].apply(lambda x: x[0])
+        harmonic_fit_df["s_vib_poly"] = harmonic_fit_df["s_vib_poly"].apply(lambda x: x[0])
+        harmonic_fit_df["cv_vib_poly"] = harmonic_fit_df["cv_vib_poly"].apply(lambda x: x[0])
+        self.harmonic_fit_df = harmonic_fit_df
 
     def plot_scaled_dos(self, num_atoms: int, plot=True):
         yphon_results_path = os.path.join(self.path, "YPHON_results")
