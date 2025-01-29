@@ -420,6 +420,19 @@ class PhononsData:
     ):
 
         yphon_results_path = os.path.join(self.path, "YPHON_results")
+        vdos_data_scaled = scale_phonon_dos(yphon_results_path)
+        volumes_per_atom = np.sort(vdos_data_scaled["volume_per_atom"].unique())
+        frequency_array = []
+        dos_array = []
+        for volume_per_atom in volumes_per_atom:
+            frequency = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom][
+                "frequency_hz"].values
+            frequency_array.append(frequency)
+            
+            dos = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom]["dos_1_per_hz"].values
+            dos_array.append(dos)
+        frequency_array = np.column_stack(frequency_array)
+        dos_array = np.column_stack(dos_array)
 
         (
             number_of_atoms,
@@ -430,8 +443,10 @@ class PhononsData:
             s_vib,
             cv_vib,
         ) = harmonic(
-            yphon_results_path,
             scale_atoms,
+            volumes_per_atom,
+            frequency_array,
+            dos_array,
             temp_range,
         )
         
@@ -516,7 +531,9 @@ class PhononsData:
 
     def plot_scaled_dos(self, num_atoms: int, plot=True):
         yphon_results_path = os.path.join(self.path, "YPHON_results")
-        scale_phonon_dos(yphon_results_path, num_atoms, plot)
+        vdos_data_scaled = scale_phonon_dos(yphon_results_path, num_atoms, plot)
+        # temporary
+        return vdos_data_scaled
 
     def plot_multiple_dos(self, num_atoms: int):
         yphon_results_path = os.path.join(self.path, "YPHON_results")

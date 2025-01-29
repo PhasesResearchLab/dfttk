@@ -237,10 +237,12 @@ def plot_phonon_dos(path: str, scale_atoms: int = 5):
 
     fig.show()
 
-# TODO: Input should be - number_of_atoms, volume_per_atom, frequency, dos
+
 def harmonic(
-    path: str,
     scale_atoms: int,
+    volumes_per_atom,
+    frequency_array,
+    dos_array,
     temp_range: np.ndarray,
 ) -> pd.DataFrame:
     """Calculate the harmonic properties at different volumes and temperatures
@@ -257,70 +259,44 @@ def harmonic(
         pd.DataFrame: pandas dataframes containing the harmonic and fitted harmonic properties
     """
 
-    vdos_data_scaled = scale_phonon_dos(path)
-    volumes_per_atom = np.sort(vdos_data_scaled["volume_per_atom"].unique())
-
     # Use these to evaluate the integrals
     frequency_diff_list = []
     frequency_mid_list = []
     dos_mid_list = []
 
-    for volume_per_atom in volumes_per_atom:
-        frequency_diff_append = (
-            vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom][
-                "frequency_hz"
-            ][1:].reset_index(drop=True)
-            - vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom][
-                "frequency_hz"
-            ][:-1].reset_index(drop=True)
-        ).tolist()
-        frequency_diff_list.extend([0] + frequency_diff_append)
+    for i, volume_per_atom in enumerate(volumes_per_atom):
 
-        frequency_mid_append = (
-            (
-                vdos_data_scaled[
-                    vdos_data_scaled["volume_per_atom"] == volume_per_atom
-                ]["frequency_hz"][1:].reset_index(drop=True)
-                + vdos_data_scaled[
-                    vdos_data_scaled["volume_per_atom"] == volume_per_atom
-                ]["frequency_hz"][:-1].reset_index(drop=True)
-            )
-            / 2
-        ).tolist()
-        frequency_mid_list.extend([0] + frequency_mid_append)
+        frequency = frequency_array[:, i]
+        frequency_current = frequency[1:]
+        frequency_previous = frequency[:-1]
+        
+        frequency_diff_append = ((frequency_current - frequency_previous))
+        frequency_diff_list.append(np.insert(frequency_diff_append, 0, 0))
+        
+        frequency_mid = (frequency_current + frequency_previous) / 2
+        frequency_mid_list.append(np.insert(frequency_mid, 0, 0))
 
-        dos_mid_append = (
-            (
-                vdos_data_scaled[
-                    vdos_data_scaled["volume_per_atom"] == volume_per_atom
-                ]["dos_1_per_hz"][1:].reset_index(drop=True)
-                + vdos_data_scaled[
-                    vdos_data_scaled["volume_per_atom"] == volume_per_atom
-                ]["dos_1_per_hz"][:-1].reset_index(drop=True)
-            )
-            / 2
-        ).tolist()
-        dos_mid_list.extend([0] + dos_mid_append)
+        dos = dos_array[:, i]
+        dos_current = dos[1:]
+        dos_previous = dos[:-1]
 
-    vdos_data_scaled["frequency_diff"] = pd.Series(frequency_diff_list)
-    vdos_data_scaled["frequency_mid"] = pd.Series(frequency_mid_list)
-    vdos_data_scaled["dos_mid"] = pd.Series(dos_mid_list)
+        dos_mid_append = ((dos_current + dos_previous) / 2)
+        dos_mid_list.append(np.insert(dos_mid_append, 0, 0))
+    
+    dos_mid_array = np.column_stack(dos_mid_list)
+    frequency_diff_array = np.column_stack(frequency_diff_list)
+    frequency_mid_array = np.column_stack(frequency_mid_list)
 
     f_vib_list = []
     e_vib_list = []
     s_vib_list = []
     cv_vib_list = []
 
-    for volume_per_atom in volumes_per_atom:
-        frequency_diff = vdos_data_scaled[
-            vdos_data_scaled["volume_per_atom"] == volume_per_atom
-        ]["frequency_diff"].values[1:]
-        frequency_mid = vdos_data_scaled[
-            vdos_data_scaled["volume_per_atom"] == volume_per_atom
-        ]["frequency_mid"].values[1:]
-        dos_mid = vdos_data_scaled[
-            vdos_data_scaled["volume_per_atom"] == volume_per_atom
-        ]["dos_mid"].values[1:]
+    for i, volume_per_atom in enumerate(volumes_per_atom):
+        
+        frequency_diff = frequency_diff_array[1:, i]
+        frequency_mid = frequency_mid_array[1:, i]
+        dos_mid = dos_mid_array[1:, i]
 
         for temp in temp_range:
             if temp == 0:
