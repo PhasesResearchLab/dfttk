@@ -409,14 +409,14 @@ class PhononsData:
     ):
 
         yphon_results_path = os.path.join(self.path, "YPHON_results")
-        harmonic_df = harmonic(
+        harmonic_df, f_vib, s_vib, cv_vib = harmonic(
             yphon_results_path,
             scale_atoms,
             temp_range,
             order,
         )
 
-        harmonic_fit_df, volume_fit = fit_harmonic(harmonic_df, order)
+        harmonic_fit_df, volume_fit, f_vib_fit, s_vib_fit, cv_vib_fit = fit_harmonic(harmonic_df, order)
 
         self.harmonic_df = harmonic_df
         self.harmonic_fit_df = harmonic_fit_df
@@ -466,12 +466,12 @@ class PhononsData:
         for temp, coefficients in zip(self.temperatures, cvib_coefficients):
             self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
         
-        self.f_vib = self.harmonic_fit_df["f_vib"].values
-        self.s_vib = self.harmonic_fit_df["s_vib"].values
-        self.cv_vib = self.harmonic_fit_df["cv_vib"].values
-        self.f_vib_fit = self.harmonic_fit_df["f_vib_fit"].values
-        self.s_vib_fit = self.harmonic_fit_df["s_vib_fit"].values
-        self.cv_vib_fit = self.harmonic_fit_df["cv_vib_fit"].values
+        self.f_vib = f_vib
+        self.s_vib = s_vib
+        self.cv_vib = cv_vib
+        self.f_vib_fit = f_vib_fit
+        self.s_vib_fit = s_vib_fit
+        self.cv_vib_fit = cv_vib_fit
         self.volume_fit = volume_fit
 
     def plot_scaled_dos(self, num_atoms: int, plot=True):

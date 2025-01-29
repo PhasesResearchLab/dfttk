@@ -394,9 +394,12 @@ def harmonic(
         }
     )
 
-    harmonic_properties_fit = fit_harmonic(harmonic_properties, order=order)
-
-    return harmonic_properties
+    temp_df = harmonic_properties.groupby("temperature").agg(list)
+    f_vib = temp_df["f_vib"].values
+    s_vib = temp_df["s_vib"].values
+    cv_vib = temp_df["cv_vib"].values
+    
+    return harmonic_properties, f_vib, s_vib, cv_vib
 
 
 def plot_harmonic(
@@ -503,7 +506,7 @@ def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
     ].values[0][0]
     harmonic_properties_fit = harmonic_properties_fit.drop(columns=["volume_per_atom"])
 
-    return harmonic_properties_fit, volume_fit
+    return harmonic_properties_fit, volume_fit, f_vib_fit_list, s_vib_fit_list, cv_vib_fit_list
     # Continue modifying the outputs here!
 
 def plot_fit_harmonic(
