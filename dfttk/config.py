@@ -409,63 +409,16 @@ class PhononsData:
     ):
 
         yphon_results_path = os.path.join(self.path, "YPHON_results")
-        harmonic_df, f_vib, s_vib, cv_vib = harmonic(
+        harmonic_df, number_of_atoms, temperatures, volumes, f_vib, e_vib, s_vib, cv_vib = harmonic(
             yphon_results_path,
             scale_atoms,
             temp_range,
-            order,
         )
-
-        harmonic_fit_df, volume_fit, f_vib_fit, s_vib_fit, cv_vib_fit = fit_harmonic(harmonic_df, order)
+        # TODO: Need to remove reliance on the dataframes
+        harmonic_fit_df, volume_fit, f_vib_fit, s_vib_fit, cv_vib_fit, f_vib_poly, s_vib_poly, cv_vib_poly = fit_harmonic(harmonic_df, order)
 
         self.harmonic_df = harmonic_df
         self.harmonic_fit_df = harmonic_fit_df
-
-        self.number_of_atoms = int(harmonic_df["number_of_atoms"].values[0])
-        self.temperatures = harmonic_df["temperature"].unique().tolist()
-        self.volumes = harmonic_df["volume"].unique().tolist()
-
-        self.helmholtz_energy = {}
-        self.internal_energy = {}
-        self.entropy = {}
-        self.heat_capacity = {}
-        for temp in self.temperatures:
-            self.helmholtz_energy[f"{temp}K"] = self.harmonic_df[
-                self.harmonic_df["temperature"] == temp
-            ]["f_vib"].values.tolist()
-            self.internal_energy[f"{temp}K"] = self.harmonic_df[
-                self.harmonic_df["temperature"] == temp
-            ]["e_vib"].values.tolist()
-            self.entropy[f"{temp}K"] = self.harmonic_df[
-                self.harmonic_df["temperature"] == temp
-            ]["s_vib"].values.tolist()
-            self.heat_capacity[f"{temp}K"] = self.harmonic_df[
-                self.harmonic_df["temperature"] == temp
-            ]["cv_vib"].values.tolist()
-
-        self.helmholtz_energy_fit = {"polynomial_coefficients": {}}
-        fvib_coefficients = [
-            arr.coeffs.tolist() for arr in self.harmonic_fit_df["f_vib_poly"]
-        ]
-        for temp, coefficients in zip(self.temperatures, fvib_coefficients):
-            self.helmholtz_energy_fit["polynomial_coefficients"][
-                f"{temp}K"
-            ] = coefficients
-
-        self.entropy_fit = {"polynomial_coefficients": {}}
-        svib_coefficients = [
-            arr.coeffs.tolist() for arr in self.harmonic_fit_df["s_vib_poly"]
-        ]
-        for temp, coefficients in zip(self.temperatures, svib_coefficients):
-            self.entropy_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
-
-        self.heat_capacity_fit = {"polynomial_coefficients": {}}
-        cvib_coefficients = [
-            arr.coeffs.tolist() for arr in self.harmonic_fit_df["cv_vib_poly"]
-        ]
-        for temp, coefficients in zip(self.temperatures, cvib_coefficients):
-            self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
-        
         self.f_vib = f_vib
         self.s_vib = s_vib
         self.cv_vib = cv_vib
@@ -473,6 +426,37 @@ class PhononsData:
         self.s_vib_fit = s_vib_fit
         self.cv_vib_fit = cv_vib_fit
         self.volume_fit = volume_fit
+        
+        self.number_of_atoms = number_of_atoms
+        self.temperatures = temperatures
+        self.volumes = volumes
+
+        self.helmholtz_energy = {}
+        self.internal_energy = {}
+        self.entropy = {}
+        self.heat_capacity = {}
+        for i, temp in enumerate(self.temperatures):
+            self.helmholtz_energy[f"{temp}K"] = self.f_vib[i]
+            self.internal_energy[f"{temp}K"] = e_vib[i]
+            self.entropy[f"{temp}K"] = s_vib[i]
+            self.heat_capacity[f"{temp}K"] = cv_vib[i]
+            
+        self.helmholtz_energy_fit = {"polynomial_coefficients": {}}
+        fvib_coefficients = [arr for arr in f_vib_poly]
+        for temp, coefficients in zip(self.temperatures, fvib_coefficients):
+            self.helmholtz_energy_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
+
+        self.entropy_fit = {"polynomial_coefficients": {}}
+        svib_coefficients = [arr for arr in s_vib_poly]
+        for temp, coefficients in zip(self.temperatures, svib_coefficients):
+            self.entropy_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
+
+        self.heat_capacity_fit = {"polynomial_coefficients": {}}
+        cvib_coefficients = [arr for arr in cv_vib_poly]
+        for temp, coefficients in zip(self.temperatures, cvib_coefficients):
+            self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
+        
+        # Temporary df for qha. Continue here!
 
     def plot_scaled_dos(self, num_atoms: int, plot=True):
         yphon_results_path = os.path.join(self.path, "YPHON_results")

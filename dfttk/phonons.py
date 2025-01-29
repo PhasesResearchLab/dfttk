@@ -242,7 +242,6 @@ def harmonic(
     path: str,
     scale_atoms: int,
     temp_range: np.ndarray,
-    order: int = 2,
 ) -> pd.DataFrame:
     """Calculate the harmonic properties at different volumes and temperatures
 
@@ -396,10 +395,11 @@ def harmonic(
 
     temp_df = harmonic_properties.groupby("temperature").agg(list)
     f_vib = temp_df["f_vib"].values
+    e_vib = temp_df["e_vib"].values
     s_vib = temp_df["s_vib"].values
     cv_vib = temp_df["cv_vib"].values
     
-    return harmonic_properties, f_vib, s_vib, cv_vib
+    return harmonic_properties, scale_atoms, temp_range, volumes_per_atom*scale_atoms, f_vib, e_vib, s_vib, cv_vib
 
 
 def plot_harmonic(
@@ -506,7 +506,7 @@ def fit_harmonic(harmonic_properties: pd.DataFrame, order: int) -> pd.DataFrame:
     ].values[0][0]
     harmonic_properties_fit = harmonic_properties_fit.drop(columns=["volume_per_atom"])
 
-    return harmonic_properties_fit, volume_fit, f_vib_fit_list, s_vib_fit_list, cv_vib_fit_list
+    return harmonic_properties_fit, volume_fit, f_vib_fit_list, s_vib_fit_list, cv_vib_fit_list, free_energy_polynomial_list, entropy_polynomial_list, heat_capacity_polynomial_list
     # Continue modifying the outputs here!
 
 def plot_fit_harmonic(
