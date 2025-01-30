@@ -1,5 +1,5 @@
 """
-Harmonic approximation using phonons from VASP and YPHON. 
+"Module for computing thermodynamic properties within the harmonic approximation using phonon data from VASP and YPHON."
 """
 
 # Standard library imports
@@ -23,15 +23,18 @@ PLANCK_CONSTANT = (
 )  # The Planck's constant in eVs
 
 
-# TODO: Make an error check to make sure there are equal number of vdos and volph files and all the indexes match
 def load_phonon_dos(path: str) -> pd.DataFrame:
-    """Load phonon DOS files processed by YPHON
+    """Loads the phonon DOS data from the vdos and volph files in the specified directory.
 
     Args:
-        path (str): path to the directory containing the vdos and volph files
+        path (str):  path to the directory containing the vdos and volph files.
+
+    Raises:
+        ValueError: If the number of vdos files does not match the number of volph files.
+        ValueError: If the indexes of vdos files do not match the indexes of volph files.
 
     Returns:
-        pd.DataFrame: pandas dataframe containing the phonon DOS data
+        pd.DataFrame: pandas dataframe containing the phonon DOS data.
     """
 
     file_list = os.listdir(path)
@@ -39,6 +42,18 @@ def load_phonon_dos(path: str) -> pd.DataFrame:
     volph_files = [file for file in file_list if file.startswith("volph_")]
     vdos_files.sort()
     volph_files.sort()
+
+    if len(vdos_files) != len(volph_files):
+        raise ValueError(
+            "The number of vdos files does not match the number of volph files."
+        )
+
+    vdos_indexes = [file.split("_")[1].split(".")[0] for file in vdos_files]
+    volph_indexes = [file.split("_")[1].split(".")[0] for file in volph_files]
+    if vdos_indexes != volph_indexes:
+        raise ValueError(
+            "The indexes of vdos files do not match the indexes of volph files."
+        )
 
     dataframes = []
     for i in range(len(vdos_files)):
@@ -64,12 +79,12 @@ def scale_phonon_dos(path: str, num_atoms: int = 5, plot: bool = False) -> pd.Da
     YPHON normalizes the area to 3N.
 
     Args:
-        path (str): path to the directory containing the vdos and volph files
+        path (str): path to the directory containing the vdos and volph files.
         num_atoms (int, optional): number of atoms to scale the phonon DOS to. Defaults to 5.
         plot (bool, optional): Defaults to False.
 
     Returns:
-        pd.DataFrame: pandas dataframe containing the scaled phonon DOS data
+        pd.DataFrame: pandas dataframe containing the scaled phonon DOS data.
     """
 
     vdos_data = load_phonon_dos(path)
@@ -198,10 +213,10 @@ def scale_phonon_dos(path: str, num_atoms: int = 5, plot: bool = False) -> pd.Da
 
 
 def plot_phonon_dos(path: str, scale_atoms: int = 5):
-    """Plot the scaled phonon DOS for multiple volumes
+    """Plot the scaled phonon DOS for multiple volumes.
 
     Args:
-        path (str): path to the directory containing the vdos and volph files
+        path (str): path to the directory containing the vdos and volph files.
         scale_atoms (int, optional): Number of atoms to scale the phonon DOS to. Defaults to 5.
     """
 
@@ -240,23 +255,27 @@ def plot_phonon_dos(path: str, scale_atoms: int = 5):
 
 def harmonic(
     scale_atoms: int,
-    volumes_per_atom,
-    frequency_array,
-    dos_array,
-    temp_range: np.ndarray,
-) -> pd.DataFrame:
-    """Calculate the harmonic properties at different volumes and temperatures
+    volumes_per_atom: np.ndarray,
+    temperatures: np.ndarray,
+    frequency_array: np.ndarray,
+    dos_array: np.ndarray,
+) -> tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Calculates the thermodynamic properties from the phonon DOS data using the harmonic approximation.
 
     Args:
-        path (str): path to the directory containing the vdos and volph files
-        scale_atoms (int): number of atoms to scale the thermodynamic properties to
-        temp_range (list): temperature range to calculate the thermodynamic properties
-        order (int, optional): order of the polynomial fit. Defaults to 1.
-        plot (bool, optional): Defaults to True.
-        selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
+        scale_atoms (int): number of atoms to scale the thermodynamic properties to.
+        volumes_per_atom (np.ndarray): volumes per atom corresponding to the phonon DOS data.
+        temperatures (np.ndarray): temperatures in K.
+        frequency_array (np.ndarray): a 2D array of frequencies in Hz where each column corresponds to a different volume per atom.
+        dos_array (np.ndarray): a 2D array of DOS values in 1/Hz where each column corresponds to a different volume per atom.
 
     Returns:
-        pd.DataFrame: pandas dataframes containing the harmonic and fitted harmonic properties
+        tuple: tuple containing the following:
+            - volumes (np.ndarray): volumes corresponding to the thermodynamic properties.
+            - helmholtz_energy (np.ndarray): a 2D array of vibrational helmholtz energy in eV/atom. Rows are temperatures and columns are volumes.
+            - internal_energy (np.ndarray): a 2D array of vibrational internal energy in eV/atom. Rows are temperatures and columns are volumes.
+            - entropy (np.ndarray): a 2D array of vibrational entropy in eV/K/atom. Rows are temperatures and columns are volumes.
+            - heat_capacity (np.ndarray): a 2D array of vibrational heat capacity in eV/K/atom. Rows are temperatures and columns are volumes.
     """
 
     # Use these to evaluate the integrals
@@ -264,15 +283,15 @@ def harmonic(
     frequency_mid_list = []
     dos_mid_list = []
 
-    for i, volume_per_atom in enumerate(volumes_per_atom):
+    for i in range(len(volumes_per_atom)):
 
         frequency = frequency_array[:, i]
         frequency_current = frequency[1:]
         frequency_previous = frequency[:-1]
-        
-        frequency_diff_append = ((frequency_current - frequency_previous))
+
+        frequency_diff_append = frequency_current - frequency_previous
         frequency_diff_list.append(np.insert(frequency_diff_append, 0, 0))
-        
+
         frequency_mid = (frequency_current + frequency_previous) / 2
         frequency_mid_list.append(np.insert(frequency_mid, 0, 0))
 
@@ -280,52 +299,54 @@ def harmonic(
         dos_current = dos[1:]
         dos_previous = dos[:-1]
 
-        dos_mid_append = ((dos_current + dos_previous) / 2)
+        dos_mid_append = (dos_current + dos_previous) / 2
         dos_mid_list.append(np.insert(dos_mid_append, 0, 0))
-    
+
     dos_mid_array = np.column_stack(dos_mid_list)
     frequency_diff_array = np.column_stack(frequency_diff_list)
     frequency_mid_array = np.column_stack(frequency_mid_list)
 
-    f_vib_list = []
-    e_vib_list = []
-    s_vib_list = []
-    cv_vib_list = []
+    helmholtz_energy_list = []
+    internal_energy_list = []
+    entropy_list = []
+    heat_capacity_list = []
 
-    for i, volume_per_atom in enumerate(volumes_per_atom):
-        
+    for i in range(len(volumes_per_atom)):
+
         frequency_diff = frequency_diff_array[1:, i]
         frequency_mid = frequency_mid_array[1:, i]
         dos_mid = dos_mid_array[1:, i]
 
-        for temp in temp_range:
-            if temp == 0:
+        for temperature in temperatures:
+            if temperature == 0:
                 integrand = (
                     PLANCK_CONSTANT / 2 * frequency_mid * dos_mid * frequency_diff
                 )
-                f_vib = np.sum(integrand) / 5 * scale_atoms
-                f_vib_list.append(f_vib)
+                helmholtz_energy = np.sum(integrand) / 5 * scale_atoms
+                helmholtz_energy_list.append(helmholtz_energy)
 
-                e_vib = f_vib
-                e_vib_list.append(e_vib)
+                internal_energy = helmholtz_energy
+                internal_energy_list.append(internal_energy)
 
-                s_vib = 0
-                s_vib_list.append(s_vib)
+                entropy = 0
+                entropy_list.append(entropy)
 
-                cv_vib = 0
-                cv_vib_list.append(cv_vib)
+                heat_capacity = 0
+                heat_capacity_list.append(heat_capacity)
 
-            if temp > 0:
+            if temperature > 0:
                 ratio = (PLANCK_CONSTANT * frequency_mid) / (
-                    2 * BOLTZMANN_CONSTANT * temp
+                    2 * BOLTZMANN_CONSTANT * temperature
                 )
                 differential = frequency_diff
 
                 integrand = np.log(2 * np.sinh(ratio)) * dos_mid * differential
-                f_vib = (
-                    (BOLTZMANN_CONSTANT * temp * np.sum(integrand)) / 5 * scale_atoms
+                helmholtz_energy = (
+                    (BOLTZMANN_CONSTANT * temperature * np.sum(integrand))
+                    / 5
+                    * scale_atoms
                 )
-                f_vib_list.append(f_vib)
+                helmholtz_energy_list.append(helmholtz_energy)
 
                 integrand = (
                     frequency_mid
@@ -334,8 +355,10 @@ def harmonic(
                     * dos_mid
                     * differential
                 )
-                e_vib = (PLANCK_CONSTANT / 2 * np.sum(integrand)) / 5 * scale_atoms
-                e_vib_list.append(e_vib)
+                internal_energy = (
+                    (PLANCK_CONSTANT / 2 * np.sum(integrand)) / 5 * scale_atoms
+                )
+                internal_energy_list.append(internal_energy)
 
                 integrand = (
                     (
@@ -345,68 +368,87 @@ def harmonic(
                     * dos_mid
                     * differential
                 )
-                s_vib = (BOLTZMANN_CONSTANT * np.sum(integrand)) / 5 * scale_atoms
-                s_vib_list.append(s_vib)
+                entropy = (BOLTZMANN_CONSTANT * np.sum(integrand)) / 5 * scale_atoms
+                entropy_list.append(entropy)
 
                 integrand = (
                     ratio**2 * (1 / np.sinh(ratio)) ** 2 * dos_mid * differential
                 )
-                cv_vib = (BOLTZMANN_CONSTANT * np.sum(integrand)) / 5 * scale_atoms
-                cv_vib_list.append(cv_vib)
+                heat_capacity = (
+                    (BOLTZMANN_CONSTANT * np.sum(integrand)) / 5 * scale_atoms
+                )
+                heat_capacity_list.append(heat_capacity)
 
-    num_temps = len(temp_range)
+    num_temps = len(temperatures)
     num_volumes = len(volumes_per_atom)
 
-    f_vib = np.reshape(f_vib_list, (num_volumes, num_temps))
-    e_vib = np.reshape(e_vib_list, (num_volumes, num_temps))
-    s_vib = np.reshape(s_vib_list, (num_volumes, num_temps))
-    cv_vib = np.reshape(cv_vib_list, (num_volumes, num_temps))
-    
-    f_vib = f_vib.T
-    e_vib = e_vib.T
-    s_vib = s_vib.T
-    cv_vib = cv_vib.T
-            
-    return scale_atoms, temp_range, volumes_per_atom*scale_atoms, f_vib, e_vib, s_vib, cv_vib
+    helmholtz_energy = np.reshape(helmholtz_energy_list, (num_volumes, num_temps))
+    internal_energy = np.reshape(internal_energy_list, (num_volumes, num_temps))
+    entropy = np.reshape(entropy_list, (num_volumes, num_temps))
+    heat_capacity = np.reshape(heat_capacity_list, (num_volumes, num_temps))
+
+    helmholtz_energy = helmholtz_energy.T
+    internal_energy = internal_energy.T
+    entropy = entropy.T
+    heat_capacity = heat_capacity.T
+
+    return (
+        volumes_per_atom * scale_atoms,
+        helmholtz_energy,
+        internal_energy,
+        entropy,
+        heat_capacity,
+    )
 
 
 def plot_harmonic(
-    scale_atoms,
-    temperature,
-    y_data,
-    volumes,
-    property_to_plot: str):
-    """Plots Fvib, Svib and Cvib as a function of temperature for different fixed volumes
+    scale_atoms: int,
+    volumes: np.ndarray,
+    temperatures: np.ndarray,
+    property: np.ndarray,
+    property_name: str,
+) -> go.Figure:
+    """Plots the thermodynamic properties from the harmonic approximation vs. temperature.
 
     Args:
-        harmonic_properties (pd.DataFrame): harmonic properties dataframe from the harmonic function
+        scale_atoms (int): number of atoms the thermodynamic properties are scaled to.
+        volumes (np.ndarray): volumes corresponding to the thermodynamic properties.
+        temperatures (np.ndarray): temperatures in K.
+        property (np.ndarray): a 2D array of helmholtz energy, entropy, or heat capacity. Rows are temperatures and columns are volumes.
+        property_name (str): helmholtz energy, entropy, or heat capacity.
+
+    Raises:
+        ValueError: If property_name is not one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
+
+    Returns:
+        go.Figure: plotly figure of the thermodynamic property vs. temperature.
     """
 
-    if property_to_plot not in ["f_vib", "s_vib", "cv_vib"]:
-        raise ValueError("property_to_plot must be one of 'f_vib', 's_vib', or 'cv_vib'")
-    
-    y_value = property_to_plot
-    y_data = np.vstack(y_data)
-    
+    valid_properties = {
+        "helmholtz_energy": f"F<sub>vib</sub> (eV/{scale_atoms} atoms)",
+        "entropy": f"S<sub>vib</sub> (eV/K/{scale_atoms} atoms)",
+        "heat_capacity": f"C<sub>vib</sub> (eV/K/{scale_atoms} atoms)",
+    }
+
+    if property_name not in valid_properties:
+        raise ValueError(
+            "property_name must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'"
+        )
+
+    property = np.vstack(property)
+    y_title = valid_properties[property_name]
+
     fig = go.Figure()
     for i, volume in enumerate(volumes):
-        
         fig.add_trace(
             go.Scatter(
-                x=temperature,
-                y=y_data[:, i],
+                x=temperatures,
+                y=property[:, i],
                 mode="lines",
                 name=f"{volume} Å³",
                 showlegend=True,
             )
         )
-
-    if y_value == "f_vib":
-        y_title = f"F<sub>vib</sub> (eV/{scale_atoms} atoms)"
-    elif y_value == "s_vib":
-        y_title = f"S<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
-    elif y_value == "cv_vib":
-        y_title = f"C<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
 
     plot_format(fig, "Temperature (K)", y_title)
     fig.show()
@@ -414,80 +456,95 @@ def plot_harmonic(
 
 
 def fit_harmonic(
-    volume,
-    temperatures,
-    f_vib: np.ndarray,
-    s_vib: np.ndarray,
-    cv_vib: np.ndarray,
-    order: int) -> pd.DataFrame:
-    """Fits the harmonic properties to a polynomial function
+    volumes: np.ndarray,
+    temperatures: np.ndarray,
+    helmholtz_energy: np.ndarray,
+    entropy: np.ndarray,
+    heat_capacity: np.ndarray,
+    order: int,
+) -> tuple[np.ndarray, list, list, list, list, list, list]:
+    """For each fixed temperature, fits the thermodynamic properties vs. volume to a polynomial of a given order.
 
     Args:
-        harmonic_properties (pd.DataFrame): _description_
-        order (int): order of the polynomial fit
+        volumes (np.ndarray): volumes corresponding to the thermodynamic properties.
+        temperatures (np.ndarray): temperatures in K.
+        helmholtz_energy (np.ndarray): a 2D array of helmholtz energy. Rows are temperatures and columns are volumes.
+        entropy (np.ndarray): a 2D array of entropy. Rows are temperatures and columns are volumes.
+        heat_capacity (np.ndarray): a 2D array of heat capacity. Rows are temperatures and columns are volumes.
+        order (int): order of the polynomial to fit.
 
     Returns:
-        pd.DataFrame: pandas dataframe containing the fitted harmonic properties
+        tuple[np.ndarray, list, list, list, list, list, list]:
+        tuple containing the following:
+            - volumes_fit (np.ndarray): volumes corresponding to the fitted thermodynamic properties.
+            - helmholtz_energy_fit_list (list): a list of 1D arrays of fitted helmholtz energy. Each array corresponds to a temperature.
+            - entropy_fit_list (list): a list of 1D arrays of fitted entropy. Each array corresponds to a temperature.
+            - heat_capacity_fit_list (list): a list of 1D arrays of fitted heat capacity. Each array corresponds to a temperature.
+            - helmholtz_energy_polynomial_list (list): a list of 1D polynomials of fitted helmholtz energy. Each polynomial corresponds to a temperature.
+            - entropy_polynomial_list (list): a list of 1D polynomials of fitted entropy. Each polynomial corresponds to a temperature.
+            - heat_capacity_polynomial_list (list): a list of 1D polynomials of fitted heat capacity. Each polynomial corresponds to a temperature.
     """
 
-    volume_fit_list = []
-    f_vib_fit_list = []
-    s_vib_fit_list = []
-    cv_vib_fit_list = []
-    free_energy_polynomial_list = []
+    helmholtz_energy_fit_list = []
+    entropy_fit_list = []
+    heat_capacity_fit_list = []
+    helmholtz_energy_polynomial_list = []
     entropy_polynomial_list = []
     heat_capacity_polynomial_list = []
 
-    for i, temperature in enumerate(temperatures):
+    for i in range(len(temperatures)):
 
-        free_energy_coefficients = np.polyfit(volume, f_vib[i], order)
-        entropy_coefficients = np.polyfit(volume, s_vib[i], order)
-        heat_capacity_coefficients = np.polyfit(volume, cv_vib[i], order)
+        helmholtz_energy_coefficients = np.polyfit(volumes, helmholtz_energy[i], order)
+        entropy_coefficients = np.polyfit(volumes, entropy[i], order)
+        heat_capacity_coefficients = np.polyfit(volumes, heat_capacity[i], order)
 
-        free_energy_polynomial = np.poly1d(free_energy_coefficients)
+        helmholtz_energy_polynomial = np.poly1d(helmholtz_energy_coefficients)
         entropy_polynomial = np.poly1d(entropy_coefficients)
         heat_capacity_polynomial = np.poly1d(heat_capacity_coefficients)
-        free_energy_polynomial_list.append(free_energy_polynomial)
+        helmholtz_energy_polynomial_list.append(helmholtz_energy_polynomial)
         entropy_polynomial_list.append(entropy_polynomial)
         heat_capacity_polynomial_list.append(heat_capacity_polynomial)
 
-        volume_fit = np.linspace(min(volume) * 0.98, max(volume) * 1.02, 1000)
-        f_vib_fit = free_energy_polynomial(volume_fit)
-        s_vib_fit = entropy_polynomial(volume_fit)
-        cv_vib_fit = heat_capacity_polynomial(volume_fit)
+        volumes_fit = np.linspace(min(volumes) * 0.98, max(volumes) * 1.02, 1000)
+        helmholtz_energy_fit = helmholtz_energy_polynomial(volumes_fit)
+        entropy_fit = entropy_polynomial(volumes_fit)
+        heat_capacity_fit = heat_capacity_polynomial(volumes_fit)
 
-        volume_fit_list.append(volume_fit)
-        f_vib_fit_list.append(f_vib_fit)
-        s_vib_fit_list.append(s_vib_fit)
-        cv_vib_fit_list.append(cv_vib_fit)
+        helmholtz_energy_fit_list.append(helmholtz_energy_fit)
+        entropy_fit_list.append(entropy_fit)
+        heat_capacity_fit_list.append(heat_capacity_fit)
 
-    return volume_fit, f_vib_fit_list, s_vib_fit_list, cv_vib_fit_list, free_energy_polynomial_list, entropy_polynomial_list, heat_capacity_polynomial_list
+    return (
+        volumes_fit,
+        helmholtz_energy_fit_list,
+        entropy_fit_list,
+        heat_capacity_fit_list,
+        helmholtz_energy_polynomial_list,
+        entropy_polynomial_list,
+        heat_capacity_polynomial_list,
+    )
 
 
 def plot_fit_harmonic(
-    scale_atoms,
-    temperature_list,
-    volume,
-    property_to_plot,
-    y_value,
-    volume_fit,
-    y_value_fit,
-    selected_temperatures_plot: np.ndarray = None
-):
-    """Plots the fitted harmonic properties
+    scale_atoms: int,
+    volumes: np.ndarray,
+    temperatures: np.ndarray,
+    property_name: str,
+    property: np.ndarray,
+    volume_fit: np.ndarray,
+    property_fit: list,
+    selected_temperatures_plot: np.ndarray = None,
+) -> go.Figure:
 
-    Args:
-        harmonic_properties_fit (pd.DataFrame): fitted harmonic properties dataframe from the fit_harmonic function
-        selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
-    """
+    if property_name not in ["helmholtz_energy", "entropy", "heat_capacity"]:
+        raise ValueError(
+            "property_name must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'"
+        )
 
-    if property_to_plot not in ["f_vib", "s_vib", "cv_vib"]:
-        raise ValueError("property_to_plot must be one of 'f_vib', 's_vib', or 'cv_vib'")
-    
     if selected_temperatures_plot is None:
-        indices = np.linspace(0, len(temperature_list) - 1, 5, dtype=int)
-        selected_temperatures_plot = np.array([temperature_list[j] for j in indices])
-    
+        indices = np.linspace(0, len(temperatures) - 1, 5, dtype=int)
+        selected_temperatures_plot = np.array([temperatures[j] for j in indices])
+
     fig = go.Figure()
     colors = [
         "#636EFA",
@@ -507,11 +564,11 @@ def plot_fit_harmonic(
     ]
     i = 0
     for temperature in selected_temperatures_plot:
-        index = np.where(temperature_list == temperature)[0][0]
-        x = volume
-        y = y_value[index]
+        index = np.where(temperatures == temperature)[0][0]
+        x = volumes
+        y = property[index]
         x_fit = volume_fit
-        y_fit = y_value_fit[index]
+        y_fit = property_fit[index]
 
         color = colors[i % len(colors)]
 
@@ -536,11 +593,11 @@ def plot_fit_harmonic(
         )
         i += 1
 
-    if property_to_plot == "f_vib":
+    if property_name == "helmholtz_energy":
         y_title = f"F<sub>vib</sub> (eV/{scale_atoms} atoms)"
-    elif property_to_plot == "s_vib":
+    elif property_name == "entropy":
         y_title = f"S<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
-    elif property_to_plot == "cv_vib":
+    elif property_name == "heat_capacity":
         y_title = f"C<sub>vib</sub> (eV/K/{scale_atoms} atoms)"
 
     plot_format(fig, f"Volume (Å³/{scale_atoms} atoms)", y_title)

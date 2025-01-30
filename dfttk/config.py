@@ -415,7 +415,7 @@ class PhononsData:
     def get_harmonic_data(
         self,
         scale_atoms: int,
-        temp_range: list,
+        temperatures: np.ndarray,
         order: int,
     ):
 
@@ -433,10 +433,8 @@ class PhononsData:
             dos_array.append(dos)
         frequency_array = np.column_stack(frequency_array)
         dos_array = np.column_stack(dos_array)
-
+        self.temperatures = temperatures
         (
-            number_of_atoms,
-            temperatures,
             volumes,
             f_vib,
             e_vib,
@@ -445,14 +443,13 @@ class PhononsData:
         ) = harmonic(
             scale_atoms,
             volumes_per_atom,
+            temperatures,
             frequency_array,
             dos_array,
-            temp_range,
         )
         
-        self.number_of_atoms = number_of_atoms
+        self.number_of_atoms = scale_atoms
         self.volumes = volumes
-        self.temperatures = temperatures
         self.f_vib = f_vib
         self.s_vib = s_vib
         self.cv_vib = cv_vib
@@ -531,9 +528,7 @@ class PhononsData:
 
     def plot_scaled_dos(self, num_atoms: int, plot=True):
         yphon_results_path = os.path.join(self.path, "YPHON_results")
-        vdos_data_scaled = scale_phonon_dos(yphon_results_path, num_atoms, plot)
-        # temporary
-        return vdos_data_scaled
+        scale_phonon_dos(yphon_results_path, num_atoms, plot)
 
     def plot_multiple_dos(self, num_atoms: int):
         yphon_results_path = os.path.join(self.path, "YPHON_results")
@@ -542,22 +537,28 @@ class PhononsData:
     def plot_harmonic(
         self, property_to_plot, selected_temperatures_plot: np.ndarray = None
     ):
-
-        property_data = getattr(self, property_to_plot)
-        property_fit_data = getattr(self, f"{property_to_plot}_fit")
+        property_mapping = {
+            "helmholtz_energy": "f_vib",
+            "entropy": "s_vib",
+            "heat_capacity": "cv_vib"
+        }
+        if property_to_plot in property_mapping:
+            property_name = property_mapping[property_to_plot]
+            property_data = getattr(self, property_name)
+            property_fit_data = getattr(self, f"{property_name}_fit")
 
         fig_harmonic = plot_harmonic(
             self.number_of_atoms,
+            self.volumes,
             self.temperatures,
             property_data,
-            self.volumes,
             property_to_plot,
         )
 
         fig_fit_harmonic = plot_fit_harmonic(
             self.number_of_atoms,
-            self.temperatures,
             self.volumes,
+            self.temperatures,
             property_to_plot,
             property_data,
             self.volume_fit,
@@ -1088,7 +1089,7 @@ class Configuration:
     def process_phonons(
         self,
         scale_atoms: int,
-        temp_range: list,
+        temperatures: np.ndarray,
         volumes: list[float] = None,
         order: int = 2,
     ):
@@ -1096,7 +1097,7 @@ class Configuration:
         self.phonons.get_vasp_input(volumes)
         self.phonons.get_harmonic_data(
             scale_atoms,
-            temp_range,
+            temperatures,
             order=order,
         )
 
