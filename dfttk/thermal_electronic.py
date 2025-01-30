@@ -731,47 +731,53 @@ def thermal_electronic(
     return thermal_electronic_properties, thermal_electronic_properties_fit
 
 
-def plot_thermal_electronic(thermal_electronic_properties: pd.DataFrame):
+def plot_thermal_electronic(thermal_electronic_properties: pd.DataFrame, property_to_plot: str):
     """Plots the thermal electronic properties vs. temperature and vs. volume
 
     Args:
         thermal_electronic_properties (pd.DataFrame): dataframe containing the thermal electronic properties
     """
 
+    if property_to_plot not in ["f_el", "s_el", "cv_el"]:
+        raise ValueError("property_to_plot must be one of 'f_el', 's_el', or 'cv_el'")
+    
     volumes = thermal_electronic_properties["volume"].unique()
     number_of_atoms = thermal_electronic_properties["number_of_atoms"].unique()[0]
 
-    y_values = ["f_el", "s_el", "cv_el"]
-    for y_value in y_values:
-        fig = go.Figure()
-        for volume in volumes:
-            temperature = thermal_electronic_properties[
-                thermal_electronic_properties["volume"] == volume
-            ]["temperature"]
-            y_data = thermal_electronic_properties[
-                thermal_electronic_properties["volume"] == volume
-            ][y_value]
+    y_value = property_to_plot
+    #y_values = ["f_el", "s_el", "cv_el"]
+    #for y_value in y_values:
+    fig = go.Figure()
+    for volume in volumes:
+        temperature = thermal_electronic_properties[
+            thermal_electronic_properties["volume"] == volume
+        ]["temperature"]
+        y_data = thermal_electronic_properties[
+            thermal_electronic_properties["volume"] == volume
+        ][y_value]
 
-            fig.add_trace(
-                go.Scatter(
-                    x=temperature,
-                    y=y_data,
-                    mode="lines",
-                    name=f"{volume} Å³",
-                    showlegend=True,
-                )
+        fig.add_trace(
+            go.Scatter(
+                x=temperature,
+                y=y_data,
+                mode="lines",
+                name=f"{volume} Å³",
+                showlegend=True,
             )
+        )
 
-        if y_value == "f_el":
-            y_title = f"F<sub>el</sub> (eV/{number_of_atoms} atoms)"
-        elif y_value == "s_el":
-            y_title = f"S<sub>el</sub> (eV/K/{number_of_atoms} atoms)"
-        elif y_value == "cv_el":
+    if y_value == "f_el":
+        y_title = f"F<sub>el</sub> (eV/{number_of_atoms} atoms)"
+    elif y_value == "s_el":
+        y_title = f"S<sub>el</sub> (eV/K/{number_of_atoms} atoms)"
+    elif y_value == "cv_el":
 
-            y_title = f"C<sub>v, el</sub> (eV/K/{number_of_atoms} atoms)"
+        y_title = f"C<sub>v, el</sub> (eV/K/{number_of_atoms} atoms)"
 
-        plot_format(fig, "Temperature (K)", y_title)
-        fig.show()
+    plot_format(fig, "Temperature (K)", y_title)
+    fig.show()
+    
+    return fig
 
 
 def fit_thermal_electronic(
@@ -846,6 +852,7 @@ def fit_thermal_electronic(
 
 def plot_thermal_electronic_properties_fit(
     thermal_electronic_properties_fit: pd.DataFrame,
+    property_to_plot: str,
     selected_temperatures_plot: np.ndarray = None,
 ):
     """Plots the fitted thermal electronic properties vs. volume for various fixed temperatures
@@ -855,73 +862,82 @@ def plot_thermal_electronic_properties_fit(
         selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
     """
 
+    if property_to_plot not in ["f_el", "s_el", "cv_el"]:
+        raise ValueError("property_to_plot must be one of 'f_el', 's_el', or 'cv_el'")
+    
     number_of_atoms = thermal_electronic_properties_fit["number_of_atoms"].iloc[0]
     temperature_list = thermal_electronic_properties_fit.index.values
     if selected_temperatures_plot is None:
         indices = np.linspace(0, len(temperature_list) - 1, 5, dtype=int)
         selected_temperatures_plot = np.array([temperature_list[j] for j in indices])
 
-    y_values = [
-        ("f_el", "f_el_fit"),
-        ("s_el", "s_el_fit"),
-        ("cv_el", "cv_el_fit"),
+    #y_values = [
+    #    ("f_el", "f_el_fit"),
+    #    ("s_el", "s_el_fit"),
+    #    ("cv_el", "cv_el_fit"),
+    #]
+    
+    #for y_value, y_value_fit in y_values:
+    y_value = property_to_plot
+    y_value_fit = f"{property_to_plot}_fit"
+    
+    fig = go.Figure()
+    colors = [
+        "#636EFA",
+        "#EF553B",
+        "#00CC96",
+        "#AB63FA",
+        "#FFA15A",
+        "#19D3F3",
+        "#FF6692",
+        "#B6E880",
+        "#FF97FF",
+        "#FECB52",
     ]
-    for y_value, y_value_fit in y_values:
-        fig = go.Figure()
-        colors = [
-            "#636EFA",
-            "#EF553B",
-            "#00CC96",
-            "#AB63FA",
-            "#FFA15A",
-            "#19D3F3",
-            "#FF6692",
-            "#B6E880",
-            "#FF97FF",
-            "#FECB52",
-        ]
-        colors = [
-            f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {1})"
-            for color in colors
-        ]
+    colors = [
+        f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {1})"
+        for color in colors
+    ]
 
-        i = 0
-        for i, temperature in enumerate(selected_temperatures_plot):
-            x = thermal_electronic_properties_fit.loc[temperature]["volume"]
-            y = thermal_electronic_properties_fit.loc[temperature][y_value]
-            x_fit = thermal_electronic_properties_fit.loc[temperature]["volume_fit"]
-            y_fit = thermal_electronic_properties_fit.loc[temperature][y_value_fit]
+    i = 0
+    for i, temperature in enumerate(selected_temperatures_plot):
+        x = thermal_electronic_properties_fit.loc[temperature]["volume"]
+        y = thermal_electronic_properties_fit.loc[temperature][y_value]
+        x_fit = thermal_electronic_properties_fit.loc[temperature]["volume_fit"]
+        y_fit = thermal_electronic_properties_fit.loc[temperature][y_value_fit]
 
-            color = colors[i % len(colors)]
+        color = colors[i % len(colors)]
 
-            fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=y,
-                    mode="markers",
-                    line=dict(color=color),
-                    showlegend=False,
-                )
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="markers",
+                line=dict(color=color),
+                showlegend=False,
             )
-            fig.add_trace(
-                go.Scatter(
-                    x=x_fit,
-                    y=y_fit,
-                    mode="lines",
-                    line=dict(color=color),
-                    name=f"{temperature} K",
-                    showlegend=True,
-                )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=x_fit,
+                y=y_fit,
+                mode="lines",
+                line=dict(color=color),
+                name=f"{temperature} K",
+                showlegend=True,
             )
-            i += 1
+        )
+        i += 1
 
-        if y_value == "f_el":
-            y_title = f"F<sub>el</sub> (eV/{number_of_atoms} atoms)"
-        elif y_value == "s_el":
-            y_title = f"S<sub>el</sub> (eV/K/{number_of_atoms} atoms)"
-        elif y_value == "cv_el":
+    if y_value == "f_el":
+        y_title = f"F<sub>el</sub> (eV/{number_of_atoms} atoms)"
+    elif y_value == "s_el":
+        y_title = f"S<sub>el</sub> (eV/K/{number_of_atoms} atoms)"
+    elif y_value == "cv_el":
 
-            y_title = f"C<sub>v, el</sub> (eV/K/{number_of_atoms} atoms)"
+        y_title = f"C<sub>v, el</sub> (eV/K/{number_of_atoms} atoms)"
 
-        plot_format(fig, f"Volume (Å³/{number_of_atoms} atoms)", y_title)
-        fig.show()
+    plot_format(fig, f"Volume (Å³/{number_of_atoms} atoms)", y_title)
+    fig.show()
+
+    return fig

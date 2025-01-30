@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from pymongo import MongoClient
 from natsort import natsorted
+import plotly.graph_objects as go
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 
@@ -26,11 +27,14 @@ from dfttk.aggregate_extraction import (
 from dfttk.eos_fit import (
     fit_to_eos,
     plot_ev,
+    assign_colors_to_configs,
+    assign_marker_symbols_to_configs,
 )
 from dfttk.debye import process_debye_gruneisen, plot_debye
 from dfttk.workflows import process_phonon_dos_YPHON
 from dfttk.phonons import (
     harmonic,
+    fit_harmonic,
     scale_phonon_dos,
     plot_phonon_dos,
     plot_harmonic,
@@ -82,7 +86,6 @@ class EvCurvesData:
     def get_vasp_input(self, volumes: list[float] = None):
         vol_folders = self._get_volume_folders()
         incar_keys = ["1relax", "2relax", "3static"]
-
         if volumes is not None:
             volumes = [round(volume, 2) for volume in volumes]
             filtered_vol_folders = []
@@ -121,13 +124,13 @@ class EvCurvesData:
     ) -> None:
         (
             number_of_atoms,
-            volumes,
-            energies,
+            all_volumes,
+            all_energies,
             atomic_masses,
             average_mass,
-            mag_data_list,
-            total_magnetic_moments,
-            magnetic_orderings,
+            all_mag_data_list,
+            all_total_magnetic_moments,
+            all_magnetic_orderings,
         ) = extract_configuration_data(
             self.path,
             outcar_name,
@@ -140,13 +143,23 @@ class EvCurvesData:
         )
 
         self.number_of_atoms = number_of_atoms
-        self.volumes = volumes
-        self.energies = energies
+        self.volumes = all_volumes
+        self.energies = all_energies
         self.atomic_masses = atomic_masses
         self.average_mass = average_mass
-        self.mag_data = mag_data_list
-        self.total_magnetic_moment = total_magnetic_moments
-        self.magnetic_ordering = magnetic_orderings
+        self.mag_data = all_mag_data_list
+        self.total_magnetic_moment = all_total_magnetic_moments
+        self.magnetic_ordering = all_magnetic_orderings
+
+        if volumes is not None:
+            filtered_indices = [i for i, v in enumerate(all_volumes) if v in volumes]
+            self.volumes = np.array(all_volumes)[filtered_indices]
+            self.energies = np.array(all_energies)[filtered_indices]
+            self.mag_data = np.array(all_mag_data_list)[filtered_indices]
+            self.total_magnetic_moment = np.array(all_total_magnetic_moments)[
+                filtered_indices
+            ]
+            self.magnetic_ordering = np.array(all_magnetic_orderings)[filtered_indices]
 
         vol_folders = self._get_volume_folders()
         if volumes is not None:
@@ -209,6 +222,9 @@ class EvCurvesData:
 
     def plot(
         self,
+        volume_min: float = None,
+        volume_max: float = None,
+        num_volumes: int = 1000,
         eos_name: str = "BM4",
         highlight_minimum: bool = True,
         per_atom: bool = False,
@@ -217,12 +233,15 @@ class EvCurvesData:
         cmap: str = "plotly",
         marker_alpha: float = 1,
         marker_size: int = 10,
-    ) -> None:
-        plot_ev(
+    ):
+        fig = plot_ev(
             self.name,
             self.number_of_atoms,
             self.volumes,
             self.energies,
+            volume_min,
+            volume_max,
+            num_volumes,
             eos_name=eos_name,
             highlight_minimum=highlight_minimum,
             per_atom=per_atom,
@@ -232,6 +251,7 @@ class EvCurvesData:
             marker_alpha=marker_alpha,
             marker_size=marker_size,
         )
+        return fig
 
 
 class DebyeData:
@@ -259,7 +279,16 @@ class DebyeData:
         temperatures: np.array = np.linspace(0, 1000, 101),
     ):
         volumes = np.linspace(0.98 * min(volumes), 1.02 * max(volumes), 1000)
-        number_of_atoms, scaling_factor, gruneisen_x, temperatures, volumes, f_vib, s_vib, cv_vib = process_debye_gruneisen(
+        (
+            number_of_atoms,
+            scaling_factor,
+            gruneisen_x,
+            temperatures,
+            volumes,
+            f_vib,
+            s_vib,
+            cv_vib,
+        ) = process_debye_gruneisen(
             number_of_atoms,
             volumes,
             average_mass,
@@ -293,14 +322,12 @@ class DebyeData:
                 "cv_vib": [col for col in cv_vib],
             }
         )
-                
-        self.debye_df = debye_df
-        
-    def plot(
-        self, property, temperatures: np.array = None, volumes: np.array = None
-    ):
 
-        plot_debye(
+        self.debye_df = debye_df
+
+    def plot(self, property, temperatures: np.array = None, volumes: np.array = None):
+
+        fig_t, fig_v = plot_debye(
             property,
             self.number_of_atoms,
             self.temperatures,
@@ -311,6 +338,8 @@ class DebyeData:
             temperatures,
             volumes,
         )
+
+        return fig_t, fig_v
 
 
 class PhononsData:
@@ -332,6 +361,13 @@ class PhononsData:
         self.heat_capacity_fit = None
         self.harmonic_df = None
         self.harmonic_fit_df = None
+        self.f_vib = None
+        self.s_vib = None
+        self.cv_vib = None
+        self.f_vib_fit = None
+        self.s_vib_fit = None
+        self.cv_vib_fit = None
+        self.volume_fit = None
 
     def process_phonon_dos(self):
         process_phonon_dos_YPHON(self.path)
@@ -379,65 +415,116 @@ class PhononsData:
     def get_harmonic_data(
         self,
         scale_atoms: int,
-        temp_range: list,
+        temperatures: np.ndarray,
         order: int,
     ):
 
         yphon_results_path = os.path.join(self.path, "YPHON_results")
-        harmonic_df, harmonic_fit_df = harmonic(
-            yphon_results_path,
+        vdos_data_scaled = scale_phonon_dos(yphon_results_path)
+        volumes_per_atom = np.sort(vdos_data_scaled["volume_per_atom"].unique())
+        frequency_array = []
+        dos_array = []
+        for volume_per_atom in volumes_per_atom:
+            frequency = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom][
+                "frequency_hz"].values
+            frequency_array.append(frequency)
+            
+            dos = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom]["dos_1_per_hz"].values
+            dos_array.append(dos)
+        frequency_array = np.column_stack(frequency_array)
+        dos_array = np.column_stack(dos_array)
+        self.temperatures = temperatures
+        (
+            volumes,
+            f_vib,
+            e_vib,
+            s_vib,
+            cv_vib,
+        ) = harmonic(
             scale_atoms,
-            temp_range,
-            order,
+            volumes_per_atom,
+            temperatures,
+            frequency_array,
+            dos_array,
         )
+        
+        self.number_of_atoms = scale_atoms
+        self.volumes = volumes
+        self.f_vib = f_vib
+        self.s_vib = s_vib
+        self.cv_vib = cv_vib
+        (
+            volume_fit,
+            f_vib_fit,
+            s_vib_fit,
+            cv_vib_fit,
+            f_vib_poly,
+            s_vib_poly,
+            cv_vib_poly,
+        ) = fit_harmonic(self.volumes,
+                         self.temperatures,
+                         self.f_vib,
+                         self.s_vib,
+                         self.cv_vib,
+                         order)
 
-        self.harmonic_df = harmonic_df
-        self.harmonic_fit_df = harmonic_fit_df
-
-        self.number_of_atoms = int(harmonic_df["number_of_atoms"].values[0])
-        self.temperatures = harmonic_df["temperature"].unique().tolist()
-        self.volumes = harmonic_df["volume"].unique().tolist()
+        self.f_vib_fit = f_vib_fit
+        self.s_vib_fit = s_vib_fit
+        self.cv_vib_fit = cv_vib_fit
+        self.volume_fit = volume_fit
 
         self.helmholtz_energy = {}
         self.internal_energy = {}
         self.entropy = {}
         self.heat_capacity = {}
-        for temp in self.temperatures:
-            self.helmholtz_energy[f"{temp}K"] = self.harmonic_df[
-                self.harmonic_df["temperature"] == temp
-            ]["f_vib"].values.tolist()
-            self.internal_energy[f"{temp}K"] = self.harmonic_df[
-                self.harmonic_df["temperature"] == temp
-            ]["e_vib"].values.tolist()
-            self.entropy[f"{temp}K"] = self.harmonic_df[
-                self.harmonic_df["temperature"] == temp
-            ]["s_vib"].values.tolist()
-            self.heat_capacity[f"{temp}K"] = self.harmonic_df[
-                self.harmonic_df["temperature"] == temp
-            ]["cv_vib"].values.tolist()
+        for i, temp in enumerate(self.temperatures):
+            self.helmholtz_energy[f"{temp}K"] = self.f_vib[i]
+            self.internal_energy[f"{temp}K"] = e_vib[i]
+            self.entropy[f"{temp}K"] = s_vib[i]
+            self.heat_capacity[f"{temp}K"] = cv_vib[i]
 
         self.helmholtz_energy_fit = {"polynomial_coefficients": {}}
-        fvib_coefficients = [
-            arr.coeffs.tolist() for arr in self.harmonic_fit_df["f_vib_poly"]
-        ]
+        fvib_coefficients = [arr for arr in f_vib_poly]
         for temp, coefficients in zip(self.temperatures, fvib_coefficients):
             self.helmholtz_energy_fit["polynomial_coefficients"][
                 f"{temp}K"
             ] = coefficients
 
         self.entropy_fit = {"polynomial_coefficients": {}}
-        svib_coefficients = [
-            arr.coeffs.tolist() for arr in self.harmonic_fit_df["s_vib_poly"]
-        ]
+        svib_coefficients = [arr for arr in s_vib_poly]
         for temp, coefficients in zip(self.temperatures, svib_coefficients):
             self.entropy_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
 
         self.heat_capacity_fit = {"polynomial_coefficients": {}}
-        cvib_coefficients = [
-            arr.coeffs.tolist() for arr in self.harmonic_fit_df["cv_vib_poly"]
-        ]
+        cvib_coefficients = [arr for arr in cv_vib_poly]
         for temp, coefficients in zip(self.temperatures, cvib_coefficients):
             self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
+
+        # Temporary harmonic_fit_df for qha.
+        harmonic_fit_df = pd.DataFrame(
+            {
+                "number_of_atoms": self.number_of_atoms,
+                "temperatures": self.temperatures,
+                "f_vib_poly": f_vib_poly,
+                "s_vib_poly": s_vib_poly,
+                "cv_vib_poly": cv_vib_poly,
+            }
+        )
+        harmonic_fit_df = harmonic_fit_df.groupby("temperatures").agg(list)
+        # Remove the outer layer of lists
+        harmonic_fit_df["number_of_atoms"] = harmonic_fit_df["number_of_atoms"].apply(
+            lambda x: x[0]
+        )
+        harmonic_fit_df["f_vib_poly"] = harmonic_fit_df["f_vib_poly"].apply(
+            lambda x: x[0]
+        )
+        harmonic_fit_df["s_vib_poly"] = harmonic_fit_df["s_vib_poly"].apply(
+            lambda x: x[0]
+        )
+        harmonic_fit_df["cv_vib_poly"] = harmonic_fit_df["cv_vib_poly"].apply(
+            lambda x: x[0]
+        )
+        self.harmonic_fit_df = harmonic_fit_df
 
     def plot_scaled_dos(self, num_atoms: int, plot=True):
         yphon_results_path = os.path.join(self.path, "YPHON_results")
@@ -447,9 +534,38 @@ class PhononsData:
         yphon_results_path = os.path.join(self.path, "YPHON_results")
         plot_phonon_dos(yphon_results_path, num_atoms)
 
-    def plot_harmonic(self, selected_temperatures_plot: np.ndarray = None):
-        plot_harmonic(self.harmonic_df)
-        plot_fit_harmonic(self.harmonic_fit_df, selected_temperatures_plot)
+    def plot_harmonic(
+        self, property_to_plot, selected_temperatures_plot: np.ndarray = None
+    ):
+        property_mapping = {
+            "helmholtz_energy": "f_vib",
+            "entropy": "s_vib",
+            "heat_capacity": "cv_vib"
+        }
+        if property_to_plot in property_mapping:
+            property_name = property_mapping[property_to_plot]
+            property_data = getattr(self, property_name)
+            property_fit_data = getattr(self, f"{property_name}_fit")
+
+        fig_harmonic = plot_harmonic(
+            self.number_of_atoms,
+            self.volumes,
+            self.temperatures,
+            property_data,
+            property_to_plot,
+        )
+
+        fig_fit_harmonic = plot_fit_harmonic(
+            self.number_of_atoms,
+            self.volumes,
+            self.temperatures,
+            property_to_plot,
+            property_data,
+            self.volume_fit,
+            property_fit_data,
+            selected_temperatures_plot,
+        )
+        return fig_harmonic, fig_fit_harmonic
 
 
 class ThermalElectronicData:
@@ -567,12 +683,15 @@ class ThermalElectronicData:
         for temp, coefficients in zip(self.temperatures, cvel_coefficients):
             self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
 
-    def plot(self, selected_temperatures_plot: np.ndarray = None):
-        plot_thermal_electronic(self.thermal_electronic_df)
-        plot_thermal_electronic_properties_fit(
+    def plot(self, property_to_plot, selected_temperatures_plot: np.ndarray = None):
+        fig = plot_thermal_electronic(self.thermal_electronic_df, property_to_plot)
+        fig_fit = plot_thermal_electronic_properties_fit(
             self.thermal_electronic_fit_df,
+            property_to_plot,
             selected_temperatures_plot,
         )
+
+        return fig, fig_fit
 
 
 class QuasiHarmonicData:
@@ -889,6 +1008,9 @@ class Configuration:
         total_magnetic_moment_tolerance: float = 1e-12,
         mass_average: str = "geometric",
         eos_name: str = "BM4",
+        volume_min: float = None,
+        volume_max: float = None,
+        num_volumes: int = 1000,
     ):
         self.ev_curves = EvCurvesData(self.path, self.name)
         self.ev_curves.get_vasp_input(volumes)
@@ -902,7 +1024,12 @@ class Configuration:
             total_magnetic_moment_tolerance,
             mass_average,
         )
-        self.ev_curves.fit_energy_volume_data(eos_name=eos_name)
+        self.ev_curves.fit_energy_volume_data(
+            eos_name=eos_name,
+            volume_min=volume_min,
+            volume_max=volume_max,
+            num_volumes=num_volumes,
+        )
 
     def process_debye(
         self,
@@ -962,7 +1089,7 @@ class Configuration:
     def process_phonons(
         self,
         scale_atoms: int,
-        temp_range: list,
+        temperatures: np.ndarray,
         volumes: list[float] = None,
         order: int = 2,
     ):
@@ -970,7 +1097,7 @@ class Configuration:
         self.phonons.get_vasp_input(volumes)
         self.phonons.get_harmonic_data(
             scale_atoms,
-            temp_range,
+            temperatures,
             order=order,
         )
 
@@ -1174,6 +1301,9 @@ class Configuration:
 def plot_multiple_ev(
     config_objects: dict[str, Configuration],
     config_names: list[str],
+    volume_min: float,
+    volume_max: float,
+    num_volumes: int,
     eos_name: str = "BM4",
     highlight_minimum: bool = True,
     per_atom: bool = False,
@@ -1184,21 +1314,39 @@ def plot_multiple_ev(
     marker_size: int = 10,
 ):
 
-    dataframes = []
-    for config_name in config_names:
-        dataframes.append(config_objects[config_name].ev_curves.energy_volume_df)
-    dataframes = pd.concat(dataframes)
+    combined_fig = go.Figure()
 
-    fig = plot_ev(
-        dataframes,
-        eos_name=eos_name,
-        highlight_minimum=highlight_minimum,
-        per_atom=per_atom,
-        title=title,
-        show_fig=show_fig,
-        cmap=cmap,
-        marker_alpha=marker_alpha,
-        marker_size=marker_size,
+    config_colors = assign_colors_to_configs(
+        config_names, alpha=marker_alpha, cmap=cmap
     )
+    config_symbols = assign_marker_symbols_to_configs(config_names)
 
-    return fig
+    for config_name in config_names:
+        fig = config_objects[config_name].ev_curves.plot(
+            volume_min,
+            volume_max,
+            num_volumes,
+            eos_name=eos_name,
+            highlight_minimum=highlight_minimum,
+            per_atom=per_atom,
+            cmap=cmap,
+            marker_alpha=marker_alpha,
+            marker_size=marker_size,
+            show_fig=False,
+        )
+        if fig is not None:
+            for trace in fig.data:
+                if trace.name != "minimum":
+                    trace.marker.color = config_colors[config_name]
+                    trace.line.color = config_colors[config_name]
+                    trace.marker.symbol = config_symbols[config_name]
+                combined_fig.add_trace(trace)
+            combined_fig.update_layout(fig.layout)
+
+    if title:
+        combined_fig.update_layout(title=title)
+
+    if show_fig:
+        combined_fig.show()
+
+    return combined_fig

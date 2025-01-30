@@ -1398,6 +1398,9 @@ def plot_ev(
     number_of_atoms,
     volumes,
     energies,
+    volume_min=None,
+    volume_max=None,
+    num_volumes=None,
     eos_name="BM4",
     highlight_minimum=True,
     per_atom=False,
@@ -1429,7 +1432,7 @@ def plot_ev(
 
     if eos_name != None:
         eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
-            fit_to_eos(volumes, energies, eos_name=eos_name)
+            fit_to_eos(volumes, energies, eos_name=eos_name, volume_min=volume_min, volume_max=volume_max, num_volumes=num_volumes)
         )
     unique_configs = [name]
     config_colors = assign_colors_to_configs(
@@ -1465,8 +1468,9 @@ def plot_ev(
                 color=config_colors[name],
                 symbol=config_symbols[name],
             ),
-            legendgroup="eos",
+            legendgroup=name,
             name=name,
+            showlegend=True,
         )
     )
 
@@ -1502,7 +1506,7 @@ def plot_ev(
                 mode="lines",
                 name=f"{eos_name} fit",
                 line=dict(width=1.75, color=config_colors[name]),
-                legendgroup="data",
+                legendgroup=name,
                 showlegend=False,
             )
         )
@@ -1522,9 +1526,9 @@ def plot_ev(
                     x=[x],
                     y=[y],
                     mode="markers",
-                    name=f"{eos_name} min energy",
+                    name=f"minimum",
                     marker=dict(color="black", size=marker_size, symbol="cross"),
-                    legendgroup="minimum",
+                    legendgroup=name,
                     showlegend=False,
                 )
             )
