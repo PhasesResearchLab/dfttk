@@ -1,6 +1,7 @@
 """
-Calculates the thermal electronic contribution to the Helmholtz energy.
+Module for calculating the thermal electronic contributions to Helmholtz energy, entropy, and heat capacity.
 """
+
 
 # Standard Library Imports
 import os
@@ -112,6 +113,7 @@ def plot_total_electron_dos(electron_dos_data: pd.DataFrame):
         ytitle=f"DOS (states/eV/{electron_dos_data['number_of_atoms'].iloc[i]} atoms)",
     )
     fig.show()
+    return fig
 
 
 def fit_electron_dos(
@@ -530,7 +532,7 @@ def plot_entropy_integral(
     fig.show()
 
 
-# TODO: Equation is from the MATLAB code. Double check this.
+
 def calculate_heat_capacity(
     energy: pd.Series | np.ndarray,
     dos: pd.Series | np.ndarray,
@@ -663,11 +665,10 @@ def calculate_free_energy(
 
     return F_el.tolist()
 
-
+# Remove the dataframe input!
 def thermal_electronic(
     electron_dos_data: pd.DataFrame,
     temperature_range: np.ndarray,
-    order: int = 2,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Calculates the thermal electronic properties
 
@@ -710,78 +711,29 @@ def thermal_electronic(
     F_el_list = [item for sublist in F_el_list for item in sublist]
 
     number_of_atoms = electron_dos_data["number_of_atoms"].unique()[0]
-    thermal_electronic_properties = pd.DataFrame(
-        {
-            "number_of_atoms": np.repeat(
-                number_of_atoms, len(temperature_range) * len(volumes)
-            ),
-            "volume": np.repeat(volumes, len(temperature_range)),
-            "temperature": np.tile(temperature_range, len(volumes)),
-            "f_el": F_el_list,
-            "e_el": E_el_list,
-            "s_el": S_el_list,
-            "cv_el": Cv_el_list,
-        }
-    )
+    num_temps = len(temperature_range)
+    num_volumes = len(volumes)
 
-    thermal_electronic_properties_fit = fit_thermal_electronic(
-        thermal_electronic_properties, order
-    )
+    helmholtz_energy = np.reshape(F_el_list, (num_volumes, num_temps))
+    internal_energy = np.reshape(E_el_list, (num_volumes, num_temps))
+    entropy = np.reshape(S_el_list, (num_volumes, num_temps))
+    heat_capacity = np.reshape(Cv_el_list, (num_volumes, num_temps))
 
-    return thermal_electronic_properties, thermal_electronic_properties_fit
-
-
-def plot_thermal_electronic(thermal_electronic_properties: pd.DataFrame, property_to_plot: str):
-    """Plots the thermal electronic properties vs. temperature and vs. volume
-
-    Args:
-        thermal_electronic_properties (pd.DataFrame): dataframe containing the thermal electronic properties
-    """
-
-    if property_to_plot not in ["f_el", "s_el", "cv_el"]:
-        raise ValueError("property_to_plot must be one of 'f_el', 's_el', or 'cv_el'")
+    helmholtz_energy = helmholtz_energy.T
+    internal_energy = internal_energy.T
+    entropy = entropy.T
+    heat_capacity = heat_capacity.T
     
-    volumes = thermal_electronic_properties["volume"].unique()
-    number_of_atoms = thermal_electronic_properties["number_of_atoms"].unique()[0]
-
-    y_value = property_to_plot
-    #y_values = ["f_el", "s_el", "cv_el"]
-    #for y_value in y_values:
-    fig = go.Figure()
-    for volume in volumes:
-        temperature = thermal_electronic_properties[
-            thermal_electronic_properties["volume"] == volume
-        ]["temperature"]
-        y_data = thermal_electronic_properties[
-            thermal_electronic_properties["volume"] == volume
-        ][y_value]
-
-        fig.add_trace(
-            go.Scatter(
-                x=temperature,
-                y=y_data,
-                mode="lines",
-                name=f"{volume} Å³",
-                showlegend=True,
-            )
-        )
-
-    if y_value == "f_el":
-        y_title = f"F<sub>el</sub> (eV/{number_of_atoms} atoms)"
-    elif y_value == "s_el":
-        y_title = f"S<sub>el</sub> (eV/K/{number_of_atoms} atoms)"
-    elif y_value == "cv_el":
-
-        y_title = f"C<sub>v, el</sub> (eV/K/{number_of_atoms} atoms)"
-
-    plot_format(fig, "Temperature (K)", y_title)
-    fig.show()
-    
-    return fig
+    return number_of_atoms, volumes, helmholtz_energy, internal_energy, entropy, heat_capacity
 
 
 def fit_thermal_electronic(
-    thermal_electronic_properties: pd.DataFrame, order: int
+    volumes,
+    temperatures,
+    F_el,
+    S_el,
+    Cv_el,
+    order: int
 ) -> pd.DataFrame:
     """Fits the thermal electronic properties vs. volume for various fixed temperatures to a polynomial
 
@@ -801,21 +753,11 @@ def fit_thermal_electronic(
     S_el_polynomial_list = []
     Cv_el_polynomial_list = []
 
-    thermal_electronic_properties_fit = thermal_electronic_properties.groupby(
-        "temperature"
-    ).agg(list)
-    temperatures = thermal_electronic_properties_fit.index.tolist()
-
-    for temperature in temperatures:
-        volume = thermal_electronic_properties_fit.loc[temperature]["volume"]
-
-        F_el = thermal_electronic_properties_fit.loc[temperature]["f_el"]
-        S_el = thermal_electronic_properties_fit.loc[temperature]["s_el"]
-        Cv_el = thermal_electronic_properties_fit.loc[temperature]["cv_el"]
-
-        F_el_coefficients = np.polyfit(volume, F_el, order)
-        S_el_coefficients = np.polyfit(volume, S_el, order)
-        Cv_el_coefficients = np.polyfit(volume, Cv_el, order)
+    for i in range(len(temperatures)):
+        
+        F_el_coefficients = np.polyfit(volumes, F_el[i], order)
+        S_el_coefficients = np.polyfit(volumes, S_el[i], order)
+        Cv_el_coefficients = np.polyfit(volumes, Cv_el[i], order)
 
         F_el_polynomial = np.poly1d(F_el_coefficients)
         S_el_polynomial = np.poly1d(S_el_coefficients)
@@ -825,7 +767,7 @@ def fit_thermal_electronic(
         S_el_polynomial_list.append(S_el_polynomial)
         Cv_el_polynomial_list.append(Cv_el_polynomial)
 
-        volume_fit = np.linspace(min(volume) * 0.98, max(volume) * 1.02, 1000)
+        volume_fit = np.linspace(min(volumes) * 0.98, max(volumes) * 1.02, 1000)
         F_el_fit = F_el_polynomial(volume_fit)
         S_el_fit = S_el_polynomial(volume_fit)
         Cv_el_fit = Cv_el_polynomial(volume_fit)
@@ -835,51 +777,64 @@ def fit_thermal_electronic(
         S_el_fit_list.append(S_el_fit)
         Cv_el_fit_list.append(Cv_el_fit)
 
-    thermal_electronic_properties_fit["number_of_atoms"] = (
-        thermal_electronic_properties_fit["number_of_atoms"].values[0][0]
-    )
-    thermal_electronic_properties_fit["volume_fit"] = volume_fit_list
+    return volume_fit, F_el_fit_list, S_el_fit_list, Cv_el_fit_list, F_el_polynomial_list, S_el_polynomial_list, Cv_el_polynomial_list
 
-    thermal_electronic_properties_fit["f_el_fit"] = F_el_fit_list
-    thermal_electronic_properties_fit["s_el_fit"] = S_el_fit_list
-    thermal_electronic_properties_fit["cv_el_fit"] = Cv_el_fit_list
-    thermal_electronic_properties_fit["f_el_poly"] = F_el_polynomial_list
-    thermal_electronic_properties_fit["s_el_poly"] = S_el_polynomial_list
-    thermal_electronic_properties_fit["cv_el_poly"] = Cv_el_polynomial_list
 
-    return thermal_electronic_properties_fit
+def plot_thermal_electronic(
+    number_of_atoms: int,
+    volumes: list, #TODO: change to np.ndarray    
+    temperatures: np.ndarray,
+    property: np.ndarray,
+    property_name: str,
+) -> go.Figure:
+
+    valid_properties = {
+        "helmholtz_energy": f"F<sub>el</sub> (eV/{number_of_atoms} atoms)",
+        "entropy": f"S<sub>el</sub> (eV/K/{number_of_atoms} atoms)",
+        "heat_capacity": f"C<sub>el</sub> (eV/K/{number_of_atoms} atoms)",
+    }
+
+    if property_name not in valid_properties:
+        raise ValueError(
+            "property_name must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'"
+        )
+
+    property = np.vstack(property)
+    y_title = valid_properties[property_name]
+    
+    fig = go.Figure()
+    for i, volume in enumerate(volumes):
+        fig.add_trace(
+            go.Scatter(
+                x=temperatures,
+                y=property[:, i],
+                mode="lines",
+                name=f"{volume} Å³",
+                showlegend=True,
+            )
+        )
+    plot_format(fig, "Temperature (K)", y_title)
+    fig.show()
+    return fig
 
 
 def plot_thermal_electronic_properties_fit(
-    thermal_electronic_properties_fit: pd.DataFrame,
-    property_to_plot: str,
+    number_of_atoms: int,
+    volumes: list, #TODO: change to np.ndarray
+    temperatures: list, #TODO: change to np.ndarray
+    property_name: str,
+    property: np.ndarray,
+    volume_fit: np.ndarray,
+    property_fit: list,
     selected_temperatures_plot: np.ndarray = None,
 ):
-    """Plots the fitted thermal electronic properties vs. volume for various fixed temperatures
 
-    Args:
-        thermal_electronic_properties_fit (pd.DataFrame): dataframe containing the fitted thermal electronic properties
-        selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
-    """
+    if property_name not in ["helmholtz_energy", "entropy", "heat_capacity"]:
+        raise ValueError("property_name must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'")
 
-    if property_to_plot not in ["f_el", "s_el", "cv_el"]:
-        raise ValueError("property_to_plot must be one of 'f_el', 's_el', or 'cv_el'")
-    
-    number_of_atoms = thermal_electronic_properties_fit["number_of_atoms"].iloc[0]
-    temperature_list = thermal_electronic_properties_fit.index.values
     if selected_temperatures_plot is None:
-        indices = np.linspace(0, len(temperature_list) - 1, 5, dtype=int)
-        selected_temperatures_plot = np.array([temperature_list[j] for j in indices])
-
-    #y_values = [
-    #    ("f_el", "f_el_fit"),
-    #    ("s_el", "s_el_fit"),
-    #    ("cv_el", "cv_el_fit"),
-    #]
-    
-    #for y_value, y_value_fit in y_values:
-    y_value = property_to_plot
-    y_value_fit = f"{property_to_plot}_fit"
+        indices = np.linspace(0, len(temperatures) - 1, 5, dtype=int)
+        selected_temperatures_plot = np.array([temperatures[j] for j in indices])
     
     fig = go.Figure()
     colors = [
@@ -899,12 +854,12 @@ def plot_thermal_electronic_properties_fit(
         for color in colors
     ]
 
-    i = 0
     for i, temperature in enumerate(selected_temperatures_plot):
-        x = thermal_electronic_properties_fit.loc[temperature]["volume"]
-        y = thermal_electronic_properties_fit.loc[temperature][y_value]
-        x_fit = thermal_electronic_properties_fit.loc[temperature]["volume_fit"]
-        y_fit = thermal_electronic_properties_fit.loc[temperature][y_value_fit]
+        index = np.where(temperatures == temperature)[0][0]
+        x = volumes
+        y = property[index]
+        x_fit = volume_fit
+        y_fit = property_fit[index]
 
         color = colors[i % len(colors)]
 
@@ -927,14 +882,12 @@ def plot_thermal_electronic_properties_fit(
                 showlegend=True,
             )
         )
-        i += 1
 
-    if y_value == "f_el":
+    if property_name == "helmholtz_energy":
         y_title = f"F<sub>el</sub> (eV/{number_of_atoms} atoms)"
-    elif y_value == "s_el":
+    elif property_name == "entropy":
         y_title = f"S<sub>el</sub> (eV/K/{number_of_atoms} atoms)"
-    elif y_value == "cv_el":
-
+    elif property_name == "heat_capacity":
         y_title = f"C<sub>v, el</sub> (eV/K/{number_of_atoms} atoms)"
 
     plot_format(fig, f"Volume (Å³/{number_of_atoms} atoms)", y_title)

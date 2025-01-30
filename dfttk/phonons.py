@@ -401,60 +401,6 @@ def harmonic(
     )
 
 
-def plot_harmonic(
-    scale_atoms: int,
-    volumes: np.ndarray,
-    temperatures: np.ndarray,
-    property: np.ndarray,
-    property_name: str,
-) -> go.Figure:
-    """Plots the thermodynamic properties from the harmonic approximation vs. temperature.
-
-    Args:
-        scale_atoms (int): number of atoms the thermodynamic properties are scaled to.
-        volumes (np.ndarray): volumes corresponding to the thermodynamic properties.
-        temperatures (np.ndarray): temperatures in K.
-        property (np.ndarray): a 2D array of helmholtz energy, entropy, or heat capacity. Rows are temperatures and columns are volumes.
-        property_name (str): helmholtz energy, entropy, or heat capacity.
-
-    Raises:
-        ValueError: If property_name is not one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
-
-    Returns:
-        go.Figure: plotly figure of the thermodynamic property vs. temperature.
-    """
-
-    valid_properties = {
-        "helmholtz_energy": f"F<sub>vib</sub> (eV/{scale_atoms} atoms)",
-        "entropy": f"S<sub>vib</sub> (eV/K/{scale_atoms} atoms)",
-        "heat_capacity": f"C<sub>vib</sub> (eV/K/{scale_atoms} atoms)",
-    }
-
-    if property_name not in valid_properties:
-        raise ValueError(
-            "property_name must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'"
-        )
-
-    property = np.vstack(property)
-    y_title = valid_properties[property_name]
-
-    fig = go.Figure()
-    for i, volume in enumerate(volumes):
-        fig.add_trace(
-            go.Scatter(
-                x=temperatures,
-                y=property[:, i],
-                mode="lines",
-                name=f"{volume} Å³",
-                showlegend=True,
-            )
-        )
-
-    plot_format(fig, "Temperature (K)", y_title)
-    fig.show()
-    return fig
-
-
 def fit_harmonic(
     volumes: np.ndarray,
     temperatures: np.ndarray,
@@ -525,6 +471,59 @@ def fit_harmonic(
     )
 
 
+def plot_harmonic(
+    scale_atoms: int,
+    volumes: np.ndarray,
+    temperatures: np.ndarray,
+    property: np.ndarray,
+    property_name: str,
+) -> go.Figure:
+    """Plots the thermodynamic properties from the harmonic approximation vs. temperature.
+
+    Args:
+        scale_atoms (int): number of atoms the thermodynamic properties are scaled to.
+        volumes (np.ndarray): volumes corresponding to the thermodynamic properties.
+        temperatures (np.ndarray): temperatures in K.
+        property (np.ndarray): a 2D array of helmholtz energy, entropy, or heat capacity. Rows are temperatures and columns are volumes.
+        property_name (str): helmholtz energy, entropy, or heat capacity.
+
+    Raises:
+        ValueError: If property_name is not one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
+
+    Returns:
+        go.Figure: plotly figure of the thermodynamic property vs. temperature.
+    """
+
+    valid_properties = {
+        "helmholtz_energy": f"F<sub>vib</sub> (eV/{scale_atoms} atoms)",
+        "entropy": f"S<sub>vib</sub> (eV/K/{scale_atoms} atoms)",
+        "heat_capacity": f"C<sub>vib</sub> (eV/K/{scale_atoms} atoms)",
+    }
+
+    if property_name not in valid_properties:
+        raise ValueError(
+            "property_name must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'"
+        )
+
+    property = np.vstack(property)
+    y_title = valid_properties[property_name]
+    
+    fig = go.Figure()
+    for i, volume in enumerate(volumes):
+        fig.add_trace(
+            go.Scatter(
+                x=temperatures,
+                y=property[:, i],
+                mode="lines",
+                name=f"{volume} Å³",
+                showlegend=True,
+            )
+        )
+    plot_format(fig, "Temperature (K)", y_title)
+    fig.show()
+    return fig
+    
+
 def plot_fit_harmonic(
     scale_atoms: int,
     volumes: np.ndarray,
@@ -562,7 +561,7 @@ def plot_fit_harmonic(
         f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {1})"
         for color in colors
     ]
-    i = 0
+
     for temperature in selected_temperatures_plot:
         index = np.where(temperatures == temperature)[0][0]
         x = volumes
@@ -591,7 +590,6 @@ def plot_fit_harmonic(
                 showlegend=True,
             )
         )
-        i += 1
 
     if property_name == "helmholtz_energy":
         y_title = f"F<sub>vib</sub> (eV/{scale_atoms} atoms)"
