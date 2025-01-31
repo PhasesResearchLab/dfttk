@@ -273,28 +273,28 @@ class EvCurvesData:
 
 class DebyeData:
     def __init__(self):
-        self.debye_df = None
-        self.number_of_atoms = None
-        self.scaling_factor = None
-        self.gruneisen_x = None
-        self.temperatures = None
-        self.volumes = None
-        self.free_energy = None
-        self.entropy = None
-        self.heat_capacity = None
+        self.debye_df: pd.DataFrame = None
+        self.number_of_atoms: int = None
+        self.scaling_factor: float = None
+        self.gruneisen_x: float = None
+        self.temperatures: np.ndarray = None
+        self.volumes: np.ndarray = None
+        self.free_energy: np.ndarray = None
+        self.entropy: np.ndarray = None
+        self.heat_capacity: np.ndarray = None
 
     def get_debye_gruneisen_data(
         self,
         number_of_atoms: int,
-        volumes: np.array,
+        volumes: np.ndarray,
         average_mass: float,
         volume_0: float,
         bulk_modulus: float,
         bulk_modulus_prime: float,
         scaling_factor: float = 0.617,
         gruneisen_x: float = 1,
-        temperatures: np.array = np.linspace(0, 1000, 101),
-    ):
+        temperatures: np.ndarray = np.linspace(0, 1000, 101),
+    ) -> None:
         volumes = np.linspace(0.98 * min(volumes), 1.02 * max(volumes), 1000)
         (
             number_of_atoms,
@@ -327,7 +327,7 @@ class DebyeData:
         self.heat_capacity = cv_vib
 
         # Temporary until I fix the quasi_harmonic module
-        debye_df = pd.DataFrame(
+        self.debye_df = pd.DataFrame(
             {
                 "number_of_atoms": number_of_atoms,
                 "temperatures": temperatures,
@@ -340,20 +340,23 @@ class DebyeData:
             }
         )
 
-        self.debye_df = debye_df
-
-    def plot(self, property, temperatures: np.array = None, volumes: np.array = None):
+    def plot(
+        self,
+        property: str,
+        temperatures: np.ndarray = None,
+        volumes: np.ndarray = None,
+    ) -> tuple[go.Figure, go.Figure]:
 
         fig_t, fig_v = plot_debye(
-            property,
-            self.number_of_atoms,
-            self.temperatures,
-            self.volumes,
-            self.free_energy,
-            self.entropy,
-            self.heat_capacity,
-            temperatures,
-            volumes,
+            property_to_plot=property,
+            number_of_atoms=self.number_of_atoms,
+            temperatures=self.temperatures,
+            volumes=self.volumes,
+            f_vib=self.free_energy,
+            s_vib=self.entropy,
+            cv_vib=self.heat_capacity,
+            selected_temperatures_plot=temperatures,
+            selected_volumes=volumes,
         )
 
         return fig_t, fig_v
