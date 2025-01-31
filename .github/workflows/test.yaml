@@ -3,10 +3,10 @@ name: Tests
 on:
   push:
     branches:
-      - master_phonons
+      - master
   pull_request:
     branches:
-      - master_phonons
+      - master
 
 jobs:
   test:

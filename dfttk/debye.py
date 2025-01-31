@@ -317,7 +317,7 @@ def plot_debye(
 ) -> tuple[go.Figure, go.Figure]:
 
     properties = {
-        'free_energy': (f_vib.T, f"F<sub>vib</sub> (eV/{number_of_atoms} atoms)"),
+        'helmholtz_energy': (f_vib.T, f"F<sub>vib</sub> (eV/{number_of_atoms} atoms)"),
         'entropy': (s_vib.T, f"S<sub>vib</sub> (eV/K/{number_of_atoms} atoms)"),
         'heat_capacity': (cv_vib.T, f"C<sub>v,vib</sub> (eV/K/{number_of_atoms} atoms)")
     }

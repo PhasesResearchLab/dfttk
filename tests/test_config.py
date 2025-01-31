@@ -462,13 +462,13 @@ def test_process_thermal_electronic():
     ), f"Expected 4, but got {config_Al.thermal_electronic.number_of_atoms}"
 
     expected_volumes = [60.0, 62.0, 64.0, 66.0, 68.0, 70.0, 72.0, 74.0]
-    assert (
-        config_Al.thermal_electronic.volumes == expected_volumes
+    assert np.array_equal(
+        config_Al.thermal_electronic.volumes, expected_volumes
     ), f"Expected {expected_volumes}, but got {config_Al.thermal_electronic.volumes}"
 
     expected_temperatures = list(range(0, 1010, 100))
-    assert (
-        config_Al.thermal_electronic.temperatures == expected_temperatures
+    assert np.array_equal(
+        config_Al.thermal_electronic.temperatures, expected_temperatures
     ), f"Expected {expected_temperatures}, but got {config_Al.thermal_electronic.temperatures}"
 
     files_and_attributes = [

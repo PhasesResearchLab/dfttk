@@ -42,7 +42,9 @@ from dfttk.phonons import (
 )
 from dfttk.thermal_electronic import (
     thermal_electronic,
+    fit_thermal_electronic,
     read_total_electron_dos,
+    plot_total_electron_dos,
     plot_thermal_electronic,
     plot_thermal_electronic_properties_fit,
 )
@@ -630,69 +632,141 @@ class ThermalElectronicData:
         order: int,
     ):
         self.get_total_electron_dos()
-        thermal_electronic_df, thermal_electronic_fit_df = thermal_electronic(
-            self.electron_dos_data,
+        volumes = self.electron_dos_data["volume"].unique()
+        number_of_atoms = self.electron_dos_data["number_of_atoms"].unique()[0]
+        self.number_of_atoms = number_of_atoms
+        energy_array = []
+        dos_array = []
+        for volume in volumes:
+            energy = self.electron_dos_data[self.electron_dos_data["volume"] == volume][
+                "energy_minus_fermi_energy"
+            ].values[0]
+            energy_array.append(energy)
+
+            dos = self.electron_dos_data[self.electron_dos_data["volume"] == volume][
+                "total_dos"
+            ].values[0]
+            dos_array.append(dos)
+        energy_array = np.column_stack(energy_array)
+        dos_array = np.column_stack(dos_array)
+        
+        f_el, e_el, s_el, cv_el = thermal_electronic(
+            volumes,
             temperature_range,
-            order,
+            energy_array,
+            dos_array,
         )
+        self.f_el = f_el
+        self.e_el = e_el
+        self.s_el = s_el
+        self.cv_el = cv_el
+        self.volumes = volumes
+        self.temperatures = temperature_range
+        
+        volume_fit, f_el_fit, s_el_fit, cv_el_fit, f_el_poly, s_el_poly, cv_el_poly = fit_thermal_electronic(
+            self.volumes,
+            self.temperatures,
+            f_el,
+            s_el,
+            cv_el,
+            order)
 
-        self.thermal_electronic_df = thermal_electronic_df
-        self.thermal_electronic_fit_df = thermal_electronic_fit_df
-        self.number_of_atoms = int(thermal_electronic_df["number_of_atoms"].values[0])
-        self.volumes = thermal_electronic_df["volume"].unique().tolist()
-        self.temperatures = thermal_electronic_df["temperature"].unique().tolist()
-
+        self.volume_fit = volume_fit
+        self.f_el_fit = f_el_fit
+        self.s_el_fit = s_el_fit
+        self.cv_el_fit = cv_el_fit
+        self.f_el_poly = f_el_poly
+        self.s_el_poly = s_el_poly
+        self.cv_el_poly = cv_el_poly
+        
         self.helmholtz_energy = {}
         self.internal_energy = {}
         self.entropy = {}
         self.heat_capacity = {}
-        for temp in self.temperatures:
-            self.helmholtz_energy[f"{temp}K"] = thermal_electronic_df[
-                thermal_electronic_df["temperature"] == temp
-            ]["f_el"].values.tolist()
-            self.internal_energy[f"{temp}K"] = thermal_electronic_df[
-                thermal_electronic_df["temperature"] == temp
-            ]["e_el"].values.tolist()
-            self.entropy[f"{temp}K"] = thermal_electronic_df[
-                thermal_electronic_df["temperature"] == temp
-            ]["s_el"].values.tolist()
-            self.heat_capacity[f"{temp}K"] = thermal_electronic_df[
-                thermal_electronic_df["temperature"] == temp
-            ]["cv_el"].values.tolist()
+        
+        for i, temp in enumerate(self.temperatures):
+            self.helmholtz_energy[f"{temp}K"] = self.f_el[i]
+            self.internal_energy[f"{temp}K"] = e_el[i]
+            self.entropy[f"{temp}K"] = s_el[i]
+            self.heat_capacity[f"{temp}K"] = cv_el[i]
 
         self.helmholtz_energy_fit = {"polynomial_coefficients": {}}
-        fel_coefficients = [
-            arr.coeffs.tolist() for arr in self.thermal_electronic_fit_df["f_el_poly"]
-        ]
+        fel_coefficients = [arr for arr in f_el_poly]
         for temp, coefficients in zip(self.temperatures, fel_coefficients):
             self.helmholtz_energy_fit["polynomial_coefficients"][
                 f"{temp}K"
             ] = coefficients
 
         self.entropy_fit = {"polynomial_coefficients": {}}
-        sel_coefficients = [
-            arr.coeffs.tolist() for arr in self.thermal_electronic_fit_df["s_el_poly"]
-        ]
+        sel_coefficients = [arr for arr in s_el_poly]
         for temp, coefficients in zip(self.temperatures, sel_coefficients):
             self.entropy_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
 
         self.heat_capacity_fit = {"polynomial_coefficients": {}}
-        cvel_coefficients = [
-            arr.coeffs.tolist() for arr in self.thermal_electronic_fit_df["cv_el_poly"]
-        ]
-        for temp, coefficients in zip(self.temperatures, cvel_coefficients):
+        cv_el_coefficients = [arr for arr in cv_el_poly]
+        for temp, coefficients in zip(self.temperatures, cv_el_coefficients):
             self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
+        
+        # Temporary df for qha
+        thermal_electronic_fit_df = pd.DataFrame(
+            {
+                "number_of_atoms": self.number_of_atoms,
+                "temperatures": self.temperatures,
+                "f_el_poly": f_el_poly,
+                "s_el_poly": s_el_poly,
+                "cv_el_poly": cv_el_poly,
+            }
+        )
+        thermal_electronic_fit_df = thermal_electronic_fit_df.groupby("temperatures").agg(list)
+        # Remove the outer layer of lists
+        thermal_electronic_fit_df["number_of_atoms"] = thermal_electronic_fit_df["number_of_atoms"].apply(
+            lambda x: x[0]
+        )
+        thermal_electronic_fit_df["f_el_poly"] = thermal_electronic_fit_df["f_el_poly"].apply(
+            lambda x: x[0]
+        )
+        thermal_electronic_fit_df["s_el_poly"] = thermal_electronic_fit_df["s_el_poly"].apply(
+            lambda x: x[0]
+        )
+        thermal_electronic_fit_df["cv_el_poly"] = thermal_electronic_fit_df["cv_el_poly"].apply(
+            lambda x: x[0]
+        )
+        self.thermal_electronic_fit_df = thermal_electronic_fit_df
 
     def plot(self, property_to_plot, selected_temperatures_plot: np.ndarray = None):
-        fig = plot_thermal_electronic(self.thermal_electronic_df, property_to_plot)
+        property_mapping = {
+            "helmholtz_energy": "f_el",
+            "entropy": "s_el",
+            "heat_capacity": "cv_el"
+        }
+        if property_to_plot in property_mapping:
+            property_name = property_mapping[property_to_plot]
+            property_data = getattr(self, property_name)
+            property_fit_data = getattr(self, f"{property_name}_fit")
+        
+        fig = plot_thermal_electronic(
+            self.number_of_atoms,
+            self.volumes,
+            self.temperatures,
+            property_data,
+            property_to_plot)
+        
         fig_fit = plot_thermal_electronic_properties_fit(
-            self.thermal_electronic_fit_df,
+            self.number_of_atoms,
+            self.volumes, 
+            self.temperatures,
             property_to_plot,
+            property_data,
+            self.volume_fit,
+            property_fit_data,
             selected_temperatures_plot,
         )
 
         return fig, fig_fit
 
+    def plot_electron_dos(self):
+        fig = plot_total_electron_dos(self.electron_dos_data)
+        return fig
 
 class QuasiHarmonicData:
     def __init__(self):
