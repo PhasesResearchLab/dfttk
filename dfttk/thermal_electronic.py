@@ -665,34 +665,23 @@ def calculate_free_energy(
 
     return F_el.tolist()
 
-# Remove the dataframe input!
+
 def thermal_electronic(
     electron_dos_data: pd.DataFrame,
+    volumes: np.ndarray,
     temperature_range: np.ndarray,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Calculates the thermal electronic properties
-
-    Args:
-        electron_dos_data (pd.DataFrame): dataframe containing the electron DOS data
-        temperature_range (np.ndarray): temperature range
-        order (int, optional): order of polynomial to fit thermal electronic properties vs. volume for a fixed temperature. Defaults to 2.
-        plot (bool, optional): plots the thermal electronic properties vs. temperature and vs. volume. Defaults to True.
-        selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
-
-    Returns:
-        tuple[pd.DataFrame, pd.DataFrame]: dataframes containing the thermal electronic properties and the fitted thermal electronic properties
-    """
+    energy_array: np.ndarray,
+    dos_array: np.ndarray,
+):
 
     E_el_list = []
     S_el_list = []
     Cv_el_list = []
     F_el_list = []
 
-    volumes = electron_dos_data["volume"].unique()
-    for volume in volumes:
-        row = electron_dos_data.loc[electron_dos_data["volume"] == volume]
-        energy = row["energy_minus_fermi_energy"]
-        dos = row["total_dos"]
+    for i in range(len(volumes)):
+        energy = energy_array[:, i]
+        dos = dos_array[:, i]
 
         E_el = calculate_internal_energy(energy, dos, temperature_range)
         S_el = calculate_entropy(energy, dos, temperature_range)

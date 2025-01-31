@@ -562,7 +562,7 @@ def plot_fit_harmonic(
         for color in colors
     ]
 
-    for temperature in selected_temperatures_plot:
+    for i, temperature in enumerate(selected_temperatures_plot):
         index = np.where(temperatures == temperature)[0][0]
         x = volumes
         y = property[index]
