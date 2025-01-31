@@ -633,6 +633,8 @@ class ThermalElectronicData:
     ):
         self.get_total_electron_dos()
         volumes = self.electron_dos_data["volume"].unique()
+        number_of_atoms = self.electron_dos_data["number_of_atoms"].unique()[0]
+        self.number_of_atoms = number_of_atoms
         energy_array = []
         dos_array = []
         for volume in volumes:
@@ -648,8 +650,7 @@ class ThermalElectronicData:
         energy_array = np.column_stack(energy_array)
         dos_array = np.column_stack(dos_array)
         
-        number_of_atoms, volumes, f_el, e_el, s_el, cv_el = thermal_electronic(
-            self.electron_dos_data,
+        f_el, e_el, s_el, cv_el = thermal_electronic(
             volumes,
             temperature_range,
             energy_array,
@@ -659,7 +660,6 @@ class ThermalElectronicData:
         self.e_el = e_el
         self.s_el = s_el
         self.cv_el = cv_el
-        self.number_of_atoms = number_of_atoms
         self.volumes = volumes
         self.temperatures = temperature_range
         
