@@ -7,9 +7,9 @@ import os
 import json
 import subprocess
 import importlib.resources
-import numpy as np
 
 # Third-Party Library Imports
+import numpy as np
 import pandas as pd
 from pymongo import MongoClient
 from natsort import natsorted
@@ -17,8 +17,19 @@ import plotly.graph_objects as go
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 
-# DFTTK imports
+# DFTTK Module Imports
 import dfttk.vasp_input as vasp_input
+from dfttk import (
+    aggregate_extraction,
+    eos_fit,
+    debye,
+    workflows,
+    phonons,
+    thermal_electronic,
+    quasi_harmonic,
+)
+
+# Import specific functions if frequently used
 from dfttk.aggregate_extraction import (
     extract_configuration_data,
     calculate_encut_conv,
@@ -82,28 +93,37 @@ class EvCurvesData:
         }
         self.relaxed_structures = []
 
-    def _get_volume_folders(self):
+    def _get_volume_folders(self) -> list[str]:
         return natsorted([f for f in os.listdir(self.path) if f.startswith("vol_")])
 
     def get_vasp_input(self, volumes: list[float] = None):
         vol_folders = self._get_volume_folders()
         incar_keys = ["1relax", "2relax", "3static"]
+
         if volumes is not None:
-            volumes = [round(volume, 2) for volume in volumes]
-            filtered_vol_folders = []
-            for vol_folder in vol_folders:
-                contcar_path = os.path.join(self.path, vol_folder, "CONTCAR.3static")
-                if os.path.exists(contcar_path):
-                    structure = Structure.from_file(contcar_path)
-                    if round(structure.volume, 2) in volumes:
-                        filtered_vol_folders.append(vol_folder)
-            vol_folders = filtered_vol_folders
+            volumes = {round(volume, 2) for volume in volumes}
+            vol_folders = [
+                vol_folder
+                for vol_folder in vol_folders
+                if os.path.exists(
+                    os.path.join(self.path, vol_folder, "CONTCAR.3static")
+                )
+                and round(
+                    Structure.from_file(
+                        os.path.join(self.path, vol_folder, "CONTCAR.3static")
+                    ).volume,
+                    2,
+                )
+                in volumes
+            ]
 
         for vol_folder in vol_folders:
-            incar_data = {}
-            for key in incar_keys:
-                file_path = os.path.join(self.path, vol_folder, f"INCAR.{key}")
-                incar_data[key] = Incar.from_file(file_path)
+            incar_data = {
+                key: Incar.from_file(
+                    os.path.join(self.path, vol_folder, f"INCAR.{key}")
+                )
+                for key in incar_keys
+            }
             self.incars.append(incar_data)
 
         self.kpoints = Kpoints.from_file(os.path.join(self.path, "KPOINTS"))
@@ -115,7 +135,7 @@ class EvCurvesData:
 
     def get_energy_volume_data(
         self,
-        volumes,
+        volumes: list[float] = None,
         outcar_name: str = "OUTCAR.3static",
         oszicar_name: str = "OSZICAR.3static",
         contcar_name: str = "CONTCAR.3static",
@@ -125,11 +145,11 @@ class EvCurvesData:
         mass_average: str = "geometric",
     ) -> None:
         (
-            number_of_atoms,
+            self.number_of_atoms,
             all_volumes,
             all_energies,
-            atomic_masses,
-            average_mass,
+            self.atomic_masses,
+            self.average_mass,
             all_mag_data_list,
             all_total_magnetic_moments,
             all_magnetic_orderings,
@@ -144,17 +164,17 @@ class EvCurvesData:
             mass_average,
         )
 
-        self.number_of_atoms = number_of_atoms
         self.volumes = all_volumes
         self.energies = all_energies
-        self.atomic_masses = atomic_masses
-        self.average_mass = average_mass
         self.mag_data = all_mag_data_list
         self.total_magnetic_moment = all_total_magnetic_moments
         self.magnetic_ordering = all_magnetic_orderings
 
         if volumes is not None:
-            filtered_indices = [i for i, v in enumerate(all_volumes) if v in volumes]
+            volumes_set = set(volumes)
+            filtered_indices = [
+                i for i, v in enumerate(all_volumes) if v in volumes_set
+            ]
             self.volumes = np.array(all_volumes)[filtered_indices]
             self.energies = np.array(all_energies)[filtered_indices]
             self.mag_data = np.array(all_mag_data_list)[filtered_indices]
@@ -165,20 +185,24 @@ class EvCurvesData:
 
         vol_folders = self._get_volume_folders()
         if volumes is not None:
-            volumes = [round(volume, 2) for volume in volumes]
-            filtered_vol_folders = []
-            for vol_folder in vol_folders:
-                contcar_path = os.path.join(self.path, vol_folder, contcar_name)
-                if os.path.exists(contcar_path):
-                    structure = Structure.from_file(contcar_path)
-                    if round(structure.volume, 2) in volumes:
-                        filtered_vol_folders.append(vol_folder)
-            vol_folders = filtered_vol_folders
+            volumes_set = {round(volume, 2) for volume in volumes}
+            vol_folders = [
+                vol_folder
+                for vol_folder in vol_folders
+                if os.path.exists(os.path.join(self.path, vol_folder, contcar_name))
+                and round(
+                    Structure.from_file(
+                        os.path.join(self.path, vol_folder, contcar_name)
+                    ).volume,
+                    2,
+                )
+                in volumes_set
+            ]
 
-        for vol_folder in vol_folders:
-            contcar_path = os.path.join(self.path, vol_folder, contcar_name)
-            structure = Structure.from_file(contcar_path)
-            self.relaxed_structures.append(structure)
+        self.relaxed_structures = [
+            Structure.from_file(os.path.join(self.path, vol_folder, contcar_name))
+            for vol_folder in vol_folders
+        ]
 
     def fit_energy_volume_data(
         self,
@@ -197,29 +221,19 @@ class EvCurvesData:
                 num_volumes,
             )
         )
-        a = eos_constants[0]
-        b = eos_constants[1]
-        c = eos_constants[2]
-        d = eos_constants[3]
-        e = eos_constants[4]
-        V0 = eos_parameters[0]
-        E0 = eos_parameters[1]
-        B = eos_parameters[2]
-        BP = eos_parameters[3]
-        B2P = eos_parameters[4]
 
         self.eos_parameters = {
             "eos_name": eos_name,
-            "a": a,
-            "b": b,
-            "c": c,
-            "d": d,
-            "e": e,
-            "V0": V0,
-            "E0": E0,
-            "B": B,
-            "BP": BP,
-            "B2P": B2P,
+            "a": eos_constants[0],
+            "b": eos_constants[1],
+            "c": eos_constants[2],
+            "d": eos_constants[3],
+            "e": eos_constants[4],
+            "V0": eos_parameters[0],
+            "E0": eos_parameters[1],
+            "B": eos_parameters[2],
+            "BP": eos_parameters[3],
+            "B2P": eos_parameters[4],
         }
 
     def plot(
@@ -233,17 +247,17 @@ class EvCurvesData:
         title: str = None,
         show_fig: bool = True,
         cmap: str = "plotly",
-        marker_alpha: float = 1,
+        marker_alpha: float = 1.0,
         marker_size: int = 10,
-    ):
+    ) -> go.Figure:
         fig = plot_ev(
-            self.name,
-            self.number_of_atoms,
-            self.volumes,
-            self.energies,
-            volume_min,
-            volume_max,
-            num_volumes,
+            name=self.name,
+            number_of_atoms=self.number_of_atoms,
+            volumes=self.volumes,
+            energies=self.energies,
+            volume_min=volume_min,
+            volume_max=volume_max,
+            num_volumes=num_volumes,
             eos_name=eos_name,
             highlight_minimum=highlight_minimum,
             per_atom=per_atom,
@@ -253,6 +267,7 @@ class EvCurvesData:
             marker_alpha=marker_alpha,
             marker_size=marker_size,
         )
+
         return fig
 
 
@@ -427,11 +442,14 @@ class PhononsData:
         frequency_array = []
         dos_array = []
         for volume_per_atom in volumes_per_atom:
-            frequency = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom][
-                "frequency_hz"].values
+            frequency = vdos_data_scaled[
+                vdos_data_scaled["volume_per_atom"] == volume_per_atom
+            ]["frequency_hz"].values
             frequency_array.append(frequency)
-            
-            dos = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom]["dos_1_per_hz"].values
+
+            dos = vdos_data_scaled[
+                vdos_data_scaled["volume_per_atom"] == volume_per_atom
+            ]["dos_1_per_hz"].values
             dos_array.append(dos)
         frequency_array = np.column_stack(frequency_array)
         dos_array = np.column_stack(dos_array)
@@ -449,7 +467,7 @@ class PhononsData:
             frequency_array,
             dos_array,
         )
-        
+
         self.number_of_atoms = scale_atoms
         self.volumes = volumes
         self.f_vib = f_vib
@@ -463,12 +481,9 @@ class PhononsData:
             f_vib_poly,
             s_vib_poly,
             cv_vib_poly,
-        ) = fit_harmonic(self.volumes,
-                         self.temperatures,
-                         self.f_vib,
-                         self.s_vib,
-                         self.cv_vib,
-                         order)
+        ) = fit_harmonic(
+            self.volumes, self.temperatures, self.f_vib, self.s_vib, self.cv_vib, order
+        )
 
         self.f_vib_fit = f_vib_fit
         self.s_vib_fit = s_vib_fit
@@ -542,7 +557,7 @@ class PhononsData:
         property_mapping = {
             "helmholtz_energy": "f_vib",
             "entropy": "s_vib",
-            "heat_capacity": "cv_vib"
+            "heat_capacity": "cv_vib",
         }
         if property_to_plot in property_mapping:
             property_name = property_mapping[property_to_plot]
@@ -649,7 +664,7 @@ class ThermalElectronicData:
             dos_array.append(dos)
         energy_array = np.column_stack(energy_array)
         dos_array = np.column_stack(dos_array)
-        
+
         f_el, e_el, s_el, cv_el = thermal_electronic(
             volumes,
             temperature_range,
@@ -662,14 +677,12 @@ class ThermalElectronicData:
         self.cv_el = cv_el
         self.volumes = volumes
         self.temperatures = temperature_range
-        
-        volume_fit, f_el_fit, s_el_fit, cv_el_fit, f_el_poly, s_el_poly, cv_el_poly = fit_thermal_electronic(
-            self.volumes,
-            self.temperatures,
-            f_el,
-            s_el,
-            cv_el,
-            order)
+
+        volume_fit, f_el_fit, s_el_fit, cv_el_fit, f_el_poly, s_el_poly, cv_el_poly = (
+            fit_thermal_electronic(
+                self.volumes, self.temperatures, f_el, s_el, cv_el, order
+            )
+        )
 
         self.volume_fit = volume_fit
         self.f_el_fit = f_el_fit
@@ -678,12 +691,12 @@ class ThermalElectronicData:
         self.f_el_poly = f_el_poly
         self.s_el_poly = s_el_poly
         self.cv_el_poly = cv_el_poly
-        
+
         self.helmholtz_energy = {}
         self.internal_energy = {}
         self.entropy = {}
         self.heat_capacity = {}
-        
+
         for i, temp in enumerate(self.temperatures):
             self.helmholtz_energy[f"{temp}K"] = self.f_el[i]
             self.internal_energy[f"{temp}K"] = e_el[i]
@@ -706,7 +719,7 @@ class ThermalElectronicData:
         cv_el_coefficients = [arr for arr in cv_el_poly]
         for temp, coefficients in zip(self.temperatures, cv_el_coefficients):
             self.heat_capacity_fit["polynomial_coefficients"][f"{temp}K"] = coefficients
-        
+
         # Temporary df for qha
         thermal_electronic_fit_df = pd.DataFrame(
             {
@@ -717,43 +730,46 @@ class ThermalElectronicData:
                 "cv_el_poly": cv_el_poly,
             }
         )
-        thermal_electronic_fit_df = thermal_electronic_fit_df.groupby("temperatures").agg(list)
+        thermal_electronic_fit_df = thermal_electronic_fit_df.groupby(
+            "temperatures"
+        ).agg(list)
         # Remove the outer layer of lists
-        thermal_electronic_fit_df["number_of_atoms"] = thermal_electronic_fit_df["number_of_atoms"].apply(
-            lambda x: x[0]
-        )
-        thermal_electronic_fit_df["f_el_poly"] = thermal_electronic_fit_df["f_el_poly"].apply(
-            lambda x: x[0]
-        )
-        thermal_electronic_fit_df["s_el_poly"] = thermal_electronic_fit_df["s_el_poly"].apply(
-            lambda x: x[0]
-        )
-        thermal_electronic_fit_df["cv_el_poly"] = thermal_electronic_fit_df["cv_el_poly"].apply(
-            lambda x: x[0]
-        )
+        thermal_electronic_fit_df["number_of_atoms"] = thermal_electronic_fit_df[
+            "number_of_atoms"
+        ].apply(lambda x: x[0])
+        thermal_electronic_fit_df["f_el_poly"] = thermal_electronic_fit_df[
+            "f_el_poly"
+        ].apply(lambda x: x[0])
+        thermal_electronic_fit_df["s_el_poly"] = thermal_electronic_fit_df[
+            "s_el_poly"
+        ].apply(lambda x: x[0])
+        thermal_electronic_fit_df["cv_el_poly"] = thermal_electronic_fit_df[
+            "cv_el_poly"
+        ].apply(lambda x: x[0])
         self.thermal_electronic_fit_df = thermal_electronic_fit_df
 
     def plot(self, property_to_plot, selected_temperatures_plot: np.ndarray = None):
         property_mapping = {
             "helmholtz_energy": "f_el",
             "entropy": "s_el",
-            "heat_capacity": "cv_el"
+            "heat_capacity": "cv_el",
         }
         if property_to_plot in property_mapping:
             property_name = property_mapping[property_to_plot]
             property_data = getattr(self, property_name)
             property_fit_data = getattr(self, f"{property_name}_fit")
-        
+
         fig = plot_thermal_electronic(
             self.number_of_atoms,
             self.volumes,
             self.temperatures,
             property_data,
-            property_to_plot)
-        
+            property_to_plot,
+        )
+
         fig_fit = plot_thermal_electronic_properties_fit(
             self.number_of_atoms,
-            self.volumes, 
+            self.volumes,
             self.temperatures,
             property_to_plot,
             property_data,
@@ -767,6 +783,7 @@ class ThermalElectronicData:
     def plot_electron_dos(self):
         fig = plot_total_electron_dos(self.electron_dos_data)
         return fig
+
 
 class QuasiHarmonicData:
     def __init__(self):
