@@ -3,10 +3,10 @@ name: Tests
 on:
   push:
     branches:
-      - master_thermal_electronic
+      - master
   pull_request:
     branches:
-      - master_thermal_electronic
+      - master
 
 jobs:
   test:
