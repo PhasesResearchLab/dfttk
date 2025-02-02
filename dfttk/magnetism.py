@@ -63,7 +63,7 @@ def get_magnetic_structure(poscar: str, outcar: str) -> Structure:
         Structure: pymatgen Structure object with magmom tags
     """
     structure = Structure.from_file(poscar)
-    mag_data = extract_tot_mag_data(outcar)
+    mag_data = extract_tot_mag_data(outcar, poscar)
     structure.add_site_property("magmom", mag_data["tot"])
 
     return structure
