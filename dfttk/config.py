@@ -1199,8 +1199,6 @@ class Configuration:
 
         # Run the phonon jobs in parallel
         subprocess.run(["python", run_file], cwd=self.path)
-
-        # Delete the run_file script
         os.remove(os.path.join(self.path, run_file))
 
     def generate_phonon_dos(self):
@@ -1257,7 +1255,7 @@ class Configuration:
         self,
         temperature_range: np.ndarray,
         volumes: list[float] = None,
-        order: int = 2,
+        order: int = 1,
     ):
         self.thermal_electronic = ThermalElectronicData(self.path)
         self.thermal_electronic.get_vasp_input(volumes)
