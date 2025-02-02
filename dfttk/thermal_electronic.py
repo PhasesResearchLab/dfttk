@@ -904,6 +904,7 @@ def plot_thermal_electronic_properties_fit(
                 y=y,
                 mode="markers",
                 line=dict(color=color),
+                legendgroup=f"{temperature} K",
                 showlegend=False,
             )
         )
@@ -914,6 +915,7 @@ def plot_thermal_electronic_properties_fit(
                 mode="lines",
                 line=dict(color=color),
                 name=f"{temperature} K",
+                legendgroup=f"{temperature} K",
                 showlegend=True,
             )
         )
