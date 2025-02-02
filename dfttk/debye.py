@@ -323,7 +323,7 @@ def plot_debye(
     }
 
     if property_to_plot not in properties:
-        raise ValueError("property_to_plot must be one of 'f_vib', 's_vib', or 'cv_vib'")
+        raise ValueError("property_to_plot must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'")
 
     y, y_label = properties[property_to_plot]
 
