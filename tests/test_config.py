@@ -266,11 +266,11 @@ def test_process_ev_curves():
     ), f"Expected {np.array([])}, but got {config_Al.ev_curves.total_magnetic_moment}"
 
     assert np.array_equal(
-        config_Al.ev_curves.magnetic_ordering, {}
+        config_Al.ev_curves.magnetic_ordering, np.array([])
     ), f"Expected {np.array([])}, but got {config_Al.ev_curves.magnetic_ordering}"
 
     assert np.array_equal(
-        config_Al.ev_curves.mag_data, np.array([])
+        config_Al.ev_curves.mag_data, {}
     ), f"Expected [], but got {config_Al.ev_curves.mag_data}"
 
     expected_eos_parameters = {
