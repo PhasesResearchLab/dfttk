@@ -19,17 +19,6 @@ from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 
 # DFTTK Module Imports
 import dfttk.vasp_input as vasp_input
-from dfttk import (
-    aggregate_extraction,
-    eos_fit,
-    debye,
-    workflows,
-    phonons,
-    thermal_electronic,
-    quasi_harmonic,
-)
-
-# Import specific functions if frequently used
 from dfttk.aggregate_extraction import (
     extract_configuration_data,
     calculate_encut_conv,
@@ -166,10 +155,14 @@ class EvCurvesData:
 
         self.volumes = all_volumes
         self.energies = all_energies
-        self.mag_data = all_mag_data_list
+        self.mag_data = all_mag_data_list.tolist()
         self.total_magnetic_moment = all_total_magnetic_moments
         self.magnetic_ordering = all_magnetic_orderings
 
+        transformed_data = [[{f"{item[0]}": {item[2]: item[1]}} for item in sublist] for sublist in self.mag_data]
+        transformed_data = {str(index): {f"{item[0]}": {item[2]: item[1]} for item in sublist} for index, sublist in enumerate(self.mag_data)}
+        self.mag_data = transformed_data
+        
         if volumes is not None:
             volumes_set = set(volumes)
             filtered_indices = [
@@ -396,7 +389,7 @@ class PhononsData:
 
     def get_vasp_input(self, volumes: list[float] = None):
         phonon_folders = self._get_phonon_folders()
-        incar_keys = ["1relax", "2phonons"]
+        incar_keys = ["1phonons"]
 
         if volumes is not None:
             volumes_set = {round(volume, 2) for volume in volumes}
@@ -404,11 +397,11 @@ class PhononsData:
                 phonon_folder
                 for phonon_folder in phonon_folders
                 if os.path.exists(
-                    os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
+                    os.path.join(self.path, phonon_folder, "CONTCAR.1phonons")
                 )
                 and round(
                     Structure.from_file(
-                        os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
+                        os.path.join(self.path, phonon_folder, "CONTCAR.1phonons")
                     ).volume,
                     2,
                 )
@@ -425,19 +418,33 @@ class PhononsData:
             self.incars.append(incar_data)
 
             structure = Structure.from_file(
-                os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
+                os.path.join(self.path, phonon_folder, "CONTCAR.1phonons")
             )
             self.phonon_structures.append(structure)
 
         if phonon_folders:
             self.kpoints = Kpoints.from_file(
-                os.path.join(self.path, phonon_folders[0], "KPOINTS.2phonons")
+                os.path.join(self.path, phonon_folders[0], "KPOINTS.1phonons")
             )
 
         try:
             self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
         except FileNotFoundError:
             self.potcar = None
+
+    @staticmethod
+    def pad_arrays(arrays, pad_value=0, pad_type='constant'):
+        max_length = max(len(arr) for arr in arrays)
+        padded_arrays = []
+        for arr in arrays:
+            if pad_type == 'constant':
+                padded_arr = np.pad(arr, (0, max_length - len(arr)), constant_values=pad_value)
+            elif pad_type == 'increasing':
+                increment = (arr[-1] - arr[-2])
+                pad_values = np.arange(arr[-1] + increment, arr[-1] + increment * (max_length - len(arr) + 1), increment)
+                padded_arr = np.concatenate([arr, pad_values])
+            padded_arrays.append(padded_arr)
+        return np.column_stack(padded_arrays)
 
     def get_harmonic_data(
         self,
@@ -464,9 +471,9 @@ class PhononsData:
             ].values
             for volume_per_atom in volumes_per_atom
         ]
-
-        frequency_array = np.column_stack(frequency_array)
-        dos_array = np.column_stack(dos_array)
+        
+        frequency_array = self.pad_arrays(frequency_array, pad_type='increasing')
+        dos_array = self.pad_arrays(dos_array, pad_value=0, pad_type='constant')
 
         self.temperatures = temperatures
         volumes, f_vib, e_vib, s_vib, cv_vib = harmonic(
@@ -1076,6 +1083,7 @@ class Configuration:
         volumes: list[float],
         encut: int = 520,
         kppa: int = 4000,
+        magmom_fm: bool = False,
         potcar_functional: str = "PBE_54",
         incar_functional: str = "PBE",
         other_settings: dict = {},
@@ -1095,6 +1103,7 @@ class Configuration:
             material_type=material_type,
             encut=encut,
             kppa=kppa,
+            magmom_fm=magmom_fm,
             potcar_functional=potcar_functional,
             incar_functional=incar_functional,
             other_settings=other_settings,
@@ -1202,8 +1211,8 @@ class Configuration:
         os.remove(os.path.join(self.path, run_file))
 
     def generate_phonon_dos(self):
-        self.phonons = PhononsData()
-        self.phonons.process_phonon_dos(self.path)
+        self.phonons = PhononsData(self.path)
+        self.phonons.process_phonon_dos()
 
     def process_phonons(
         self,
@@ -1345,10 +1354,10 @@ class Configuration:
                     s.as_dict() for s in self.ev_curves.relaxed_structures
                 ],
                 "number_of_atoms": self.ev_curves.number_of_atoms,
-                "volumes": self.ev_curves.volumes,
-                "energies": self.ev_curves.energies,
-                "total_magnetic_moment": self.ev_curves.total_magnetic_moment,
-                "magnetic_ordering": self.ev_curves.magnetic_ordering,
+                "volumes": self.ev_curves.volumes.tolist(),
+                "energies": self.ev_curves.energies.tolist(),
+                "total_magnetic_moment": self.ev_curves.total_magnetic_moment.tolist(),
+                "magnetic_ordering": self.ev_curves.magnetic_ordering.tolist(),
                 "mag_data": self.ev_curves.mag_data,
                 "eos_parameters": self.ev_curves.eos_parameters,
             }
@@ -1420,9 +1429,9 @@ class Configuration:
 def plot_multiple_ev(
     config_objects: dict[str, Configuration],
     config_names: list[str],
-    volume_min: float,
-    volume_max: float,
-    num_volumes: int,
+    volume_min: float = None,
+    volume_max: float = None,
+    num_volumes: int = 1000,
     eos_name: str = "BM4",
     highlight_minimum: bool = True,
     per_atom: bool = False,
@@ -1442,9 +1451,9 @@ def plot_multiple_ev(
 
     for config_name in config_names:
         fig = config_objects[config_name].ev_curves.plot(
-            volume_min,
-            volume_max,
-            num_volumes,
+            volume_min=volume_min,
+            volume_max=volume_max,
+            num_volumes=num_volumes,
             eos_name=eos_name,
             highlight_minimum=highlight_minimum,
             per_atom=per_atom,
