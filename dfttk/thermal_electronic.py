@@ -60,10 +60,14 @@ def read_total_electron_dos(path: str, plot: bool = False) -> pd.DataFrame:
 
         num_atoms = vasprun.final_structure.num_sites
 
-        # TODO: Implement this for magnetic systems as well
+        
         complete_dos = vasprun.complete_dos
         energy = complete_dos.energies
-        total_dos = complete_dos.densities[Spin.up]
+        
+        try:
+            total_dos = complete_dos.densities[Spin.up] + complete_dos.densities[Spin.down]
+        except:
+            total_dos = complete_dos.densities[Spin.up]
 
         fermi_energy = vasprun.efermi
         energy_minus_fermi_energy = energy - fermi_energy
