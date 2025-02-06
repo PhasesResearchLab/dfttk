@@ -389,7 +389,7 @@ class PhononsData:
 
     def get_vasp_input(self, volumes: list[float] = None):
         phonon_folders = self._get_phonon_folders()
-        incar_keys = ["1phonons"]
+        incar_keys = ["1relax", "2phonons"]
 
         if volumes is not None:
             volumes_set = {round(volume, 2) for volume in volumes}
@@ -397,11 +397,11 @@ class PhononsData:
                 phonon_folder
                 for phonon_folder in phonon_folders
                 if os.path.exists(
-                    os.path.join(self.path, phonon_folder, "CONTCAR.1phonons")
+                    os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
                 )
                 and round(
                     Structure.from_file(
-                        os.path.join(self.path, phonon_folder, "CONTCAR.1phonons")
+                        os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
                     ).volume,
                     2,
                 )
@@ -418,13 +418,13 @@ class PhononsData:
             self.incars.append(incar_data)
 
             structure = Structure.from_file(
-                os.path.join(self.path, phonon_folder, "CONTCAR.1phonons")
+                os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
             )
             self.phonon_structures.append(structure)
 
         if phonon_folders:
             self.kpoints = Kpoints.from_file(
-                os.path.join(self.path, phonon_folders[0], "KPOINTS.1phonons")
+                os.path.join(self.path, phonon_folders[0], "KPOINTS.2phonons")
             )
 
         try:
