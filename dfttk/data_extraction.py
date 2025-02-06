@@ -89,13 +89,19 @@ def extract_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
             elif found_mag_data and not data_start and "----" in line:
                 data_start = True
             elif data_start and "----" not in line:
-                ion = int(line.split()[0])
-                data_line = line.split()[1:]
-                data_line = [float(data) for data in data_line]
-                data.append((step, ion, *data_line))
+                try:
+                    ion = int(line.split()[0])
+                    data_line = line.split()[1:]
+                    data_line = [float(data) for data in data_line]
+                    data.append((step, ion, *data_line))
+                except:
+                    continue
             elif data_start and "----" in line:
-                data_start = False
-                found_mag_data = False
+                try:
+                    data_start = False
+                    found_mag_data = False
+                except:
+                    continue
         columns = ["step"] + headers
         df = pd.DataFrame(data, columns=columns)
         return df
