@@ -4,6 +4,7 @@ Module for calculating the thermal electronic contributions to Helmholtz energy,
 
 # Standard Library Imports
 import os
+import numpy as np
 
 # Related third party imports
 import numpy as np
@@ -21,6 +22,7 @@ from pymatgen.electronic_structure.core import Spin
 
 # DFTTK imports
 from dfttk.plotly_format import plot_format
+from dfttk.data_extraction import read_doscar
 
 BOLTZMANN_CONSTANT = (
     scipy.constants.Boltzmann / scipy.constants.electron_volt
@@ -59,19 +61,29 @@ def read_total_electron_dos(path: str, plot: bool = False) -> pd.DataFrame:
         vasprun = Vasprun(vasprun_path)
 
         num_atoms = vasprun.final_structure.num_sites
+        doscar_path = os.path.join(path, elec_folder, "DOSCAR.elec_dos")
+        energies, dos_up, dos_down, integrated_dos_up, integrated_dos_down, fermi_energy = read_doscar(doscar_path)
 
+        e1 = energies.min()
+        e2 = energies.max()
+        npins = len(energies)
+
+        estep = (e2 - e1) / (npins-1)
+        xene = np.arange(e1, e2 + estep, estep)
         
-        complete_dos = vasprun.complete_dos
-        energy = complete_dos.energies
+        if len(xene) > npins:
+            xene = xene[:npins]
+        elif len(xene) < npins:
+            xene = np.append(xene, e2)
+
+        energy_minus_fermi_energy = xene - fermi_energy
+        total_dos = integrated_dos_up + integrated_dos_down
+
+        dd1 = total_dos[:-1]
+        dd2 = total_dos[1:]
+        total_dos = (dd2 - dd1)/ estep
+        total_dos = np.insert(total_dos, 0, 0)
         
-        try:
-            total_dos = complete_dos.densities[Spin.up] + complete_dos.densities[Spin.down]
-        except:
-            total_dos = complete_dos.densities[Spin.up]
-
-        fermi_energy = vasprun.efermi
-        energy_minus_fermi_energy = energy - fermi_energy
-
         volume_list.append(volume)
         num_atoms_list.append(num_atoms)
         energy_minus_fermi_energy_list.append(energy_minus_fermi_energy)
@@ -142,12 +154,6 @@ def fit_electron_dos(
         tuple[np.ndarray, np.ndarray]: fitted energy and DOS values.
     """
 
-    # Check if energy and dos are pandas Series and convert to NumPy arrays if necessary
-    if isinstance(energy, pd.Series):
-        energy = energy.values[0]
-    if isinstance(dos, pd.Series):
-        dos = dos.values[0]
-
     # Filter the energy and dos values within the energy range
     filtered_indices = (energy >= energy_range[0]) & (energy <= energy_range[1])
     filtered_energy = energy[filtered_indices]
@@ -186,17 +192,13 @@ def fermi_dirac_distribution(
     chemical_potential = float(chemical_potential)
     temperature = float(temperature)
 
-    # Check if energy is a pandas Series and convert to NumPy array if necessary
-    if isinstance(energy, pd.Series):
-        energy = energy.values[0]
-
     if temperature < 0:
         raise ValueError("Temperature cannot be less than 0 K")
 
     if temperature == 0:
         fermi_dist = np.where(energy < chemical_potential, 1, 0)
 
-    if temperature > 0:
+    elif temperature > 0:
         # Note that expit(x) = 1/(1+exp(-x))
         fermi_dist = expit(
             -(energy - chemical_potential) / (BOLTZMANN_CONSTANT * temperature)
@@ -267,7 +269,7 @@ def calculate_num_electrons(
 
     if temperature < 0:
         raise ValueError("Temperature cannot be less than 0 K")
-
+    
     fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
     integrand = dos * fermi_dist
     num_electrons = np.trapz(integrand, energy)
@@ -280,7 +282,7 @@ def calculate_chemical_potential(
     dos: np.ndarray,
     temperature: float,
     min_chemical_potential: float = -0.01,
-    max_chemical_potential: float = 0.01,
+    max_chemical_potential: float = 0.05,
 ) -> float:
     """Calculates the chemical potential at a given electronic DOS, temperature, and volume.
 
@@ -298,26 +300,44 @@ def calculate_chemical_potential(
     temperature = float(temperature)
     num_electrons_0K = round(calculate_num_electrons(energy, dos, 0, 0))
 
+    from scipy.optimize import bisect
+    def electron_difference(chemical_potential):
+        num_electrons = calculate_num_electrons(energy, dos, chemical_potential, temperature)
+        return num_electrons - num_electrons_0K
+
+    try:
+        chemical_potential = bisect(electron_difference, min_chemical_potential, max_chemical_potential)
+    except ValueError as e:
+        print(
+            f"Warning: The chemical potential could not be found within the range {min_chemical_potential} to {max_chemical_potential} eV. "
+            "Consider increasing the range or checking the input data."
+        )
+        chemical_potential = max_chemical_potential
+    '''
     # Find the chemical potential at temperature such that the number of electrons matches that at 0 K
     chemical_potential = min_chemical_potential
     num_electrons = calculate_num_electrons(
         energy, dos, chemical_potential, temperature
     )
-
+    # TODO: Find a way to solve for this directly 
     while (
-        abs(num_electrons - num_electrons_0K) > 1e-3
+        abs(num_electrons - num_electrons_0K) > 1e-2
         and chemical_potential < max_chemical_potential
     ):
         chemical_potential += 0.001
         num_electrons = calculate_num_electrons(
             energy, dos, chemical_potential, temperature
         )
-
-    if chemical_potential == max_chemical_potential:
+        
+    if chemical_potential >= max_chemical_potential and abs(num_electrons - num_electrons_0K) > 1e-2:
         print(
-            f"Warning: The chemical potential is at the maximum value of {max_chemical_potential} eV. Consider increasing the maximum chemical potential."
+            f"Warning: The chemical potential is at the maximum value of {max_chemical_potential} eV, "
+            f"but the number of electrons ({num_electrons}) does not match the number of electrons at 0 K ({num_electrons_0K}). "
+            "Consider increasing the maximum chemical potential."
         )
-
+    '''
+    num_electrons = calculate_num_electrons(energy, dos, chemical_potential, temperature)
+    #print(num_electrons_0K, num_electrons, chemical_potential)
     return chemical_potential
 
 
@@ -344,7 +364,7 @@ def calculate_internal_energy(
     """
 
     energy_fit, dos_fit = fit_electron_dos(
-        energy, dos, [np.min(energy), np.max(energy)], resolution
+        energy, dos,  [np.min(energy), np.max(energy)], resolution
     )
     integrand_1_list = []
     filtered_energy_list = []

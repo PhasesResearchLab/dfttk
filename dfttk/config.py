@@ -409,12 +409,17 @@ class PhononsData:
             ]
 
         for phonon_folder in phonon_folders:
-            incar_data = {
-                key: Incar.from_file(
-                    os.path.join(self.path, phonon_folder, f"INCAR.{key}")
-                )
-                for key in incar_keys
-            }
+            incar_data = {}
+            for key in incar_keys:
+                try:
+                    incar_data[key] = Incar.from_file(
+                        os.path.join(self.path, phonon_folder, f"INCAR.{key}")
+                    )
+                except FileNotFoundError:
+                    if key == "1relax":
+                        continue
+                    else:
+                        raise
             self.incars.append(incar_data)
 
             structure = Structure.from_file(
@@ -841,17 +846,23 @@ class QuasiHarmonicData:
         debye_properties: pd.DataFrame = None,
         thermal_electronic_properties_fit: pd.DataFrame = None,
         P: float = 0,
+        apply_smoothing: bool = False,
+        smoothing_window_length: int = 21,
+        smoothing_polyorder: int = 2,
     ) -> None:
 
         quasi_harmonic_properties = process_quasi_harmonic(
-            num_atoms_eos,
-            volume_range,
-            eos_constants,
-            harmonic_properties_fit,
-            debye_properties,
-            thermal_electronic_properties_fit,
-            P,
-            eos,
+            num_atoms_eos=num_atoms_eos,
+            volume_range=volume_range,
+            eos_constants=eos_constants,
+            apply_smoothing=apply_smoothing,
+            smoothing_window_length=smoothing_window_length,
+            smoothing_polyorder=smoothing_polyorder,
+            harmonic_properties_fit=harmonic_properties_fit,
+            debye_properties=debye_properties,
+            thermal_electronic_properties_fit=thermal_electronic_properties_fit,
+            P=P,
+            eos=eos,
         )
 
         self.quasi_harmonic_df = quasi_harmonic_properties
@@ -906,16 +917,17 @@ class QuasiHarmonicData:
         pressure: float,
         plot_type: str = "default",
         selected_temperatures_plot: list = None,
-    ):
+    ) -> go.Figure:
 
-        plot_quasi_harmonic(
+        fig = plot_quasi_harmonic(
             quasi_harmonic_properties=self.methods[method][pressure][
                 "quasi_harmonic_df"
             ],
             plot_type=plot_type,
             selected_temperatures_plot=selected_temperatures_plot,
         )
-
+        return fig
+    
 # Continue refactoring here!
 class Configuration:
     def __init__(self, path, name, multiplicity=None):
@@ -1187,6 +1199,10 @@ class Configuration:
         kppa: float,
         run_file: str = "run_dfttk_phonons.py",
         scaling_matrix: tuple[tuple[int]] = ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+        copy_magmom: bool = False,
+        backup: bool = False,
+        max_errors: int = 10,
+        relax: bool = True,
     ):
 
         # Prepare the run_file script
@@ -1197,11 +1213,15 @@ class Configuration:
             file.write("subset = list(VaspErrorHandler.error_msgs.keys())\n")
             file.write("handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]\n")
             file.write(f"vasp_cmd = {self.vasp_cmd}\n")
+            file.write(f"copy_magmom = {copy_magmom} \n")
+            file.write(f"backup = {backup} \n")
+            file.write(f"max_errors = {max_errors} \n")
+            file.write(f"relax = {relax} \n")
             file.write(f"phonon_volumes = {phonon_volumes} \n")
             file.write(f"scaling_matrix = {scaling_matrix} \n")
             file.write(f"kppa = {kppa} \n")
             file.write(
-                f"workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_matrix = scaling_matrix)\n"
+                f"workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_matrix=scaling_matrix)\n"
             )
             file.write("workflows.custodian_errors_location(os.getcwd())\n")
             file.write("workflows.NELM_reached(os.getcwd())\n")
@@ -1281,6 +1301,9 @@ class Configuration:
         method: str,
         volume_range: np.ndarray,
         P: float = 0,
+        apply_smoothing: bool = False,
+        smoothing_window_length: int=21,
+        smoothing_polyorder: int=2,
     ):
         if not hasattr(self, "qha"):
             self.qha = QuasiHarmonicData()
@@ -1328,6 +1351,9 @@ class Configuration:
             debye_properties=debye_properties,
             thermal_electronic_properties_fit=thermal_electronic_properties_fit,
             P=P,
+            apply_smoothing=apply_smoothing,
+            smoothing_window_length=smoothing_window_length,
+            smoothing_polyorder=smoothing_polyorder,
         )
 
     def to_mongodb(self, connection_string: str, db_name: str, collection_name: str):

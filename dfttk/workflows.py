@@ -597,6 +597,7 @@ def run_phonons(
     copy_magmom: bool = False,
     backup: bool = False,
     max_errors: int = 10,
+    relax: bool = True,
 ):
     """Runs a relaxation followed by a phonon calculation.
 
@@ -608,23 +609,10 @@ def run_phonons(
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
         max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
+        relax (bool, optional): if True, runs a relaxation before the phonon calculation. Defaults to True.
     """
 
-    step1 = VaspJob(
-        vasp_cmd=vasp_cmd,
-        copy_magmom=copy_magmom,
-        final=False,
-        suffix=".1relax",
-        backup=backup,
-    )
-
-    step2 = VaspJob(
-        vasp_cmd=vasp_cmd,
-        copy_magmom=copy_magmom,
-        final=True,
-        suffix=".2phonons",
-        backup=backup,
-        settings_override=[
+    settings_override=[
             {
                 "dict": "INCAR",
                 "action": {
@@ -640,10 +628,39 @@ def run_phonons(
                 },
             },
             {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
-        ],
+        ]
+    
+    step1 = VaspJob(
+        vasp_cmd=vasp_cmd,
+        copy_magmom=copy_magmom,
+        final=False,
+        suffix=".1relax",
+        backup=backup,
     )
 
-    jobs = [step1, step2]
+    if relax is True:
+        step2 = VaspJob(
+            vasp_cmd=vasp_cmd,
+            copy_magmom=copy_magmom,
+            final=True,
+            suffix=".2phonons",
+            backup=backup,
+            settings_override=settings_override,
+        )
+        jobs = [step1, step2]
+    
+    else:
+        settings_override = [settings_override[0]]
+        step2 = VaspJob(
+            vasp_cmd=vasp_cmd,
+            copy_magmom=copy_magmom,
+            final=True,
+            suffix=".2phonons",
+            backup=backup,
+            settings_override=settings_override,
+        )
+        jobs = [step2]
+        
     c = Custodian(handlers, jobs, max_errors=max_errors)
     c.run()
 
@@ -663,6 +680,7 @@ def phonons_parallel(
         kppa: k-point grid density.
         run_file: bash script to run the phonon calculations.
         scaling_matrix: scaling matrix for the supercell. The default is the identity matrix.
+        relax (bool, optional): if True, runs a relaxation before the phonon calculation. Defaults to True. 
     """
 
     # Create a new run_file to run the phonon calculations
@@ -684,7 +702,7 @@ def phonons_parallel(
     new_run_file += "\n"
     new_run_file += "python << END_OF_PYTHON\n"
     new_run_file += script_contents
-    new_run_file += "workflows.run_phonons(vasp_cmd, handlers)\n"
+    new_run_file += "workflows.run_phonons(vasp_cmd=vasp_cmd, handlers=handlers, copy_magmom=copy_magmom, backup=backup, max_errors=max_errors, relax=relax)\n"
     new_run_file += "END_OF_PYTHON\n"
 
     # Copy files to phonon folders
@@ -819,15 +837,15 @@ def process_phonon_dos_YPHON(path: str):
             if not os.path.exists(phonon_dos_folder):
                 os.makedirs(phonon_dos_folder, exist_ok=True)
             shutil.copy(
-                os.path.join(phonon_folder, "CONTCAR.2phonons"),
+                os.path.join(phonon_folder, "CONTCAR.1phonons"),
                 os.path.join(phonon_dos_folder, "CONTCAR"),
             )
             shutil.copy(
-                os.path.join(phonon_folder, "OUTCAR.2phonons"),
+                os.path.join(phonon_folder, "OUTCAR.1phonons"),
                 os.path.join(phonon_dos_folder, "OUTCAR"),
             )
             shutil.copy(
-                os.path.join(phonon_folder, "vasprun.xml.2phonons"),
+                os.path.join(phonon_folder, "vasprun.xml.1phonons"),
                 os.path.join(phonon_dos_folder, "vasprun.xml"),
             )
 
