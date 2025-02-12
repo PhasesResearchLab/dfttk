@@ -133,3 +133,42 @@ def extract_tot_mag_data(
     tot_data.loc[:, "species"] = species
 
     return tot_data
+
+# TODO: Make this work for all DOSCAR types
+def read_doscar(path):
+    
+    with open(path, "r") as file:
+        lines = file.readlines()
+        
+        fermi_energy = float(lines[5].split()[2])
+        
+        # Skip the header lines
+        header_lines = 6
+        data_lines = lines[header_lines:]
+        
+        energies = []
+        dos_up = []
+        dos_down = []
+        integrated_dos_up = []
+        integrated_dos_down = []
+
+        for line in data_lines:
+            if line.strip():  # Skip empty lines
+                parts = line.split()
+                if len(parts) != 5:
+                    break  # Stop if the number of columns is no longer 5
+                energies.append(float(parts[0]))
+                dos_up.append(float(parts[1]))
+                dos_down.append(float(parts[2]))
+                integrated_dos_up.append(float(parts[3]))
+                integrated_dos_down.append(float(parts[4]))
+
+        energies = np.array(energies)
+        dos_up = np.array(dos_up)
+        dos_down = np.array(dos_down)
+        integrated_dos_up = np.array(integrated_dos_up)
+        integrated_dos_down = np.array(integrated_dos_down)
+    
+    return energies, dos_up, dos_down, integrated_dos_up, integrated_dos_down, fermi_energy
+    
+    
