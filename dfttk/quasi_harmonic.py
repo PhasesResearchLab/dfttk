@@ -1,5 +1,5 @@
 """
-Quasi-harmonic approximation module
+Quasiharmonic approximation module.
 """
 
 # Related third party imports
@@ -19,6 +19,9 @@ def process_quasi_harmonic(
     num_atoms_eos: int,
     volume_range: np.ndarray,
     eos_constants: np.ndarray,
+    apply_smoothing: bool = False,
+    smoothing_window_length: int = 21,
+    smoothing_polyorder: int = 2,
     harmonic_properties_fit: pd.DataFrame = None,
     debye_properties: pd.DataFrame = None,
     thermal_electronic_properties_fit: pd.DataFrame = None,
@@ -255,17 +258,25 @@ def process_quasi_harmonic(
     V0 = quasi_harmonic_properties["V0"].values
     S0 = quasi_harmonic_properties["S0"].values
     T = quasi_harmonic_properties["temperature"].values
+    
+    from scipy.signal import savgol_filter
+    if apply_smoothing:
+        # Smooth the volume data
+        window_length = smoothing_window_length  # Choose an odd number
+        polyorder = smoothing_polyorder
+        V0 = savgol_filter(V0, window_length=window_length, polyorder=polyorder)
+    
     dV = V0[1:] - V0[:-1]
     dS = S0[1:] - S0[:-1]
     dT = T[1:] - T[:-1]
 
     CTE = (1 / V0[:-1]) * dV / dT * 1e6
     Cp = T[:-1] * dS / dT
-
-    # Add a NaN value to the end of the CTE list
-    CTE = np.append(CTE, np.nan)
-    Cp = np.append(Cp, np.nan)
-
+    
+    # Add a value of 0 to the beginning of CTE and Cp
+    CTE = np.insert(CTE, 0, 0)
+    Cp = np.insert(Cp, 0, 0)
+    
     quasi_harmonic_properties["H0"] = (
         quasi_harmonic_properties["G0"]
         + quasi_harmonic_properties["temperature"] * quasi_harmonic_properties["S0"]
@@ -278,7 +289,7 @@ def process_quasi_harmonic(
 
 def plot_quasi_harmonic(
     quasi_harmonic_properties: pd.DataFrame,
-    plot_type: str = "default",
+    plot_type: str,
     selected_temperatures_plot: list = None,
 ):
     """Plots the quasi-harmonic properties
@@ -305,7 +316,7 @@ def plot_quasi_harmonic(
 
     scale_atoms = quasi_harmonic_properties["number_of_atoms"].iloc[0]
 
-    if plot_type == "default" or plot_type == "all":
+    if plot_type == "helmholtz_energy + PV":
         # Free energy plot
         fig = go.Figure()
         for temperature in selected_temperatures:
@@ -354,41 +365,179 @@ def plot_quasi_harmonic(
         )
         fig.show()
 
+    elif plot_type == "volume":
         x = temperature_list
-        y_list = ["V0", "CTE", "S0", "Cp"]
-        y_labels = [
-            f"Volume (Å³/{scale_atoms} atoms)",
-            "CTE (10<sup>-6</sup> K<sup>-1</sup>)",
-            f"Entropy (eV/K/{scale_atoms} atoms)",
-            f"C<sub>p</sub> (eV/K/{scale_atoms} atoms)",
-        ]
+        y_list = "V0"
+        y_labels = f"Volume (Å³/{scale_atoms} atoms)"
+        fig = go.Figure()
+        x = temperature_list
+        y = quasi_harmonic_properties[y_list].values
 
-        if plot_type == "all":
-            y_list += ["H0", "B", "G0"]
-            y_labels += [
-                f"Enthalpy (eV/{scale_atoms} atoms)",
-                "Bulk modulus (GPa)",
-                f"Gibbs energy (eV/{scale_atoms} atoms)",
-            ]
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                marker=dict(size=10),
+            ),
+        )
+        plot_format(
+            fig,
+            f"Temperature (K)",
+            y_labels,
+            width=650,
+            height=600,
+        )
+        fig.show()
+    
+    elif plot_type == "cte":
+        x = temperature_list
+        y_list = "CTE"
+        y_labels = "LCTE (10<sup>-6</sup> K<sup>-1</sup>)"
+        fig = go.Figure()
+        x = temperature_list
+        y = quasi_harmonic_properties[y_list].values
 
-        for y_value, y_label in zip(y_list, y_labels):
-            fig = go.Figure()
-            x = temperature_list
-            y = quasi_harmonic_properties[y_value].values
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                marker=dict(size=10),
+            ),
+        )
+        plot_format(
+            fig,
+            f"Temperature (K)",
+            y_labels,
+            width=650,
+            height=600,
+        )
+        fig.show()
+        
+    elif plot_type == "entropy":
+        x = temperature_list
+        y_list = "S0"
+        y_labels = f"Entropy (eV/K/{scale_atoms} atoms)"
+        fig = go.Figure()
+        x = temperature_list
+        y = quasi_harmonic_properties[y_list].values
 
-            fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=y,
-                    mode="lines",
-                    marker=dict(size=10),
-                ),
-            )
-            plot_format(
-                fig,
-                f"Temperature (K)",
-                y_label,
-                width=650,
-                height=600,
-            )
-            fig.show()
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                marker=dict(size=10),
+            ),
+        )
+        plot_format(
+            fig,
+            f"Temperature (K)",
+            y_labels,
+            width=650,
+            height=600,
+        )
+        fig.show()
+    
+    elif plot_type == "heat_capacity":
+        x = temperature_list
+        y_list = "Cp"
+        y_labels = f"C<sub>p</sub> (eV/K/{scale_atoms} atoms)"
+        fig = go.Figure()
+        x = temperature_list
+        y = quasi_harmonic_properties[y_list].values
+
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                marker=dict(size=10),
+            ),
+        )
+        plot_format(
+            fig,
+            f"Temperature (K)",
+            y_labels,
+            width=650,
+            height=600,
+        )
+        fig.show()
+    
+    elif plot_type == "enthalpy":
+        x = temperature_list
+        y_list = "H0"
+        y_labels = f"Enthalpy (eV/{scale_atoms} atoms)"
+        fig = go.Figure()
+        x = temperature_list
+        y = quasi_harmonic_properties[y_list].values
+
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                marker=dict(size=10),
+            ),
+        )
+        plot_format(
+            fig,
+            f"Temperature (K)",
+            y_labels,
+            width=650,
+            height=600,
+        )
+        fig.show()
+
+    elif plot_type == "bulk_modulus":
+        x = temperature_list
+        y_list = "B"
+        y_labels = "Bulk modulus (GPa)"
+        fig = go.Figure()
+        x = temperature_list
+        y = quasi_harmonic_properties[y_list].values
+
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                marker=dict(size=10),
+            ),
+        )
+        plot_format(
+            fig,
+            f"Temperature (K)",
+            y_labels,
+            width=650,
+            height=600,
+        )
+        fig.show()
+    
+    elif plot_type == "gibbs_energy":
+        x = temperature_list
+        y_list = "G0"
+        y_labels = f"Gibbs energy (eV/{scale_atoms} atoms)"
+        fig = go.Figure()
+        x = temperature_list
+        y = quasi_harmonic_properties[y_list].values
+
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                marker=dict(size=10),
+            ),
+        )
+        plot_format(
+            fig,
+            f"Temperature (K)",
+            y_labels,
+            width=650,
+            height=600,
+        )
+        fig.show()
+
+    return fig
