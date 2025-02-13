@@ -12,6 +12,7 @@ import pandas as pd
 # Local application/library specific imports
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp import Poscar
+from pymatgen.io.vasp.outputs import Vasprun
 
 
 def extract_atomic_masses(outcar_path: str) -> float:
@@ -135,16 +136,17 @@ def extract_tot_mag_data(
     return tot_data
 
 # TODO: Make this work for all DOSCAR types
-def read_doscar(path):
+def read_doscar(vasprun_path, doscar_path):
     
-    with open(path, "r") as file:
+    vasprun = Vasprun(vasprun_path)
+    nedos = vasprun.parameters["NEDOS"]
+    fermi_energy = vasprun.efermi
+    
+    with open(doscar_path, "r") as file:
         lines = file.readlines()
         
-        fermi_energy = float(lines[5].split()[2])
-        
-        # Skip the header lines
         header_lines = 6
-        data_lines = lines[header_lines:]
+        data_lines = lines[header_lines:header_lines+nedos]
         
         energies = []
         dos_up = []
@@ -153,15 +155,20 @@ def read_doscar(path):
         integrated_dos_down = []
 
         for line in data_lines:
-            if line.strip():  # Skip empty lines
+            if line.strip():
                 parts = line.split()
-                if len(parts) != 5:
-                    break  # Stop if the number of columns is no longer 5
-                energies.append(float(parts[0]))
-                dos_up.append(float(parts[1]))
-                dos_down.append(float(parts[2]))
-                integrated_dos_up.append(float(parts[3]))
-                integrated_dos_down.append(float(parts[4]))
+                
+                if len(parts) == 3:
+                    energies.append(float(parts[0]))
+                    dos_up.append(float(parts[1]))
+                    integrated_dos_up.append(float(parts[2]))
+                
+                if len(parts) == 5:
+                    energies.append(float(parts[0]))
+                    dos_up.append(float(parts[1]))
+                    dos_down.append(float(parts[2]))
+                    integrated_dos_up.append(float(parts[3]))
+                    integrated_dos_down.append(float(parts[4]))
 
         energies = np.array(energies)
         dos_up = np.array(dos_up)
