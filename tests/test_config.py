@@ -29,9 +29,9 @@ config_Al.process_thermal_electronic(temperature_range, order=1)
 
 volume_range = np.linspace(0.98 * 60, 1.02 * 74, 1000)
 config_Al.process_qha("debye", volume_range, P=0)
-#config_Al.process_qha("debye + thermal_electronic", volume_range, P=0)
+# config_Al.process_qha("debye + thermal_electronic", volume_range, P=0)
 config_Al.process_qha("phonons", volume_range, P=0)
-#config_Al.process_qha("phonons + thermal_electronic", volume_range, P=0)
+# config_Al.process_qha("phonons + thermal_electronic", volume_range, P=0)
 
 
 def test_analyze_encut_conv():
@@ -349,7 +349,9 @@ def test_process_phonons():
     ), f"Expected 4, but got {config_Al.phonons.number_of_atoms}"
 
     expected_temperatures = np.arange(0, 1010, 100)
-    assert np.array_equal(config_Al.phonons.temperatures, expected_temperatures), f"Expected {expected_temperatures}, but got {config_Al.phonons.temperatures}"
+    assert np.array_equal(
+        config_Al.phonons.temperatures, expected_temperatures
+    ), f"Expected {expected_temperatures}, but got {config_Al.phonons.temperatures}"
 
     expected_volumes = [60.0, 62.0, 64.0, 66.0, 68.0, 70.0, 72.0, 74.0]
     assert np.array_equal(
@@ -438,7 +440,6 @@ def test_process_debye():
                 ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
 
 
-
 def test_process_thermal_electronic():
     thermal_electronic_files_and_attributes = [
         ("test_config_data/expected_thermal_electronic_incars.json", "incars"),
@@ -470,7 +471,7 @@ def test_process_thermal_electronic():
     assert np.array_equal(
         config_Al.thermal_electronic.temperatures, expected_temperatures
     ), f"Expected {expected_temperatures}, but got {config_Al.thermal_electronic.temperatures}"
-    
+
     files_and_attributes = [
         (
             "test_config_data/expected_thermal_electronic_helmholtz_energy.json",
@@ -480,11 +481,7 @@ def test_process_thermal_electronic():
             "test_config_data/expected_thermal_electronic_internal_energy.json",
             "internal_energy",
         ),
-        (
-            "test_config_data/expected_thermal_electronic_entropy.json", 
-            "entropy"),
-    ]
-    '''
+        ("test_config_data/expected_thermal_electronic_entropy.json", "entropy"),
         (
             "test_config_data/expected_thermal_electronic_heat_capacity.json",
             "heat_capacity",
@@ -501,8 +498,7 @@ def test_process_thermal_electronic():
             "test_config_data/expected_thermal_electronic_heat_capacity_fit.json",
             "heat_capacity_fit",
         ),
-    '''
-    
+    ]
 
     for filename, attribute in files_and_attributes:
         with open(os.path.join(current_dir, filename), "r") as f:
@@ -523,7 +519,8 @@ def test_process_thermal_electronic():
                     expected, actual, atol=1e-6
                 ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
 
-'''
+
+"""
 def test_process_qha():
     expected_number_of_atoms = 4
     assert config_Al.qha.number_of_atoms == expected_number_of_atoms, (
@@ -598,7 +595,7 @@ def test_process_qha():
                         assert np.allclose(
                             expected, actual, rtol=2e-2
                         ), f"Expected {expected}, but got {actual} with tolerance 5e-1"
-'''
+"""
 
 if __name__ == "__main__":
     pytest.main()
