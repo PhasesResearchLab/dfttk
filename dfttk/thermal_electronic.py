@@ -51,6 +51,9 @@ def read_total_electron_dos(path: str, plot: bool = False) -> pd.DataFrame:
     num_atoms_list = []
     energy_minus_fermi_energy_list = []
     total_dos_list = []
+    vasprun_energies_list = []
+    vasprun_dos_list = []
+
     for elec_folder in elec_folders:
         struct = Structure.from_file(
             os.path.join(path, elec_folder, "CONTCAR.elec_dos")
@@ -59,31 +62,52 @@ def read_total_electron_dos(path: str, plot: bool = False) -> pd.DataFrame:
 
         vasprun_path = os.path.join(path, elec_folder, "vasprun.xml.elec_dos")
         vasprun = Vasprun(vasprun_path)
-
         num_atoms = vasprun.final_structure.num_sites
-        doscar_path = os.path.join(path, elec_folder, "DOSCAR.elec_dos")
-        energies, dos_up, dos_down, integrated_dos_up, integrated_dos_down, fermi_energy = read_doscar(doscar_path)
+        vasprun_energies = vasprun.complete_dos.energies - vasprun.efermi
+        vasprun_energies_list.append(vasprun_energies)
+        try:
+            vasprun_dos = (
+                vasprun.complete_dos.densities[Spin.up]
+                + vasprun.complete_dos.densities[Spin.down]
+            )
+        except:
+            vasprun_dos = vasprun.complete_dos.densities[Spin.up]
+        vasprun_dos_list.append(vasprun_dos)
 
-        e1 = energies.min()
-        e2 = energies.max()
+        doscar_path = os.path.join(path, elec_folder, "DOSCAR.elec_dos")
+        (
+            energies,
+            dos_up,
+            dos_down,
+            integrated_dos_up,
+            integrated_dos_down,
+            fermi_energy,
+        ) = read_doscar(vasprun_path, doscar_path)
+
+        min_energy = energies.min()
+        max_energy = energies.max()
         npins = len(energies)
 
-        estep = (e2 - e1) / (npins-1)
-        xene = np.arange(e1, e2 + estep, estep)
-        
-        if len(xene) > npins:
-            xene = xene[:npins]
-        elif len(xene) < npins:
-            xene = np.append(xene, e2)
+        energy_step = (max_energy - min_energy) / (npins - 1)
+        new_energies = np.arange(min_energy, max_energy + energy_step, energy_step)
 
-        energy_minus_fermi_energy = xene - fermi_energy
-        total_dos = integrated_dos_up + integrated_dos_down
+        if len(new_energies) > npins:
+            new_energies = new_energies[:npins]
+        elif len(new_energies) < npins:
+            new_energies = np.append(new_energies, max_energy)
 
-        dd1 = total_dos[:-1]
-        dd2 = total_dos[1:]
-        total_dos = (dd2 - dd1)/ estep
+        energy_minus_fermi_energy = new_energies - fermi_energy
+
+        try:
+            total_dos = integrated_dos_up + integrated_dos_down
+        except:
+            total_dos = integrated_dos_up
+
+        previous_dos = total_dos[:-1]
+        next_dos = total_dos[1:]
+        total_dos = (next_dos - previous_dos) / energy_step
         total_dos = np.insert(total_dos, 0, 0)
-        
+
         volume_list.append(volume)
         num_atoms_list.append(num_atoms)
         energy_minus_fermi_energy_list.append(energy_minus_fermi_energy)
@@ -95,6 +119,8 @@ def read_total_electron_dos(path: str, plot: bool = False) -> pd.DataFrame:
             "number_of_atoms": num_atoms_list,
             "energy_minus_fermi_energy": energy_minus_fermi_energy_list,
             "total_dos": total_dos_list,
+            "vasprun_energies": vasprun_energies_list,
+            "vasprun_dos": vasprun_dos_list,
         }
     )
     electron_dos_data = electron_dos_data.sort_values(by="volume")
@@ -120,8 +146,8 @@ def plot_total_electron_dos(electron_dos_data: pd.DataFrame):
     for i in range(len(electron_dos_data)):
         fig.add_trace(
             go.Scatter(
-                x=electron_dos_data["energy_minus_fermi_energy"].iloc[i],
-                y=electron_dos_data["total_dos"].iloc[i],
+                x=electron_dos_data["vasprun_energies"].iloc[i],
+                y=electron_dos_data["vasprun_dos"].iloc[i],
                 mode="lines",
                 name=f"{electron_dos_data['volume'].iloc[i]} Å<sup>3</sup>",
                 showlegend=True,
@@ -163,6 +189,8 @@ def fit_electron_dos(
     spline = UnivariateSpline(filtered_energy, filtered_dos, s=0)
     energy_fit = np.arange(energy_range[0], energy_range[1] + resolution, resolution)
     dos_fit = spline(energy_fit)
+
+    dos_fit[dos_fit < 0] = 0
 
     return energy_fit, dos_fit
 
@@ -269,7 +297,7 @@ def calculate_num_electrons(
 
     if temperature < 0:
         raise ValueError("Temperature cannot be less than 0 K")
-    
+
     fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
     integrand = dos * fermi_dist
     num_electrons = np.trapz(integrand, energy)
@@ -301,43 +329,24 @@ def calculate_chemical_potential(
     num_electrons_0K = round(calculate_num_electrons(energy, dos, 0, 0))
 
     from scipy.optimize import bisect
-    def electron_difference(chemical_potential):
-        num_electrons = calculate_num_electrons(energy, dos, chemical_potential, temperature)
-        return num_electrons - num_electrons_0K
 
-    try:
-        chemical_potential = bisect(electron_difference, min_chemical_potential, max_chemical_potential)
-    except ValueError as e:
-        print(
-            f"Warning: The chemical potential could not be found within the range {min_chemical_potential} to {max_chemical_potential} eV. "
-            "Consider increasing the range or checking the input data."
-        )
-        chemical_potential = max_chemical_potential
-    '''
-    # Find the chemical potential at temperature such that the number of electrons matches that at 0 K
-    chemical_potential = min_chemical_potential
-    num_electrons = calculate_num_electrons(
-        energy, dos, chemical_potential, temperature
-    )
-    # TODO: Find a way to solve for this directly 
-    while (
-        abs(num_electrons - num_electrons_0K) > 1e-2
-        and chemical_potential < max_chemical_potential
-    ):
-        chemical_potential += 0.001
+    def electron_difference(chemical_potential):
         num_electrons = calculate_num_electrons(
             energy, dos, chemical_potential, temperature
         )
-        
-    if chemical_potential >= max_chemical_potential and abs(num_electrons - num_electrons_0K) > 1e-2:
-        print(
-            f"Warning: The chemical potential is at the maximum value of {max_chemical_potential} eV, "
-            f"but the number of electrons ({num_electrons}) does not match the number of electrons at 0 K ({num_electrons_0K}). "
-            "Consider increasing the maximum chemical potential."
+        return num_electrons - num_electrons_0K
+
+    try:
+        chemical_potential = bisect(
+            electron_difference, min_chemical_potential, max_chemical_potential
         )
-    '''
-    num_electrons = calculate_num_electrons(energy, dos, chemical_potential, temperature)
-    #print(num_electrons_0K, num_electrons, chemical_potential)
+    except ValueError as e:
+        print(
+            f"Warning: The chemical potential could not be found within the range {min_chemical_potential} to {max_chemical_potential} eV."
+            "Consider increasing the range or checking the input data."
+        )
+        chemical_potential = max_chemical_potential
+
     return chemical_potential
 
 
@@ -345,7 +354,8 @@ def calculate_internal_energy(
     energy: np.ndarray,
     dos: np.ndarray,
     temperature_range: np.ndarray,
-    resolution: float = 0.001,
+    chemical_potential_list: list,
+    resolution: float = 0.005,
     plot: bool = False,
     plot_temperatures: np.ndarray = None,
 ) -> list:
@@ -364,16 +374,14 @@ def calculate_internal_energy(
     """
 
     energy_fit, dos_fit = fit_electron_dos(
-        energy, dos,  [np.min(energy), np.max(energy)], resolution
+        energy, dos, [np.min(energy), np.max(energy)], resolution
     )
     integrand_1_list = []
     filtered_energy_list = []
     integrand_2_list = []
     internal_energy_list = []
-    for temperature in temperature_range:
-        chemical_potential = calculate_chemical_potential(
-            energy_fit, dos_fit, temperature
-        )
+    for i, temperature in enumerate(temperature_range):
+        chemical_potential = chemical_potential_list[i]
         fermi_dist = fermi_dirac_distribution(
             energy_fit, chemical_potential, temperature
         )
@@ -467,6 +475,7 @@ def calculate_entropy(
     energy: np.ndarray,
     dos: np.ndarray,
     temperature_range: np.ndarray,
+    chemical_potential_list: list,
     energy_range: list = [-2, 2],
     resolution: float = 0.0001,
     plot: bool = False,
@@ -491,7 +500,9 @@ def calculate_entropy(
 
     integrand_list = []
     entropy_list = []
-    for temperature in temperature_range:
+    for i, temperature in enumerate(temperature_range):
+        chemical_potential = chemical_potential_list[i]
+
         if temperature == 0:
             entropy = 0
             entropy_list.append(entropy)
@@ -500,7 +511,6 @@ def calculate_entropy(
             integrand_list.append(integrand)
 
         elif temperature > 0:
-            chemical_potential = calculate_chemical_potential(energy, dos, temperature)
             fermi_dist = fermi_dirac_distribution(
                 energy_fit, chemical_potential, temperature
             )
@@ -556,13 +566,14 @@ def plot_entropy_integral(
     plot_format(fig, xtitle="E - E<sub>F</sub> (eV)", ytitle="S<sub>el</sub> integrand")
     fig.show()
 
-    return
+    return fig
 
 
 def calculate_heat_capacity(
     energy: np.ndarray,
     dos: np.ndarray,
     temperature_range: np.ndarray,
+    chemical_potential_list: list,
     energy_range: list = [-2, 2],
     resolution: float = 0.0001,
     plot=False,
@@ -588,7 +599,9 @@ def calculate_heat_capacity(
     integrand_list = []
     heat_capacity_list = []
 
-    for temperature in temperature_range:
+    for i, temperature in enumerate(temperature_range):
+        chemical_potential = chemical_potential_list[i]
+
         if temperature == 0:
             heat_capacity = 0
             heat_capacity_list.append(heat_capacity)
@@ -597,7 +610,6 @@ def calculate_heat_capacity(
             integrand_list.append(integrand)
 
         elif temperature > 0:
-            chemical_potential = calculate_chemical_potential(energy, dos, temperature)
             fermi_dist = fermi_dirac_distribution(
                 energy_fit, chemical_potential, temperature
             )
@@ -664,24 +676,22 @@ def plot_heat_capacity_integral(
     return fig
 
 
-def calculate_free_energy(
-    energy: np.ndarray,
-    dos: np.ndarray,
+def calculate_helmholtz_energy(
+    internal_energy_list: list,
+    entropy_list: list,
     temperature_range: np.ndarray,
 ) -> list:
     """Calculates the thermal electronic contribution to the Helmholtz energy.
 
     Args:
-        energy (np.ndarray): energy values from the electron DOS.
-        dos (np.ndarray): electron DOS values.
+        internal_energy_list (list): internal energy.
+        entropy_list (list): entropy.
         temperature_range (np.ndarray): temperatures in K.
 
     Returns:
         list: thermal electronic contribution to the Helmholtz energy.
     """
 
-    internal_energy_list = calculate_internal_energy(energy, dos, temperature_range)
-    entropy_list = calculate_entropy(energy, dos, temperature_range)
     helmholtz_energy = internal_energy_list - temperature_range * entropy_list
 
     return helmholtz_energy.tolist()
@@ -705,7 +715,9 @@ def thermal_electronic(
         tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         2D arrays of helmholtz energy, internal energy, entropy, heat capacity where each row corresponds to a temperature and each column corresponds to a volume.
     """
+    import time
 
+    chemical_potential_list = []
     internal_energy_list = []
     entropy_list = []
     heat_capacity_list = []
@@ -714,11 +726,28 @@ def thermal_electronic(
     for i in range(len(volumes)):
         energy = energy_array[:, i]
         dos = dos_array[:, i]
+        energy_fit, dos_fit = fit_electron_dos(
+            energy, dos, [np.min(energy), np.max(energy)], 0.005
+        )
 
-        internal_energy = calculate_internal_energy(energy, dos, temperature_range)
-        entropy = calculate_entropy(energy, dos, temperature_range)
-        heat_capacity = calculate_heat_capacity(energy, dos, temperature_range)
-        helmholtz_energy = calculate_free_energy(energy, dos, temperature_range)
+        for temperature in temperature_range:
+            chemical_potential = calculate_chemical_potential(
+                energy_fit, dos_fit, temperature
+            )
+            chemical_potential_list.append(chemical_potential)
+
+        internal_energy = calculate_internal_energy(
+            energy, dos, temperature_range, chemical_potential_list
+        )
+        entropy = calculate_entropy(
+            energy, dos, temperature_range, chemical_potential_list
+        )
+        heat_capacity = calculate_heat_capacity(
+            energy, dos, temperature_range, chemical_potential_list
+        )
+        helmholtz_energy = calculate_helmholtz_energy(
+            internal_energy, entropy, temperature_range
+        )
 
         internal_energy_list.append(internal_energy)
         entropy_list.append(entropy)
