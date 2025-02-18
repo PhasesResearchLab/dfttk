@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from pymongo import MongoClient
 from natsort import natsorted
+from datetime import datetime
 import plotly.graph_objects as go
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
@@ -49,6 +50,14 @@ from dfttk.thermal_electronic import (
     plot_thermal_electronic_properties_fit,
 )
 from dfttk.quasi_harmonic import process_quasi_harmonic, plot_quasi_harmonic
+
+
+class MetaData:
+    def __init__(self, parentDatabase: None, parentDatabaseID: None):
+        self.parentDatabase = parentDatabase
+        self.parentDatabaseID = parentDatabaseID
+        self.created = None
+        self.last_modified = None
 
 
 class EvCurvesData:
@@ -159,10 +168,16 @@ class EvCurvesData:
         self.total_magnetic_moment = all_total_magnetic_moments
         self.magnetic_ordering = all_magnetic_orderings
 
-        transformed_data = [[{f"{item[0]}": {item[2]: item[1]}} for item in sublist] for sublist in self.mag_data]
-        transformed_data = {str(index): {f"{item[0]}": {item[2]: item[1]} for item in sublist} for index, sublist in enumerate(self.mag_data)}
+        transformed_data = [
+            [{f"{item[0]}": {item[2]: item[1]}} for item in sublist]
+            for sublist in self.mag_data
+        ]
+        transformed_data = {
+            str(index): {f"{item[0]}": {item[2]: item[1]} for item in sublist}
+            for index, sublist in enumerate(self.mag_data)
+        }
         self.mag_data = transformed_data
-        
+
         if volumes is not None:
             volumes_set = set(volumes)
             filtered_indices = [
@@ -438,15 +453,21 @@ class PhononsData:
             self.potcar = None
 
     @staticmethod
-    def pad_arrays(arrays, pad_value=0, pad_type='constant'):
+    def pad_arrays(arrays, pad_value=0, pad_type="constant"):
         max_length = max(len(arr) for arr in arrays)
         padded_arrays = []
         for arr in arrays:
-            if pad_type == 'constant':
-                padded_arr = np.pad(arr, (0, max_length - len(arr)), constant_values=pad_value)
-            elif pad_type == 'increasing':
-                increment = (arr[-1] - arr[-2])
-                pad_values = np.arange(arr[-1] + increment, arr[-1] + increment * (max_length - len(arr) + 1), increment)
+            if pad_type == "constant":
+                padded_arr = np.pad(
+                    arr, (0, max_length - len(arr)), constant_values=pad_value
+                )
+            elif pad_type == "increasing":
+                increment = arr[-1] - arr[-2]
+                pad_values = np.arange(
+                    arr[-1] + increment,
+                    arr[-1] + increment * (max_length - len(arr) + 1),
+                    increment,
+                )
                 padded_arr = np.concatenate([arr, pad_values])
             padded_arrays.append(padded_arr)
         return np.column_stack(padded_arrays)
@@ -476,9 +497,9 @@ class PhononsData:
             ].values
             for volume_per_atom in volumes_per_atom
         ]
-        
-        frequency_array = self.pad_arrays(frequency_array, pad_type='increasing')
-        dos_array = self.pad_arrays(dos_array, pad_value=0, pad_type='constant')
+
+        frequency_array = self.pad_arrays(frequency_array, pad_type="increasing")
+        dos_array = self.pad_arrays(dos_array, pad_value=0, pad_type="constant")
 
         self.temperatures = temperatures
         volumes, f_vib, e_vib, s_vib, cv_vib = harmonic(
@@ -927,7 +948,8 @@ class QuasiHarmonicData:
             selected_temperatures_plot=selected_temperatures_plot,
         )
         return fig
-    
+
+
 # Continue refactoring here!
 class Configuration:
     def __init__(self, path, name, multiplicity=None):
@@ -983,6 +1005,9 @@ class Configuration:
                 file.write(f"#SBATCH -e {self.batch_script['error_file']}\n\n")
                 for command in self.batch_script["commands"]:
                     file.write(f"{command}\n")
+
+    def add_metadata(self, parentDatabase, parentDatabaseID):
+        self.metadata = MetaData(parentDatabase, parentDatabaseID)
 
     def run_volume_relax(
         self,
@@ -1302,8 +1327,8 @@ class Configuration:
         volume_range: np.ndarray,
         P: float = 0,
         apply_smoothing: bool = False,
-        smoothing_window_length: int=21,
-        smoothing_polyorder: int=2,
+        smoothing_window_length: int = 21,
+        smoothing_polyorder: int = 2,
     ):
         if not hasattr(self, "qha"):
             self.qha = QuasiHarmonicData()
@@ -1363,69 +1388,76 @@ class Configuration:
 
         document = {
             "name": self.name,
-            "reduced_formula": self.ev_curves.relaxed_structures[
+            "reducedFormula": self.ev_curves.relaxed_structures[
                 0
             ].composition.reduced_formula,
             "multiplicity": self.multiplicity,
+            "metadata": {
+                "lastModified": datetime.utcnow(),
+            },
         }
 
+        if hasattr(self, "metadata"):
+            document["metadata"]["parentDatabase"] = self.metadata.parentDatabase
+            document["metadata"]["parentDatabaseID"] = self.metadata.parentDatabaseID
+
         if hasattr(self, "ev_curves"):
-            document["ev_curves"] = {
-                "vasp_input": {
+            document["evCurves"] = {
+                "vaspInput": {
                     "incars": self.ev_curves.incars,
                     "kpoints": self.ev_curves.kpoints.as_dict(),
                     "potcar": self.ev_curves.potcar.as_dict(),
                 },
-                "relaxed_structures": [
+                "relaxedStructures": [
                     s.as_dict() for s in self.ev_curves.relaxed_structures
                 ],
-                "number_of_atoms": self.ev_curves.number_of_atoms,
+                "numberOfAtoms": self.ev_curves.number_of_atoms,
                 "volumes": self.ev_curves.volumes.tolist(),
                 "energies": self.ev_curves.energies.tolist(),
-                "total_magnetic_moment": self.ev_curves.total_magnetic_moment.tolist(),
-                "magnetic_ordering": self.ev_curves.magnetic_ordering.tolist(),
-                "mag_data": self.ev_curves.mag_data,
-                "eos_parameters": self.ev_curves.eos_parameters,
+                "totalMagneticMoments": self.ev_curves.total_magnetic_moment.tolist(),
+                "magneticOrderings": self.ev_curves.magnetic_ordering.tolist(),
+                "magData": self.ev_curves.mag_data,
+                "eosParameters": self.ev_curves.eos_parameters,
             }
 
         if hasattr(self, "debye"):
             document["debye"] = {
-                "number_of_atoms": self.debye.number_of_atoms,
-                "scaling_factor": self.debye.scaling_factor,
-                "gruneisen_x": self.debye.gruneisen_x,
+                "numberOfAtoms": self.debye.number_of_atoms,
+                "scalingFactor": self.debye.scaling_factor,
+                "gruneisenX": self.debye.gruneisen_x,
             }
 
         if hasattr(self, "phonons"):
             document["phonons"] = {
-                "vasp_input": {
+                "vaspInput": {
                     "incars": self.phonons.incars,
                     "kpoints": self.phonons.kpoints.as_dict(),
                     "potcar": self.phonons.potcar.as_dict(),
                 },
-                "phonon_structures": [
+                "phononStructures": [
                     s.as_dict() for s in self.phonons.phonon_structures
                 ],
-                "number_of_atoms": self.phonons.number_of_atoms,
+                "numberOfAtoms": self.phonons.number_of_atoms,
                 "volumes": self.phonons.volumes,
                 "temperatures": self.phonons.temperatures,
-                "helmholtz_energy": self.phonons.helmholtz_energy_fit,
+                "helmholtzEnergy": self.phonons.helmholtz_energy_fit,
                 "entropy": self.phonons.entropy_fit,
-                "heat_capacity": self.phonons.heat_capacity_fit,
+                "heatCapacity": self.phonons.heat_capacity_fit,
             }
 
         if hasattr(self, "thermal_electronic"):
-            document["thermal_electronic"] = {
-                "vasp_input": {
+            document["thermalElectronic"] = {
+                "vaspInput": {
                     "incars": self.thermal_electronic.incars,
                     "kpoints": self.thermal_electronic.kpoints.as_dict(),
                     "potcar": self.thermal_electronic.potcar.as_dict(),
                 },
-                "number_of_atoms": self.thermal_electronic.number_of_atoms,
+                "numberOfAtoms": self.thermal_electronic.number_of_atoms,
                 "volumes": self.thermal_electronic.volumes,
                 "temperatures": self.thermal_electronic.temperatures,
-                "helmholtz_energy": self.thermal_electronic.helmholtz_energy_fit,
+                "helmholtzEnergy": self.thermal_electronic.helmholtz_energy_fit,
                 "entropy": self.thermal_electronic.entropy_fit,
-                "heat_capacity": self.thermal_electronic.heat_capacity_fit,
+                "heatCapacity": self.thermal_electronic.heat_capacity_fit,
             }
 
         if hasattr(self, "qha"):
@@ -1440,7 +1472,7 @@ class Configuration:
                 for method, pressures in self.qha.methods.items()
             }
             document["qha"] = {
-                "number_of_atoms": self.qha.number_of_atoms,
+                "numberOfAtoms": self.qha.number_of_atoms,
                 "volumes": self.qha.volumes,
                 "temperatures": self.qha.temperatures,
                 "methods": methods_copy,
@@ -1449,7 +1481,21 @@ class Configuration:
         if hasattr(self, "experiments"):
             document["experiments"] = self.experiments
 
-        self.collection.insert_one(document)
+        # Check if a document with the same parentDatabaseID exists
+        existing_doc = self.collection.find_one(
+            {"metadata.parentDatabaseID": self.metadata.parentDatabaseID}
+        )
+
+        if existing_doc:
+            # Preserve the original "created" field while updating the rest
+            document["metadata"]["created"] = existing_doc["metadata"]["created"]
+            self.collection.update_one({"_id": existing_doc["_id"]}, {"$set": document})
+        else:
+            # Add the "created" timestamp for new documents
+            document["metadata"]["created"] = datetime.utcnow()
+            self.collection.insert_one(document)
+
+            # self.collection.insert_one(document)
 
 
 def plot_multiple_ev(
