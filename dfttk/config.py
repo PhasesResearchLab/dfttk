@@ -1495,8 +1495,6 @@ class Configuration:
             document["metadata"]["created"] = datetime.utcnow()
             self.collection.insert_one(document)
 
-            # self.collection.insert_one(document)
-
 
 def plot_multiple_ev(
     config_objects: dict[str, Configuration],
