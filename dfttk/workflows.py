@@ -129,7 +129,7 @@ def custodian_errors_location(path: str) -> list[str]:
     vol_folders = [
         d
         for d in os.listdir(path)
-        if d.startswith("vol") and os.path.isdir(os.path.join(path, d))
+        if d.startswith("vol_") and os.path.isdir(os.path.join(path, d))
     ]
     for vol_folder in vol_folders:
         error_folders = [
@@ -326,7 +326,7 @@ def ev_curve_series(
         vol_folders = [
             folder
             for folder in os.listdir(path)
-            if os.path.isdir(folder) and folder.startswith("vol")
+            if os.path.isdir(folder) and folder.startswith("vol_")
         ]
         vol_folders = natsorted(vol_folders)
 
@@ -709,7 +709,7 @@ def phonons_parallel(
     vol_folders = [
         folder
         for folder in os.listdir(path)
-        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol")
+        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol_")
     ]
 
     ev_volumes_finished = []
@@ -983,7 +983,7 @@ def elec_dos_parallel(
     vol_folders = [
         folder
         for folder in os.listdir(path)
-        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol")
+        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol_")
     ]
     vol_folders = natsorted(vol_folders)
 
