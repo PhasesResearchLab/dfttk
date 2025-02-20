@@ -22,6 +22,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from distinctipy import get_colors
 from scipy.optimize import fsolve, curve_fit
+from collections import namedtuple
 
 # Conversion factor
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
