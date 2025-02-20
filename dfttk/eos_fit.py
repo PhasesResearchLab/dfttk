@@ -29,6 +29,27 @@ EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 TaylorCoefficients = namedtuple("TaylorCoefficients", ["a", "b", "c", "d", "e"])
 
+def BM_properties_to_taylor_coefficients(
+        V,
+        E0,
+        B,
+        BP,
+        B2P
+    )->TaylorCoefficients:
+    """
+    Convert Birch-Murnaghan equation of state properties to Taylor 
+    coefficients a, b, c, d, e (4th order/five parameters). Returns a named 
+    tuple with the coefficients.
+    """
+    B = B/EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P*EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a = (128*E0 + 3*B*(287 + 9*B*B2P - 87*BP + 9*BP**2)*V)/128
+    b = (-3*B*(239 + 9*B*B2P - 81*BP + 9*BP**2)*V**(5/3))/32
+    c = (9*B*(199 + 9*B*B2P - 75*BP + 9*BP**2)*V**(7/3))/64
+    d = (-3*B*(167 + 9*B*B2P - 69*BP + 9*BP**2)*V**3)/32
+    e = (3*B*(143 + 9*B*B2P - 63*BP + 9*BP**2)*V**(11/3))/128
+    return TaylorCoefficients(a, b, c, d, e)
+
 # mBM4 EOS Functions
 def mBM4_equation(
     volume: float | np.ndarray, a: float, b: float, c: float, d: float
