@@ -65,6 +65,27 @@ def mBM_properties_to_taylor_coefficients(V, E0, B, BP, B2P):
     e=(3*B*(74 + 9*B*B2P - 45*BP + 9*BP**2)*V**(7/3))/8
     return TaylorCoefficients(a, b, c, d, e)
 
+def LOG_properties_to_taylor_coefficients(V, E0, B, BP, B2P):
+    """
+    Convert logarithmic equation of state properties to Taylor coefficients
+    a, b, c, d, e (4th order/five parameters). Returns a named tuple with the
+    coefficients.
+    """
+    B = B/EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P*EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a=(24*E0 + 
+       12*B*V*np.np.log(V)**2 + 
+       4*B*(-2 + BP)*V*np.log(V)**3 + 
+       B*(3 + B*B2P - 3*BP + BP**2)*V*np.log(V)**4)/24
+    b=-(B*V*np.log(V)*(6 + 3*(-2 + BP)*np.log(V) + 
+            (3 + B*B2P - 3*BP + BP**2)*np.log(V)**2))/6
+    c=(B*V*(2 + 2*(-2 + BP)*np.log(V) + 
+            (3 + B*B2P - 3*BP + BP**2)*np.log(V)**2))/4
+    d=-(B*V*(-2 + BP + (3 + B*B2P - 3*BP + BP**2)*np.log(V)))/6
+    e=(B*(3 + B*B2P - 3*BP + BP**2)*V)/24
+    if abs(e) < 1e-8: # avoid numerical errors
+        e = 0
+    return TaylorCoefficients(a, b, c, d, e) 
 
 # mBM4 EOS Functions
 def mBM4_equation(
