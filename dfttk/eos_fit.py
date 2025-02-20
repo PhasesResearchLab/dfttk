@@ -22,10 +22,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 from distinctipy import get_colors
 from scipy.optimize import fsolve, curve_fit
+from collections import namedtuple
 
 # Conversion factor
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
+TaylorCoefficients = namedtuple("TaylorCoefficients", ["a", "b", "c", "d", "e"])
+# Properties = namedtuple("Properties", ["V0", "E0", "B", "BP", "B2P"]) # to be implented
 
 # mBM4 EOS Functions
 def mBM4_equation(
@@ -457,6 +460,66 @@ def BM4(
 
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
+TaylorCoefficients = namedtuple("TaylorCoefficients", ["a", "b", "c", "d", "e"])
+# Properties = namedtuple("Properties", ["V0", "E0", "B", "BP", "B2P"]) # to be implented
+
+def BM_properties_to_taylor_coefficients(
+        V,
+        E0,
+        B,
+        BP,
+        B2P
+    )->TaylorCoefficients:
+    """
+    Convert Birch-Murnaghan equation of state properties to Taylor 
+    coefficients a, b, c, d, e (4th order/five parameters). Returns a named 
+    tuple with the coefficients.
+    """
+    B = B/EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P*EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a = (128*E0 + 3*B*(287 + 9*B*B2P - 87*BP + 9*BP**2)*V)/128
+    b = (-3*B*(239 + 9*B*B2P - 81*BP + 9*BP**2)*V**(5/3))/32
+    c = (9*B*(199 + 9*B*B2P - 75*BP + 9*BP**2)*V**(7/3))/64
+    d = (-3*B*(167 + 9*B*B2P - 69*BP + 9*BP**2)*V**3)/32
+    e = (3*B*(143 + 9*B*B2P - 63*BP + 9*BP**2)*V**(11/3))/128
+    return TaylorCoefficients(a, b, c, d, e)
+
+def mBM_properties_to_taylor_coefficients(V, E0, B, BP, B2P):
+    """
+    Convert modified Birch-Murnaghan equation of state properties to Taylor
+    coefficients a, b, c, d, e (4th order/five parameters). Returns a named
+    tuple with the coefficients.
+    """
+    B = B/EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P*EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a=(8*E0 + 3*B*(122 + 9*B*B2P - 57*BP + 9*BP**2)*V)/8
+    b=(-3*B*(107 + 9*B*B2P - 54*BP + 9*BP**2)*V**(4/3))/2
+    c=(9*B*(94 + 9*B*B2P - 51*BP + 9*BP**2)*V**(5/3))/4
+    d=(-3*B*(83 + 9*B*B2P - 48*BP + 9*BP**2)*V**2)/2
+    e=(3*B*(74 + 9*B*B2P - 45*BP + 9*BP**2)*V**(7/3))/8
+    return TaylorCoefficients(a, b, c, d, e)
+
+def LOG_properties_to_taylor_coefficients(V, E0, B, BP, B2P):
+    """
+    Convert logarithmic equation of state properties to Taylor coefficients
+    a, b, c, d, e (4th order/five parameters). Returns a named tuple with the
+    coefficients.
+    """
+    B = B/EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P*EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a=(24*E0 + 
+       12*B*V*np.np.log(V)**2 + 
+       4*B*(-2 + BP)*V*np.log(V)**3 + 
+       B*(3 + B*B2P - 3*BP + BP**2)*V*np.log(V)**4)/24
+    b=-(B*V*np.log(V)*(6 + 3*(-2 + BP)*np.log(V) + 
+            (3 + B*B2P - 3*BP + BP**2)*np.log(V)**2))/6
+    c=(B*V*(2 + 2*(-2 + BP)*np.log(V) + 
+            (3 + B*B2P - 3*BP + BP**2)*np.log(V)**2))/4
+    d=-(B*V*(-2 + BP + (3 + B*B2P - 3*BP + BP**2)*np.log(V)))/6
+    e=(B*(3 + B*B2P - 3*BP + BP**2)*V)/24
+    if abs(e) < 1e-8: # avoid numerical errors
+        e = 0
+    return TaylorCoefficients(a, b, c, d, e) 
 
 # BM5 EOS Functions
 def BM5_equation(
