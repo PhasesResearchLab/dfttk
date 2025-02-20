@@ -50,6 +50,22 @@ def BM_properties_to_taylor_coefficients(
     e = (3*B*(143 + 9*B*B2P - 63*BP + 9*BP**2)*V**(11/3))/128
     return TaylorCoefficients(a, b, c, d, e)
 
+def mBM_properties_to_taylor_coefficients(V, E0, B, BP, B2P):
+    """
+    Convert modified Birch-Murnaghan equation of state properties to Taylor
+    coefficients a, b, c, d, e (4th order/five parameters). Returns a named
+    tuple with the coefficients.
+    """
+    B = B/EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P*EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a=(8*E0 + 3*B*(122 + 9*B*B2P - 57*BP + 9*BP**2)*V)/8
+    b=(-3*B*(107 + 9*B*B2P - 54*BP + 9*BP**2)*V**(4/3))/2
+    c=(9*B*(94 + 9*B*B2P - 51*BP + 9*BP**2)*V**(5/3))/4
+    d=(-3*B*(83 + 9*B*B2P - 48*BP + 9*BP**2)*V**2)/2
+    e=(3*B*(74 + 9*B*B2P - 45*BP + 9*BP**2)*V**(7/3))/8
+    return TaylorCoefficients(a, b, c, d, e)
+
+
 # mBM4 EOS Functions
 def mBM4_equation(
     volume: float | np.ndarray, a: float, b: float, c: float, d: float
