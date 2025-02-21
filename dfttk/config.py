@@ -88,6 +88,7 @@ class EvCurvesData:
             "B": None,
             "BP": None,
             "B2P": None,
+            "RMSrD": None,
         }
         self.relaxed_structures = []
 
@@ -219,7 +220,7 @@ class EvCurvesData:
         volume_max: float = None,
         num_volumes: int = 1000,
     ) -> None:
-        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
+        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos, rmsrd = (
             fit_to_eos(
                 self.volumes,
                 self.energies,
@@ -242,6 +243,7 @@ class EvCurvesData:
             "B": eos_parameters[2],
             "BP": eos_parameters[3],
             "B2P": eos_parameters[4],
+            "RMSrD": rmsrd,
         }
 
     def plot(
@@ -1495,6 +1497,8 @@ class Configuration:
             document["metadata"]["created"] = datetime.utcnow()
             self.collection.insert_one(document)
 
+        # Close the MongoDB connection
+        self.cluster.close()
 
 def plot_multiple_ev(
     config_objects: dict[str, Configuration],
