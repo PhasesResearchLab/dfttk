@@ -27,6 +27,21 @@ from scipy.optimize import fsolve, curve_fit
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 
+def calculate_rmsrd(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Calculate the Root Mean Square Relative Deviation (RMSrD).
+
+    Args:
+        y_true (np.ndarray): True values
+        y_pred (np.ndarray): Predicted values
+
+    Returns:
+        float: RMSrD value
+    """
+    N = len(y_true)
+    rmsrd = np.sqrt(np.sum(((y_true - y_pred) / y_true) ** 2) / (N - 1))
+    return rmsrd
+
+
 # mBM4 EOS Functions
 def mBM4_equation(
     volume: float | np.ndarray, a: float, b: float, c: float, d: float
@@ -171,8 +186,11 @@ def mBM4(
     V0, E0, B, BP, B2P = mBM4_eos_parameters(a, b, c, d)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, 0])
+    
+    energy_pred = mBM4_equation(volume, a, b, c, d)
+    rmsrd = calculate_rmsrd(energy, energy_pred)
 
-    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
+    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos, rmsrd
 
 
 # mBM5 EOS Functions
@@ -331,8 +349,11 @@ def mBM5(
     V0, E0, B, BP, B2P = mBM5_eos_parameters(volume_range, a, b, c, d, e)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, e])
+    
+    energy_pred = mBM5_equation(volume, a, b, c, d)
+    rmsrd = calculate_rmsrd(energy, energy_pred)
 
-    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
+    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos, rmsrd
 
 
 # BM4 EOS Functions
@@ -483,8 +504,11 @@ def BM4(
     V0, E0, B, BP, B2P = BM4_eos_parameters(a, b, c, d)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, 0])
+    
+    energy_pred = BM4_equation(volume, a, b, c, d)
+    rmsrd = calculate_rmsrd(energy, energy_pred)
 
-    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
+    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos, rmsrd
 
 
 # BM5 EOS Functions
@@ -642,8 +666,11 @@ def BM5(
     V0, E0, B, BP, B2P = BM5_eos_parameters(volume_range, a, b, c, d, e)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, e])
+    
+    energy_pred = BM5_equation(volume, a, b, c, d)
+    rmsrd = calculate_rmsrd(energy, energy_pred)
 
-    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
+    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos, rmsrd
 
 
 # LOG4 EOS Functions
@@ -782,8 +809,11 @@ def LOG4(
     V0, E0, B, BP, B2P = LOG4_eos_parameters(volume_range, a, b, c, d)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, 0])
+    
+    energy_pred = LOG4_equation(volume, a, b, c, d)
+    rmsrd = calculate_rmsrd(energy, energy_pred)
 
-    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
+    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos, rmsrd
 
 
 # LOG5 EOS Functions
@@ -967,8 +997,11 @@ def LOG5(
     V0, E0, B, BP, B2P = LOG5_eos_parameters(volume_range, a, b, c, d, e)
     eos_parameters = np.array([V0, E0, B, BP, B2P])
     eos_constants = np.array([a, b, c, d, e])
+    
+    energy_pred = LOG5_equation(volume, a, b, c, d)
+    rmsrd = calculate_rmsrd(energy, energy_pred)
 
-    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
+    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos, rmsrd
 
 
 # Murnaghan EOS Functions
@@ -1059,8 +1092,11 @@ def murnaghan(
         * EV_PER_CUBIC_ANGSTROM_TO_GPA
         * murnaghan_derivative(volume_range, V0, B, BP)
     )
+    
+    energy_pred = murnaghan_equation(volume, V0, E0, B, BP)
+    rmsrd = calculate_rmsrd(energy, energy_pred)
 
-    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
+    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos, rmsrd
 
 
 # Vinet EOS Functions
@@ -1161,7 +1197,10 @@ def vinet(
         -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * vinet_derivative(volume_range, V0, B, BP)
     )
 
-    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
+    energy_pred = vinet_equation(volume, V0, E0, B, BP)
+    rmsrd = calculate_rmsrd(energy, energy_pred)
+    
+    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos, rmsrd
 
 
 # Morse EOS Functions
@@ -1265,7 +1304,10 @@ def morse(
         -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * morse_derivative(volume_range, b, c, d)
     )
 
-    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
+    energy_pred = morse_equation(volume, V0, E0, B, BP)
+    rmsrd = calculate_rmsrd(energy, energy_pred)
+    
+    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos, rmsrd
 
 
 def fit_to_eos(
@@ -1299,12 +1341,13 @@ def fit_to_eos(
             volume_range,
             energy_eos,
             pressure_eos,
+            rmsrd,
         ) = eos_function(volumes, energies, volume_min, volume_max, num_volumes)
         eos_name = eos_function.__name__
     except Exception as e:
         print(f"Error fitting config: {e}")
 
-    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
+    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos, rmsrd
 
 
 def assign_colors_to_configs(
@@ -1431,7 +1474,7 @@ def plot_ev(
     """
 
     if eos_name != None:
-        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
+        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos, rmsrd = (
             fit_to_eos(volumes, energies, eos_name=eos_name, volume_min=volume_min, volume_max=volume_max, num_volumes=num_volumes)
         )
     unique_configs = [name]
