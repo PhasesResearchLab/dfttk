@@ -5,23 +5,31 @@ Extract relevant data from VASP output files.
 # Standard library imports
 import os
 
-# Related third party imports
+# Related third-party imports
 import numpy as np
 import pandas as pd
 
-# Local application/library specific imports
+# Local application/library-specific imports
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp import Poscar
 from pymatgen.io.vasp.outputs import Vasprun
 
 
 def extract_atomic_masses(outcar_path: str) -> float:
-    """
-    Extract the mass of each atom (POMASS values) from an OUTCAR file as a dictionary.
+    """Extracts the atomic masses from an OUTCAR file and returns them as a dictionary with the species as the key and the mass as the value.
+
+    Args:
+        outcar_path (str): path to an OUTCAR file.
+
+    Returns:
+        dict: dictionary containing the atomic masses.
     """
 
+    # Initialize lists to store the atomic species and masses
     atoms = []
     masses = []
+
+    # Open the OUTCAR file and read its contents
     with open(outcar_path, "r") as file:
         lines = file.readlines()
         for line in lines:
@@ -34,16 +42,39 @@ def extract_atomic_masses(outcar_path: str) -> float:
     # Clean atoms so that only the species is contained. e.g. 'Fe_pv' -> 'Fe'
     atoms = [atom.split("_")[0] for atom in atoms]
 
+    # Create a dictionary of atomic masses
     atomic_masses = dict(zip(atoms, masses))
+
     return atomic_masses
 
 
 def extract_average_mass(
     contcar_path: str, outcar_path: str, average: str = "arithmetic"
 ) -> float:
+    """Calculates the average atomic mass of a structure from a CONTCAR file and an OUTCAR file.
+
+    Args:
+        contcar_path (str): path to a CONTCAR file.
+        outcar_path (str): path to an OUTCAR file.
+        average (str, optional): Type of average to calculate. Must be 'arithmetic', 'geometric', or 'harmonic'. Defaults to "arithmetic".
+
+    Raises:
+        ValueError: If the average type is not recognized.
+
+    Returns:
+        float: average atomic mass of the structure.
+    """
+
+    # Extract the atomic masses from the OUTCAR file
     atomic_masses = extract_atomic_masses(outcar_path)
+
+    # Read the structure from the CONTCAR file
     structure = Structure.from_file(contcar_path)
+
+    # Create a list of atomic masses for each site in the structure
     masses = [atomic_masses[site.specie.symbol] for site in structure]
+
+    # Calculate the average mass based on the specified type
     if average == "arithmetic":
         average_mass = sum(masses) / len(masses)
     elif average == "geometric":
@@ -54,18 +85,19 @@ def extract_average_mass(
         raise ValueError(
             f"Average type {average} not recognized. Must be 'arithmetic', 'geometric', or 'harmonic'."
         )
+
     return average_mass
 
 
-def extract_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
+def extract_mag_data(outcar_path: str) -> pd.DataFrame:
     """Extracts the magnetization data from an OUTCAR file and returns the data as a pandas DataFrame in the same format and headings as seen in the OUTCAR.
 
     Args:
-        outcar_path: Path to an OUTCAR file. Defaults to "OUTCAR".
+        outcar_path (str): path to an OUTCAR file.
 
     Returns:
-        Pandas DataFrame containing the magnetization data
-    """
+        pd.DataFrame: DataFrame containing the magnetization data.
+    """    
 
     if not os.path.isfile(outcar_path):
         print(f"Warning: File {outcar_path} does not exist. Skipping.")
@@ -136,17 +168,17 @@ def extract_tot_mag_data(
 
 
 def parse_doscar(vasprun_path, doscar_path):
-    
+
     vasprun = Vasprun(vasprun_path)
     nedos = vasprun.parameters["NEDOS"]
     fermi_energy = vasprun.efermi
-    
+
     with open(doscar_path, "r") as file:
         lines = file.readlines()
-        
+
         header_lines = 6
-        data_lines = lines[header_lines:header_lines+nedos]
-        
+        data_lines = lines[header_lines : header_lines + nedos]
+
         energies = []
         dos_up = []
         dos_down = []
@@ -156,12 +188,12 @@ def parse_doscar(vasprun_path, doscar_path):
         for line in data_lines:
             if line.strip():
                 parts = line.split()
-                
+
                 if len(parts) == 3:
                     energies.append(float(parts[0]))
                     dos_up.append(float(parts[1]))
                     integrated_dos_up.append(float(parts[2]))
-                
+
                 if len(parts) == 5:
                     energies.append(float(parts[0]))
                     dos_up.append(float(parts[1]))
@@ -174,7 +206,12 @@ def parse_doscar(vasprun_path, doscar_path):
         dos_down = np.array(dos_down)
         integrated_dos_up = np.array(integrated_dos_up)
         integrated_dos_down = np.array(integrated_dos_down)
-    
-    return energies, dos_up, dos_down, integrated_dos_up, integrated_dos_down, fermi_energy
-    
-    
+
+    return (
+        energies,
+        dos_up,
+        dos_down,
+        integrated_dos_up,
+        integrated_dos_down,
+        fermi_energy,
+    )
