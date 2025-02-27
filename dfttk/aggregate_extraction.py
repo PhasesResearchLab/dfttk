@@ -26,7 +26,8 @@ from dfttk.data_extraction import (
 )
 from dfttk.magnetism import determine_magnetic_ordering
 
-#TODO: write tests for the other functions
+
+# TODO: write tests for the other functions
 def extract_configuration_data(
     path: str,
     outcar_name: str = "OUTCAR.3static",
@@ -49,34 +50,28 @@ def extract_configuration_data(
         False.
         magmom_tolerance: the tolerance for the total magnetic moment to be considered zero. Defaults to 0.
         mass_average: the method used to calculate the average atomic mass. Options are "geometric" and "arithmetic".
-        
+
     Returns:
         pandas DataFrame: a pandas DataFrame containing the volume, configuration, energy, number of atoms, and
         magnetization data (if specified)
     """
-    
-    volumes = np.array([])
-    energies = np.array([])
+
+    volumes = []
+    energies = []
     mag_data_list = []
-    total_magnetic_moments = np.array([])
-    magnetic_orderings = np.array([])
-    
+    total_magnetic_moments = []
+    magnetic_orderings = []
+
     vol_dirs = glob.glob(os.path.join(path, "vol_*"))
     vol_dirs = natsorted(vol_dirs)
+    
     for vol_dir in vol_dirs:
         outcar_path = os.path.join(vol_dir, outcar_name)
-        if not os.path.isfile(outcar_path):
-            print(f"Warning: File {outcar_path} does not exist. Skipping.")
-            continue
-
         oszicar_path = os.path.join(vol_dir, oszicar_name)
-        if not os.path.isfile(oszicar_path):
-            print(f"Warning: File {oszicar_path} does not exist. Skipping.")
-            continue
-
         contcar_path = os.path.join(vol_dir, contcar_name)
-        if not os.path.isfile(contcar_path):
-            print(f"Warning: File {contcar_path} does not exist. Skipping.")
+
+        if not all(os.path.isfile(p) for p in [outcar_path, oszicar_path, contcar_path]):
+            print(f"Warning: Required files do not exist in {vol_dir}. Skipping.")
             continue
 
         struct = Structure.from_file(contcar_path)
@@ -86,10 +81,10 @@ def extract_configuration_data(
         energy = oszicar.final_energy
         atomic_masses = extract_atomic_masses(outcar_path)
         average_mass = extract_average_mass(contcar_path, outcar_path, mass_average)
-        
+
         volumes = np.append(volumes, vol)
         energies = np.append(energies, energy)
-        
+
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(outcar_path, contcar_path)
             total_magnetic_moment = mag_data["tot"].sum()
@@ -99,15 +94,27 @@ def extract_configuration_data(
                 total_magnetic_moment_tolerance=total_magnetic_moment_tolerance,
             )
             mag_data_list.append(mag_data.to_numpy())
-            total_magnetic_moments = np.append(total_magnetic_moments, total_magnetic_moment)
+            total_magnetic_moments = np.append(
+                total_magnetic_moments, total_magnetic_moment
+            )
             magnetic_orderings = np.append(magnetic_orderings, magnetic_ordering)
-    mag_data_array = np.array(mag_data_list)
     
-    return number_of_atoms, volumes, energies, atomic_masses, average_mass, mag_data_array, total_magnetic_moments, magnetic_orderings
+    mag_data_array = np.array(mag_data_list)
+
+    return (
+        number_of_atoms,
+        volumes,
+        energies,
+        atomic_masses,
+        average_mass,
+        mag_data_array,
+        total_magnetic_moments,
+        magnetic_orderings,
+    )
 
 
 def extract_convergence_data(path: str) -> pd.DataFrame:
-    """extracts and calculates energy convergence data for a series of VASP convergence calculations
+    """Extracts and calculates energy convergence data for a series of VASP convergence calculations
 
     Args:
         path: path to the folder containing the VASP calculation outputs for convergence calculations.
