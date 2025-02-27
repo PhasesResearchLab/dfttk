@@ -88,7 +88,6 @@ class EvCurvesData:
             "B": None,
             "BP": None,
             "B2P": None,
-            "RMSrD": None,
         }
         self.relaxed_structures = []
 
@@ -220,7 +219,7 @@ class EvCurvesData:
         volume_max: float = None,
         num_volumes: int = 1000,
     ) -> None:
-        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos, rmsrd = (
+        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
             fit_to_eos(
                 self.volumes,
                 self.energies,
@@ -243,7 +242,6 @@ class EvCurvesData:
             "B": eos_parameters[2],
             "BP": eos_parameters[3],
             "B2P": eos_parameters[4],
-            "RMSrD": rmsrd,
         }
 
     def plot(
@@ -1404,6 +1402,9 @@ class Configuration:
             document["metadata"]["parentDatabaseID"] = self.metadata.parentDatabaseID
 
         if hasattr(self, "ev_curves"):
+            eos_parameters = self.ev_curves.eos_parameters.copy()
+            eos_parameters["eosName"] = eos_parameters.pop("eos_name")
+    
             document["evCurves"] = {
                 "vaspInput": {
                     "incars": self.ev_curves.incars,
