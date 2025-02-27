@@ -22,7 +22,7 @@ from pymatgen.electronic_structure.core import Spin
 
 # DFTTK imports
 from dfttk.plotly_format import plot_format
-from dfttk.data_extraction import read_doscar
+from dfttk.data_extraction import parse_doscar
 
 BOLTZMANN_CONSTANT = (
     scipy.constants.Boltzmann / scipy.constants.electron_volt
@@ -82,7 +82,7 @@ def read_total_electron_dos(path: str, plot: bool = False) -> pd.DataFrame:
             integrated_dos_up,
             integrated_dos_down,
             fermi_energy,
-        ) = read_doscar(vasprun_path, doscar_path)
+        ) = parse_doscar(vasprun_path, doscar_path)
 
         min_energy = energies.min()
         max_energy = energies.max()

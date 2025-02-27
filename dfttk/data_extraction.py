@@ -108,7 +108,6 @@ def extract_mag_data(outcar_path: str = "OUTCAR") -> pd.DataFrame:
         return df
 
 
-# TODO just get mag data for all the ions
 def extract_tot_mag_data(
     outcar_path: str = "OUTCAR", contcar_path: str = "CONTCAR"
 ) -> pd.DataFrame:
@@ -135,8 +134,8 @@ def extract_tot_mag_data(
 
     return tot_data
 
-# TODO: Make this work for all DOSCAR types
-def read_doscar(vasprun_path, doscar_path):
+
+def parse_doscar(vasprun_path, doscar_path):
     
     vasprun = Vasprun(vasprun_path)
     nedos = vasprun.parameters["NEDOS"]
