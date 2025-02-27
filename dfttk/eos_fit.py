@@ -29,7 +29,7 @@ EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 TaylorCoefficients = namedtuple("TaylorCoefficients", ["a", "b", "c", "d", "e"])
 
-def BM_properties_to_taylor_coefficients(
+def BM_parameters_to_taylor(
         V,
         E0,
         B,
@@ -50,7 +50,7 @@ def BM_properties_to_taylor_coefficients(
     e = (3*B*(143 + 9*B*B2P - 63*BP + 9*BP**2)*V**(11/3))/128
     return TaylorCoefficients(a, b, c, d, e)
 
-def mBM_properties_to_taylor_coefficients(V, E0, B, BP, B2P):
+def mBM_parameters_to_taylor(V, E0, B, BP, B2P):
     """
     Convert modified Birch-Murnaghan equation of state properties to Taylor
     coefficients a, b, c, d, e (4th order/five parameters). Returns a named
@@ -65,7 +65,7 @@ def mBM_properties_to_taylor_coefficients(V, E0, B, BP, B2P):
     e=(3*B*(74 + 9*B*B2P - 45*BP + 9*BP**2)*V**(7/3))/8
     return TaylorCoefficients(a, b, c, d, e)
 
-def LOG_properties_to_taylor_coefficients(V, E0, B, BP, B2P):
+def LOG_parameters_to_taylor(V, E0, B, BP, B2P):
     """
     Convert logarithmic equation of state properties to Taylor coefficients
     a, b, c, d, e (4th order/five parameters). Returns a named tuple with the
