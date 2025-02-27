@@ -88,26 +88,32 @@ def extract_average_mass(
 
     return average_mass
 
-
+# Continue here
 def extract_mag_data(outcar_path: str) -> pd.DataFrame:
     """Extracts the magnetization data from an OUTCAR file and returns the data as a pandas DataFrame in the same format and headings as seen in the OUTCAR.
 
     Args:
         outcar_path (str): path to an OUTCAR file.
 
+    Raises:
+        FileNotFoundError: if the OUTCAR file does not exist.
+        ValueError: if the magnetization headers are not found in the OUTCAR file.
+
     Returns:
         pd.DataFrame: DataFrame containing the magnetization data.
-    """    
+    """
 
+    # Check if the OUTCAR file exists
     if not os.path.isfile(outcar_path):
-        print(f"Warning: File {outcar_path} does not exist. Skipping.")
-        return None
+        raise FileNotFoundError(f"File {outcar_path} does not exist. Skipping.")
 
+    # Parse the OUTCAR file for magnetization data
     with open(outcar_path, "r") as file:
         data = []
         step = 0
         found_mag_data = False
         data_start = False
+        headers = None
         lines = file.readlines()
         for line in lines:
             if "magnetization (x)" in line:
@@ -135,8 +141,15 @@ def extract_mag_data(outcar_path: str) -> pd.DataFrame:
                     found_mag_data = False
                 except:
                     continue
+        
+        # Raise an error if magnetization headers are not found
+        if headers is None:
+            raise ValueError("magnetization headers not found in OUTCAR file.")
+        
+        # Create a pandas DataFrame from the extracted data
         columns = ["step"] + headers
         df = pd.DataFrame(data, columns=columns)
+        
         return df
 
 
