@@ -289,7 +289,7 @@ def calculate_encut_conv(
 
 
 def plot_kpoint_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
-    """makes a plot for k-point convergence using plotly.
+    """Makes a plot for k-point convergence using plotly.
 
     Args:
         df: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom (as structured by the return of `extract_convergence_data()`).
