@@ -29,9 +29,9 @@ config_Al.process_thermal_electronic(temperature_range, order=1)
 
 volume_range = np.linspace(0.98 * 60, 1.02 * 74, 1000)
 config_Al.process_qha("debye", volume_range, P=0)
-# config_Al.process_qha("debye + thermal_electronic", volume_range, P=0)
+config_Al.process_qha("debye + thermal_electronic", volume_range, P=0)
 config_Al.process_qha("phonons", volume_range, P=0)
-# config_Al.process_qha("phonons + thermal_electronic", volume_range, P=0)
+config_Al.process_qha("phonons + thermal_electronic", volume_range, P=0)
 
 
 def test_analyze_encut_conv():
@@ -520,22 +520,21 @@ def test_process_thermal_electronic():
                 ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
 
 
-"""
 def test_process_qha():
     expected_number_of_atoms = 4
-    assert config_Al.qha.number_of_atoms == expected_number_of_atoms, (
-        f"Expected {expected_number_of_atoms}, but got {config_Al.qha.number_of_atoms}"
-    )
+    assert (
+        config_Al.qha.number_of_atoms == expected_number_of_atoms
+    ), f"Expected {expected_number_of_atoms}, but got {config_Al.qha.number_of_atoms}"
 
     expected_temperatures = list(range(0, 1010, 100))
-    assert config_Al.qha.temperatures == expected_temperatures, (
-        f"Expected {expected_temperatures}, but got {config_Al.qha.temperatures}"
-    )
+    assert (
+        config_Al.qha.temperatures == expected_temperatures
+    ), f"Expected {expected_temperatures}, but got {config_Al.qha.temperatures}"
 
     expected_volumes = np.linspace(0.98 * 60, 1.02 * 74, 1000)
-    assert np.allclose(config_Al.qha.volumes, expected_volumes, atol=1e-6), (
-        f"Expected {expected_volumes}, but got {config_Al.qha.volumes}"
-    )
+    assert np.allclose(
+        config_Al.qha.volumes, expected_volumes, atol=1e-6
+    ), f"Expected {expected_volumes}, but got {config_Al.qha.volumes}"
 
     files_and_attributes = [
         ("test_config_data/expected_qha_debye.json", "debye"),
@@ -595,7 +594,7 @@ def test_process_qha():
                         assert np.allclose(
                             expected, actual, rtol=2e-2
                         ), f"Expected {expected}, but got {actual} with tolerance 5e-1"
-"""
+
 
 if __name__ == "__main__":
     pytest.main()
