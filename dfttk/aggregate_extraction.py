@@ -27,7 +27,8 @@ from dfttk.data_extraction import (
 from dfttk.magnetism import determine_magnetic_ordering
 
 
-# TODO: write tests for the other functions
+# TODO: Incorporate other convergence criteria
+# See https://github.com/kavanase/vaspup2.0
 def extract_configuration_data(
     path: str,
     outcar_name: str = "OUTCAR.3static",
@@ -42,7 +43,7 @@ def extract_configuration_data(
     run by ev_curve_series and returns a pandas DataFrame.
 
     Args:
-        path: the path containing a config_* folder which contain vol_* folders
+        path: the path containing a config_* folder which contain vol_* folders.
         outcar_name: name of the OUTCAR file. Defaults to "OUTCAR".
         oszicar_name: name of the OSZICAR file. Defaults to "OSZICAR".
         contcar_name: name of the CONTCAR file. Defaults to "CONTCAR".
@@ -53,40 +54,51 @@ def extract_configuration_data(
 
     Returns:
         pandas DataFrame: a pandas DataFrame containing the volume, configuration, energy, number of atoms, and
-        magnetization data (if specified)
+        magnetization data (if specified).
     """
 
+    # Initialize lists to store data
     volumes = []
     energies = []
     mag_data_list = []
     total_magnetic_moments = []
     magnetic_orderings = []
 
+    # Get list of volume directories and sort them naturally
     vol_dirs = glob.glob(os.path.join(path, "vol_*"))
     vol_dirs = natsorted(vol_dirs)
 
+    # Loop through each volume directory and extract data
     for vol_dir in vol_dirs:
         outcar_path = os.path.join(vol_dir, outcar_name)
         oszicar_path = os.path.join(vol_dir, oszicar_name)
         contcar_path = os.path.join(vol_dir, contcar_name)
 
+        # Check if all required files exist
         if not all(
             os.path.isfile(p) for p in [outcar_path, oszicar_path, contcar_path]
         ):
             print(f"Warning: Required files do not exist in {vol_dir}. Skipping.")
             continue
 
+        # Extract volume from CONTCAR file
         struct = Structure.from_file(contcar_path)
         number_of_atoms = len(struct.sites)
         vol = round(struct.volume, 6)
+
+        # Extract energy from OSZICAR file
         oszicar = Oszicar(oszicar_path)
         energy = oszicar.final_energy
+
+        # Extract atomic masses and average mass from OUTCAR and CONTCAR files
         atomic_masses = extract_atomic_masses(outcar_path)
         average_mass = extract_average_mass(contcar_path, outcar_path, mass_average)
 
+        # Append volume and energy to lists
         volumes = np.append(volumes, vol)
         energies = np.append(energies, energy)
 
+        # Collect magnetization data if specified
         if collect_mag_data == True:
             mag_data = extract_tot_mag_data(outcar_path, contcar_path)
             total_magnetic_moment = mag_data["tot"].sum()
@@ -101,6 +113,7 @@ def extract_configuration_data(
             )
             magnetic_orderings = np.append(magnetic_orderings, magnetic_ordering)
 
+    # Convert mag_data_list to numpy array
     mag_data_array = np.array(mag_data_list)
 
     return (
@@ -116,13 +129,13 @@ def extract_configuration_data(
 
 
 def extract_convergence_data(path: str) -> pd.DataFrame:
-    """Extracts and calculates energy convergence data for a series of VASP convergence calculations
+    """Extracts and calculates energy convergence data for a series of VASP convergence calculations.
 
     Args:
         path: path to the folder containing the VASP calculation outputs for convergence calculations.
 
     Returns:
-        pd.DataFrame: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom
+        pd.DataFrame: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom.
     """
 
     # Get list of OSZICAR files
@@ -198,6 +211,7 @@ def plot_format(fig: go.Figure, x_title: str, y_title: str):
         x_title (str): title of the x-axis.
         y_title (str): title of the y-axis
     """
+
     fig.update_layout(
         font=dict(family="Devaju Sans"),
         plot_bgcolor="white",
@@ -234,7 +248,7 @@ def plot_format(fig: go.Figure, x_title: str, y_title: str):
 
 
 def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
-    """makes a plot for Encut convergence using plotly.
+    """Makes a plot for ENCUT convergence using plotly.
 
     Args:
         df: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom (as structured by the return of `extract_convergence_data()`).
@@ -253,6 +267,7 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
         ]
     )
     plot_format(fig, "ENCUT (eV)", "Energy (eV/atom)")
+
     kpoints = df["kpoint_grid"].iloc[0]
     fig.update_layout(
         title=dict(
@@ -262,16 +277,17 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
     )
     if show_fig == True:
         fig.show()
+
     return fig
 
 
 def calculate_encut_conv(
     path: str, plot: bool = True
 ) -> tuple[pd.DataFrame, go.Figure]:
-    """Convenience fuction to calculate the energy convergence with respect to ENCUT and plots the results.
+    """Convenience function to calculate the energy convergence with respect to ENCUT and plots the results.
 
     Args:
-        path: path to the folder containing the ENCUT convergence calculation results
+        path: path to the folder containing the ENCUT convergence calculation results.
         plot: If True, plots the energy per atom vs. ENCUT. Defaults to True.
 
     Returns:
@@ -308,6 +324,7 @@ def plot_kpoint_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
         ]
     )
     plot_format(fig, "KPPA", "Energy (eV/atom)")
+
     encut = df["encut"].iloc[0]
     fig.update_layout(
         title=dict(
@@ -317,11 +334,10 @@ def plot_kpoint_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
     )
     if show_fig == True:
         fig.show()
+
     return fig
 
 
-# TODO: Incorporate other convergence criteria
-# See https://github.com/kavanase/vaspup2.0
 def calculate_kpoint_conv(
     path: str, plot: bool = True
 ) -> tuple[pd.DataFrame, go.Figure]:
