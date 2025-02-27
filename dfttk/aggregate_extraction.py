@@ -64,13 +64,15 @@ def extract_configuration_data(
 
     vol_dirs = glob.glob(os.path.join(path, "vol_*"))
     vol_dirs = natsorted(vol_dirs)
-    
+
     for vol_dir in vol_dirs:
         outcar_path = os.path.join(vol_dir, outcar_name)
         oszicar_path = os.path.join(vol_dir, oszicar_name)
         contcar_path = os.path.join(vol_dir, contcar_name)
 
-        if not all(os.path.isfile(p) for p in [outcar_path, oszicar_path, contcar_path]):
+        if not all(
+            os.path.isfile(p) for p in [outcar_path, oszicar_path, contcar_path]
+        ):
             print(f"Warning: Required files do not exist in {vol_dir}. Skipping.")
             continue
 
@@ -98,7 +100,7 @@ def extract_configuration_data(
                 total_magnetic_moments, total_magnetic_moment
             )
             magnetic_orderings = np.append(magnetic_orderings, magnetic_ordering)
-    
+
     mag_data_array = np.array(mag_data_list)
 
     return (
@@ -123,49 +125,57 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
         pd.DataFrame: a pandas dataframe containing the ENCUT, kpoint grid, kppa, energy, number of atoms, energy per atom, and difference in energy per atom
     """
 
+    # Get list of OSZICAR files
     OSZICAR_files = [
         file
         for file in os.listdir(path)
         if os.path.isfile(os.path.join(path, file)) and file.startswith("OSZICAR")
     ]
-
     conv_items = sorted([int(file.split(".")[1]) for file in OSZICAR_files])
 
+    # Initialize lists to store data
     encut_list = []
     energy_list = []
     number_of_atoms_list = []
     kpoint_grid_list = []
+
+    # Loop through each convergence item and extract data
     for item in conv_items:
         oszicar_path = os.path.join(path, f"OSZICAR.{item}")
         kpoints_path = os.path.join(path, f"KPOINTS.{item}")
         incar_path = os.path.join(path, f"INCAR.{item}")
         poscar_path = os.path.join(path, f"POSCAR.{item}")
+
         incar = Incar.from_file(incar_path)
         struct = Structure.from_file(poscar_path)
+        oszicar = Oszicar(oszicar_path)
+        kpoints = Kpoints.from_file(kpoints_path)
 
         encut_list.append(incar.get("ENCUT", None))
-        oszicar = Oszicar(oszicar_path)
         energy_list.append(oszicar.final_energy)
         number_of_atoms_list.append(len(struct.sites))
-        kpoints = Kpoints.from_file(kpoints_path)
-        kpoints = [item for sublist in kpoints.kpts for item in sublist]
-        kpoint_grid_list.append(kpoints)
+        kpoint_grid_list.append([item for sublist in kpoints.kpts for item in sublist])
+
+    # Calculate energy per atom
     energy_per_atom_list = [
         energy / num_atoms
         for energy, num_atoms in zip(energy_list, number_of_atoms_list)
     ]
 
+    # Calculate difference in energy per atom in meV
     difference_meV_per_atom_list = [
         (energy_per_atom_list[i] - energy_per_atom_list[i - 1]) * 1000
         for i in range(1, len(energy_per_atom_list))
     ]
     difference_meV_per_atom_list.insert(0, float("nan"))
 
-    kppa_list = []
-    for i, kpoint_grid in enumerate(kpoint_grid_list):
-        kppa = np.prod(kpoint_grid) * number_of_atoms_list[i]
-        kppa_list.append(kppa)
+    # Calculate kppa
+    kppa_list = [
+        np.prod(kpoint_grid) * num_atoms
+        for kpoint_grid, num_atoms in zip(kpoint_grid_list, number_of_atoms_list)
+    ]
 
+    # Create DataFrame
     df = pd.DataFrame(
         {
             "encut": encut_list,
