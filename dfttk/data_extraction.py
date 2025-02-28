@@ -88,7 +88,7 @@ def extract_average_mass(
 
     return average_mass
 
-# Continue here
+
 def extract_mag_data(outcar_path: str) -> pd.DataFrame:
     """Extracts the magnetization data from an OUTCAR file and returns the data as a pandas DataFrame in the same format and headings as seen in the OUTCAR.
 
@@ -141,57 +141,76 @@ def extract_mag_data(outcar_path: str) -> pd.DataFrame:
                     found_mag_data = False
                 except:
                     continue
-        
+
         # Raise an error if magnetization headers are not found
         if headers is None:
             raise ValueError("magnetization headers not found in OUTCAR file.")
-        
+
         # Create a pandas DataFrame from the extracted data
         columns = ["step"] + headers
         df = pd.DataFrame(data, columns=columns)
-        
+
         return df
 
 
 def extract_tot_mag_data(
-    outcar_path: str = "OUTCAR", contcar_path: str = "CONTCAR"
+    outcar_path: str,
+    contcar_path: str,
 ) -> pd.DataFrame:
     """Returns only the 'tot' magnetization of the last step for each specified ion.
 
     Args:
-        outcar_path: Path to an OUTCAR file. Defaults to "OUTCAR".
-        contcar_path: Path to a CONTCAR file. Defaults to "CONTCAR".
+        outcar_path: path to an OUTCAR file.
+        contcar_path: path to a CONTCAR file.
 
     Returns:
-        a pandas DataFrame containing the 'tot' magnetization data
+        pd.DataFrame: a pandas DataFrame containing the 'tot' magnetization data.
     """
 
+    # Extract all magnetization data from the OUTCAR file
     all_mag_data = extract_mag_data(outcar_path)
+
+    # Select only the 'tot' magnetization data for the last step
     last_step_data = all_mag_data[all_mag_data["step"] == all_mag_data["step"].max()]
     tot_data = last_step_data[["#_of_ion", "tot"]]
     tot_data.reset_index(drop=True, inplace=True)
 
+    # Read the species from the CONTCAR file
     contcar = Poscar.from_file(contcar_path)
     species = [site.specie.symbol for site in contcar.structure]
 
+    # Add the species to the DataFrame
     tot_data = tot_data.copy()
     tot_data.loc[:, "species"] = species
 
     return tot_data
 
 
-def parse_doscar(vasprun_path, doscar_path):
+def parse_doscar(vasprun_path: str, doscar_path: str) -> tuple:
+    """Parse the DOSCAR file and return the energies, DOS, integrated DOS, and Fermi energy.
 
+    Args:
+        vasprun_path (str): path to the vasprun.xml file.
+        doscar_path (str): path to the DOSCAR file.
+
+    Returns:
+        tuple: a tuple containing the energies, DOS, integrated DOS, and Fermi energy.
+    """
+
+    # Parse the vasprun.xml file to get NEDOS and the Fermi energy
     vasprun = Vasprun(vasprun_path)
     nedos = vasprun.parameters["NEDOS"]
     fermi_energy = vasprun.efermi
 
+    # Read the DOSCAR file to get the energies, DOS, and integrated DOS
     with open(doscar_path, "r") as file:
         lines = file.readlines()
 
+        # Skip the first 6 lines and read the next number of lines equal to NEDOS
         header_lines = 6
         data_lines = lines[header_lines : header_lines + nedos]
 
+        # Initialize lists to store the data
         energies = []
         dos_up = []
         dos_down = []
@@ -202,11 +221,13 @@ def parse_doscar(vasprun_path, doscar_path):
             if line.strip():
                 parts = line.split()
 
+                # For non-spin-polarized calculations (ISPIN = 1)
                 if len(parts) == 3:
                     energies.append(float(parts[0]))
                     dos_up.append(float(parts[1]))
                     integrated_dos_up.append(float(parts[2]))
 
+                # For spin-polarized calculations (ISPIN = 2)
                 if len(parts) == 5:
                     energies.append(float(parts[0]))
                     dos_up.append(float(parts[1]))
@@ -214,6 +235,7 @@ def parse_doscar(vasprun_path, doscar_path):
                     integrated_dos_up.append(float(parts[3]))
                     integrated_dos_down.append(float(parts[4]))
 
+        # Convert the lists to numpy arrays
         energies = np.array(energies)
         dos_up = np.array(dos_up)
         dos_down = np.array(dos_down)
