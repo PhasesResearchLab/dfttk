@@ -2,21 +2,14 @@
 Debye-Grüneisen module to calculate the vibrational contribution to the Helmholtz energy, entropy, and heat capacity.    
 """
 
-# Standard library imports
-import os
-
 # Related third party imports
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from natsort import natsorted
 from scipy import constants
 from scipy.special import bernoulli, gamma
 
 # DFTTK imports
-from dfttk import eos_fit
-from dfttk.aggregate_extraction import extract_configuration_data
-from dfttk.data_extraction import extract_average_mass
 from dfttk.plotly_format import plot_format
 
 
@@ -44,7 +37,8 @@ def gruneisen_parameter(bulk_modulus_prime: float, gruneisen_x: float) -> float:
 
 def debye_temperature(
     volume: float,
-    eos_parameters: tuple[float],
+    volume_0: float,
+    bulk_modulus: float,
     mass: float,
     gru_param: float,
     scaling_factor: float = 0.617,
@@ -63,17 +57,11 @@ def debye_temperature(
         Debye temperature
     """
 
-    s = scaling_factor
-    volume_0 = eos_parameters[0]
-    bulk_modulus = eos_parameters[2]
-
-    return (
-        s
-        * A
-        * volume_0 ** (1 / 6)
-        * (bulk_modulus / mass) ** (1 / 2)
-        * (volume_0 / volume) ** gru_param
-    )
+    debye_temperature = scaling_factor * A * volume_0 ** (1 / 6) * (
+        bulk_modulus / mass
+    ) ** (1 / 2) * (volume_0 / volume) ** gru_param
+    
+    return debye_temperature
 
 
 def debye_function(
@@ -155,41 +143,6 @@ def debye_function(
             )
 
     return result
-
-
-def vibrational_energy(temperature: float, theta: float, number_of_atoms) -> float:
-    """Evaluates the debye function at x = theta/temperature, then calculates the vibrational energy in eV.
-
-    Args:
-        temperature : Temperature in Kelvin
-        theta: Debye temperature in Kelvin
-        number_of_atoms: Number of atoms in the cell
-
-    Returns:
-        float: Vibrational energy in eV
-    """
-
-    zero_temp_mask = temperature == 0
-    non_zero_temp_mask = temperature > 0
-
-    e_vib = np.zeros_like(temperature)
-    debye_value = np.zeros_like(temperature)
-
-    e_vib[zero_temp_mask] = number_of_atoms * (9 / 8 * BOLTZMANN_CONSTANT * theta)
-
-    debye_value[non_zero_temp_mask] = debye_function(
-        theta / temperature[non_zero_temp_mask]
-    )
-
-    e_vib = (
-        number_of_atoms
-        * BOLTZMANN_CONSTANT
-        * (
-            3 * temperature[non_zero_temp_mask] * debye_value[non_zero_temp_mask]
-            + 9 / 8 * theta
-        )
-    )
-    return e_vib
 
 
 def vibrational_entropy(temperature: float, theta: float, number_of_atoms) -> float:
@@ -309,204 +262,128 @@ def vibrational_heat_capacity(
     return cv_vib
 
 
+def process_debye_gruneisen(
+    number_of_atoms: int,
+    volumes: np.array,
+    atomic_mass: float,
+    volume_0: float,
+    bulk_modulus: float,
+    bulk_modulus_prime: float,
+    scaling_factor: float = 0.617,
+    gruneisen_x: float = 1,
+    temperatures: np.array = np.linspace(0, 1000, 101),
+):
+    temperatures = temperatures.astype(float)
+    s = scaling_factor
+    gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
+
+    if volumes is None:
+        volume_min = volume.min() * 0.98
+        volume_max = volume.max() * 1.02
+        volumes = np.linspace(volume_min, volume_max, 1000)
+
+    theta = debye_temperature(volumes, volume_0, bulk_modulus, atomic_mass, gru_param, s)
+
+    s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+    f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+    cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+
+    for i, volume in enumerate(volumes):
+        s_vib = vibrational_entropy(temperatures, theta[i], number_of_atoms)
+        f_vib = vibrational_helmholtz_energy(temperatures, theta[i], number_of_atoms)
+        cv_vib = vibrational_heat_capacity(temperatures, theta[i], number_of_atoms)
+        s_vib_v_t[i, :] = s_vib
+        f_vib_v_t[i, :] = f_vib
+        cv_vib_v_t[i, :] = cv_vib
+
+    f_vib = f_vib_v_t.T
+    s_vib= s_vib_v_t.T
+    cv_vib = cv_vib_v_t.T
+
+    return number_of_atoms, scaling_factor, gruneisen_x, temperatures, volumes, f_vib, s_vib, cv_vib
+
+
 def plot_debye(
-    config: str,
-    debye_properties: pd.DataFrame,
+    property_to_plot: str,
+    number_of_atoms,
+    temperatures,
+    volumes,
+    f_vib,
+    s_vib,
+    cv_vib,
     selected_temperatures_plot: np.array = None,
     selected_volumes: np.array = None,
     volume_decimals: int = 2,
-    temperature_decimals: int = 0,
 ) -> tuple[go.Figure, go.Figure]:
-    """Plots the vibrational properties (S,F,C_V) as a function of temperature and volume
 
-    Args:
-        temperatures: Array of temperatures
-        volumes: Array of volumes
-        number_of_atoms: Number of atoms in the cell
-        y: Array of vibrational properties (S,F,C_V)
-        y_label: Label for the y-axis ('S', 'F', 'C_V')
-        selected_temperatures_plot: Array of selected temperatures curves to plot in the y vs volume plot. If None, 5 linearly spaced temperatures are selected.
-        selected_volumes: Array of selected volumes curves to plot in the y vs temperature plot. If None, 5 linearly spaced volumes are selected.
-        volume_decimals: Number of decimals to display for the volume in the plot
-        temperature_decimals: Number of decimals to display for the temperature in the plot
+    properties = {
+        'helmholtz_energy': (f_vib.T, f"F<sub>vib</sub> (eV/{number_of_atoms} atoms)"),
+        'entropy': (s_vib.T, f"S<sub>vib</sub> (eV/K/{number_of_atoms} atoms)"),
+        'heat_capacity': (cv_vib.T, f"C<sub>v,vib</sub> (eV/K/{number_of_atoms} atoms)")
+    }
 
-    Returns:
-        tuple[go.Figure, go.Figure]: Two plotly figures, one for the vibrational properties as a function of temperature and one for the vibrational properties
-        as a function of volume
-    """
-    config_debye_properties = debye_properties[debye_properties["config"] == config]
-    temperatures = config_debye_properties["temperatures"].values
-    volumes = config_debye_properties["volume"].values[0]
-    number_of_atoms = config_debye_properties["number_of_atoms"].values[0]
+    if property_to_plot not in properties:
+        raise ValueError("property_to_plot must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'")
 
-    f_vib = np.array(config_debye_properties["f_vib"].tolist()).T
-    s_vib = np.array(config_debye_properties["s_vib"].tolist()).T
-    cv_vib = np.array(config_debye_properties["cv_vib"].tolist()).T
-    y_values = [f_vib, s_vib, cv_vib]
-    y_labels = [
-        f"F<sub>vib</sub> (eV/{number_of_atoms} atoms)",
-        f"S<sub>vib</sub> (eV/K/{number_of_atoms} atoms)",
-        f"C<sub>v,vib</sub> (eV/K/{number_of_atoms} atoms)",
-    ]
+    y, y_label = properties[property_to_plot]
 
-    for y, y_label in zip(y_values, y_labels):
-        s_t_fig = go.Figure()
-        if selected_volumes is None:
-            indices = np.linspace(0, len(volumes) - 1, 5, dtype=int)
+    s_t_fig = go.Figure()
+    if selected_volumes is None:
+        indices = np.linspace(0, len(volumes) - 1, 5, dtype=int)
+    else:
+        indices = []
+        for v in selected_volumes:
+            try:
+                indices.append(np.where(volumes == v)[0][0])
+            except IndexError:
+                nearest_volume = volumes[np.argmin(np.abs(volumes - v))]
+                indices.append(np.where(volumes == nearest_volume)[0][0])
 
-        else:
-            indices = []
-            for v in selected_volumes:
-                try:
-                    indices.append(np.where(volumes == v)[0][0])
-                except IndexError:
-                    nearest_volume = volumes[np.argmin(np.abs(volumes - v))]
-                    indices.append(np.where(volumes == nearest_volume)[0][0])
-
-        for i, volume in enumerate(volumes):
-            if i in indices:
-                s_t_fig.add_trace(
-                    go.Scatter(
-                        x=temperatures,
-                        y=y[i],
-                        mode="lines",
-                        name=f"{volume:.{volume_decimals}f} \u212B<sup>3</sup>",
-                    )
-                )
-        plot_format(
-            s_t_fig,
-            "Temperature (K)",
-            y_label,
-        )
-        s_t_fig.show()
-
-    for y, y_label in zip(y_values, y_labels):
-        s_v_fig = go.Figure()
-        if selected_temperatures_plot is None:
-            indices = np.linspace(0, len(temperatures) - 1, 5, dtype=int)
-            selected_temperatures_plot = np.array([temperatures[j] for j in indices])
-        else:
-            indices = []
-            for t in selected_temperatures_plot:
-                try:
-                    indices.append(np.where(temperatures == t)[0][0])
-                except IndexError:
-                    nearest_temperature = temperatures[
-                        np.argmin(np.abs(temperatures - t))
-                    ]
-                    indices.append(np.where(temperatures == nearest_temperature)[0][0])
-        for i in indices:
-            s_v_fig.add_trace(
+    for i, volume in enumerate(volumes):
+        if i in indices:
+            s_t_fig.add_trace(
                 go.Scatter(
-                    x=volumes,
-                    y=y[:, i],
+                    x=temperatures,
+                    y=y[i],
                     mode="lines",
-                    name=f"{temperatures[i]:.{temperature_decimals}f} K",
+                    name=f"{volume:.{volume_decimals}f} \u212B<sup>3</sup>",
                 )
             )
-        plot_format(
-            s_v_fig,
-            "Volume (\u212B<sup>3</sup>)",
-            y_label,
-        )
-        s_v_fig.show()
+    plot_format(
+        s_t_fig,
+        "Temperature (K)",
+        y_label,
+    )
+    s_t_fig.show()
 
-
-def process_debye_gruneisen(
-    energy_volume_df: pd.DataFrame,
-    eos_parameters_df: pd.DataFrame,
-    scaling_factor: float = 0.617,
-    gruneisen_x: float = 1,
-    volumes: np.array = None,
-    temperatures: np.array = np.linspace(0, 1000, 101),
-    eos: str = "BM4",
-    plot=None,
-    selected_temperatures_plot: np.array = None,
-) -> tuple[np.array, np.array, int, np.array, np.array, np.array]:
-    """Applies the Debye-Gruneisen model to a given configuration for which E-V curve calculations have been performed.
-
-    Args:
-        energy_volume_df: DataFrame containing the energy-volume data
-        eos_parameters_df: DataFrame containing the equation of state parameters
-        scaling_factor: s, Scaling factor for the Debye temperature
-        gruneisen_x: x = 2/3 for high temperature case and x = 1 for low temperature case
-        volumes: Array of volumes to evaluate the Debye thermal properties at. If None, 100 volumes are linearly spaced between the minimum and maximum volumes
-        temperatures: Array of temperatures to evaluate the Debye thermal properties at
-        eos: Equation of state fitting function from the eos_fit module
-        plot: Whether or not to plot the Debye thermal properties
-        selected_temperatures_plot: Array of selected temperatures curves to plot in the y vs volume plot. If None, 5 linearly spaced temperatures are selected.
-
-        Returns:
-            tuple[np.array, np.array, int, np.array, np.array, np.array]: temperatures, volumes, number of atoms, and 2D arrays with rows (columns) corresponding
-            to volumes (temperatures) vibrational entropy, vibrational Helmholtz energy, vibrational heat capacity
-    """
-
-    s = scaling_factor
-    filtered_eos_parameters_df = eos_parameters_df[eos_parameters_df["eos"] == eos]
-    configs = filtered_eos_parameters_df["config"].unique()
-
-    debye_properties_list = []
-    for config in configs:
-        config_eos_parameters_df = filtered_eos_parameters_df[
-            filtered_eos_parameters_df["config"] == config
-        ]
-        bulk_modulus_prime = config_eos_parameters_df["BP"].values[0]
-        gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
-
-        config_energy_volume_df = energy_volume_df[energy_volume_df["config"] == config]
-        volume = config_energy_volume_df["volume"].values
-
-        if volumes is None:
-            volume_min = volume.min() * 0.98
-            volume_max = volume.max() * 1.02
-            volumes = np.linspace(volume_min, volume_max, 1000)
-
-        atomic_mass = config_energy_volume_df["average_mass"].values[0]
-        eos_parameters = config_eos_parameters_df[
-            ["V0", "E0", "B", "BP", "B2P"]
-        ].values[0]
-        theta = debye_temperature(volumes, eos_parameters, atomic_mass, gru_param, s)
-
-        s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-        f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-        cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-        number_of_atoms = energy_volume_df["number_of_atoms"][0]
-
-        for i, volume in enumerate(volumes):
-            s_vib = vibrational_entropy(temperatures, theta[i], number_of_atoms)
-            f_vib = vibrational_helmholtz_energy(
-                temperatures, theta[i], number_of_atoms
+    s_v_fig = go.Figure()
+    if selected_temperatures_plot is None:
+        indices = np.linspace(0, len(temperatures) - 1, 5, dtype=int)
+        selected_temperatures_plot = np.array([temperatures[j] for j in indices])
+    else:
+        indices = []
+        for t in selected_temperatures_plot:
+            try:
+                indices.append(np.where(temperatures == t)[0][0])
+            except IndexError:
+                nearest_temperature = temperatures[
+                    np.argmin(np.abs(temperatures - t))
+                ]
+                indices.append(np.where(temperatures == nearest_temperature)[0][0])
+    for i in indices:
+        s_v_fig.add_trace(
+            go.Scatter(
+                x=volumes,
+                y=y[:, i],
+                mode="lines",
+                name=f"{temperatures[i]} K",
             )
-            cv_vib = vibrational_heat_capacity(temperatures, theta[i], number_of_atoms)
-            s_vib_v_t[i, :] = s_vib
-            f_vib_v_t[i, :] = f_vib
-            cv_vib_v_t[i, :] = cv_vib
-
-        f_vib_transposed = f_vib_v_t.T
-        s_vib_transposed = s_vib_v_t.T
-        cv_vib_transposed = cv_vib_v_t.T
-
-        debye_properties = pd.DataFrame(
-            {
-                "config": [config] * len(temperatures),
-                "temperatures": temperatures,
-                "number_of_atoms": number_of_atoms,
-                "scaling_factor": [s] * len(temperatures),
-                "gruneisen_x": [gruneisen_x] * len(temperatures),
-                "volume": [volumes] * len(temperatures),
-                "f_vib": [col for col in f_vib_transposed],
-                "s_vib": [col for col in s_vib_transposed],
-                "cv_vib": [col for col in cv_vib_transposed],
-            }
         )
+    plot_format(
+        s_v_fig,
+        "Volume (\u212B<sup>3</sup>)",
+        y_label,
+    )
+    s_v_fig.show()
 
-        debye_properties_list.append(debye_properties)
-
-    all_debye_properties = pd.concat(debye_properties_list, ignore_index=True)
-    
-    if plot is not None:
-        plot_debye(
-            config, all_debye_properties, selected_temperatures_plot=selected_temperatures_plot
-        )
-        
-    return all_debye_properties
+    return s_t_fig, s_v_fig

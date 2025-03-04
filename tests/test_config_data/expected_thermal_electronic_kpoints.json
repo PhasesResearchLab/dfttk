@@ -1,0 +1,25 @@
+{
+    "@module": "pymatgen.io.vasp.inputs",
+    "@class": "Kpoints",
+    "comment": "Automatic kpoint scheme",
+    "nkpoints": 0,
+    "generation_style": "Gamma",
+    "kpoints": [
+        [
+            10.0,
+            10.0,
+            10.0
+        ]
+    ],
+    "usershift": [
+        0,
+        0,
+        0
+    ],
+    "kpts_weights": null,
+    "coord_type": null,
+    "labels": null,
+    "tet_number": 0,
+    "tet_weight": 0,
+    "tet_connections": null
+}
