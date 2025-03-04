@@ -671,6 +671,7 @@ def phonons_parallel(
     kppa: float,
     run_file: str,
     scaling_matrix: tuple[tuple[int]] = ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    
 ) -> None:
     """Runs the run_phonons function in parallel for a list of phonon volumes.
 
@@ -702,7 +703,9 @@ def phonons_parallel(
     new_run_file += "\n"
     new_run_file += "python << END_OF_PYTHON\n"
     new_run_file += script_contents
-    new_run_file += "workflows.run_phonons(vasp_cmd=vasp_cmd, handlers=handlers, copy_magmom=copy_magmom, backup=backup, max_errors=max_errors, relax=relax)\n"
+    new_run_file += "\nworkflows.run_phonons(vasp_cmd=vasp_cmd, handlers=handlers, copy_magmom=copy_magmom, backup=backup, max_errors=max_errors, relax=relax)\n"
+    new_run_file += "workflows.custodian_errors_location(os.getcwd())\n"
+    new_run_file += "workflows.NELM_reached(os.getcwd())\n"
     new_run_file += "END_OF_PYTHON\n"
 
     # Copy files to phonon folders
@@ -778,14 +781,21 @@ def phonons_parallel(
                         file.write(magmom_line + "\n")
                     else:
                         file.write(line)
+        except ValueError:
+        # Swallow the ValueError and continue without outputting anything
+            pass
         except Exception as e:
-            structure = Structure.from_file(
-                os.path.join(path, f"phonon_{phonon_folder}", "POSCAR")
-            )
-            structure = transformation.apply_transformation(structure)
-            structure.to_file(
-                os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
-            )
+            # Handle other exceptions
+            print(f"An error occurred: {e}")
+        
+        # Apply transformation and save the structure regardless of the exception
+        structure = Structure.from_file(
+            os.path.join(path, f"phonon_{phonon_folder}", "POSCAR")
+        )
+        structure = transformation.apply_transformation(structure)
+        structure.to_file(
+            os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
+        )
 
         kpoints = Kpoints.automatic_density(structure, kppa, force_gamma=True)
         kpoints.write_file(os.path.join(path, f"phonon_{phonon_folder}", "KPOINTS"))
@@ -829,7 +839,6 @@ def process_phonon_dos_YPHON(path: str):
         for folder in os.listdir(path)
         if os.path.isdir(os.path.join(path, folder)) and folder.startswith("phonon")
     ]
-
     for phonon_folder in phonon_folders:
         try:
             phonon_dos_folder = os.path.join(path, phonon_folder, "phonon_dos")
@@ -837,15 +846,15 @@ def process_phonon_dos_YPHON(path: str):
             if not os.path.exists(phonon_dos_folder):
                 os.makedirs(phonon_dos_folder, exist_ok=True)
             shutil.copy(
-                os.path.join(phonon_folder, "CONTCAR.1phonons"),
+                os.path.join(phonon_folder, "CONTCAR.2phonons"),
                 os.path.join(phonon_dos_folder, "CONTCAR"),
             )
             shutil.copy(
-                os.path.join(phonon_folder, "OUTCAR.1phonons"),
+                os.path.join(phonon_folder, "OUTCAR.2phonons"),
                 os.path.join(phonon_dos_folder, "OUTCAR"),
             )
             shutil.copy(
-                os.path.join(phonon_folder, "vasprun.xml.1phonons"),
+                os.path.join(phonon_folder, "vasprun.xml.2phonons"),
                 os.path.join(phonon_dos_folder, "vasprun.xml"),
             )
 

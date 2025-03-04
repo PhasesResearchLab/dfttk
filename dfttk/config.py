@@ -7,13 +7,15 @@ import os
 import json
 import subprocess
 import importlib.resources
+from datetime import datetime
+from collections import OrderedDict
 
 # Third-Party Library Imports
 import numpy as np
 import pandas as pd
 from pymongo import MongoClient
+from bson import ObjectId
 from natsort import natsorted
-from datetime import datetime
 import plotly.graph_objects as go
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
@@ -53,11 +55,21 @@ from dfttk.quasi_harmonic import process_quasi_harmonic, plot_quasi_harmonic
 
 
 class MetaData:
-    def __init__(self, parentDatabase: None, parentDatabaseID: None):
-        self.parentDatabase = parentDatabase
-        self.parentDatabaseID = parentDatabaseID
-        self.created = None
-        self.last_modified = None
+    def __init__(
+        self,
+        affiliation: str = "DFTTK",
+        mpdd_id: ObjectId = None,
+        parent_database: str = None,
+        parent_database_id: str = None,
+        parent_database_url: str = None,
+        comment: str = None,
+    ):
+        self.affiliation = affiliation
+        self.mpdd_id = mpdd_id
+        self.parent_database = parent_database
+        self.parent_database_id = parent_database_id
+        self.parent_database_url = parent_database_url
+        self.comment = comment
 
 
 class EvCurvesData:
@@ -90,6 +102,7 @@ class EvCurvesData:
             "B2P": None,
         }
         self.relaxed_structures = []
+        self.starting_poscar = None
 
     def _get_volume_folders(self) -> list[str]:
         return natsorted([f for f in os.listdir(self.path) if f.startswith("vol_")])
@@ -103,9 +116,7 @@ class EvCurvesData:
             vol_folders = [
                 vol_folder
                 for vol_folder in vol_folders
-                if os.path.exists(
-                    os.path.join(self.path, vol_folder, "CONTCAR.3static")
-                )
+                if os.path.exists(os.path.join(self.path, vol_folder, "CONTCAR.3static"))
                 and round(
                     Structure.from_file(
                         os.path.join(self.path, vol_folder, "CONTCAR.3static")
@@ -117,9 +128,7 @@ class EvCurvesData:
 
         for vol_folder in vol_folders:
             incar_data = {
-                key: Incar.from_file(
-                    os.path.join(self.path, vol_folder, f"INCAR.{key}")
-                )
+                key: Incar.from_file(os.path.join(self.path, vol_folder, f"INCAR.{key}"))
                 for key in incar_keys
             }
             self.incars.append(incar_data)
@@ -130,6 +139,8 @@ class EvCurvesData:
             self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
         except FileNotFoundError:
             self.potcar = None
+
+        self.starting_poscar = Structure.from_file(os.path.join(self.path, "POSCAR"))
 
     def get_energy_volume_data(
         self,
@@ -169,8 +180,7 @@ class EvCurvesData:
         self.magnetic_ordering = all_magnetic_orderings
 
         transformed_data = [
-            [{f"{item[0]}": {item[2]: item[1]}} for item in sublist]
-            for sublist in self.mag_data
+            [{f"{item[0]}": {item[2]: item[1]}} for item in sublist] for sublist in self.mag_data
         ]
         transformed_data = {
             str(index): {f"{item[0]}": {item[2]: item[1]} for item in sublist}
@@ -180,15 +190,11 @@ class EvCurvesData:
 
         if volumes is not None:
             volumes_set = set(volumes)
-            filtered_indices = [
-                i for i, v in enumerate(all_volumes) if v in volumes_set
-            ]
+            filtered_indices = [i for i, v in enumerate(all_volumes) if v in volumes_set]
             self.volumes = np.array(all_volumes)[filtered_indices]
             self.energies = np.array(all_energies)[filtered_indices]
             self.mag_data = np.array(all_mag_data_list)[filtered_indices]
-            self.total_magnetic_moment = np.array(all_total_magnetic_moments)[
-                filtered_indices
-            ]
+            self.total_magnetic_moment = np.array(all_total_magnetic_moments)[filtered_indices]
             self.magnetic_ordering = np.array(all_magnetic_orderings)[filtered_indices]
 
         vol_folders = self._get_volume_folders()
@@ -199,9 +205,7 @@ class EvCurvesData:
                 for vol_folder in vol_folders
                 if os.path.exists(os.path.join(self.path, vol_folder, contcar_name))
                 and round(
-                    Structure.from_file(
-                        os.path.join(self.path, vol_folder, contcar_name)
-                    ).volume,
+                    Structure.from_file(os.path.join(self.path, vol_folder, contcar_name)).volume,
                     2,
                 )
                 in volumes_set
@@ -219,15 +223,13 @@ class EvCurvesData:
         volume_max: float = None,
         num_volumes: int = 1000,
     ) -> None:
-        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
-            fit_to_eos(
-                self.volumes,
-                self.energies,
-                eos_name,
-                volume_min,
-                volume_max,
-                num_volumes,
-            )
+        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = fit_to_eos(
+            self.volumes,
+            self.energies,
+            eos_name,
+            volume_min,
+            volume_max,
+            num_volumes,
         )
 
         self.eos_parameters = {
@@ -411,9 +413,7 @@ class PhononsData:
             phonon_folders = [
                 phonon_folder
                 for phonon_folder in phonon_folders
-                if os.path.exists(
-                    os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
-                )
+                if os.path.exists(os.path.join(self.path, phonon_folder, "CONTCAR.2phonons"))
                 and round(
                     Structure.from_file(
                         os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
@@ -458,9 +458,7 @@ class PhononsData:
         padded_arrays = []
         for arr in arrays:
             if pad_type == "constant":
-                padded_arr = np.pad(
-                    arr, (0, max_length - len(arr)), constant_values=pad_value
-                )
+                padded_arr = np.pad(arr, (0, max_length - len(arr)), constant_values=pad_value)
             elif pad_type == "increasing":
                 increment = arr[-1] - arr[-2]
                 pad_values = np.arange(
@@ -533,18 +531,10 @@ class PhononsData:
         self.cv_vib_fit = cv_vib_fit
         self.volume_fit = volume_fit
 
-        self.helmholtz_energy = {
-            f"{temp}K": f_vib[i] for i, temp in enumerate(self.temperatures)
-        }
-        self.internal_energy = {
-            f"{temp}K": e_vib[i] for i, temp in enumerate(self.temperatures)
-        }
-        self.entropy = {
-            f"{temp}K": s_vib[i] for i, temp in enumerate(self.temperatures)
-        }
-        self.heat_capacity = {
-            f"{temp}K": cv_vib[i] for i, temp in enumerate(self.temperatures)
-        }
+        self.helmholtz_energy = {f"{temp}K": f_vib[i] for i, temp in enumerate(self.temperatures)}
+        self.internal_energy = {f"{temp}K": e_vib[i] for i, temp in enumerate(self.temperatures)}
+        self.entropy = {f"{temp}K": s_vib[i] for i, temp in enumerate(self.temperatures)}
+        self.heat_capacity = {f"{temp}K": cv_vib[i] for i, temp in enumerate(self.temperatures)}
 
         self.helmholtz_energy_fit = {
             "polynomial_coefficients": {
@@ -663,9 +653,7 @@ class ThermalElectronicData:
             elec_folders = [
                 elec_folder
                 for elec_folder in elec_folders
-                if os.path.exists(
-                    os.path.join(self.path, elec_folder, "CONTCAR.elec_dos")
-                )
+                if os.path.exists(os.path.join(self.path, elec_folder, "CONTCAR.elec_dos"))
                 and round(
                     Structure.from_file(
                         os.path.join(self.path, elec_folder, "CONTCAR.elec_dos")
@@ -677,9 +665,7 @@ class ThermalElectronicData:
 
         for elec_folder in elec_folders:
             incar_data = {
-                key: Incar.from_file(
-                    os.path.join(self.path, elec_folder, f"INCAR.{key}")
-                )
+                key: Incar.from_file(os.path.join(self.path, elec_folder, f"INCAR.{key}"))
                 for key in incar_keys
             }
             self.incars.append(incar_data)
@@ -710,9 +696,9 @@ class ThermalElectronicData:
             for volume in volumes
         ]
         dos_array = [
-            self.electron_dos_data[self.electron_dos_data["volume"] == volume][
-                "total_dos"
-            ].values[0]
+            self.electron_dos_data[self.electron_dos_data["volume"] == volume]["total_dos"].values[
+                0
+            ]
             for volume in volumes
         ]
 
@@ -733,9 +719,7 @@ class ThermalElectronicData:
         self.temperatures = temperature_range
 
         volume_fit, f_el_fit, s_el_fit, cv_el_fit, f_el_poly, s_el_poly, cv_el_poly = (
-            fit_thermal_electronic(
-                self.volumes, self.temperatures, f_el, s_el, cv_el, order
-            )
+            fit_thermal_electronic(self.volumes, self.temperatures, f_el, s_el, cv_el, order)
         )
 
         self.volume_fit = volume_fit
@@ -751,16 +735,10 @@ class ThermalElectronicData:
         self.entropy = {}
         self.heat_capacity = {}
 
-        self.helmholtz_energy = {
-            f"{temp}K": f_el[i] for i, temp in enumerate(self.temperatures)
-        }
-        self.internal_energy = {
-            f"{temp}K": e_el[i] for i, temp in enumerate(self.temperatures)
-        }
+        self.helmholtz_energy = {f"{temp}K": f_el[i] for i, temp in enumerate(self.temperatures)}
+        self.internal_energy = {f"{temp}K": e_el[i] for i, temp in enumerate(self.temperatures)}
         self.entropy = {f"{temp}K": s_el[i] for i, temp in enumerate(self.temperatures)}
-        self.heat_capacity = {
-            f"{temp}K": cv_el[i] for i, temp in enumerate(self.temperatures)
-        }
+        self.heat_capacity = {f"{temp}K": cv_el[i] for i, temp in enumerate(self.temperatures)}
 
         self.helmholtz_energy_fit = {
             "polynomial_coefficients": {
@@ -795,9 +773,7 @@ class ThermalElectronicData:
 
         # Remove the outer layer of lists
         for col in ["number_of_atoms", "f_el_poly", "s_el_poly", "cv_el_poly"]:
-            thermal_electronic_fit_df[col] = thermal_electronic_fit_df[col].apply(
-                lambda x: x[0]
-            )
+            thermal_electronic_fit_df[col] = thermal_electronic_fit_df[col].apply(lambda x: x[0])
 
         self.thermal_electronic_fit_df = thermal_electronic_fit_df
 
@@ -889,17 +865,11 @@ class QuasiHarmonicData:
         self.quasi_harmonic_df = quasi_harmonic_properties
         self.method = method
         self.pressure = quasi_harmonic_properties["pressure"].values.tolist()[0]
-        self.number_of_atoms = int(
-            quasi_harmonic_properties["number_of_atoms"].values.tolist()[0]
-        )
+        self.number_of_atoms = int(quasi_harmonic_properties["number_of_atoms"].values.tolist()[0])
         self.temperatures = quasi_harmonic_properties["temperature"].values.tolist()
         self.volumes = quasi_harmonic_properties["volume_range"].values[0].tolist()
-        eos_constants = [
-            arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]
-        ]
-        s_coefficients = [
-            arr.tolist() for arr in quasi_harmonic_properties["s_coefficients"]
-        ]
+        eos_constants = [arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]]
+        s_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["s_coefficients"]]
 
         self.helmholtz_energy = {
             "eos_parameters": {
@@ -918,9 +888,7 @@ class QuasiHarmonicData:
         for temp, entropy in zip(self.temperatures, s_coefficients):
             self.entropy["polynomial_coefficients"][f"{temp}K"] = entropy
 
-        cv_coefficients = [
-            arr.tolist() for arr in quasi_harmonic_properties["cv_coefficients"]
-        ]
+        cv_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["cv_coefficients"]]
         self.heat_capacity = {"polynomial_coefficients": {}}
         for temp, cv in zip(self.temperatures, cv_coefficients):
             self.heat_capacity["polynomial_coefficients"][f"{temp}K"] = cv
@@ -941,9 +909,7 @@ class QuasiHarmonicData:
     ) -> go.Figure:
 
         fig = plot_quasi_harmonic(
-            quasi_harmonic_properties=self.methods[method][pressure][
-                "quasi_harmonic_df"
-            ],
+            quasi_harmonic_properties=self.methods[method][pressure]["quasi_harmonic_df"],
             plot_type=plot_type,
             selected_temperatures_plot=selected_temperatures_plot,
         )
@@ -952,62 +918,81 @@ class QuasiHarmonicData:
 
 # Continue refactoring here!
 class Configuration:
-    def __init__(self, path, name, multiplicity=None):
+    def __init__(self, path, name, alias: str = None, multiplicity: int = None):
         self.path = path
         self.name = name
+        self.alias = alias
         self.multiplicity = multiplicity
-        self.batch_script = {}
-        self.template = None
+        self.job_script = {}
         self.vasp_cmd = None
+        self.ev_curves_settings_data = {}
+        self.phonons_settings_data = {}
+        self.thermal_electronic_settings_data = {}
+        self.ev_curves_job_script = {}
+        self.phonons_job_script = {}
+        self.thermal_electronic_job_script = {}
 
-    def set_vasp_cmd(self, vasp_cmd: list[str]):
+    def set_vasp_cmd(self, vasp_cmd: list[str]) -> None:
         self.vasp_cmd = vasp_cmd
 
-    def read_batch_script(self, template: str):
-        self.template = template
+    # TODO: At the moment this only works for the Bridges-2 template. Modify it to make it more general.
+    def read_job_script(self, template: str) -> None:
         templates_map = {
             "bridges2": "bridges2.json",
         }
         if template in templates_map:
             with importlib.resources.path(
                 "dfttk.job_templates", templates_map[template]
-            ) as batch_script_path:
-                with open(batch_script_path, "r") as file:
-                    self.batch_script = json.load(file)
+            ) as job_script_path:
+                with open(job_script_path, "r") as file:
+                    self.job_script = json.load(file)
 
-    def modify_batch_script(self, key, value, position=None, action="add"):
-        if key in self.batch_script and key != "commands":
-            self.batch_script[key] = value
+    def modify_job_script(self, key, value, position=None, action="add") -> None:
+        if key in self.job_script and key != "commands":
+            self.job_script[key] = value
         elif key == "commands":
             if action == "add":
                 if position is None:
-                    self.batch_script["commands"].append(value)
+                    self.job_script["commands"].append(value)
                 else:
-                    self.batch_script["commands"].insert(position, value)
+                    self.job_script["commands"].insert(position, value)
             elif action == "remove" and position is not None:
-                if 0 <= position < len(self.batch_script["commands"]):
-                    self.batch_script["commands"].pop(position)
+                if 0 <= position < len(self.job_script["commands"]):
+                    self.job_script["commands"].pop(position)
 
-    def write_batch_script(self, batch_script_file="job.sh"):
-        batch_script_path = os.path.join(self.path, batch_script_file)
-        if self.template == "bridges2":
-            with open(batch_script_path, "w") as file:
-                file.write("#!/bin/bash\n")
-                file.write(f"#SBATCH --job-name={self.batch_script['job_name']}\n")
-                file.write(f"#SBATCH -A {self.batch_script['account']}\n")
-                file.write(f"#SBATCH -p {self.batch_script['partition']}\n")
-                file.write(f"#SBATCH -N {self.batch_script['nodes']}\n")
-                file.write(
-                    f"#SBATCH --ntasks-per-node={self.batch_script['ntasks_per_node']}\n"
-                )
-                file.write(f"#SBATCH -t {self.batch_script['time']}\n")
-                file.write(f"#SBATCH -o {self.batch_script['output_file']}\n")
-                file.write(f"#SBATCH -e {self.batch_script['error_file']}\n\n")
-                for command in self.batch_script["commands"]:
-                    file.write(f"{command}\n")
+    def write_job_script(self, job_script_file="job.sh") -> None:
+        job_script_path = os.path.join(self.path, job_script_file)
+        with open(job_script_path, "w") as file:
+            file.write("#!/bin/bash\n")
+            file.write(f"#SBATCH --job-name={self.job_script['job_name']}\n")
+            file.write(f"#SBATCH -A {self.job_script['account']}\n")
+            file.write(f"#SBATCH -p {self.job_script['partition']}\n")
+            file.write(f"#SBATCH -N {self.job_script['nodes']}\n")
+            file.write(f"#SBATCH --ntasks-per-node={self.job_script['ntasks_per_node']}\n")
+            file.write(f"#SBATCH -t {self.job_script['time']}\n")
+            file.write(f"#SBATCH -o {self.job_script['output_file']}\n")
+            file.write(f"#SBATCH -e {self.job_script['error_file']}\n\n")
+            for command in self.job_script["commands"]:
+                file.write(f"{command}\n")
 
-    def add_metadata(self, parentDatabase, parentDatabaseID):
-        self.metadata = MetaData(parentDatabase, parentDatabaseID)
+    def add_metadata(
+        self,
+        mpdd_id=None,
+        parent_database=None,
+        parent_database_id=None,
+        parent_database_url=None,
+        comment=None,
+        affiliation="DFTTK",
+    ) -> None:
+
+        self.metadata = MetaData(
+            affiliation,
+            mpdd_id,
+            parent_database,
+            parent_database_id,
+            parent_database_url,
+            comment,
+        )
 
     def run_volume_relax(
         self,
@@ -1018,7 +1003,7 @@ class Configuration:
         potcar_functional: str = "PBE_54",
         incar_functional: str = "PBE",
         other_settings: dict = {},
-    ):
+    ) -> None:
 
         vasp_input.volume_relax_set(
             self.path,
@@ -1042,36 +1027,12 @@ class Configuration:
         potcar_functional: str = "PBE_54",
         incar_functional: str = "PBE",
         other_settings: dict = {},
-        encut_list: list[int] = [
-            270,
-            320,
-            370,
-            420,
-            470,
-            520,
-            570,
-            620,
-            670,
-            720,
-            770,
-            820,
-        ],
-        kppa_list: list[float] = [
-            1000,
-            2000,
-            3000,
-            4000,
-            5000,
-            6000,
-            7000,
-            8000,
-            9000,
-            10000,
-        ],
+        encut_list: list[int] = [270, 320, 370, 420, 470, 520, 570, 620, 670, 720, 770, 820],
+        kppa_list: list[float] = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000],
         force_gamma: bool = True,
         backup: bool = False,
         max_errors: int = 10,
-    ):
+    ) -> None:
 
         vasp_input.conv_set(
             self.path,
@@ -1101,20 +1062,19 @@ class Configuration:
         # Run the job
         subprocess.run(["sbatch", "job.sh"], cwd=self.path)
 
-    def analyze_encut_conv(self, plot: bool = True):
+    def analyze_encut_conv(self, plot: bool = True) -> tuple[pd.DataFrame, go.Figure]:
         encut_conv_path = os.path.join(self.path, "encut_conv")
         encut_conv_df, fig = calculate_encut_conv(encut_conv_path, plot)
 
         return encut_conv_df, fig
 
-    def analyze_kpoints_conv(self, plot: bool = True):
+    def analyze_kpoints_conv(self, plot: bool = True) -> tuple[pd.DataFrame, go.Figure]:
         kpoints_conv_path = os.path.join(self.path, "kpoints_conv")
         kpoints_conv_df, fig = calculate_kpoint_conv(kpoints_conv_path, plot)
 
         return kpoints_conv_df, fig
 
-    # TODO: add a way to select the custodian handlers
-    def run_ev_curves(
+    def ev_curves_settings(
         self,
         material_type: str,
         volumes: list[float],
@@ -1134,32 +1094,77 @@ class Configuration:
         max_errors: int = 10,
     ) -> None:
 
+        self.ev_curves_settings_data = {
+            "material_type": material_type,
+            "volumes": volumes,
+            "encut": encut,
+            "kppa": kppa,
+            "magmom_fm": magmom_fm,
+            "potcar_functional": potcar_functional,
+            "incar_functional": incar_functional,
+            "other_settings": other_settings,
+            "restarting": restarting,
+            "keep_wavecar": keep_wavecar,
+            "keep_chgcar": keep_chgcar,
+            "copy_magmom": copy_magmom,
+            "default_settings": default_settings,
+            "override_2relax": override_2relax,
+            "override_3static": override_3static,
+            "max_errors": max_errors,
+        }
+
+        self.ev_curves_job_script = self.job_script
+
+    # TODO: add a way to select the custodian handlers
+    def run_ev_curves(self) -> None:
+        
+        # Ensure ev_curves_settings_data is set and not empty
+        if not self.ev_curves_settings_data:
+            raise AttributeError("EV curves settings data not set. Please call ev_curves_settings() first.")
+        
         # Prepare the VASP input files
         vasp_input.ev_curve_set(
             self.path,
-            material_type=material_type,
-            encut=encut,
-            kppa=kppa,
-            magmom_fm=magmom_fm,
-            potcar_functional=potcar_functional,
-            incar_functional=incar_functional,
-            other_settings=other_settings,
+            material_type=self.ev_curves_settings_data["material_type"],
+            encut=self.ev_curves_settings_data["encut"],
+            kppa=self.ev_curves_settings_data["kppa"],
+            magmom_fm=self.ev_curves_settings_data["magmom_fm"],
+            potcar_functional=self.ev_curves_settings_data["potcar_functional"],
+            incar_functional=self.ev_curves_settings_data["incar_functional"],
+            other_settings=self.ev_curves_settings_data["other_settings"],
         )
 
         # Prepare the run_dfttk.py script
+        run_dfttk_script = f"""
+import os
+from custodian.vasp.handlers import VaspErrorHandler
+import dfttk.workflows as workflows
+
+subset = list(VaspErrorHandler.error_msgs.keys())
+handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]
+vasp_cmd = {self.vasp_cmd}
+volumes = {self.ev_curves_settings_data["volumes"]}
+
+workflows.ev_curve_series(
+    os.getcwd(),
+    volumes,
+    vasp_cmd,
+    handlers,
+    restarting={self.ev_curves_settings_data["restarting"]},
+    keep_wavecar={self.ev_curves_settings_data["keep_wavecar"]},
+    keep_chgcar={self.ev_curves_settings_data["keep_chgcar"]},
+    copy_magmom={self.ev_curves_settings_data["copy_magmom"]},
+    default_settings={self.ev_curves_settings_data["default_settings"]},
+    override_2relax={self.ev_curves_settings_data["override_2relax"]},
+    override_3static={self.ev_curves_settings_data["override_3static"]},
+    max_errors={self.ev_curves_settings_data["max_errors"]}
+)
+workflows.custodian_errors_location(os.getcwd())
+workflows.NELM_reached(os.getcwd())
+""".strip()
+            
         with open(os.path.join(self.path, "run_dfttk.py"), "w") as file:
-            file.write("import os\n")
-            file.write("from custodian.vasp.handlers import VaspErrorHandler\n")
-            file.write("import dfttk.workflows as workflows\n")
-            file.write("subset = list(VaspErrorHandler.error_msgs.keys())\n")
-            file.write("handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]\n")
-            file.write(f"vasp_cmd = {self.vasp_cmd}\n")
-            file.write(f"volumes = {volumes} \n")
-            file.write(
-                f"workflows.ev_curve_series(os.getcwd(), volumes, vasp_cmd, handlers, restarting={restarting}, keep_wavecar={keep_wavecar}, keep_chgcar={keep_chgcar}, copy_magmom={copy_magmom}, default_settings={default_settings}, override_2relax={override_2relax}, override_3static={override_3static}, max_errors={max_errors})\n"
-            )
-            file.write("workflows.custodian_errors_location(os.getcwd())\n")
-            file.write("workflows.NELM_reached(os.getcwd())")
+            file.write(run_dfttk_script)
 
         # Run the job
         subprocess.run(["sbatch", "job.sh"], cwd=self.path)
@@ -1178,19 +1183,27 @@ class Configuration:
         volume_min: float = None,
         volume_max: float = None,
         num_volumes: int = 1000,
-    ):
+    )-> None:
+        
+        # Initialize EvCurvesData
         self.ev_curves = EvCurvesData(self.path, self.name)
+        
+        # Get VASP input
         self.ev_curves.get_vasp_input(volumes)
+        
+        # Get energy-volume data
         self.ev_curves.get_energy_volume_data(
-            volumes,
-            outcar_name,
-            oszicar_name,
-            contcar_name,
-            collect_mag_data,
-            magmom_tolerance,
-            total_magnetic_moment_tolerance,
-            mass_average,
+            volumes=volumes,
+            outcar_name=outcar_name,
+            oszicar_name=oszicar_name,
+            contcar_name=contcar_name,
+            collect_mag_data=collect_mag_data,
+            magmom_tolerance=magmom_tolerance,
+            total_magnetic_moment_tolerance=total_magnetic_moment_tolerance,
+            mass_average=mass_average,
         )
+        
+        # Fit energy-volume data
         self.ev_curves.fit_energy_volume_data(
             eos_name=eos_name,
             volume_min=volume_min,
@@ -1218,39 +1231,56 @@ class Configuration:
             temperatures,
         )
 
-    def run_phonons(
+    def phonons_settings(
         self,
         phonon_volumes: list[float],
         kppa: float,
-        run_file: str = "run_dfttk_phonons.py",
         scaling_matrix: tuple[tuple[int]] = ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
         copy_magmom: bool = False,
         backup: bool = False,
         max_errors: int = 10,
         relax: bool = True,
-    ):
-
+    ) -> None:
+        
+        self.phonons_settings_data = {
+            "phonon_volumes": phonon_volumes,
+            "kppa": kppa,
+            "scaling_matrix": scaling_matrix,
+            "copy_magmom": copy_magmom,
+            "backup": backup,
+            "max_errors": max_errors,
+            "relax": relax,
+        }
+        self.phonons_job_script = self.job_script
+        
+    def run_phonons(self, run_file: str = "run_dfttk_phonons.py") -> None:
+        
+        # Ensure phonons_settings_data is set and not empty
+        if not self.phonons_settings_data:
+            raise AttributeError("Phonons settings data not set. Please call phonons_settings() first.")
+    
         # Prepare the run_file script
-        with open(os.path.join(self.path, run_file), "w") as file:
-            file.write("import os\n")
-            file.write("from custodian.vasp.handlers import VaspErrorHandler\n")
-            file.write("import dfttk.workflows as workflows\n")
-            file.write("subset = list(VaspErrorHandler.error_msgs.keys())\n")
-            file.write("handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]\n")
-            file.write(f"vasp_cmd = {self.vasp_cmd}\n")
-            file.write(f"copy_magmom = {copy_magmom} \n")
-            file.write(f"backup = {backup} \n")
-            file.write(f"max_errors = {max_errors} \n")
-            file.write(f"relax = {relax} \n")
-            file.write(f"phonon_volumes = {phonon_volumes} \n")
-            file.write(f"scaling_matrix = {scaling_matrix} \n")
-            file.write(f"kppa = {kppa} \n")
-            file.write(
-                f"workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_matrix=scaling_matrix)\n"
-            )
-            file.write("workflows.custodian_errors_location(os.getcwd())\n")
-            file.write("workflows.NELM_reached(os.getcwd())\n")
+        run_dfttk_script = f"""
+import os
+from custodian.vasp.handlers import VaspErrorHandler
+import dfttk.workflows as workflows
 
+subset = list(VaspErrorHandler.error_msgs.keys())
+handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]
+vasp_cmd = {self.vasp_cmd}
+copy_magmom = {self.phonons_settings_data["copy_magmom"]}
+backup = {self.phonons_settings_data["backup"]}
+max_errors = {self.phonons_settings_data["max_errors"]}
+relax = {self.phonons_settings_data["relax"]}
+phonon_volumes = {self.phonons_settings_data["phonon_volumes"]}
+scaling_matrix = {self.phonons_settings_data["scaling_matrix"]}
+kppa = {self.phonons_settings_data["kppa"]}
+
+workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_matrix=scaling_matrix)
+""".strip()
+        with open(os.path.join(self.path, run_file), "w") as file:
+            file.write(run_dfttk_script)
+        
         # Run the phonon jobs in parallel
         subprocess.run(["python", run_file], cwd=self.path)
         os.remove(os.path.join(self.path, run_file))
@@ -1293,9 +1323,7 @@ class Configuration:
             file.write(f"volumes = {volumes} \n")
             file.write(f"scaling_matrix = {scaling_matrix} \n")
             file.write(f"kppa = {kppa} \n")
-            file.write(
-                f"workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh')\n"
-            )
+            file.write(f"workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh')\n")
             file.write("workflows.custodian_errors_location(os.getcwd())\n")
             file.write("workflows.NELM_reached(os.getcwd())\n")
 
@@ -1340,9 +1368,7 @@ class Configuration:
         elif method == "debye + thermal_electronic":
             debye_properties = self.debye.debye_df
             harmonic_properties_fit = None
-            thermal_electronic_properties_fit = (
-                self.thermal_electronic.thermal_electronic_fit_df
-            )
+            thermal_electronic_properties_fit = self.thermal_electronic.thermal_electronic_fit_df
         elif method == "phonons":
             debye_properties = None
             harmonic_properties_fit = self.phonons.harmonic_fit_df
@@ -1350,9 +1376,7 @@ class Configuration:
         elif method == "phonons + thermal_electronic":
             debye_properties = None
             harmonic_properties_fit = self.phonons.harmonic_fit_df
-            thermal_electronic_properties_fit = (
-                self.thermal_electronic.thermal_electronic_fit_df
-            )
+            thermal_electronic_properties_fit = self.thermal_electronic.thermal_electronic_fit_df
         else:
             raise ValueError(f"Unknown option: {method}")
 
@@ -1387,67 +1411,114 @@ class Configuration:
         self.collection = self.db[collection_name]
 
         document = {
-            "name": self.name,
-            "reducedFormula": self.ev_curves.relaxed_structures[
-                0
-            ].composition.reduced_formula,
-            "multiplicity": self.multiplicity,
             "metadata": {
+                "MPDDId": None,
+                "parentDatabase": None,
+                "parentDatabaseId": None,
+                "parentDatabaseURL": None,
+                "affiliation": "DFTTK",
+                "comment": None,
+                "created": datetime.utcnow(),
                 "lastModified": datetime.utcnow(),
+            },
+            "configuration": {
+                "alias": self.alias,
+                "multiplicity": self.multiplicity,
+                "reducedFormula": (
+                    self.ev_curves.relaxed_structures[0].composition.reduced_formula
+                    if hasattr(self, "ev_curves")
+                    else None
+                ),
+                "nComponents": (
+                    len(self.ev_curves.relaxed_structures[0].composition.elements)
+                    if hasattr(self, "ev_curves")
+                    else None
+                ),
+                "numberOfAtoms": (
+                    self.ev_curves.number_of_atoms if hasattr(self, "ev_curves") else None
+                ),
             },
         }
 
+        # Update metadata with actual values if they exist
         if hasattr(self, "metadata"):
-            document["metadata"]["parentDatabase"] = self.metadata.parentDatabase
-            document["metadata"]["parentDatabaseID"] = self.metadata.parentDatabaseID
+            document["metadata"].update({
+                "MPDDId": self.metadata.mpdd_id,
+                "parentDatabase": self.metadata.parent_database,
+                "parentDatabaseId": self.metadata.parent_database_id,
+                "parentDatabaseURL": self.metadata.parent_database_url,
+                "affiliation": self.metadata.affiliation,
+                "comment": self.metadata.comment,
+            })
 
         if hasattr(self, "ev_curves"):
             eos_parameters = self.ev_curves.eos_parameters.copy()
-            eos_parameters["eosName"] = eos_parameters.pop("eos_name")
-    
+            ev_curves_settings_copy = self.ev_curves_settings_data.copy()
+            ev_curves_settings_copy.pop("volumes")
+            number_of_atoms = self.ev_curves.number_of_atoms
+
+            eos_parameters_ordered = OrderedDict()
+            eos_parameters_ordered["eosName"] = eos_parameters.pop("eos_name")
+            eos_parameters_ordered.update(eos_parameters)
+
             document["evCurves"] = {
-                "vaspInput": {
+                "input": {
+                    "jobScript": self.ev_curves_job_script,
+                    "settings": ev_curves_settings_copy,
+                    "poscar": self.ev_curves.starting_poscar.as_dict(),
                     "incars": self.ev_curves.incars,
                     "kpoints": self.ev_curves.kpoints.as_dict(),
                     "potcar": self.ev_curves.potcar.as_dict(),
                 },
-                "relaxedStructures": [
-                    s.as_dict() for s in self.ev_curves.relaxed_structures
-                ],
-                "numberOfAtoms": self.ev_curves.number_of_atoms,
-                "volumes": self.ev_curves.volumes.tolist(),
-                "energies": self.ev_curves.energies.tolist(),
-                "totalMagneticMoments": self.ev_curves.total_magnetic_moment.tolist(),
-                "magneticOrderings": self.ev_curves.magnetic_ordering.tolist(),
-                "magData": self.ev_curves.mag_data,
-                "eosParameters": self.ev_curves.eos_parameters,
+                "output": {
+                    "scaleAtoms": number_of_atoms,
+                    "volumes": self.ev_curves.volumes.tolist(),
+                    "energies": self.ev_curves.energies.tolist(),
+                    "relaxedStructures": [s.as_dict() for s in self.ev_curves.relaxed_structures],
+                    "totalMagneticMoments": self.ev_curves.total_magnetic_moment if isinstance(self.ev_curves.total_magnetic_moment, list) else self.ev_curves.total_magnetic_moment.tolist(),
+                    "magneticOrderings": self.ev_curves.magnetic_ordering if isinstance(self.ev_curves.magnetic_ordering, list) else self.ev_curves.magnetic_ordering.tolist(),
+                    "magData": self.ev_curves.mag_data,
+                    "eosParameters": eos_parameters_ordered,
+                },
             }
 
         if hasattr(self, "debye"):
             document["debye"] = {
-                "numberOfAtoms": self.debye.number_of_atoms,
                 "scalingFactor": self.debye.scaling_factor,
                 "gruneisenX": self.debye.gruneisen_x,
             }
 
+        # Function to recursively convert numpy.poly1d objects to lists of coefficients
+        def convert_poly1d(obj):
+            if isinstance(obj, np.poly1d):
+                return obj.coefficients.tolist()
+            elif isinstance(obj, dict):
+                return {k: convert_poly1d(v) for k, v in obj.items()}
+            return obj
+        
         if hasattr(self, "phonons"):
+            phonons_settings_copy = self.phonons_settings_data.copy()
+            phonons_settings_copy.pop("phonon_volumes")
+            phonons_settings_copy.pop("relax")
             document["phonons"] = {
-                "vaspInput": {
+                "input": {
+                    "jobScript": self.phonons_job_script,
+                    "settings": phonons_settings_copy,
                     "incars": self.phonons.incars,
                     "kpoints": self.phonons.kpoints.as_dict(),
                     "potcar": self.phonons.potcar.as_dict(),
                 },
-                "phononStructures": [
-                    s.as_dict() for s in self.phonons.phonon_structures
-                ],
-                "numberOfAtoms": self.phonons.number_of_atoms,
-                "volumes": self.phonons.volumes,
-                "temperatures": self.phonons.temperatures,
-                "helmholtzEnergy": self.phonons.helmholtz_energy_fit,
-                "entropy": self.phonons.entropy_fit,
-                "heatCapacity": self.phonons.heat_capacity_fit,
+                "output": {
+                    "scaleAtoms": self.phonons.number_of_atoms,
+                    "volumes": self.phonons.volumes.tolist(),
+                    "phononStructures": [s.as_dict() for s in self.phonons.phonon_structures],
+                    "temperatures": self.phonons.temperatures.tolist(),
+                    "helmholtzEnergy": convert_poly1d(self.phonons.helmholtz_energy_fit),
+                    "entropy": convert_poly1d(self.phonons.entropy_fit),
+                    "heatCapacity": convert_poly1d(self.phonons.heat_capacity_fit),
+                },
             }
-
+        # Continue fixing here!
         if hasattr(self, "thermal_electronic"):
             document["thermalElectronic"] = {
                 "vaspInput": {
@@ -1455,7 +1526,7 @@ class Configuration:
                     "kpoints": self.thermal_electronic.kpoints.as_dict(),
                     "potcar": self.thermal_electronic.potcar.as_dict(),
                 },
-                "numberOfAtoms": self.thermal_electronic.number_of_atoms,
+                "scaleAtoms": self.thermal_electronic.number_of_atoms,
                 "volumes": self.thermal_electronic.volumes,
                 "temperatures": self.thermal_electronic.temperatures,
                 "helmholtzEnergy": self.thermal_electronic.helmholtz_energy_fit,
@@ -1466,10 +1537,7 @@ class Configuration:
         if hasattr(self, "qha"):
             methods_copy = {
                 method: {
-                    str(P)
-                    + " GPa": {
-                        k: v for k, v in data.items() if k != "quasi_harmonic_df"
-                    }
+                    str(P) + " GPa": {k: v for k, v in data.items() if k != "quasi_harmonic_df"}
                     for P, data in pressures.items()
                 }
                 for method, pressures in self.qha.methods.items()
@@ -1484,10 +1552,16 @@ class Configuration:
         if hasattr(self, "experiments"):
             document["experiments"] = self.experiments
 
-        # Check if a document with the same parentDatabaseID exists
-        existing_doc = self.collection.find_one(
-            {"metadata.parentDatabaseID": self.metadata.parentDatabaseID}
-        )
+        # Determine the field to use for comparison
+        comparison_field = "metadata.parentDatabaseId"
+        comparison_value = document["metadata"]["parentDatabaseId"]
+
+        if comparison_value is None:
+            comparison_field = "metadata.comment"
+            comparison_value = document["metadata"]["comment"]
+
+        # Check if a document with the same comparison field exists
+        existing_doc = self.collection.find_one({comparison_field: comparison_value})
 
         if existing_doc:
             # Preserve the original "created" field while updating the rest
@@ -1500,6 +1574,7 @@ class Configuration:
 
         # Close the MongoDB connection
         self.cluster.close()
+
 
 def plot_multiple_ev(
     config_objects: dict[str, Configuration],
@@ -1519,9 +1594,7 @@ def plot_multiple_ev(
 
     combined_fig = go.Figure()
 
-    config_colors = assign_colors_to_configs(
-        config_names, alpha=marker_alpha, cmap=cmap
-    )
+    config_colors = assign_colors_to_configs(config_names, alpha=marker_alpha, cmap=cmap)
     config_symbols = assign_marker_symbols_to_configs(config_names)
 
     for config_name in config_names:
