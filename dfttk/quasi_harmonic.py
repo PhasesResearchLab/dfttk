@@ -1,5 +1,5 @@
 """
-Quasi-harmonic approximation module
+Quasiharmonic approximation module.
 """
 
 # Related third party imports
@@ -16,16 +16,17 @@ EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 # TODO: Consider pulling out parallel code out of this function into separate functions
 def process_quasi_harmonic(
+    num_atoms_eos: int,
     volume_range: np.ndarray,
-    eos_parameters_df: pd.DataFrame,
+    eos_constants: np.ndarray,
+    apply_smoothing: bool = False,
+    smoothing_window_length: int = 21,
+    smoothing_polyorder: int = 2,
     harmonic_properties_fit: pd.DataFrame = None,
     debye_properties: pd.DataFrame = None,
     thermal_electronic_properties_fit: pd.DataFrame = None,
     P: int = 0,
     eos: str = "BM4",
-    plot: bool = True,
-    plot_type: str = "default",
-    selected_temperatures_plot: list = None,
 ) -> pd.DataFrame:
     """Calculates the quasi-harmonic properties
 
@@ -43,9 +44,6 @@ def process_quasi_harmonic(
     Returns:
         pd.DataFrame: pandas dataframe containing the quasi-harmonic properties
     """
-
-    # Check that all properties have the same number of atoms
-    num_atoms_eos = eos_parameters_df["number_of_atoms"].values[0]
 
     # Phonons only
     if harmonic_properties_fit is not None and debye_properties is None:
@@ -79,12 +77,11 @@ def process_quasi_harmonic(
             "Not implemented for Murnaghan, Vinet, or Morse EOS yet"
         )
 
-    eos_parameters_one = eos_parameters_df[eos_parameters_df["eos"] == eos]
-    a = eos_parameters_one["a"].values[0]
-    b = eos_parameters_one["b"].values[0]
-    c = eos_parameters_one["c"].values[0]
-    d = eos_parameters_one["d"].values[0]
-    e = eos_parameters_one["e"].values[0]
+    a = eos_constants[0]
+    b = eos_constants[1]
+    c = eos_constants[2]
+    d = eos_constants[3]
+    e = eos_constants[4]
 
     # Get the EOS energy at 0 K corresponding to the volume range
     equation_functions = {
@@ -104,6 +101,8 @@ def process_quasi_harmonic(
     f_plus_pv_list = []
     volume_range_list = []
     eos_constants_list = []
+    s_coefficients_list = []
+    cv_coefficients_list = []
     V0_list = []
     F0_list = []
     B_list = []
@@ -196,9 +195,18 @@ def process_quasi_harmonic(
             s_vib_fit = s_vib_poly(volume_range)
             s_vib = s_vib_fit
 
+            cv_vib_poly = harmonic_properties_fit.loc[temperature]["cv_vib_poly"]
+            order = cv_vib_poly.order
+            cv_vib_fit = cv_vib_poly(volume_range)
+            cv_vib = cv_vib_fit
+
         elif debye_properties is not None and harmonic_properties_fit is None:
             s_vib = debye_properties[debye_properties["temperatures"] == temperature][
                 "s_vib"
+            ].values[0]
+
+            cv_vib = debye_properties[debye_properties["temperatures"] == temperature][
+                "cv_vib"
             ].values[0]
             order = 2
 
@@ -207,12 +215,24 @@ def process_quasi_harmonic(
             s_el_fit = s_el_poly(volume_range)
             s_el = s_el_fit
 
+            cv_el_poly = thermal_electronic_properties_fit.loc[temperature][
+                "cv_el_poly"
+            ]
+            cv_el_fit = cv_el_poly(volume_range)
+            cv_el = cv_el_fit
+
         elif thermal_electronic_properties_fit is None:
             s_el = 0
+            cv_el = 0
 
         s = s_vib + s_el
         s_coefficients = np.polyfit(volume_range, s, order)
+        s_coefficients_list.append(s_coefficients)
         s_poly = np.poly1d(s_coefficients)
+
+        cv = cv_vib + cv_el
+        cv_coefficients = np.polyfit(volume_range, cv, order)
+        cv_coefficients_list.append(cv_coefficients)
 
         S0 = s_poly(V0)
         S0_list.append(S0)
@@ -220,12 +240,14 @@ def process_quasi_harmonic(
     # Create a quasi-harmonic dataframe
     quasi_harmonic_properties = pd.DataFrame(
         data={
-            "pressure": [P] * len(temperature_list),
+            "pressure": [P * EV_PER_CUBIC_ANGSTROM_TO_GPA] * len(temperature_list),
             "number_of_atoms": [num_atoms_eos] * len(temperature_list),
             "temperature": temperature_list,
             "volume_range": volume_range_list,
             "f_plus_pv": f_plus_pv_list,
             "eos_constants": eos_constants_list,
+            "s_coefficients": s_coefficients_list,
+            "cv_coefficients": cv_coefficients_list,
             "V0": V0_list,
             "G0": F0_list,
             "B": B_list,
@@ -238,6 +260,15 @@ def process_quasi_harmonic(
     V0 = quasi_harmonic_properties["V0"].values
     S0 = quasi_harmonic_properties["S0"].values
     T = quasi_harmonic_properties["temperature"].values
+
+    from scipy.signal import savgol_filter
+
+    if apply_smoothing:
+        # Smooth the volume data
+        window_length = smoothing_window_length  # Choose an odd number
+        polyorder = smoothing_polyorder
+        V0 = savgol_filter(V0, window_length=window_length, polyorder=polyorder)
+
     dV = V0[1:] - V0[:-1]
     dS = S0[1:] - S0[:-1]
     dT = T[1:] - T[:-1]
@@ -245,9 +276,9 @@ def process_quasi_harmonic(
     CTE = (1 / V0[:-1]) * dV / dT * 1e6
     Cp = T[:-1] * dS / dT
 
-    # Add a NaN value to the end of the CTE list
-    CTE = np.append(CTE, np.nan)
-    Cp = np.append(Cp, np.nan)
+    # Add a value of 0 to the beginning of CTE and Cp
+    CTE = np.insert(CTE, 0, 0)
+    Cp = np.insert(Cp, 0, 0)
 
     quasi_harmonic_properties["H0"] = (
         quasi_harmonic_properties["G0"]
@@ -256,19 +287,12 @@ def process_quasi_harmonic(
     quasi_harmonic_properties["CTE"] = CTE
     quasi_harmonic_properties["Cp"] = Cp
 
-    if plot == True:
-        plot_quasi_harmonic(
-            quasi_harmonic_properties,
-            plot_type,
-            selected_temperatures_plot=selected_temperatures_plot,
-        )
-
     return quasi_harmonic_properties
 
 
 def plot_quasi_harmonic(
     quasi_harmonic_properties: pd.DataFrame,
-    plot_type: str = "default",
+    plot_type: str,
     selected_temperatures_plot: list = None,
 ):
     """Plots the quasi-harmonic properties
@@ -282,21 +306,24 @@ def plot_quasi_harmonic(
     temperature_list = quasi_harmonic_properties["temperature"].values
     if selected_temperatures_plot is None:
         spaces = len(temperature_list) - 1
-        step = int(spaces / 10)
-
+        step = max(1, int(spaces / 10))
         selected_temperatures = temperature_list[::step]
         if selected_temperatures[-1] != temperature_list[-1]:
             selected_temperatures = np.append(
                 selected_temperatures, temperature_list[-1]
             )
-
     else:
         selected_temperatures = selected_temperatures_plot
 
     scale_atoms = quasi_harmonic_properties["number_of_atoms"].iloc[0]
 
-    if plot_type == "default" or plot_type == "all":
-        # Free energy plot
+    def create_plot(x, y, x_label, y_label):
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=x, y=y, mode="lines", marker=dict(size=10)))
+        plot_format(fig, x_label, y_label, width=650, height=600)
+        fig.show()
+
+    if plot_type == "helmholtz_energy + PV":
         fig = go.Figure()
         for temperature in selected_temperatures:
             x = quasi_harmonic_properties[
@@ -305,7 +332,6 @@ def plot_quasi_harmonic(
             y = quasi_harmonic_properties[
                 quasi_harmonic_properties["temperature"] == temperature
             ]["f_plus_pv"].values[0]
-
             G0 = quasi_harmonic_properties[
                 quasi_harmonic_properties["temperature"] == temperature
             ]["G0"].values[0]
@@ -324,7 +350,7 @@ def plot_quasi_harmonic(
                         if temperature % 1 == 0
                         else f"{temperature} K"
                     ),
-                ),
+                )
             )
             fig.add_trace(
                 go.Scatter(
@@ -333,7 +359,7 @@ def plot_quasi_harmonic(
                     mode="markers",
                     marker=dict(size=10, symbol="cross", color="black"),
                     showlegend=False,
-                ),
+                )
             )
         plot_format(
             fig,
@@ -344,41 +370,22 @@ def plot_quasi_harmonic(
         )
         fig.show()
 
-        x = temperature_list
-        y_list = ["V0", "CTE", "S0", "Cp"]
-        y_labels = [
-            f"Volume (Å³/{scale_atoms} atoms)",
-            "CTE (10<sup>-6</sup> K<sup>-1</sup>)",
-            f"Entropy (eV/K/{scale_atoms} atoms)",
-            f"C<sub>p</sub> (eV/K/{scale_atoms} atoms)",
-        ]
+    else:
+        fig = go.Figure()
+        plot_mappings = {
+            "volume": ("V0", f"Volume (Å³/{scale_atoms} atoms)"),
+            "cte": ("CTE", "CTE (10<sup>-6</sup> K<sup>-1</sup>)"),
+            "entropy": ("S0", f"Entropy (eV/K/{scale_atoms} atoms)"),
+            "heat_capacity": ("Cp", f"C<sub>p</sub> (eV/K/{scale_atoms} atoms)"),
+            "enthalpy": ("H0", f"Enthalpy (eV/{scale_atoms} atoms)"),
+            "bulk_modulus": ("B", "Bulk modulus (GPa)"),
+            "gibbs_energy": ("G0", f"Gibbs energy (eV/{scale_atoms} atoms)"),
+        }
 
-        if plot_type == "all":
-            y_list += ["H0", "B", "G0"]
-            y_labels += [
-                f"Enthalpy (eV/{scale_atoms} atoms)",
-                "Bulk modulus (GPa)",
-                f"Gibbs energy (eV/{scale_atoms} atoms)",
-            ]
-
-        for y_value, y_label in zip(y_list, y_labels):
-            fig = go.Figure()
+        if plot_type in plot_mappings:
+            y_list, y_labels = plot_mappings[plot_type]
             x = temperature_list
-            y = quasi_harmonic_properties[y_value].values
+            y = quasi_harmonic_properties[y_list].values
+            create_plot(x, y, "Temperature (K)", y_labels)
 
-            fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=y,
-                    mode="lines",
-                    marker=dict(size=10),
-                ),
-            )
-            plot_format(
-                fig,
-                f"Temperature (K)",
-                y_label,
-                width=650,
-                height=600,
-            )
-            fig.show()
+    return fig

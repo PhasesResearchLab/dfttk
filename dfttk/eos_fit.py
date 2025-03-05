@@ -22,10 +22,70 @@ import plotly.express as px
 import plotly.graph_objects as go
 from distinctipy import get_colors
 from scipy.optimize import fsolve, curve_fit
+from collections import namedtuple
 
 # Conversion factor
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
+TaylorCoefficients = namedtuple("TaylorCoefficients", ["a", "b", "c", "d", "e"])
+
+def BM_parameters_to_taylor(
+        V,
+        E0,
+        B,
+        BP,
+        B2P
+    )->TaylorCoefficients:
+    """
+    Convert Birch-Murnaghan equation of state properties to Taylor 
+    coefficients a, b, c, d, e (4th order/five parameters). Returns a named 
+    tuple with the coefficients.
+    """
+    B = B/EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P*EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a = (128*E0 + 3*B*(287 + 9*B*B2P - 87*BP + 9*BP**2)*V)/128
+    b = (-3*B*(239 + 9*B*B2P - 81*BP + 9*BP**2)*V**(5/3))/32
+    c = (9*B*(199 + 9*B*B2P - 75*BP + 9*BP**2)*V**(7/3))/64
+    d = (-3*B*(167 + 9*B*B2P - 69*BP + 9*BP**2)*V**3)/32
+    e = (3*B*(143 + 9*B*B2P - 63*BP + 9*BP**2)*V**(11/3))/128
+    return TaylorCoefficients(a, b, c, d, e)
+
+def mBM_parameters_to_taylor(V, E0, B, BP, B2P):
+    """
+    Convert modified Birch-Murnaghan equation of state properties to Taylor
+    coefficients a, b, c, d, e (4th order/five parameters). Returns a named
+    tuple with the coefficients.
+    """
+    B = B/EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P*EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a=(8*E0 + 3*B*(122 + 9*B*B2P - 57*BP + 9*BP**2)*V)/8
+    b=(-3*B*(107 + 9*B*B2P - 54*BP + 9*BP**2)*V**(4/3))/2
+    c=(9*B*(94 + 9*B*B2P - 51*BP + 9*BP**2)*V**(5/3))/4
+    d=(-3*B*(83 + 9*B*B2P - 48*BP + 9*BP**2)*V**2)/2
+    e=(3*B*(74 + 9*B*B2P - 45*BP + 9*BP**2)*V**(7/3))/8
+    return TaylorCoefficients(a, b, c, d, e)
+
+def LOG_parameters_to_taylor(V, E0, B, BP, B2P):
+    """
+    Convert logarithmic equation of state properties to Taylor coefficients
+    a, b, c, d, e (4th order/five parameters). Returns a named tuple with the
+    coefficients.
+    """
+    B = B/EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P*EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a=(24*E0 + 
+       12*B*V*np.np.log(V)**2 + 
+       4*B*(-2 + BP)*V*np.log(V)**3 + 
+       B*(3 + B*B2P - 3*BP + BP**2)*V*np.log(V)**4)/24
+    b=-(B*V*np.log(V)*(6 + 3*(-2 + BP)*np.log(V) + 
+            (3 + B*B2P - 3*BP + BP**2)*np.log(V)**2))/6
+    c=(B*V*(2 + 2*(-2 + BP)*np.log(V) + 
+            (3 + B*B2P - 3*BP + BP**2)*np.log(V)**2))/4
+    d=-(B*V*(-2 + BP + (3 + B*B2P - 3*BP + BP**2)*np.log(V)))/6
+    e=(B*(3 + B*B2P - 3*BP + BP**2)*V)/24
+    if abs(e) < 1e-8: # avoid numerical errors
+        e = 0
+    return TaylorCoefficients(a, b, c, d, e) 
 
 # mBM4 EOS Functions
 def mBM4_equation(
@@ -140,7 +200,11 @@ def mBM4_eos_parameters(
 
 
 def mBM4(
-    volume: float | np.ndarray, energy: float | np.ndarray
+    volume: float | np.ndarray,
+    energy: float | np.ndarray,
+    volume_min: float = None,
+    volume_max: float = None,
+    num_volumes: int = 1000,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Fits the mBM4 EOS to the input volume and energy data.
 
@@ -153,7 +217,12 @@ def mBM4(
     """
 
     a, b, c, d = curve_fit(mBM4_equation, volume, energy, p0=[100, 100, 100, 100])[0]
-    volume_range = np.linspace(min(volume), max(volume), 1000)
+    if volume_min is None:
+        volume_min = min(volume)
+    if volume_max is None:
+        volume_max = max(volume)
+
+    volume_range = np.linspace(volume_min, volume_max, num_volumes)
 
     energy_eos = mBM4_equation(volume_range, a, b, c, d)
     pressure_eos = (
@@ -288,7 +357,11 @@ def mBM5_eos_parameters(
 
 
 def mBM5(
-    volume: float | np.ndarray, energy: float | np.ndarray
+    volume: float | np.ndarray,
+    energy: float | np.ndarray,
+    volume_min: float = None,
+    volume_max: float = None,
+    num_volumes: int = 1000,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Fits the mBM5 EOS to the input volume and energy data.
 
@@ -303,7 +376,13 @@ def mBM5(
     a, b, c, d, e = curve_fit(
         mBM5_equation, volume, energy, p0=[100, 100, 100, 100, 100]
     )[0]
-    volume_range = np.linspace(min(volume), max(volume), 1000)
+
+    if volume_min is None:
+        volume_min = min(volume)
+    if volume_max is None:
+        volume_max = max(volume)
+
+    volume_range = np.linspace(volume_min, volume_max, num_volumes)
 
     energy_eos = mBM5_equation(volume_range, a, b, c, d, e)
     pressure_eos = (
@@ -432,7 +511,11 @@ def BM4_eos_parameters(
 
 
 def BM4(
-    volume: float | np.ndarray, energy: float | np.ndarray
+    volume: float | np.ndarray,
+    energy: float | np.ndarray,
+    volume_min: float = None,
+    volume_max: float = None,
+    num_volumes: int = 1000,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Fits the BM4 EOS to the input volume and energy data.
 
@@ -445,7 +528,13 @@ def BM4(
     """
 
     a, b, c, d = curve_fit(BM4_equation, volume, energy, p0=[100, 100, 100, 100])[0]
-    volume_range = np.linspace(min(volume), max(volume), 1000)
+
+    if volume_min is None:
+        volume_min = min(volume)
+    if volume_max is None:
+        volume_max = max(volume)
+
+    volume_range = np.linspace(volume_min, volume_max, num_volumes)
 
     energy_eos = BM4_equation(volume_range, a, b, c, d)
     pressure_eos = (
@@ -579,7 +668,11 @@ def BM5_eos_parameters(
 
 
 def BM5(
-    volume: float | np.ndarray, energy: float | np.ndarray
+    volume: float | np.ndarray,
+    energy: float | np.ndarray,
+    volume_min: float = None,
+    volume_max: float = None,
+    num_volumes: int = 1000,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Fits the BM5 EOS to the input volume and energy data.
 
@@ -594,7 +687,13 @@ def BM5(
     a, b, c, d, e = curve_fit(
         BM5_equation, volume, energy, p0=[100, 100, 100, 100, 100]
     )[0]
-    volume_range = np.linspace(min(volume), max(volume), 1000)
+
+    if volume_min is None:
+        volume_min = min(volume)
+    if volume_max is None:
+        volume_max = max(volume)
+
+    volume_range = np.linspace(volume_min, volume_max, num_volumes)
 
     energy_eos = BM5_equation(volume_range, a, b, c, d, e)
     pressure_eos = (
@@ -711,7 +810,11 @@ def LOG4_eos_parameters(
 
 
 def LOG4(
-    volume: float | np.ndarray, energy: float | np.ndarray
+    volume: float | np.ndarray,
+    energy: float | np.ndarray,
+    volume_min: float = None,
+    volume_max: float = None,
+    num_volumes: int = 1000,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Fits the LOG4 EOS to the input volume and energy data.
 
@@ -724,7 +827,13 @@ def LOG4(
     """
 
     a, b, c, d = curve_fit(LOG4_equation, volume, energy, p0=[100, 100, 100, 100])[0]
-    volume_range = np.linspace(min(volume), max(volume), 1000)
+
+    if volume_min is None:
+        volume_min = min(volume)
+    if volume_max is None:
+        volume_max = max(volume)
+
+    volume_range = np.linspace(volume_min, volume_max, num_volumes)
 
     energy_eos = LOG4_equation(volume_range, a, b, c, d)
     pressure_eos = (
@@ -886,7 +995,11 @@ def LOG5_eos_parameters(
 
 
 def LOG5(
-    volume: float | np.ndarray, energy: float | np.ndarray
+    volume: float | np.ndarray,
+    energy: float | np.ndarray,
+    volume_min: float = None,
+    volume_max: float = None,
+    num_volumes: int = 1000,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Fits the LOG5 EOS to the input volume and energy data.
 
@@ -898,10 +1011,14 @@ def LOG5(
         tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS parameters and the corresponding volume, energy, and pressure
     """
 
-    a, b, c, d, e = curve_fit(
-        LOG5_equation, volume, energy, p0=[1, 1, 1, 1, 1]
-    )[0]
-    volume_range = np.linspace(min(volume), max(volume), 1000)
+    a, b, c, d, e = curve_fit(LOG5_equation, volume, energy, p0=[1, 1, 1, 1, 1])[0]
+
+    if volume_min is None:
+        volume_min = min(volume)
+    if volume_max is None:
+        volume_max = max(volume)
+
+    volume_range = np.linspace(volume_min, volume_max, num_volumes)
 
     energy_eos = LOG5_equation(volume_range, a, b, c, d, e)
     pressure_eos = (
@@ -959,7 +1076,11 @@ def murnaghan_derivative(
 
 
 def murnaghan(
-    volume: float | np.ndarray, energy: float | np.ndarray
+    volume: float | np.ndarray,
+    energy: float | np.ndarray,
+    volume_min: float = None,
+    volume_max: float = None,
+    num_volumes: int = 1000,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Fits the Murnaghan EOS to the input volume and energy data.
 
@@ -971,7 +1092,12 @@ def murnaghan(
         tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS parameters and the corresponding volume, energy, and pressure
     """
 
-    volume_range = np.linspace(min(volume), max(volume), 1000)
+    if volume_min is None:
+        volume_min = min(volume)
+    if volume_max is None:
+        volume_max = max(volume)
+
+    volume_range = np.linspace(volume_min, volume_max, num_volumes)
 
     [eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(
         volume, energy
@@ -1049,7 +1175,11 @@ def vinet_derivative(volume: float | np.ndarray, V0, B, BP) -> float | np.ndarra
 
 
 def vinet(
-    volume: float | np.ndarray, energy: float | np.ndarray
+    volume: float | np.ndarray,
+    energy: float | np.ndarray,
+    volume_min: float = None,
+    volume_max: float = None,
+    num_volumes: int = 1000,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Fits the Vinet EOS to the input volume and energy data.
 
@@ -1061,7 +1191,12 @@ def vinet(
         tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS parameters and the corresponding volume, energy, and pressure
     """
 
-    volume_range = np.linspace(min(volume), max(volume), 1000)
+    if volume_min is None:
+        volume_min = min(volume)
+    if volume_max is None:
+        volume_max = max(volume)
+
+    volume_range = np.linspace(volume_min, volume_max, num_volumes)
 
     [eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(
         volume, energy
@@ -1085,7 +1220,7 @@ def vinet(
     pressure_eos = (
         -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * vinet_derivative(volume_range, V0, B, BP)
     )
-
+    
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
@@ -1138,7 +1273,11 @@ def morse_derivative(
 
 
 def morse(
-    volume: float | np.ndarray, energy: float | np.ndarray
+    volume: float | np.ndarray,
+    energy: float | np.ndarray,
+    volume_min: float = None,
+    volume_max: float = None,
+    num_volumes: int = 1000,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Fits the Morse EOS to the input volume and energy data.
 
@@ -1150,7 +1289,12 @@ def morse(
         tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS parameters and the corresponding volume, energy, and pressure
     """
 
-    volume_range = np.linspace(min(volume), max(volume), 1000)
+    if volume_min is None:
+        volume_min = min(volume)
+    if volume_max is None:
+        volume_max = max(volume)
+
+    volume_range = np.linspace(volume_min, volume_max, num_volumes)
 
     [eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos] = mBM4(
         volume, energy
@@ -1180,145 +1324,52 @@ def morse(
     pressure_eos = (
         -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * morse_derivative(volume_range, b, c, d)
     )
+    
+    return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
+
+
+def fit_to_eos(
+    volumes: np.ndarray,
+    energies: np.ndarray,
+    eos_name: str = "BM4",
+    volume_min: float = None,
+    volume_max: float = None,
+    num_volumes: int = 1000,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+
+    eos_functions = {
+        "mBM4": mBM4,
+        "mBM5": mBM5,
+        "BM4": BM4,
+        "BM5": BM5,
+        "LOG4": LOG4,
+        "LOG5": LOG5,
+        "murnaghan": murnaghan,
+        "vinet": vinet,
+        "morse": morse,
+    }
+    eos_function = eos_functions.get(eos_name)
+    if eos_function is None:
+        raise ValueError(f"EOS function '{eos_name}' not recognized.")
+
+    try:
+        (
+            eos_constants,
+            eos_parameters,
+            volume_range,
+            energy_eos,
+            pressure_eos,
+        ) = eos_function(volumes, energies, volume_min, volume_max, num_volumes)
+        eos_name = eos_function.__name__
+    except Exception as e:
+        print(f"Error fitting config: {e}")
 
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
-def fit_to_all_eos(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Fits the volume and energies of configurations to all EOS functions and returns the results in a dataframe.
-
-    Args:
-        df: Dataframe from extract_configuration_data in dfttk.aggregate_extraction
-
-    Returns:
-        tuple(eos_values_df, eos_parameters_df)
-    """
-
-    eos_functions = [mBM4, mBM5, BM4, BM5, LOG4, LOG5, murnaghan, vinet, morse]
-    dataframes = []
-
-    for config in df["config"].unique():
-        config_df = df[df["config"] == config]
-        volumes = config_df["volume"].values
-        energies = config_df["energy"].values
-        number_of_atoms = config_df["number_of_atoms"].values[0]
-        try:
-            for eos_function in eos_functions:
-                eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
-                    eos_function(volumes, energies)
-                )
-                eos_name = eos_function.__name__
-
-                dataframes.append(
-                    pd.DataFrame(
-                        [
-                            [
-                                config,
-                                eos_name,
-                                number_of_atoms,
-                                eos_constants[0],
-                                eos_constants[1],
-                                eos_constants[2],
-                                eos_constants[3],
-                                eos_constants[4],
-                                eos_parameters[0],
-                                eos_parameters[1],
-                                eos_parameters[2],
-                                eos_parameters[3],
-                                eos_parameters[4],
-                                volume_range,
-                                energy_eos,
-                                pressure_eos,
-                            ]
-                        ],
-                        columns=[
-                            "config",
-                            "eos",
-                            "number_of_atoms",
-                            "a",
-                            "b",
-                            "c",
-                            "d",
-                            "e",
-                            "V0",
-                            "E0",
-                            "B",
-                            "BP",
-                            "B2P",
-                            "volumes",
-                            "energies",
-                            "pressures",
-                        ],
-                    )
-                )
-        except Exception as e:
-            print(f"Error fitting config {config}: {e}")
-    eos_df = pd.concat(dataframes, ignore_index=True)
-    eos_values_df = eos_df.drop(
-        columns=["a", "b", "c", "d", "e", "V0", "E0", "B", "BP", "B2P"]
-    )
-    eos_parameters_df = eos_df.drop(columns=["volumes", "energies", "pressures"])
-
-    return eos_values_df, eos_parameters_df
-
-
-# TODO: Consider moving to magnetism.py. Not related to EOS fitting.
-def plot_mv(df: pd.DataFrame, show_fig: bool = True) -> go.Figure:
-    """Plot the magnetic moment vs volume
-
-    Args:
-        df (pd.DataFrame): single pandas data frame or a list of pandas dataframes with columns ['config', '# of ion', 'volume', 'tot']
-        show_fig (bool, optional): Defaults to True.
-
-    Returns:
-        go.Figure: plotly figure
-    """
-
-    # Create a new dataframe where each 'mag_data' dataframe is associated with its corresponding 'volume' and 'config' values
-    df_new = pd.concat(
-        [
-            df_mag.assign(volume=v, config=c)
-            for v, c, df_mag in zip(df["volume"], df["config"], df["mag_data"])
-        ]
-    )
-    fig = px.line(
-        df_new.sort_values(
-            [
-                "# of ion",
-                "volume",
-            ]
-        ),
-        x="volume",
-        y="tot",
-        color="# of ion",
-        symbol="# of ion",
-        hover_data=["config", "# of ion", "volume", "tot"],
-        template="plotly_white",
-    )
-    fig.update_layout(xaxis_title="Volume [A^3]", yaxis_title="Magnetic Moment [mu_B]")
-    fig.update_yaxes(nticks=10)
-    fig.update_xaxes(nticks=10)
-
-    # Loop over each trace and update dash length
-    for i, trace in enumerate(fig.data):
-        dash_length = (
-            f"{2+(i+1)}px,{2+2*(i+1)}px"  # Dash length changes with each iteration
-        )
-        fig.data[-i - 1].update(
-            mode="markers+lines",
-            marker=dict(size=8, line=dict(width=1), opacity=0.5),
-            line=dict(width=3, dash=dash_length),
-        )
-
-    if show_fig:
-        fig.show()
-    return fig
-
-
 def assign_colors_to_configs(
-    df: pd.DataFrame, alpha: float = 1, cmap: str = "plotly"
+    unique_configs, alpha: float = 1, cmap: str = "plotly"
 ) -> dict:
-    unique_configs = df["config"].unique()
 
     if cmap == "plotly":
         colors = px.colors.qualitative.Plotly
@@ -1353,8 +1404,8 @@ def assign_colors_to_configs(
     return config_colors
 
 
-def assign_marker_symbols_to_configs(df: pd.DataFrame) -> dict:
-    unique_configs = df["config"].unique()
+def assign_marker_symbols_to_configs(unique_configs):
+
     symbols = [
         "circle",
         "square",
@@ -1403,7 +1454,13 @@ def assign_marker_symbols_to_configs(df: pd.DataFrame) -> dict:
 
 
 def plot_ev(
-    data,
+    name,
+    number_of_atoms,
+    volumes,
+    energies,
+    volume_min=None,
+    volume_max=None,
+    num_volumes=None,
     eos_name="BM4",
     highlight_minimum=True,
     per_atom=False,
@@ -1433,31 +1490,17 @@ def plot_ev(
         fig (plotly.graph_objs._figure.Figure): A Plotly figure.
     """
 
-    # Check if data is a pandas DataFrame or a list of pandas DataFrames
-    if isinstance(data, pd.DataFrame):
-        df = data
-
-    # Check if each element of the list is the same type as the zeroth element
-    elif isinstance(data, list) and all(
-        type(element) == type(data[0]) for element in data
-    ):
-        if isinstance(data[0], pd.DataFrame):
-            df = pd.concat(data, ignore_index=True)
-
-    else:
-        raise ValueError(
-            "data must be a pandas DataFrame, list of pandas DataFrames, or a list of input_file names as strings"
-        )
-
-    # Create a data frame with the eos fits for each config
     if eos_name != None:
-        eos_values_df, eos_parameters_df = fit_to_all_eos(df)
+        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
+            fit_to_eos(volumes, energies, eos_name=eos_name, volume_min=volume_min, volume_max=volume_max, num_volumes=num_volumes)
+        )
+    unique_configs = [name]
+    config_colors = assign_colors_to_configs(
+        unique_configs, alpha=marker_alpha, cmap=cmap
+    )
+    config_symbols = assign_marker_symbols_to_configs(unique_configs)
 
-    # Assign colors and symbols
-    config_colors = assign_colors_to_configs(df, alpha=marker_alpha, cmap=cmap)
-    config_symbols = assign_marker_symbols_to_configs(df)
-    
-    # Plot the data
+    # First, plot the energy vs volume data points.
     fig = go.Figure()
     fig.update_layout(
         font=dict(
@@ -1465,33 +1508,31 @@ def plot_ev(
         )
     )
 
-    for config in df["config"].unique():
-        config_df = df[df["config"] == config]
+    if isinstance(per_atom, bool):
+        x = volumes
+        y = energies
 
-        if isinstance(per_atom, bool):
-            x = config_df["volume"]
-            y = config_df["energy"]
+        if per_atom:
+            x = x / number_of_atoms
+            y = y / number_of_atoms
+    else:
+        raise ValueError("per_atom must be True or False")
 
-            if per_atom:
-                x = x / config_df["number_of_atoms"]
-                y = y / config_df["number_of_atoms"]
-        else:
-            raise ValueError("per_atom must be True or False")
-
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=y,
-                mode="markers",
-                marker=dict(
-                    size=marker_size,
-                    color=config_colors[config],
-                    symbol=config_symbols[config],
-                ),
-                legendgroup="eos",
-                name=f"{config}",
-            )
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=y,
+            mode="markers",
+            marker=dict(
+                size=marker_size,
+                color=config_colors[name],
+                symbol=config_symbols[name],
+            ),
+            legendgroup=name,
+            name=name,
+            showlegend=True,
         )
+    )
 
     if isinstance(per_atom, bool):
         atom_suffix = "/atom" if per_atom else ""
@@ -1507,73 +1548,57 @@ def plot_ev(
             )
         )
 
-    # Loop over configs in the eos data frame and plot the eos fits
+    # Second, plot the EOS fit.
     if eos_name != None:
-        for config in eos_values_df["config"].unique():
-            eos_config_values_df = eos_values_df[eos_values_df["config"] == config]
-            eos_config_parameters_df = eos_parameters_df[
-                eos_parameters_df["config"] == config
-            ]
 
-            if eos_name in eos_config_values_df["eos"].unique():
-                eos_ev_df = eos_config_values_df[
-                    eos_config_values_df["eos"] == eos_name
-                ]
-                eos_min_df = eos_config_parameters_df[
-                    eos_config_parameters_df["eos"] == eos_name
-                ]
+        x = volume_range
+        y = energy_eos
+        if per_atom:
+            num_atoms = number_of_atoms
 
-                x = eos_ev_df["volumes"].values[0]
-                y = eos_ev_df["energies"].values[0]
+            x = x / num_atoms
+            y = y / num_atoms
 
-                if per_atom:
-                    num_atoms = eos_ev_df["number_of_atoms"].values[0]
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                name=f"{eos_name} fit",
+                line=dict(width=1.75, color=config_colors[name]),
+                legendgroup=name,
+                showlegend=False,
+            )
+        )
 
-                    x = x / num_atoms
-                    y = y / num_atoms
+        if highlight_minimum == True:
 
-                fig.add_trace(
-                    go.Scatter(
-                        x=x,
-                        y=y,
-                        mode="lines",
-                        name=f"{eos_name} fit",
-                        line=dict(width=1.75, color=config_colors[config]),
-                        legendgroup="data",
-                        showlegend=False,
-                    )
+            x = eos_parameters[0]
+            y = eos_parameters[1]
+
+            if per_atom:
+                num_atoms = number_of_atoms
+                x = x / num_atoms
+                y = y / num_atoms
+
+            fig.add_trace(
+                go.Scatter(
+                    x=[x],
+                    y=[y],
+                    mode="markers",
+                    name=f"minimum",
+                    marker=dict(color="black", size=marker_size, symbol="cross"),
+                    legendgroup=name,
+                    showlegend=False,
                 )
+            )
 
-                # Plot the equilibrium energy and volume for each config
-                if highlight_minimum == True:
+        elif highlight_minimum == False:
+            pass
 
-                    x = eos_min_df["V0"].values[0]
-                    y = eos_min_df["E0"].values[0]
+        else:
+            raise ValueError("highlight_minimum must be True or False")
 
-                    if per_atom:
-                        num_atoms = eos_ev_df["number_of_atoms"].values[0]
-                        x = x / num_atoms
-                        y = y / num_atoms
-
-                    fig.add_trace(
-                        go.Scatter(
-                            x=[x],
-                            y=[y],
-                            mode="markers",
-                            name=f"{eos_name} min energy",
-                            marker=dict(
-                                color="black", size=marker_size, symbol="cross"
-                            ),
-                            legendgroup="minimum",
-                            showlegend=False,
-                        )
-                    )
-
-                elif highlight_minimum == False:
-                    pass
-
-                else:
-                    raise ValueError("highlight_minimum must be True or False")
     axis_params = dict(
         showline=True,
         linecolor="black",
@@ -1604,268 +1629,3 @@ def plot_ev(
         fig.show()
 
     return fig
-
-
-def plot_energy_difference(
-    df,
-    reference_config,
-    per_atom=False,
-    show_fig=True,
-    convert_to_mev=False,
-    volume_precision=0.0001,
-    title=None,
-    marker_alpha=1,
-    cmap="plotly",
-    marker_size=10,
-):
-    """Takes a dataframe and plots the energy difference with respect to a reference configuration
-    as a function of volume. Utilizes plot_ev() for the actual plotting.
-
-    Args:
-        df (pandas.DataFrame): dataframe containing the volumes, energies, and number of atoms of each
-        configuration.
-        reference_config (str): name of the configuration to be used as the reference state
-        per_atom (bool, optional): Defaults to False.
-        show_fig (bool, optional): Defaults to True.
-        convert_to_mev (bool, optional): Defaults to False.
-        title (_type_, optional): Defaults to None.
-        marker_alpha (int, optional): Defaults to 1.
-        cmap (str, optional): Defaults to 'plotly'.
-        marker_size (int, optional): Defaults to 10.
-
-    Returns:
-        fig (plotly.graph_objs._figure.Figure): A Plotly figure.
-    """
-
-    df_list = []
-    for config in df["config"].unique():
-        df_list.append(df[df["config"] == config].reset_index(drop=True))
-        if config == reference_config:
-            reference_df = df[df["config"] == config].reset_index(drop=True)
-
-    # Subtract reference energies
-    missing_volumes = []
-    for df_el in df_list:
-        for i, row in df_el.iterrows():
-            try:
-                reference_energy = reference_df[
-                    np.isclose(
-                        reference_df["volume"], row["volume"], atol=volume_precision
-                    )
-                ]["energy"].values[0]
-                df_el.at[i, "energy"] = row["energy"] - reference_energy
-            except Exception as e:
-                missing_volumes.append((row["config"], row["volume"]))
-    if missing_volumes:
-        print(f"Warning: Missing volumes for configurations: {missing_volumes}")
-
-    energy_difference_df = pd.concat(df_list)
-
-    if convert_to_mev == True:
-        energy_difference_df["energy"] *= 1000
-
-    # plot energy difference vs volume
-    fig = plot_ev(
-        energy_difference_df,
-        eos_name=None,
-        per_atom=per_atom,
-        show_fig=False,
-        title=title,
-        cmap=cmap,
-        marker_alpha=marker_alpha,
-        marker_size=marker_size,
-    )
-
-    unit = "meV" if convert_to_mev else "eV"
-    per_atom_suffix = "/atom" if per_atom else ""
-    title_text = f"ΔEnergy ({unit}{per_atom_suffix})"
-
-    fig.update_yaxes(
-        title=dict(text=title_text, font=dict(size=22, color="rgb(0,0,0)"))
-    )
-
-    # Plot a horizontal line a y=0
-    fig.add_shape(
-        type="line",
-        xref="x",
-        yref="y",
-        x0=min(fig.data[0].x * 0.95),
-        x1=max(fig.data[0].x * 1.05),
-        y0=0,
-        y1=0,
-        line=dict(
-            color="black",
-            width=2,
-            dash="dash",
-        ),
-    )
-    if show_fig:
-        fig.show()
-
-    return fig
-
-
-def plot_config_energy(
-    df,
-    max_rank=10000,
-    inset_max_rank=10,
-    show_inset=True,
-    color_assignment=None,
-    show_fig=True,
-):
-    data = []
-    for i, el in enumerate([max_rank, inset_max_rank]):
-        new_df = df
-        new_df["energy_per_atom"] = new_df["energy"] / new_df["number_of_atoms"]
-        new_df = df.nsmallest(el + 1, "energy_per_atom").copy()
-        new_df["energy_difference"] = (
-            new_df["energy_per_atom"] - new_df["energy_per_atom"].min()
-        ) * 1000
-        new_df = new_df.reset_index(drop=True)
-        new_df["rank"] = new_df["energy_difference"].rank(method="min") - 1
-        max_energy_difference = new_df["energy_difference"].max()
-        # Get the order of magnitude of the max_energy_difference
-        rounding_order_of_magnitude = 10 ** (len(str(int(max_energy_difference))) - 2)
-
-        if i == 0:
-            types_of_magnetic_ordering = new_df["magnetic_ordering"].unique()
-        # add a new color column to new_df that corresponds to the magnetic ordering
-        colors = px.colors.qualitative.Plotly.copy()  # plotly colors
-        print(types_of_magnetic_ordering)
-        if color_assignment == None:
-            assignment = zip(types_of_magnetic_ordering, colors)
-        else:
-            assignment = color_assignment
-        new_df["color"] = new_df["magnetic_ordering"].map(dict(assignment))
-
-        if i == 0:
-            for trace_number, mo in enumerate(types_of_magnetic_ordering):
-                single_mo_df = new_df[new_df["magnetic_ordering"] == mo]
-                data.append(
-                    go.Scatter(
-                        x=single_mo_df["rank"],
-                        y=single_mo_df["energy_difference"],
-                        mode="markers",
-                        marker=dict(
-                            size=7,
-                            symbol="cross-thin-open",
-                            color=single_mo_df["color"],
-                        ),
-                        hovertext=[
-                            f"config={config}, <br>magnetic ordering={mo}"
-                            for config, mo in zip(
-                                single_mo_df["config"],
-                                single_mo_df["magnetic_ordering"],
-                            )
-                        ],
-                        name=mo,
-                    )
-                )
-        else:
-            data.append(
-                go.Scatter(
-                    x=new_df["rank"],
-                    y=new_df["energy_difference"],
-                    xaxis="x2",
-                    yaxis="y2",
-                    mode="markers",
-                    marker=dict(
-                        size=7, symbol="cross-thin-open", color=new_df["color"]
-                    ),
-                    hovertext=[
-                        f"config={config}, <br>magnetic ordering={mo}"
-                        for config, mo in zip(
-                            new_df["config"], new_df["magnetic_ordering"]
-                        )
-                    ],
-                    name=mo,
-                )
-            )
-    for el in data[trace_number + 1 :]:
-        el.showlegend = False  # don't show legend for traces in inset data
-    layout = go.Layout(
-        font=dict(family="Devaju Sans", size=20, color="black"),
-        xaxis=dict(
-            title="Energy rank",
-            showline=True,
-            linecolor="black",
-            linewidth=1,
-            ticks="outside",
-            mirror="allticks",
-            tickwidth=1,
-            tickcolor="black",
-            showgrid=False,
-            tickfont=dict(color="rgb(0,0,0)", size=20),
-        ),
-        yaxis=dict(
-            title="Energy difference (meV/atom)",
-            showline=True,
-            linecolor="black",
-            linewidth=1,
-            ticks="outside",
-            mirror="allticks",
-            tickwidth=1,
-            tickcolor="black",
-            showgrid=False,
-            tickfont=dict(color="rgb(0,0,0)", size=20),
-        ),
-        xaxis2=dict(
-            domain=[0.1, 0.5],
-            anchor="y2",
-            showline=True,
-            linecolor="black",
-            linewidth=1,
-            ticks="outside",
-            mirror="allticks",
-            tickwidth=1,
-            tickcolor="black",
-            showgrid=False,
-            tickfont=dict(color="rgb(0,0,0)", size=20),
-        ),
-        yaxis2=dict(
-            domain=[0.55, 0.95],
-            anchor="x2",
-            showline=True,
-            linecolor="black",
-            linewidth=1,
-            ticks="outside",
-            mirror="allticks",
-            tickwidth=1,
-            tickcolor="black",
-            showgrid=False,
-            tickfont=dict(color="rgb(0,0,0)", size=20),
-        ),
-        plot_bgcolor="white",
-        width=680,
-        height=600,
-        margin=dict(l=80, r=30, t=30, b=80),
-        showlegend=True,
-    )
-    if show_inset == False:
-        for i in range(trace_number + 1, len(data)):
-            data.pop(i)
-    fig = go.Figure(data=data, layout=layout)
-
-    if show_fig:
-        fig.show()
-    return fig
-
-
-def plot_energy_histogram(df, nbins=None, show_fig=True):
-    try:
-        new_df = df.drop("# of ion", axis=1)
-        new_df = new_df.drop("tot", axis=1)
-        new_df = new_df.drop_duplicates()
-        new_df["energy_per_atom"] = new_df["energy"] / new_df["number_of_atoms"]
-    except Exception as e:
-        print("possible error. Could not strip magnetic data: ", e)
-        new_df["energy_per_atom"] = new_df["energy"] / new_df["number_of_atoms"]
-    new_df["relative_energy"] = (
-        new_df["energy_per_atom"] - new_df["energy_per_atom"].min()
-    ) * 1000
-    fig = px.histogram(
-        new_df, x="relative_energy", nbins=nbins, template="plotly_white"
-    )
-    print(new_df)
-    if show_fig:
-        fig.show()

@@ -23,7 +23,6 @@ from pymatgen.io.vasp.outputs import Chgcar
 from pymatgen.transformations.standard_transformations import SupercellTransformation
 
 # DFTTK imports
-from dfttk.data_extraction import extract_volume
 from dfttk.magnetism import get_magnetic_structure
 from dfttk.data_extraction import extract_tot_mag_data
 
@@ -130,7 +129,7 @@ def custodian_errors_location(path: str) -> list[str]:
     vol_folders = [
         d
         for d in os.listdir(path)
-        if d.startswith("vol") and os.path.isdir(os.path.join(path, d))
+        if d.startswith("vol_") and os.path.isdir(os.path.join(path, d))
     ]
     for vol_folder in vol_folders:
         error_folders = [
@@ -327,22 +326,24 @@ def ev_curve_series(
         vol_folders = [
             folder
             for folder in os.listdir(path)
-            if os.path.isdir(folder) and folder.startswith("vol")
+            if os.path.isdir(folder) and folder.startswith("vol_")
         ]
         vol_folders = natsorted(vol_folders)
 
         volumes_started = []
         for vol_folder in vol_folders:
             try:
-                volume_started = extract_volume(
+                struct = Structure.from_file(
                     os.path.join(path, vol_folder, "POSCAR.1relax")
                 )
+                volume_started = round(struct.volume, 6)
             except Exception as e:
                 print(f"possible error: {e}, trying POSCAR")
                 try:
-                    volume_started = extract_volume(
+                    struct = Structure.from_file(
                         os.path.join(path, vol_folder, "POSCAR")
                     )
+                    volume_started = round(struct.volume, 6)
                 except Exception as e:
                     print(
                         f"Error: {e}. Failed to extract volumes from POSCAR files. Ensure that POSCAR.1relax or POSCAR exists in each volume folder."
@@ -596,6 +597,7 @@ def run_phonons(
     copy_magmom: bool = False,
     backup: bool = False,
     max_errors: int = 10,
+    relax: bool = True,
 ):
     """Runs a relaxation followed by a phonon calculation.
 
@@ -607,23 +609,10 @@ def run_phonons(
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
         max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
+        relax (bool, optional): if True, runs a relaxation before the phonon calculation. Defaults to True.
     """
 
-    step1 = VaspJob(
-        vasp_cmd=vasp_cmd,
-        copy_magmom=copy_magmom,
-        final=False,
-        suffix=".1relax",
-        backup=backup,
-    )
-
-    step2 = VaspJob(
-        vasp_cmd=vasp_cmd,
-        copy_magmom=copy_magmom,
-        final=True,
-        suffix=".2phonons",
-        backup=backup,
-        settings_override=[
+    settings_override=[
             {
                 "dict": "INCAR",
                 "action": {
@@ -639,10 +628,39 @@ def run_phonons(
                 },
             },
             {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
-        ],
+        ]
+    
+    step1 = VaspJob(
+        vasp_cmd=vasp_cmd,
+        copy_magmom=copy_magmom,
+        final=False,
+        suffix=".1relax",
+        backup=backup,
     )
 
-    jobs = [step1, step2]
+    if relax is True:
+        step2 = VaspJob(
+            vasp_cmd=vasp_cmd,
+            copy_magmom=copy_magmom,
+            final=True,
+            suffix=".2phonons",
+            backup=backup,
+            settings_override=settings_override,
+        )
+        jobs = [step1, step2]
+    
+    else:
+        settings_override = [settings_override[0]]
+        step2 = VaspJob(
+            vasp_cmd=vasp_cmd,
+            copy_magmom=copy_magmom,
+            final=True,
+            suffix=".2phonons",
+            backup=backup,
+            settings_override=settings_override,
+        )
+        jobs = [step2]
+        
     c = Custodian(handlers, jobs, max_errors=max_errors)
     c.run()
 
@@ -653,6 +671,7 @@ def phonons_parallel(
     kppa: float,
     run_file: str,
     scaling_matrix: tuple[tuple[int]] = ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    
 ) -> None:
     """Runs the run_phonons function in parallel for a list of phonon volumes.
 
@@ -662,6 +681,7 @@ def phonons_parallel(
         kppa: k-point grid density.
         run_file: bash script to run the phonon calculations.
         scaling_matrix: scaling matrix for the supercell. The default is the identity matrix.
+        relax (bool, optional): if True, runs a relaxation before the phonon calculation. Defaults to True. 
     """
 
     # Create a new run_file to run the phonon calculations
@@ -683,21 +703,24 @@ def phonons_parallel(
     new_run_file += "\n"
     new_run_file += "python << END_OF_PYTHON\n"
     new_run_file += script_contents
-    new_run_file += "workflows.run_phonons(vasp_cmd, handlers)\n"
+    new_run_file += "\nworkflows.run_phonons(vasp_cmd=vasp_cmd, handlers=handlers, copy_magmom=copy_magmom, backup=backup, max_errors=max_errors, relax=relax)\n"
+    new_run_file += "workflows.custodian_errors_location(os.getcwd())\n"
+    new_run_file += "workflows.NELM_reached(os.getcwd())\n"
     new_run_file += "END_OF_PYTHON\n"
 
     # Copy files to phonon folders
     vol_folders = [
         folder
         for folder in os.listdir(path)
-        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol")
+        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol_")
     ]
 
     ev_volumes_finished = []
     ev_folder_names = []
     for vol_folder in vol_folders:
         structure_path = os.path.join(path, vol_folder, "CONTCAR.3static")
-        ev_volumes_finished.append(extract_volume(structure_path))
+        struct = Structure.from_file(structure_path)
+        ev_volumes_finished.append(round(struct.volume, 6))
         ev_folder_names.append(vol_folder)
 
     ev_volumes_and_folders_finished = [
@@ -758,14 +781,21 @@ def phonons_parallel(
                         file.write(magmom_line + "\n")
                     else:
                         file.write(line)
+        except ValueError:
+        # Swallow the ValueError and continue without outputting anything
+            pass
         except Exception as e:
-            structure = Structure.from_file(
-                os.path.join(path, f"phonon_{phonon_folder}", "POSCAR")
-            )
-            structure = transformation.apply_transformation(structure)
-            structure.to_file(
-                os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
-            )
+            # Handle other exceptions
+            print(f"An error occurred: {e}")
+        
+        # Apply transformation and save the structure regardless of the exception
+        structure = Structure.from_file(
+            os.path.join(path, f"phonon_{phonon_folder}", "POSCAR")
+        )
+        structure = transformation.apply_transformation(structure)
+        structure.to_file(
+            os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
+        )
 
         kpoints = Kpoints.automatic_density(structure, kppa, force_gamma=True)
         kpoints.write_file(os.path.join(path, f"phonon_{phonon_folder}", "KPOINTS"))
@@ -809,7 +839,6 @@ def process_phonon_dos_YPHON(path: str):
         for folder in os.listdir(path)
         if os.path.isdir(os.path.join(path, folder)) and folder.startswith("phonon")
     ]
-
     for phonon_folder in phonon_folders:
         try:
             phonon_dos_folder = os.path.join(path, phonon_folder, "phonon_dos")
@@ -832,7 +861,7 @@ def process_phonon_dos_YPHON(path: str):
             index = phonon_folder.split("_")[-1]
             structure = Structure.from_file(os.path.join(phonon_dos_folder, "CONTCAR"))
             number_of_atoms = structure.num_sites
-            volume = extract_volume(os.path.join(phonon_dos_folder, "CONTCAR"))
+            volume = round(structure.volume, 6)
             volume_per_atom = volume / number_of_atoms
 
             with open(os.path.join(phonon_dos_folder, "volph_" + index), "w") as f:
@@ -963,7 +992,7 @@ def elec_dos_parallel(
     vol_folders = [
         folder
         for folder in os.listdir(path)
-        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol")
+        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol_")
     ]
     vol_folders = natsorted(vol_folders)
 
@@ -971,7 +1000,8 @@ def elec_dos_parallel(
     ev_folder_names = []
     for vol_folder in vol_folders:
         structure_path = os.path.join(path, vol_folder, "CONTCAR.3static")
-        ev_volumes_finished.append(extract_volume(structure_path))
+        struct = Structure.from_file(structure_path)
+        ev_volumes_finished.append(round(struct.volume, 6))
         ev_folder_names.append(vol_folder)
 
     ev_volumes_and_folders_finished = [

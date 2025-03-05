@@ -287,19 +287,30 @@ class Icamag:
         spin_configs["space_group"] = space_group_list
         spin_configs["magnetic_ordering"] = magnetic_ordering_list
         spin_configs["mag_data"] = mag_data_list
+        self.spin_configs = spin_configs
 
         return spin_configs, poscar_object_list
+
+    def get_multiplicity(self) -> np.ndarray:
+        """Get the multiplicities of the spin configurations.
+
+        Returns:
+            np.ndarray: multiplicity of the spin configurations
+        """
+        multiplicity = self.spin_configs["multiplicity"].values.tolist()
+
+        return multiplicity
 
     def write_spin_configs(
         self,
         spin_configs: pd.DataFrame,
         poscar_object_list: list,
-        material_type: str,
-        encut: int = 520,
-        kppa: int = 4000,
-        potcar_functional: str = "PBE_54",
-        incar_functional: str = "PBE",
-        other_settings: dict = {},
+        #material_type: str,
+        #encut: int = 520,
+        #kppa: int = 4000,
+        #potcar_functional: str = "PBE_54",
+        #incar_functional: str = "PBE",
+        #other_settings: dict = {},
     ):
         """Writes the spin configurations to separate folders and generates VASP input files.
 
@@ -327,21 +338,22 @@ class Icamag:
 
             poscar_object.write_file(os.path.join(config_dir, "POSCAR"))
 
-            magmom_settings = poscar_object.structure.site_properties
-            other_settings.update(magmom_settings)
-            vasp_input.ev_curve_set(
-                config_dir,
-                material_type=material_type,
-                encut=encut,
-                kppa=kppa,
-                potcar_functional=potcar_functional,
-                incar_functional=incar_functional,
-                other_settings=other_settings,
-            )
+            #magmom_settings = poscar_object.structure.site_properties
+            #other_settings.update(magmom_settings)
+            #other_settings.update({"ISPIN": 2, "LORBIT": 11})
+            #vasp_input.ev_curve_set(
+            #    config_dir,
+            #    material_type=material_type,
+            #    encut=encut,
+            #    kppa=kppa,
+            #    potcar_functional=potcar_functional,
+            #    incar_functional=incar_functional,
+            #    other_settings=other_settings,
+            #)
 
     def gen_spin_configs(
         self,
-        material_type: str,
+        #material_type: str,
         poscar_file: str = "POSCAR",
         magnetic_sites: dict = {},
         scaling_matrix: np.ndarray = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
@@ -350,11 +362,11 @@ class Icamag:
         sig_fig: int = 5,
         magmom_tolerance: float = 0,
         total_magnetic_moment_tolerance: float = 0,
-        encut: int = 520,
-        kppa: int = 4000,
-        potcar_functional: str = "PBE_54",
-        incar_functional: str = "PBE",
-        other_settings: dict = {},
+        #encut: int = 520,
+        #kppa: int = 4000,
+        #potcar_functional: str = "PBE_54",
+        #incar_functional: str = "PBE",
+        #other_settings: dict = {},
     ):
         """Convenience function to generate spin configurations using the POSCAR file.
 
@@ -384,10 +396,10 @@ class Icamag:
         self.write_spin_configs(
             spin_configs,
             poscar_object_list,
-            material_type,
-            encut,
-            kppa,
-            potcar_functional,
-            incar_functional,
-            other_settings,
+            #material_type,
+            #encut,
+            #kppa,
+            #potcar_functional,
+            #incar_functional,
+            #other_settings,
         )
