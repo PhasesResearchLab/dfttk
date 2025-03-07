@@ -36,7 +36,7 @@ MongoDB Storage
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+   :hidden:
 
-   index
    installation
    tutorials
