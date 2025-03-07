@@ -904,7 +904,6 @@ def run_elec_dos(
     vasp_cmd: list[str],
     handlers: list[str],
     NEDOS: int = 10001,
-    copy_magmom: bool = False,
     backup: bool = False,
     max_errors: int = 10,
 ):
@@ -922,7 +921,6 @@ def run_elec_dos(
 
     step1 = VaspJob(
         vasp_cmd=vasp_cmd,
-        copy_magmom=copy_magmom,
         final=True,
         suffix=".elec_dos",
         backup=backup,
@@ -985,7 +983,9 @@ def elec_dos_parallel(
     new_run_file += "\n"
     new_run_file += "python << END_OF_PYTHON\n"
     new_run_file += script_contents
-    new_run_file += "workflows.run_elec_dos(vasp_cmd, handlers)\n"
+    new_run_file += "\nworkflows.run_elec_dos(vasp_cmd=vasp_cmd, handlers=handlers, NEDOS=NEDOS, backup=backup, max_errors=max_errors)\n"
+    new_run_file += "workflows.custodian_errors_location(os.getcwd())\n"
+    new_run_file += "workflows.NELM_reached(os.getcwd())\n"
     new_run_file += "END_OF_PYTHON\n"
 
     # Copy files to elec folders

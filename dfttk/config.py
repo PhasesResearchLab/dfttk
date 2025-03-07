@@ -116,7 +116,9 @@ class EvCurvesData:
             vol_folders = [
                 vol_folder
                 for vol_folder in vol_folders
-                if os.path.exists(os.path.join(self.path, vol_folder, "CONTCAR.3static"))
+                if os.path.exists(
+                    os.path.join(self.path, vol_folder, "CONTCAR.3static")
+                )
                 and round(
                     Structure.from_file(
                         os.path.join(self.path, vol_folder, "CONTCAR.3static")
@@ -128,7 +130,9 @@ class EvCurvesData:
 
         for vol_folder in vol_folders:
             incar_data = {
-                key: Incar.from_file(os.path.join(self.path, vol_folder, f"INCAR.{key}"))
+                key: Incar.from_file(
+                    os.path.join(self.path, vol_folder, f"INCAR.{key}")
+                )
                 for key in incar_keys
             }
             self.incars.append(incar_data)
@@ -180,7 +184,8 @@ class EvCurvesData:
         self.magnetic_ordering = all_magnetic_orderings
 
         transformed_data = [
-            [{f"{item[0]}": {item[2]: item[1]}} for item in sublist] for sublist in self.mag_data
+            [{f"{item[0]}": {item[2]: item[1]}} for item in sublist]
+            for sublist in self.mag_data
         ]
         transformed_data = {
             str(index): {f"{item[0]}": {item[2]: item[1]} for item in sublist}
@@ -190,11 +195,15 @@ class EvCurvesData:
 
         if volumes is not None:
             volumes_set = set(volumes)
-            filtered_indices = [i for i, v in enumerate(all_volumes) if v in volumes_set]
+            filtered_indices = [
+                i for i, v in enumerate(all_volumes) if v in volumes_set
+            ]
             self.volumes = np.array(all_volumes)[filtered_indices]
             self.energies = np.array(all_energies)[filtered_indices]
             self.mag_data = np.array(all_mag_data_list)[filtered_indices]
-            self.total_magnetic_moment = np.array(all_total_magnetic_moments)[filtered_indices]
+            self.total_magnetic_moment = np.array(all_total_magnetic_moments)[
+                filtered_indices
+            ]
             self.magnetic_ordering = np.array(all_magnetic_orderings)[filtered_indices]
 
         vol_folders = self._get_volume_folders()
@@ -205,7 +214,9 @@ class EvCurvesData:
                 for vol_folder in vol_folders
                 if os.path.exists(os.path.join(self.path, vol_folder, contcar_name))
                 and round(
-                    Structure.from_file(os.path.join(self.path, vol_folder, contcar_name)).volume,
+                    Structure.from_file(
+                        os.path.join(self.path, vol_folder, contcar_name)
+                    ).volume,
                     2,
                 )
                 in volumes_set
@@ -223,13 +234,15 @@ class EvCurvesData:
         volume_max: float = None,
         num_volumes: int = 1000,
     ) -> None:
-        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = fit_to_eos(
-            self.volumes,
-            self.energies,
-            eos_name,
-            volume_min,
-            volume_max,
-            num_volumes,
+        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
+            fit_to_eos(
+                self.volumes,
+                self.energies,
+                eos_name,
+                volume_min,
+                volume_max,
+                num_volumes,
+            )
         )
 
         self.eos_parameters = {
@@ -413,7 +426,9 @@ class PhononsData:
             phonon_folders = [
                 phonon_folder
                 for phonon_folder in phonon_folders
-                if os.path.exists(os.path.join(self.path, phonon_folder, "CONTCAR.2phonons"))
+                if os.path.exists(
+                    os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
+                )
                 and round(
                     Structure.from_file(
                         os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
@@ -458,7 +473,9 @@ class PhononsData:
         padded_arrays = []
         for arr in arrays:
             if pad_type == "constant":
-                padded_arr = np.pad(arr, (0, max_length - len(arr)), constant_values=pad_value)
+                padded_arr = np.pad(
+                    arr, (0, max_length - len(arr)), constant_values=pad_value
+                )
             elif pad_type == "increasing":
                 increment = arr[-1] - arr[-2]
                 pad_values = np.arange(
@@ -531,10 +548,18 @@ class PhononsData:
         self.cv_vib_fit = cv_vib_fit
         self.volume_fit = volume_fit
 
-        self.helmholtz_energy = {f"{temp}K": f_vib[i] for i, temp in enumerate(self.temperatures)}
-        self.internal_energy = {f"{temp}K": e_vib[i] for i, temp in enumerate(self.temperatures)}
-        self.entropy = {f"{temp}K": s_vib[i] for i, temp in enumerate(self.temperatures)}
-        self.heat_capacity = {f"{temp}K": cv_vib[i] for i, temp in enumerate(self.temperatures)}
+        self.helmholtz_energy = {
+            f"{temp}K": f_vib[i] for i, temp in enumerate(self.temperatures)
+        }
+        self.internal_energy = {
+            f"{temp}K": e_vib[i] for i, temp in enumerate(self.temperatures)
+        }
+        self.entropy = {
+            f"{temp}K": s_vib[i] for i, temp in enumerate(self.temperatures)
+        }
+        self.heat_capacity = {
+            f"{temp}K": cv_vib[i] for i, temp in enumerate(self.temperatures)
+        }
 
         self.helmholtz_energy_fit = {
             "polynomial_coefficients": {
@@ -573,13 +598,13 @@ class PhononsData:
 
         self.harmonic_fit_df = harmonic_fit_df
 
-    def plot_scaled_dos(self, num_atoms: int, plot: bool = True) -> None:
+    def plot_scaled_dos(self, number_of_atoms: int, plot: bool = True) -> None:
         yphon_results_path = os.path.join(self.path, "YPHON_results")
-        scale_phonon_dos(yphon_results_path, num_atoms, plot)
+        scale_phonon_dos(yphon_results_path, number_of_atoms, plot)
 
-    def plot_multiple_dos(self, num_atoms: int) -> None:
+    def plot_multiple_dos(self, number_of_atoms: int) -> None:
         yphon_results_path = os.path.join(self.path, "YPHON_results")
-        plot_phonon_dos(yphon_results_path, num_atoms)
+        plot_phonon_dos(yphon_results_path, number_of_atoms)
 
     def plot_harmonic(
         self, property_to_plot: str, selected_temperatures_plot: np.ndarray = None
@@ -637,6 +662,7 @@ class ThermalElectronicData:
         self.helmholtz_energy_fit: dict = None
         self.entropy_fit: dict = None
         self.heat_capacity_fit: dict = None
+        self.structures: list[Structure] = []
 
     def get_total_electron_dos(self) -> None:
         self.electron_dos_data = read_total_electron_dos(self.path)
@@ -653,7 +679,9 @@ class ThermalElectronicData:
             elec_folders = [
                 elec_folder
                 for elec_folder in elec_folders
-                if os.path.exists(os.path.join(self.path, elec_folder, "CONTCAR.elec_dos"))
+                if os.path.exists(
+                    os.path.join(self.path, elec_folder, "CONTCAR.elec_dos")
+                )
                 and round(
                     Structure.from_file(
                         os.path.join(self.path, elec_folder, "CONTCAR.elec_dos")
@@ -665,7 +693,9 @@ class ThermalElectronicData:
 
         for elec_folder in elec_folders:
             incar_data = {
-                key: Incar.from_file(os.path.join(self.path, elec_folder, f"INCAR.{key}"))
+                key: Incar.from_file(
+                    os.path.join(self.path, elec_folder, f"INCAR.{key}")
+                )
                 for key in incar_keys
             }
             self.incars.append(incar_data)
@@ -685,6 +715,13 @@ class ThermalElectronicData:
         temperature_range: np.ndarray,
         order: int,
     ):
+        self.structures = [
+            Structure.from_file(
+                os.path.join(self.path, elec_folder, "CONTCAR.elec_dos")
+            )
+            for elec_folder in self._get_elec_folders()
+        ]
+
         self.get_total_electron_dos()
         volumes = self.electron_dos_data["volume"].unique()
         self.number_of_atoms = self.electron_dos_data["number_of_atoms"].unique()[0]
@@ -696,9 +733,9 @@ class ThermalElectronicData:
             for volume in volumes
         ]
         dos_array = [
-            self.electron_dos_data[self.electron_dos_data["volume"] == volume]["total_dos"].values[
-                0
-            ]
+            self.electron_dos_data[self.electron_dos_data["volume"] == volume][
+                "total_dos"
+            ].values[0]
             for volume in volumes
         ]
 
@@ -719,7 +756,9 @@ class ThermalElectronicData:
         self.temperatures = temperature_range
 
         volume_fit, f_el_fit, s_el_fit, cv_el_fit, f_el_poly, s_el_poly, cv_el_poly = (
-            fit_thermal_electronic(self.volumes, self.temperatures, f_el, s_el, cv_el, order)
+            fit_thermal_electronic(
+                self.volumes, self.temperatures, f_el, s_el, cv_el, order
+            )
         )
 
         self.volume_fit = volume_fit
@@ -735,10 +774,16 @@ class ThermalElectronicData:
         self.entropy = {}
         self.heat_capacity = {}
 
-        self.helmholtz_energy = {f"{temp}K": f_el[i] for i, temp in enumerate(self.temperatures)}
-        self.internal_energy = {f"{temp}K": e_el[i] for i, temp in enumerate(self.temperatures)}
+        self.helmholtz_energy = {
+            f"{temp}K": f_el[i] for i, temp in enumerate(self.temperatures)
+        }
+        self.internal_energy = {
+            f"{temp}K": e_el[i] for i, temp in enumerate(self.temperatures)
+        }
         self.entropy = {f"{temp}K": s_el[i] for i, temp in enumerate(self.temperatures)}
-        self.heat_capacity = {f"{temp}K": cv_el[i] for i, temp in enumerate(self.temperatures)}
+        self.heat_capacity = {
+            f"{temp}K": cv_el[i] for i, temp in enumerate(self.temperatures)
+        }
 
         self.helmholtz_energy_fit = {
             "polynomial_coefficients": {
@@ -773,7 +818,9 @@ class ThermalElectronicData:
 
         # Remove the outer layer of lists
         for col in ["number_of_atoms", "f_el_poly", "s_el_poly", "cv_el_poly"]:
-            thermal_electronic_fit_df[col] = thermal_electronic_fit_df[col].apply(lambda x: x[0])
+            thermal_electronic_fit_df[col] = thermal_electronic_fit_df[col].apply(
+                lambda x: x[0]
+            )
 
         self.thermal_electronic_fit_df = thermal_electronic_fit_df
 
@@ -865,11 +912,17 @@ class QuasiHarmonicData:
         self.quasi_harmonic_df = quasi_harmonic_properties
         self.method = method
         self.pressure = quasi_harmonic_properties["pressure"].values.tolist()[0]
-        self.number_of_atoms = int(quasi_harmonic_properties["number_of_atoms"].values.tolist()[0])
+        self.number_of_atoms = int(
+            quasi_harmonic_properties["number_of_atoms"].values.tolist()[0]
+        )
         self.temperatures = quasi_harmonic_properties["temperature"].values.tolist()
         self.volumes = quasi_harmonic_properties["volume_range"].values[0].tolist()
-        eos_constants = [arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]]
-        s_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["s_coefficients"]]
+        eos_constants = [
+            arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]
+        ]
+        s_coefficients = [
+            arr.tolist() for arr in quasi_harmonic_properties["s_coefficients"]
+        ]
 
         self.helmholtz_energy = {
             "eos_parameters": {
@@ -888,7 +941,9 @@ class QuasiHarmonicData:
         for temp, entropy in zip(self.temperatures, s_coefficients):
             self.entropy["polynomial_coefficients"][f"{temp}K"] = entropy
 
-        cv_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["cv_coefficients"]]
+        cv_coefficients = [
+            arr.tolist() for arr in quasi_harmonic_properties["cv_coefficients"]
+        ]
         self.heat_capacity = {"polynomial_coefficients": {}}
         for temp, cv in zip(self.temperatures, cv_coefficients):
             self.heat_capacity["polynomial_coefficients"][f"{temp}K"] = cv
@@ -909,7 +964,9 @@ class QuasiHarmonicData:
     ) -> go.Figure:
 
         fig = plot_quasi_harmonic(
-            quasi_harmonic_properties=self.methods[method][pressure]["quasi_harmonic_df"],
+            quasi_harmonic_properties=self.methods[method][pressure][
+                "quasi_harmonic_df"
+            ],
             plot_type=plot_type,
             selected_temperatures_plot=selected_temperatures_plot,
         )
@@ -968,7 +1025,9 @@ class Configuration:
             file.write(f"#SBATCH -A {self.job_script['account']}\n")
             file.write(f"#SBATCH -p {self.job_script['partition']}\n")
             file.write(f"#SBATCH -N {self.job_script['nodes']}\n")
-            file.write(f"#SBATCH --ntasks-per-node={self.job_script['ntasks_per_node']}\n")
+            file.write(
+                f"#SBATCH --ntasks-per-node={self.job_script['ntasks_per_node']}\n"
+            )
             file.write(f"#SBATCH -t {self.job_script['time']}\n")
             file.write(f"#SBATCH -o {self.job_script['output_file']}\n")
             file.write(f"#SBATCH -e {self.job_script['error_file']}\n\n")
@@ -1027,8 +1086,32 @@ class Configuration:
         potcar_functional: str = "PBE_54",
         incar_functional: str = "PBE",
         other_settings: dict = {},
-        encut_list: list[int] = [270, 320, 370, 420, 470, 520, 570, 620, 670, 720, 770, 820],
-        kppa_list: list[float] = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000],
+        encut_list: list[int] = [
+            270,
+            320,
+            370,
+            420,
+            470,
+            520,
+            570,
+            620,
+            670,
+            720,
+            770,
+            820,
+        ],
+        kppa_list: list[float] = [
+            1000,
+            2000,
+            3000,
+            4000,
+            5000,
+            6000,
+            7000,
+            8000,
+            9000,
+            10000,
+        ],
         force_gamma: bool = True,
         backup: bool = False,
         max_errors: int = 10,
@@ -1117,11 +1200,13 @@ class Configuration:
 
     # TODO: add a way to select the custodian handlers
     def run_ev_curves(self) -> None:
-        
+
         # Ensure ev_curves_settings_data is set and not empty
         if not self.ev_curves_settings_data:
-            raise AttributeError("EV curves settings data not set. Please call ev_curves_settings() first.")
-        
+            raise AttributeError(
+                "EV curves settings data not set. Please call ev_curves_settings() first."
+            )
+
         # Prepare the VASP input files
         vasp_input.ev_curve_set(
             self.path,
@@ -1162,7 +1247,7 @@ workflows.ev_curve_series(
 workflows.custodian_errors_location(os.getcwd())
 workflows.NELM_reached(os.getcwd())
 """.strip()
-            
+
         with open(os.path.join(self.path, "run_dfttk.py"), "w") as file:
             file.write(run_dfttk_script)
 
@@ -1183,14 +1268,14 @@ workflows.NELM_reached(os.getcwd())
         volume_min: float = None,
         volume_max: float = None,
         num_volumes: int = 1000,
-    )-> None:
-        
+    ) -> None:
+
         # Initialize EvCurvesData
         self.ev_curves = EvCurvesData(self.path, self.name)
-        
+
         # Get VASP input
         self.ev_curves.get_vasp_input(volumes)
-        
+
         # Get energy-volume data
         self.ev_curves.get_energy_volume_data(
             volumes=volumes,
@@ -1202,7 +1287,7 @@ workflows.NELM_reached(os.getcwd())
             total_magnetic_moment_tolerance=total_magnetic_moment_tolerance,
             mass_average=mass_average,
         )
-        
+
         # Fit energy-volume data
         self.ev_curves.fit_energy_volume_data(
             eos_name=eos_name,
@@ -1241,7 +1326,7 @@ workflows.NELM_reached(os.getcwd())
         max_errors: int = 10,
         relax: bool = True,
     ) -> None:
-        
+
         self.phonons_settings_data = {
             "phonon_volumes": phonon_volumes,
             "kppa": kppa,
@@ -1252,13 +1337,15 @@ workflows.NELM_reached(os.getcwd())
             "relax": relax,
         }
         self.phonons_job_script = self.job_script
-        
+
     def run_phonons(self, run_file: str = "run_dfttk_phonons.py") -> None:
-        
+
         # Ensure phonons_settings_data is set and not empty
         if not self.phonons_settings_data:
-            raise AttributeError("Phonons settings data not set. Please call phonons_settings() first.")
-    
+            raise AttributeError(
+                "Phonons settings data not set. Please call phonons_settings() first."
+            )
+
         # Prepare the run_file script
         run_dfttk_script = f"""
 import os
@@ -1280,7 +1367,7 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
 """.strip()
         with open(os.path.join(self.path, run_file), "w") as file:
             file.write(run_dfttk_script)
-        
+
         # Run the phonon jobs in parallel
         subprocess.run(["python", run_file], cwd=self.path)
         os.remove(os.path.join(self.path, run_file))
@@ -1304,28 +1391,54 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
             order=order,
         )
 
-    def run_thermal_electronic(
+    def thermal_electronic_settings(
         self,
         volumes: list[float],
         kppa: float,
-        run_file: str = "run_dfttk_thermal_electronic.py",
         scaling_matrix: tuple[tuple[int]] = ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
-    ):
+        NEDOS: int = 10001,
+        backup: bool = False,
+        max_errors: int = 10,
+    ) -> None:
+
+        self.thermal_electronic_settings_data = {
+            "volumes": volumes,
+            "kppa": kppa,
+            "scaling_matrix": scaling_matrix,
+            "NEDOS": NEDOS,
+            "backup": backup,
+            "max_errors": max_errors,
+        }
+        self.thermal_electronic_job_script = self.job_script
+
+    def run_thermal_electronic(self, run_file: str = "run_dfttk_thermal_electronic.py"):
+        # Ensure thermal_electronic_settings_data is set and not empty
+        if not self.thermal_electronic_settings_data:
+            raise AttributeError(
+                "Thermal electronic settings data not set. Please call thermal_electronic_settings() first."
+            )
 
         # Prepare the run_file script
+        run_dfttk_script = f"""
+import os
+from custodian.vasp.handlers import VaspErrorHandler
+import dfttk.workflows as workflows
+
+subset = list(VaspErrorHandler.error_msgs.keys())
+handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]
+vasp_cmd = {self.vasp_cmd}
+volumes = {self.thermal_electronic_settings_data["volumes"]}
+scaling_matrix = {self.thermal_electronic_settings_data["scaling_matrix"]}
+kppa = {self.thermal_electronic_settings_data["kppa"]}
+NEDOS = {self.thermal_electronic_settings_data["NEDOS"]}
+backup = {self.thermal_electronic_settings_data["backup"]}
+max_errors = {self.thermal_electronic_settings_data["max_errors"]}
+
+workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix=scaling_matrix)
+""".strip()
+
         with open(os.path.join(self.path, run_file), "w") as file:
-            file.write("import os\n")
-            file.write("from custodian.vasp.handlers import VaspErrorHandler\n")
-            file.write("import dfttk.workflows as workflows\n")
-            file.write("subset = list(VaspErrorHandler.error_msgs.keys())\n")
-            file.write("handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]\n")
-            file.write(f"vasp_cmd = {self.vasp_cmd}\n")
-            file.write(f"volumes = {volumes} \n")
-            file.write(f"scaling_matrix = {scaling_matrix} \n")
-            file.write(f"kppa = {kppa} \n")
-            file.write(f"workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh')\n")
-            file.write("workflows.custodian_errors_location(os.getcwd())\n")
-            file.write("workflows.NELM_reached(os.getcwd())\n")
+            file.write(run_dfttk_script)
 
         # Run the phonon jobs in parallel
         subprocess.run(["python", run_file], cwd=self.path)
@@ -1368,7 +1481,9 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
         elif method == "debye + thermal_electronic":
             debye_properties = self.debye.debye_df
             harmonic_properties_fit = None
-            thermal_electronic_properties_fit = self.thermal_electronic.thermal_electronic_fit_df
+            thermal_electronic_properties_fit = (
+                self.thermal_electronic.thermal_electronic_fit_df
+            )
         elif method == "phonons":
             debye_properties = None
             harmonic_properties_fit = self.phonons.harmonic_fit_df
@@ -1376,7 +1491,9 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
         elif method == "phonons + thermal_electronic":
             debye_properties = None
             harmonic_properties_fit = self.phonons.harmonic_fit_df
-            thermal_electronic_properties_fit = self.thermal_electronic.thermal_electronic_fit_df
+            thermal_electronic_properties_fit = (
+                self.thermal_electronic.thermal_electronic_fit_df
+            )
         else:
             raise ValueError(f"Unknown option: {method}")
 
@@ -1404,6 +1521,17 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
             smoothing_window_length=smoothing_window_length,
             smoothing_polyorder=smoothing_polyorder,
         )
+
+    def replace_keys(self, d, key_mapping):
+        if isinstance(d, dict):
+            return {
+                key_mapping.get(k, k): self.replace_keys(v, key_mapping)
+                for k, v in d.items()
+            }
+        elif isinstance(d, list):
+            return [self.replace_keys(i, key_mapping) for i in d]
+        else:
+            return d
 
     def to_mongodb(self, connection_string: str, db_name: str, collection_name: str):
         self.cluster = MongoClient(connection_string)
@@ -1435,21 +1563,25 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
                     else None
                 ),
                 "numberOfAtoms": (
-                    self.ev_curves.number_of_atoms if hasattr(self, "ev_curves") else None
+                    self.ev_curves.number_of_atoms
+                    if hasattr(self, "ev_curves")
+                    else None
                 ),
             },
         }
 
         # Update metadata with actual values if they exist
         if hasattr(self, "metadata"):
-            document["metadata"].update({
-                "MPDDId": self.metadata.mpdd_id,
-                "parentDatabase": self.metadata.parent_database,
-                "parentDatabaseId": self.metadata.parent_database_id,
-                "parentDatabaseURL": self.metadata.parent_database_url,
-                "affiliation": self.metadata.affiliation,
-                "comment": self.metadata.comment,
-            })
+            document["metadata"].update(
+                {
+                    "MPDDId": self.metadata.mpdd_id,
+                    "parentDatabase": self.metadata.parent_database,
+                    "parentDatabaseId": self.metadata.parent_database_id,
+                    "parentDatabaseURL": self.metadata.parent_database_url,
+                    "affiliation": self.metadata.affiliation,
+                    "comment": self.metadata.comment,
+                }
+            )
 
         if hasattr(self, "ev_curves"):
             eos_parameters = self.ev_curves.eos_parameters.copy()
@@ -1474,9 +1606,19 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
                     "scaleAtoms": number_of_atoms,
                     "volumes": self.ev_curves.volumes.tolist(),
                     "energies": self.ev_curves.energies.tolist(),
-                    "relaxedStructures": [s.as_dict() for s in self.ev_curves.relaxed_structures],
-                    "totalMagneticMoments": self.ev_curves.total_magnetic_moment if isinstance(self.ev_curves.total_magnetic_moment, list) else self.ev_curves.total_magnetic_moment.tolist(),
-                    "magneticOrderings": self.ev_curves.magnetic_ordering if isinstance(self.ev_curves.magnetic_ordering, list) else self.ev_curves.magnetic_ordering.tolist(),
+                    "relaxedStructures": [
+                        s.as_dict() for s in self.ev_curves.relaxed_structures
+                    ],
+                    "totalMagneticMoments": (
+                        self.ev_curves.total_magnetic_moment
+                        if isinstance(self.ev_curves.total_magnetic_moment, list)
+                        else self.ev_curves.total_magnetic_moment.tolist()
+                    ),
+                    "magneticOrderings": (
+                        self.ev_curves.magnetic_ordering
+                        if isinstance(self.ev_curves.magnetic_ordering, list)
+                        else self.ev_curves.magnetic_ordering.tolist()
+                    ),
                     "magData": self.ev_curves.mag_data,
                     "eosParameters": eos_parameters_ordered,
                 },
@@ -1495,11 +1637,26 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
             elif isinstance(obj, dict):
                 return {k: convert_poly1d(v) for k, v in obj.items()}
             return obj
-        
+
         if hasattr(self, "phonons"):
             phonons_settings_copy = self.phonons_settings_data.copy()
             phonons_settings_copy.pop("phonon_volumes")
             phonons_settings_copy.pop("relax")
+
+            temperatures = self.phonons.temperatures
+            min_temperature = min(temperatures)
+            max_temperature = max(temperatures)
+            num_temperatures = len(temperatures)
+
+            helmholtz_energy = convert_poly1d(self.phonons.helmholtz_energy_fit)
+            entropy = convert_poly1d(self.phonons.entropy_fit)
+            heat_capacity = convert_poly1d(self.phonons.heat_capacity_fit)
+
+            key_mapping = {"polynomial_coefficients": "polynomialCoefficients"}
+            helmholtz_energy = self.replace_keys(helmholtz_energy, key_mapping)
+            entropy = self.replace_keys(entropy, key_mapping)
+            heat_capacity = self.replace_keys(heat_capacity, key_mapping)
+
             document["phonons"] = {
                 "input": {
                     "jobScript": self.phonons_job_script,
@@ -1511,41 +1668,116 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
                 "output": {
                     "scaleAtoms": self.phonons.number_of_atoms,
                     "volumes": self.phonons.volumes.tolist(),
-                    "phononStructures": [s.as_dict() for s in self.phonons.phonon_structures],
-                    "temperatures": self.phonons.temperatures.tolist(),
-                    "helmholtzEnergy": convert_poly1d(self.phonons.helmholtz_energy_fit),
-                    "entropy": convert_poly1d(self.phonons.entropy_fit),
-                    "heatCapacity": convert_poly1d(self.phonons.heat_capacity_fit),
+                    "phononStructures": [
+                        s.as_dict() for s in self.phonons.phonon_structures
+                    ],
+                    "temperatures": {
+                        "min": min_temperature.tolist(),
+                        "max": max_temperature.tolist(),
+                        "number": num_temperatures,
+                    },
+                    "helmholtzEnergy": helmholtz_energy,
+                    "entropy": entropy,
+                    "heatCapacity": heat_capacity,
                 },
             }
-        # Continue fixing here!
+
         if hasattr(self, "thermal_electronic"):
+            thermal_electronic_settings_copy = (
+                self.thermal_electronic_settings_data.copy()
+            )
+
+            temperatures = self.thermal_electronic.temperatures
+            min_temperature = min(temperatures)
+            max_temperature = max(temperatures)
+            num_temperatures = len(temperatures)
+
+            helmholtz_energy = convert_poly1d(
+                self.thermal_electronic.helmholtz_energy_fit
+            )
+            entropy = convert_poly1d(self.thermal_electronic.entropy_fit)
+            heat_capacity = convert_poly1d(self.thermal_electronic.heat_capacity_fit)
+
+            key_mapping = {"polynomial_coefficients": "polynomialCoefficients"}
+            helmholtz_energy = self.replace_keys(helmholtz_energy, key_mapping)
+            entropy = self.replace_keys(entropy, key_mapping)
+            heat_capacity = self.replace_keys(heat_capacity, key_mapping)
+
+            thermal_electronic_settings_copy.pop("volumes")
             document["thermalElectronic"] = {
-                "vaspInput": {
+                "input": {
+                    "jobScript": self.thermal_electronic_job_script,
+                    "settings": thermal_electronic_settings_copy,
                     "incars": self.thermal_electronic.incars,
                     "kpoints": self.thermal_electronic.kpoints.as_dict(),
                     "potcar": self.thermal_electronic.potcar.as_dict(),
                 },
-                "scaleAtoms": self.thermal_electronic.number_of_atoms,
-                "volumes": self.thermal_electronic.volumes,
-                "temperatures": self.thermal_electronic.temperatures,
-                "helmholtzEnergy": self.thermal_electronic.helmholtz_energy_fit,
-                "entropy": self.thermal_electronic.entropy_fit,
-                "heatCapacity": self.thermal_electronic.heat_capacity_fit,
+                "output": {
+                    "scaleAtoms": self.thermal_electronic.number_of_atoms.tolist(),
+                    "volumes": [
+                        round(s.volume, 2) for s in self.thermal_electronic.structures
+                    ],
+                    "structures": [
+                        s.as_dict() for s in self.thermal_electronic.structures
+                    ],
+                    "temperatures": {
+                        "min": min_temperature.tolist(),
+                        "max": max_temperature.tolist(),
+                        "number": num_temperatures,
+                    },
+                    "helmholtzEnergy": helmholtz_energy,
+                    "entropy": entropy,
+                    "heatCapacity": heat_capacity,
+                },
             }
 
         if hasattr(self, "qha"):
+            key_mapping = {
+                "debye": "debye",
+                "debye + thermal_electronic": "debyeThermalElectronic",
+                "phonons": "phonons",
+                "phonons + thermal_electronic": "phononsThermalElectronic",
+                "helmholtz_energy": "helmholtzEnergy",
+                "heat_capacity": "heatCapacity",
+                "eos_parameters": "eosParameters",
+                "eos_name": "eosName",
+                "polynomial_coefficients": "polynomialCoefficients",
+            }
             methods_copy = {
-                method: {
-                    str(P) + " GPa": {k: v for k, v in data.items() if k != "quasi_harmonic_df"}
+                key_mapping.get(method, method): {
+                    str(P)
+                    + " GPa": {
+                        k: v for k, v in data.items() if k != "quasi_harmonic_df"
+                    }
                     for P, data in pressures.items()
                 }
                 for method, pressures in self.qha.methods.items()
             }
+
+            methods_copy = self.replace_keys(methods_copy, key_mapping)
+
+            volumes = self.qha.volumes
+            min_volume = min(volumes)
+            max_volume = max(volumes)
+            num_volumes = len(volumes)
+
+            temperatures = self.qha.temperatures
+            min_temperature = min(temperatures)
+            max_temperature = max(temperatures)
+            num_temperatures = len(temperatures)
+
             document["qha"] = {
-                "numberOfAtoms": self.qha.number_of_atoms,
-                "volumes": self.qha.volumes,
-                "temperatures": self.qha.temperatures,
+                "scaleAtoms": self.qha.number_of_atoms,
+                "volumes": {
+                    "min": min_volume,
+                    "max": max_volume,
+                    "number": num_volumes,
+                },
+                "temperatures": {
+                    "min": min_temperature,
+                    "max": max_temperature,
+                    "number": num_temperatures,
+                },
                 "methods": methods_copy,
             }
 
@@ -1594,7 +1826,9 @@ def plot_multiple_ev(
 
     combined_fig = go.Figure()
 
-    config_colors = assign_colors_to_configs(config_names, alpha=marker_alpha, cmap=cmap)
+    config_colors = assign_colors_to_configs(
+        config_names, alpha=marker_alpha, cmap=cmap
+    )
     config_symbols = assign_marker_symbols_to_configs(config_names)
 
     for config_name in config_names:
