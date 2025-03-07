@@ -12,8 +12,8 @@ sys.path.insert(0, os.path.abspath('.'))
 sys.path.append(os.path.abspath('dfttk'))
 
 project = 'dfttk'
-copyright = '2024, Luke A. Myers, Nigel Lee En Hew'
-author = 'Luke A. Myers, Nigel Lee En Hew'
+copyright = '2024, Nigel L. E. Hew, Luke A. Myers'
+author = 'Nigel L. E. Hew, Luke A. Myers'
 language = 'en'
 
 # -- General configuration ---------------------------------------------------
