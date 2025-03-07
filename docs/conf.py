@@ -37,7 +37,6 @@ nb_execution_cache_path = "../temp/jupyter_cache"
 # Changelog configuration
 sphinx_github_changelog_token = password = os.environ.get("sphinx_github_changelog_token")
 
-
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
@@ -53,16 +52,15 @@ sphinx_rtd_size_width = "70%"
 
 html_context = {
     "display_github": True,
-    "github_user": "lukeamyers",
+    "github_user": "PhasesResearchLab",
     "github_repo": "dfttk",
     "github_version": "main",
     "conf_py_path": "/docs/",
 }
-
 def linkcode_resolve(domain, info):
     if domain != 'py':
         return None
     if not info['module']:
         return None
     filename = info['module'].replace('.', '/')
-    return "https://github.com/lukeamyers/dfttk/tree/docs/%s.py" % filename
+    return "https://github.com/PhasesResearchLab/dfttk/blob/main/%s.py" % filename
