@@ -3,6 +3,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+.. |logo| image:: _static/dfttk_logo.png
+          :height: 30pt
+          :width: 30pt
+          :alt: Logo
+
 Welcome to dfttk's documentation!
 =================================
 
