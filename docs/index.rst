@@ -8,6 +8,10 @@
           :width: 30pt
           :alt: Logo
 
+============
+|logo| DFTTK
+============
+
 Welcome to dfttk's documentation!
 =================================
 
