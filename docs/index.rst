@@ -39,4 +39,4 @@ MongoDB Storage
    :hidden:
 
    installation
-   tutorials
+   tutorials/index
