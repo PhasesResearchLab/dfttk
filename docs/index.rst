@@ -16,8 +16,11 @@ Documentation
 =================================
 DFTTK (Density Functional ToolKit) is a flexible tool for automating density functional theory (DFT) calculations with VASP 
 and storing results in MongoDB. 
-It leverages `Custodian <https://github.com/materialsproject/custodian>`_ for job submission and error handling, while `PyMongo <https://github.com/mongodb/mongo-python-driver>`_ 
-facilitates data storage and retrieval in MongoDB.
+It leverages `Custodian <https://github.com/materialsproject/custodian>`_ for job submission and error handling, while 
+`PyMongo <https://github.com/mongodb/mongo-python-driver>`_ facilitates data storage and retrieval in MongoDB.
+
+DFTTK is developed openly on `GitHub <https://github.com/PhasesResearchLab/dfttk>`_. The project is led by Nigel Hew 
+(postdoctoral researcher) and Luke Myers (Ph.D. student) at the Phases Research Lab, Penn State.
 
 
 
