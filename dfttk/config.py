@@ -1524,12 +1524,15 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
 
     def replace_keys(self, d, key_mapping):
         if isinstance(d, dict):
-            return {key_mapping.get(k, k): self.replace_keys(v, key_mapping) for k, v in d.items()}
+            return {
+                key_mapping.get(k, k): self.replace_keys(v, key_mapping)
+                for k, v in d.items()
+            }
         elif isinstance(d, list):
             return [self.replace_keys(i, key_mapping) for i in d]
         else:
             return d
-                
+
     def to_mongodb(self, connection_string: str, db_name: str, collection_name: str):
         self.cluster = MongoClient(connection_string)
         self.db = self.cluster[db_name]
@@ -1639,23 +1642,21 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             phonons_settings_copy = self.phonons_settings_data.copy()
             phonons_settings_copy.pop("phonon_volumes")
             phonons_settings_copy.pop("relax")
-            
+
             temperatures = self.phonons.temperatures
             min_temperature = min(temperatures)
             max_temperature = max(temperatures)
             num_temperatures = len(temperatures)
-            
+
             helmholtz_energy = convert_poly1d(self.phonons.helmholtz_energy_fit)
             entropy = convert_poly1d(self.phonons.entropy_fit)
             heat_capacity = convert_poly1d(self.phonons.heat_capacity_fit)
-            
-            key_mapping = {
-                "polynomial_coefficients": "polynomialCoefficients"
-            }
+
+            key_mapping = {"polynomial_coefficients": "polynomialCoefficients"}
             helmholtz_energy = self.replace_keys(helmholtz_energy, key_mapping)
             entropy = self.replace_keys(entropy, key_mapping)
             heat_capacity = self.replace_keys(heat_capacity, key_mapping)
-            
+
             document["phonons"] = {
                 "input": {
                     "jobScript": self.phonons_job_script,
@@ -1685,23 +1686,23 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             thermal_electronic_settings_copy = (
                 self.thermal_electronic_settings_data.copy()
             )
-            
+
             temperatures = self.thermal_electronic.temperatures
             min_temperature = min(temperatures)
             max_temperature = max(temperatures)
             num_temperatures = len(temperatures)
-            
-            helmholtz_energy = convert_poly1d(self.thermal_electronic.helmholtz_energy_fit)
+
+            helmholtz_energy = convert_poly1d(
+                self.thermal_electronic.helmholtz_energy_fit
+            )
             entropy = convert_poly1d(self.thermal_electronic.entropy_fit)
             heat_capacity = convert_poly1d(self.thermal_electronic.heat_capacity_fit)
-            
-            key_mapping = {
-                "polynomial_coefficients": "polynomialCoefficients"
-            }
+
+            key_mapping = {"polynomial_coefficients": "polynomialCoefficients"}
             helmholtz_energy = self.replace_keys(helmholtz_energy, key_mapping)
             entropy = self.replace_keys(entropy, key_mapping)
             heat_capacity = self.replace_keys(heat_capacity, key_mapping)
-            
+
             thermal_electronic_settings_copy.pop("volumes")
             document["thermalElectronic"] = {
                 "input": {
@@ -1740,18 +1741,21 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 "heat_capacity": "heatCapacity",
                 "eos_parameters": "eosParameters",
                 "eos_name": "eosName",
-                "polynomial_coefficients": "polynomialCoefficients"
+                "polynomial_coefficients": "polynomialCoefficients",
             }
             methods_copy = {
                 key_mapping.get(method, method): {
-                    str(P) + " GPa": {k: v for k, v in data.items() if k != "quasi_harmonic_df"}
+                    str(P)
+                    + " GPa": {
+                        k: v for k, v in data.items() if k != "quasi_harmonic_df"
+                    }
                     for P, data in pressures.items()
                 }
                 for method, pressures in self.qha.methods.items()
             }
 
             methods_copy = self.replace_keys(methods_copy, key_mapping)
-            
+
             volumes = self.qha.volumes
             min_volume = min(volumes)
             max_volume = max(volumes)
@@ -1761,7 +1765,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             min_temperature = min(temperatures)
             max_temperature = max(temperatures)
             num_temperatures = len(temperatures)
-            
+
             document["qha"] = {
                 "scaleAtoms": self.qha.number_of_atoms,
                 "volumes": {
