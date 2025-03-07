@@ -1,12 +1,7 @@
-.. dfttk documentation master file, created by
-   sphinx-quickstart on Fri May 31 10:27:03 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Home
+====
 
-.. image:: _static/dfttk_logo.png
-    :width: 200pt
-    :alt: logo
-    :align: center
+Welcome to the DFTTK documentation. This section provides an overview of the project and its capabilities.
 
 DFTTK (Density Functional ToolKit) is a flexible tool for automating density functional theory (DFT) calculations with VASP 
 and storing results in MongoDB. 
