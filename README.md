@@ -1,6 +1,6 @@
 # DFTTK
 <p align="center">
-    <img src="docs/logo.png" alt="DFTTK Logo">
+    <img src="docs/_static/dfttk_logo.png" alt="DFTTK Logo">
 </p>
 
 [![GitHub Actions](https://github.com/PhasesResearchLab/dfttk/actions/workflows/test.yaml/badge.svg)](https://github.com/PhasesResearchLab/dfttk/actions/workflows/test.yaml)
