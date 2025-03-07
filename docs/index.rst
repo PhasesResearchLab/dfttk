@@ -17,18 +17,18 @@ It leverages `Custodian <https://github.com/materialsproject/custodian>`_ for jo
 DFTTK is developed openly on `GitHub <https://github.com/PhasesResearchLab/dfttk>`_. The project is led by Nigel Hew 
 (postdoctoral researcher) and Luke Myers (Ph.D. student) at the Phases Research Lab, Penn State.
 
-What does DFTTK do?  
--------------------  
+What does DFTTK do?
+-------------------
 
-Enumeration of Configurations  
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-- Enumerates unique collinear magnetic configurations for a given structure.  
+Enumeration of Configurations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Enumerates unique collinear magnetic configurations for a given structure.
 
-VASP Workflows  
-~~~~~~~~~~~~~~  
-- Performs convergence tests for cutoff energy (**ENCUT**) and k-points grid density (**kppa**).  
-- Computes free energy using the quasiharmonic approximation.  
+VASP Workflows
+~~~~~~~~~~~~~~
+- Performs convergence tests for cutoff energy (**ENCUT**) and k-points grid density (**kppa**).
+- Computes free energy using the quasiharmonic approximation.
 
-MongoDB Storage  
-~~~~~~~~~~~~~~~  
+MongoDB Storage
+~~~~~~~~~~~~~~~
 - Stores and retrieves VASP input data and post-processed results in MongoDB.
