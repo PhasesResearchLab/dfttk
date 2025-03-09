@@ -8,6 +8,10 @@
     :alt: logo
     :align: center
 
+=====
+DFTTK
+=====
+
 Welcome to the DFTTK documentation. This section provides an overview of the project and its capabilities.
 
 DFTTK (Density Functional ToolKit) is a flexible tool for automating density functional theory (DFT) calculations with VASP 
