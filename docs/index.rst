@@ -23,6 +23,7 @@ DFTTK is developed openly on `GitHub <https://github.com/PhasesResearchLab/dfttk
 
 What does DFTTK do?
 -------------------
+
 **Enumeration of Configurations**
 
 - Enumerates unique collinear magnetic configurations for a given structure.
