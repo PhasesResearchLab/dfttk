@@ -4,9 +4,9 @@
     :alt: logo
     :align: center
 
-=====
-DFTTK
-=====
+===================
+DFTTK documentation
+===================
 
 Welcome to the DFTTK documentation. This section provides an overview of the project and its capabilities.
 
