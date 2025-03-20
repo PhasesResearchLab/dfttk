@@ -301,6 +301,9 @@ def plot_quasi_harmonic(
         quasi_harmonic_properties (pd.DataFrame): pandas dataframe containing the quasi-harmonic properties from the quasi_harmonic function
         plot_type (str, optional): Type of plots to include. Defaults to 'default'.
         selected_temperatures_plot (list, optional): List of selected temperatures to plot. Defaults to None.
+
+    Returns:
+        go.Figure: The plotly figure object for the specified plot type.
     """
 
     temperature_list = quasi_harmonic_properties["temperature"].values
@@ -322,6 +325,7 @@ def plot_quasi_harmonic(
         fig.add_trace(go.Scatter(x=x, y=y, mode="lines", marker=dict(size=10)))
         plot_format(fig, x_label, y_label, width=650, height=600)
         fig.show()
+        return fig
 
     if plot_type == "helmholtz_energy + PV":
         fig = go.Figure()
@@ -368,7 +372,7 @@ def plot_quasi_harmonic(
             width=650,
             height=600,
         )
-        fig.show()
+        return fig
 
     else:
         fig = go.Figure()
@@ -386,6 +390,5 @@ def plot_quasi_harmonic(
             y_list, y_labels = plot_mappings[plot_type]
             x = temperature_list
             y = quasi_harmonic_properties[y_list].values
-            create_plot(x, y, "Temperature (K)", y_labels)
-
-    return fig
+            fig = create_plot(x, y, "Temperature (K)", y_labels)
+        return fig
