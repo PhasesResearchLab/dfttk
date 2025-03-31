@@ -12,6 +12,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import scipy.constants
 from scipy.special import expit
+from scipy.optimize import bisect
 from natsort import natsorted
 from scipy.interpolate import UnivariateSpline
 
@@ -309,7 +310,7 @@ def calculate_chemical_potential(
     energy: np.ndarray,
     dos: np.ndarray,
     temperature: float,
-    min_chemical_potential: float = -0.01,
+    min_chemical_potential: float = -0.05,
     max_chemical_potential: float = 0.05,
 ) -> float:
     """Calculates the chemical potential at a given electronic DOS, temperature, and volume.
@@ -327,25 +328,29 @@ def calculate_chemical_potential(
 
     temperature = float(temperature)
     num_electrons_0K = round(calculate_num_electrons(energy, dos, 0, 0))
+    num_electrons_guess = round(calculate_num_electrons(energy, dos, 0, temperature))
 
-    from scipy.optimize import bisect
+    if num_electrons_guess == num_electrons_0K:
+        chemical_potential = 0
 
-    def electron_difference(chemical_potential):
-        num_electrons = calculate_num_electrons(
-            energy, dos, chemical_potential, temperature
-        )
-        return num_electrons - num_electrons_0K
+    else:
 
-    try:
-        chemical_potential = bisect(
-            electron_difference, min_chemical_potential, max_chemical_potential
-        )
-    except ValueError as e:
-        print(
-            f"Warning: The chemical potential could not be found within the range {min_chemical_potential} to {max_chemical_potential} eV."
-            "Consider increasing the range or checking the input data."
-        )
-        chemical_potential = max_chemical_potential
+        def electron_difference(chemical_potential):
+            num_electrons = calculate_num_electrons(
+                energy, dos, chemical_potential, temperature
+            )
+            return num_electrons - num_electrons_0K
+
+        try:
+            chemical_potential = bisect(
+                electron_difference, min_chemical_potential, max_chemical_potential
+            )
+        except ValueError as e:
+            print(
+                f"Warning: The chemical potential could not be found within the range {min_chemical_potential} to {max_chemical_potential} eV."
+                "Consider increasing the range or checking the input data."
+            )
+            chemical_potential = max_chemical_potential
 
     return chemical_potential
 
@@ -715,7 +720,6 @@ def thermal_electronic(
         tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         2D arrays of helmholtz energy, internal energy, entropy, heat capacity where each row corresponds to a temperature and each column corresponds to a volume.
     """
-    import time
 
     chemical_potential_list = []
     internal_energy_list = []
