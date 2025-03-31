@@ -958,11 +958,12 @@ class QuasiHarmonicData:
     def plot(
         self,
         method: str,
-        pressure: float,
+        P: float,
         plot_type: str = "default",
         selected_temperatures_plot: list = None,
     ) -> go.Figure:
 
+        pressure = P
         fig = plot_quasi_harmonic(
             quasi_harmonic_properties=self.methods[method][pressure][
                 "quasi_harmonic_df"
