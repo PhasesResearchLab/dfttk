@@ -29,9 +29,9 @@ config_Al.process_thermal_electronic(temperature_range, order=1)
 
 volume_range = np.linspace(0.98 * 60, 1.02 * 74, 1000)
 config_Al.process_qha("debye", volume_range, P=0)
-config_Al.process_qha("debye + thermal_electronic", volume_range, P=0)
+config_Al.process_qha("debye_thermal_electronic", volume_range, P=0)
 config_Al.process_qha("phonons", volume_range, P=0)
-config_Al.process_qha("phonons + thermal_electronic", volume_range, P=0)
+config_Al.process_qha("phonons_thermal_electronic", volume_range, P=0)
 
 
 def test_analyze_encut_conv():
@@ -540,12 +540,12 @@ def test_process_qha():
         ("test_config_data/expected_qha_debye.json", "debye"),
         (
             "test_config_data/expected_qha_debye_thermal_electronic.json",
-            "debye + thermal_electronic",
+            "debye_thermal_electronic",
         ),
         ("test_config_data/expected_qha_phonons.json", "phonons"),
         (
             "test_config_data/expected_qha_phonons_thermal_electronic.json",
-            "phonons + thermal_electronic",
+            "phonons_thermal_electronic",
         ),
     ]
     methods_copy = {
