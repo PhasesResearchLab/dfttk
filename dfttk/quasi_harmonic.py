@@ -327,7 +327,7 @@ def plot_quasi_harmonic(
         fig.show()
         return fig
 
-    if plot_type == "helmholtz_energy + PV":
+    if plot_type == "helmholtz_energy_pv":
         fig = go.Figure()
         for temperature in selected_temperatures:
             x = quasi_harmonic_properties[
@@ -372,6 +372,7 @@ def plot_quasi_harmonic(
             width=650,
             height=600,
         )
+        fig.show()
         return fig
 
     else:
