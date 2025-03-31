@@ -874,9 +874,9 @@ class QuasiHarmonicData:
         self.volumes: np.ndarray = None
         self.methods: dict = {
             "debye": {},
-            "debye + thermal_electronic": {},
+            "debye_thermal_electronic": {},
             "phonons": {},
-            "phonons + thermal_electronic": {},
+            "phonons_thermal_electronic": {},
         }
 
     def get_quasi_harmonic_data(
@@ -1478,7 +1478,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             debye_properties = self.debye.debye_df
             harmonic_properties_fit = None
             thermal_electronic_properties_fit = None
-        elif method == "debye + thermal_electronic":
+        elif method == "debye_thermal_electronic":
             debye_properties = self.debye.debye_df
             harmonic_properties_fit = None
             thermal_electronic_properties_fit = (
@@ -1488,7 +1488,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             debye_properties = None
             harmonic_properties_fit = self.phonons.harmonic_fit_df
             thermal_electronic_properties_fit = None
-        elif method == "phonons + thermal_electronic":
+        elif method == "phonons_thermal_electronic":
             debye_properties = None
             harmonic_properties_fit = self.phonons.harmonic_fit_df
             thermal_electronic_properties_fit = (
