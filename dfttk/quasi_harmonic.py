@@ -15,11 +15,14 @@ EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 
 # TODO: Consider pulling out parallel code out of this function into separate functions
+# Remove the dataframe inputs here
+# Input - E, Fvib, Fel, volume_range
 def process_quasi_harmonic(
     num_atoms_eos: int,
     volume_range: np.ndarray,
     eos_constants: np.ndarray,
     harmonic_properties_fit: pd.DataFrame = None,
+    phonons_f_vib_fit = None,
     debye_properties: pd.DataFrame = None,
     thermal_electronic_properties_fit: pd.DataFrame = None,
     P: int = 0,
@@ -123,10 +126,9 @@ def process_quasi_harmonic(
         "LOG5": eos_fit.LOG5,
     }
 
-    for temperature in temperature_list:
+    for index, temperature in enumerate(temperature_list):
         if harmonic_properties_fit is not None and debye_properties is None:
-            f_vib_poly = harmonic_properties_fit.loc[temperature]["f_vib_poly"]
-            f_vib_fit = f_vib_poly(volume_range)
+            f_vib_fit = phonons_f_vib_fit[index]
             f_plus_pv = energy_eos + f_vib_fit + P * volume_range
 
             if thermal_electronic_properties_fit is not None:

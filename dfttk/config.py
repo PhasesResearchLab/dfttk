@@ -878,7 +878,7 @@ class QuasiHarmonicData:
             "phonons": {},
             "phonons_thermal_electronic": {},
         }
-
+# TODO: work here
     def get_quasi_harmonic_data(
         self,
         method: str,
@@ -887,6 +887,7 @@ class QuasiHarmonicData:
         volume_range: np.ndarray,
         eos_constants: list,
         harmonic_properties_fit: pd.DataFrame = None,
+        phonons_f_vib_fit = None,
         debye_properties: pd.DataFrame = None,
         thermal_electronic_properties_fit: pd.DataFrame = None,
         P: float = 0,
@@ -897,6 +898,7 @@ class QuasiHarmonicData:
             volume_range=volume_range,
             eos_constants=eos_constants,
             harmonic_properties_fit=harmonic_properties_fit,
+            phonons_f_vib_fit=phonons_f_vib_fit,
             debye_properties=debye_properties,
             thermal_electronic_properties_fit=thermal_electronic_properties_fit,
             P=P,
@@ -1499,6 +1501,21 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 self.ev_curves.eos_parameters["e"],
             ]
         )
+        
+        phonons_f_vib_fit = []
+        phonon_temperatures_list = self.phonons.harmonic_fit_df.index.tolist()
+
+        for index, temperatures in enumerate(phonon_temperatures_list):
+            f_vib_poly = self.phonons.harmonic_fit_df.loc[temperatures, "f_vib_poly"]
+            f_vib_fit = f_vib_poly(volume_range)  # Evaluate the polynomial for the given volume range
+            phonons_f_vib_fit.append(f_vib_fit)  # Append the result for this temperature
+            print(index)
+            
+        # Convert the list to a 2D NumPy array
+        phonons_f_vib_fit = np.array(phonons_f_vib_fit)
+        print(phonons_f_vib_fit.shape)
+
+        
         self.qha.get_quasi_harmonic_data(
             method,
             eos,
@@ -1506,6 +1523,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             volume_range,
             eos_constants,
             harmonic_properties_fit=harmonic_properties_fit,
+            phonons_f_vib_fit=phonons_f_vib_fit,
             debye_properties=debye_properties,
             thermal_electronic_properties_fit=thermal_electronic_properties_fit,
             P=P,
