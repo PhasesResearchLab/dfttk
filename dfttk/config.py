@@ -1468,9 +1468,6 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         method: str,
         volume_range: np.ndarray,
         P: float = 0,
-        apply_smoothing: bool = False,
-        smoothing_window_length: int = 21,
-        smoothing_polyorder: int = 2,
     ):
         if not hasattr(self, "qha"):
             self.qha = QuasiHarmonicData()

@@ -19,9 +19,6 @@ def process_quasi_harmonic(
     num_atoms_eos: int,
     volume_range: np.ndarray,
     eos_constants: np.ndarray,
-    apply_smoothing: bool = False,
-    smoothing_window_length: int = 21,
-    smoothing_polyorder: int = 2,
     harmonic_properties_fit: pd.DataFrame = None,
     debye_properties: pd.DataFrame = None,
     thermal_electronic_properties_fit: pd.DataFrame = None,
@@ -260,14 +257,6 @@ def process_quasi_harmonic(
     V0 = quasi_harmonic_properties["V0"].values
     S0 = quasi_harmonic_properties["S0"].values
     T = quasi_harmonic_properties["temperature"].values
-
-    from scipy.signal import savgol_filter
-
-    if apply_smoothing:
-        # Smooth the volume data
-        window_length = smoothing_window_length  # Choose an odd number
-        polyorder = smoothing_polyorder
-        V0 = savgol_filter(V0, window_length=window_length, polyorder=polyorder)
 
     dV = V0[1:] - V0[:-1]
     dS = S0[1:] - S0[:-1]
