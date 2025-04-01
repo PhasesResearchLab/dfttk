@@ -890,9 +890,6 @@ class QuasiHarmonicData:
         debye_properties: pd.DataFrame = None,
         thermal_electronic_properties_fit: pd.DataFrame = None,
         P: float = 0,
-        apply_smoothing: bool = False,
-        smoothing_window_length: int = 21,
-        smoothing_polyorder: int = 2,
     ) -> None:
 
         quasi_harmonic_properties = process_quasi_harmonic(
