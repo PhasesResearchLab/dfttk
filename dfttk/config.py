@@ -1515,9 +1515,6 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             debye_properties=debye_properties,
             thermal_electronic_properties_fit=thermal_electronic_properties_fit,
             P=P,
-            apply_smoothing=apply_smoothing,
-            smoothing_window_length=smoothing_window_length,
-            smoothing_polyorder=smoothing_polyorder,
         )
 
     def replace_keys(self, d, key_mapping):
