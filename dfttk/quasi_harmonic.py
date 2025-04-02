@@ -13,25 +13,18 @@ from dfttk.plotly_format import plot_format
 
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
-
-# TODO: Consider pulling out parallel code out of this function into separate functions
-# Remove the dataframe inputs here
-# Input - temperatures, E, Fvib, Svib, Cv,vib, Fel, Sel, Cv,el, volume_range
 def process_quasi_harmonic(
-    num_atoms_eos: int,
-    temperature_list: list, # temperatures
+    number_of_atoms: int,
+    temperatures: np.ndarray, 
     volume_range: np.ndarray,
-    energy_eos: np.ndarray, # E
-    #harmonic_properties_fit: pd.DataFrame = None,
-    f_vib_fit = None, # Fvib
-    s_vib_fit = None, # Svib
-    cv_vib_fit = None, # Cv,vib
-    #debye_f_vib = None, # Fvib
-    #debye_s_vib = None, # Svib
-    #debye_cv_vib = None, # Cv,vib
-    #debye_properties: pd.DataFrame = None,
-    thermal_electronic_properties_fit: pd.DataFrame = None,
-    P: int = 0,
+    energy_eos: np.ndarray,
+    f_vib_fit = np.ndarray, 
+    s_vib_fit = np.ndarray,  
+    cv_vib_fit = np.ndarray,  
+    f_el_fit: np.ndarray = None,
+    s_el_fit: np.ndarray = None,
+    cv_el_fit: np.ndarray = None,
+    P: float = 0.0,
     eos: str = "BM4",
 ) -> pd.DataFrame:
     
@@ -49,6 +42,7 @@ def process_quasi_harmonic(
 
     P = P / EV_PER_CUBIC_ANGSTROM_TO_GPA  # Convert GPa to eV/Å³
     
+    # List of available EOS functions
     eos_fit_functions = {
         "mBM4": eos_fit.mBM4,
         "mBM5": eos_fit.mBM5,
@@ -56,38 +50,23 @@ def process_quasi_harmonic(
         "BM5": eos_fit.BM5,
         "LOG4": eos_fit.LOG4,
         "LOG5": eos_fit.LOG5,
+        "murnaghan": eos_fit.murnaghan,
+        "vinet": eos_fit.vinet,
+        "morse": eos_fit.morse,
     }
-
-    for index, temperature in enumerate(temperature_list):
-        #if harmonic_properties_fit is not None and debye_properties is None:
+    
+    for index, temperature in enumerate(temperatures):
+        # For each temperature, add f_vib and f_el to energy_eos, then fit to an EOS
         f_vib = f_vib_fit[index]
         f_plus_pv = energy_eos + f_vib + P * volume_range
 
-        if thermal_electronic_properties_fit is not None:
-            f_el_poly = thermal_electronic_properties_fit.loc[temperature][
-                "f_el_poly"
-            ]
-            f_el_fit = f_el_poly(volume_range)
-            f_plus_pv += f_el_fit
+        if f_el_fit != 0:
+            f_el = f_el_fit[index]
+            f_plus_pv += f_el
 
         f_plus_pv_list.append(f_plus_pv)
         volume_range_list.append(volume_range)
 
-        '''
-        elif debye_properties is not None and harmonic_properties_fit is None:
-            f_vib = debye_f_vib[index]
-            f_plus_pv = energy_eos + f_vib + P * volume_range
-
-            if thermal_electronic_properties_fit is not None:
-                f_el_poly = thermal_electronic_properties_fit.loc[temperature][
-                    "f_el_poly"
-                ]
-                f_el_fit = f_el_poly(volume_range)
-                f_plus_pv += f_el_fit
-
-            f_plus_pv_list.append(f_plus_pv)
-            volume_range_list.append(volume_range)
-        '''
         try:
             eos_constants, eos_parameters, _, _, _ = eos_fit_functions[eos](
                 volume_range, f_plus_pv
@@ -111,29 +90,17 @@ def process_quasi_harmonic(
         B_list.append(B)
         BP_list.append(BP)
 
-        #if harmonic_properties_fit is not None and debye_properties is None:
+        # For each temperature, s = s_vib to s_el and cv = cv_vib to cv_el.
+        # Find s and cv that corresponds to P.
         s_vib = s_vib_fit[index]
         cv_vib = cv_vib_fit[index]
         order = 2
-        #order = 2
-            
-        #elif debye_properties is not None and harmonic_properties_fit is None:
-        #    s_vib = debye_s_vib[index]
-        #    cv_vib = debye_cv_vib[index]
-        #    order = 2
 
-        if thermal_electronic_properties_fit is not None:
-            s_el_poly = thermal_electronic_properties_fit.loc[temperature]["s_el_poly"]
-            s_el_fit = s_el_poly(volume_range)
-            s_el = s_el_fit
+        if s_el_fit != 0 and cv_el_fit != 0:
+            s_el = s_el_fit[index]
+            cv_el = cv_el_fit[index]
 
-            cv_el_poly = thermal_electronic_properties_fit.loc[temperature][
-                "cv_el_poly"
-            ]
-            cv_el_fit = cv_el_poly(volume_range)
-            cv_el = cv_el_fit
-
-        elif thermal_electronic_properties_fit is None:
+        elif s_el_fit == 0 and cv_el_fit == 0:
             s_el = 0
             cv_el = 0
 
@@ -148,13 +115,13 @@ def process_quasi_harmonic(
 
         S0 = s_poly(V0)
         S0_list.append(S0)
-
+    
     # Create a quasi-harmonic dataframe
     quasi_harmonic_properties = pd.DataFrame(
         data={
-            "pressure": [P * EV_PER_CUBIC_ANGSTROM_TO_GPA] * len(temperature_list),
-            "number_of_atoms": [num_atoms_eos] * len(temperature_list),
-            "temperature": temperature_list,
+            "pressure": [P * EV_PER_CUBIC_ANGSTROM_TO_GPA] * len(temperatures),
+            "number_of_atoms": [number_of_atoms] * len(temperatures),
+            "temperature": temperatures,
             "volume_range": volume_range_list,
             "f_plus_pv": f_plus_pv_list,
             "eos_constants": eos_constants_list,
@@ -168,11 +135,12 @@ def process_quasi_harmonic(
         }
     )
 
-    # Calculate other properties using the finite difference method
-    V0 = quasi_harmonic_properties["V0"].values
-    S0 = quasi_harmonic_properties["S0"].values
-    T = quasi_harmonic_properties["temperature"].values
-
+    # Calculate other properties using the finite difference method 
+    V0 = np.array(V0_list)
+    S0 = np.array(S0_list)
+    G0 = np.array(F0_list)
+    T = temperatures
+    
     dV = V0[1:] - V0[:-1]
     dS = S0[1:] - S0[:-1]
     dT = T[1:] - T[:-1]
@@ -184,6 +152,8 @@ def process_quasi_harmonic(
     CTE = np.insert(CTE, 0, 0)
     Cp = np.insert(Cp, 0, 0)
 
+    H0 = G0 + T * S0
+    
     quasi_harmonic_properties["H0"] = (
         quasi_harmonic_properties["G0"]
         + quasi_harmonic_properties["temperature"] * quasi_harmonic_properties["S0"]
@@ -191,7 +161,17 @@ def process_quasi_harmonic(
     quasi_harmonic_properties["CTE"] = CTE
     quasi_harmonic_properties["Cp"] = Cp
 
-    return quasi_harmonic_properties
+    f_plus_pv = np.array(f_plus_pv_list)
+    eos_constants = np.array(eos_constants_list)
+    s_coefficients = np.array(s_coefficients_list)
+    cv_coefficients = np.array(cv_coefficients_list)
+    V0 = np.array(V0_list)
+    F0 = np.array(F0_list)
+    B = np.array(B_list)
+    BP = np.array(BP_list)
+    S0 = np.array(S0_list)
+    
+    return f_plus_pv, eos_constants, s_coefficients, cv_coefficients, V0, F0, B, BP, S0, CTE, Cp, H0, quasi_harmonic_properties
 
 
 def plot_quasi_harmonic(

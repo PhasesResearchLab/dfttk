@@ -117,13 +117,9 @@ class EvCurvesData:
             vol_folders = [
                 vol_folder
                 for vol_folder in vol_folders
-                if os.path.exists(
-                    os.path.join(self.path, vol_folder, "CONTCAR.3static")
-                )
+                if os.path.exists(os.path.join(self.path, vol_folder, "CONTCAR.3static"))
                 and round(
-                    Structure.from_file(
-                        os.path.join(self.path, vol_folder, "CONTCAR.3static")
-                    ).volume,
+                    Structure.from_file(os.path.join(self.path, vol_folder, "CONTCAR.3static")).volume,
                     2,
                 )
                 in volumes
@@ -131,10 +127,7 @@ class EvCurvesData:
 
         for vol_folder in vol_folders:
             incar_data = {
-                key: Incar.from_file(
-                    os.path.join(self.path, vol_folder, f"INCAR.{key}")
-                )
-                for key in incar_keys
+                key: Incar.from_file(os.path.join(self.path, vol_folder, f"INCAR.{key}")) for key in incar_keys
             }
             self.incars.append(incar_data)
 
@@ -184,10 +177,7 @@ class EvCurvesData:
         self.total_magnetic_moment = all_total_magnetic_moments
         self.magnetic_ordering = all_magnetic_orderings
 
-        transformed_data = [
-            [{f"{item[0]}": {item[2]: item[1]}} for item in sublist]
-            for sublist in self.mag_data
-        ]
+        transformed_data = [[{f"{item[0]}": {item[2]: item[1]}} for item in sublist] for sublist in self.mag_data]
         transformed_data = {
             str(index): {f"{item[0]}": {item[2]: item[1]} for item in sublist}
             for index, sublist in enumerate(self.mag_data)
@@ -196,15 +186,11 @@ class EvCurvesData:
 
         if volumes is not None:
             volumes_set = set(volumes)
-            filtered_indices = [
-                i for i, v in enumerate(all_volumes) if v in volumes_set
-            ]
+            filtered_indices = [i for i, v in enumerate(all_volumes) if v in volumes_set]
             self.volumes = np.array(all_volumes)[filtered_indices]
             self.energies = np.array(all_energies)[filtered_indices]
             self.mag_data = np.array(all_mag_data_list)[filtered_indices]
-            self.total_magnetic_moment = np.array(all_total_magnetic_moments)[
-                filtered_indices
-            ]
+            self.total_magnetic_moment = np.array(all_total_magnetic_moments)[filtered_indices]
             self.magnetic_ordering = np.array(all_magnetic_orderings)[filtered_indices]
 
         vol_folders = self._get_volume_folders()
@@ -215,17 +201,14 @@ class EvCurvesData:
                 for vol_folder in vol_folders
                 if os.path.exists(os.path.join(self.path, vol_folder, contcar_name))
                 and round(
-                    Structure.from_file(
-                        os.path.join(self.path, vol_folder, contcar_name)
-                    ).volume,
+                    Structure.from_file(os.path.join(self.path, vol_folder, contcar_name)).volume,
                     2,
                 )
                 in volumes_set
             ]
 
         self.relaxed_structures = [
-            Structure.from_file(os.path.join(self.path, vol_folder, contcar_name))
-            for vol_folder in vol_folders
+            Structure.from_file(os.path.join(self.path, vol_folder, contcar_name)) for vol_folder in vol_folders
         ]
 
     def fit_energy_volume_data(
@@ -235,15 +218,13 @@ class EvCurvesData:
         volume_max: float = None,
         num_volumes: int = 1000,
     ) -> None:
-        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
-            fit_to_eos(
-                self.volumes,
-                self.energies,
-                eos_name,
-                volume_min,
-                volume_max,
-                num_volumes,
-            )
+        eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = fit_to_eos(
+            self.volumes,
+            self.energies,
+            eos_name,
+            volume_min,
+            volume_max,
+            num_volumes,
         )
 
         self.eos_parameters = {
@@ -427,13 +408,9 @@ class PhononsData:
             phonon_folders = [
                 phonon_folder
                 for phonon_folder in phonon_folders
-                if os.path.exists(
-                    os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
-                )
+                if os.path.exists(os.path.join(self.path, phonon_folder, "CONTCAR.2phonons"))
                 and round(
-                    Structure.from_file(
-                        os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
-                    ).volume,
+                    Structure.from_file(os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")).volume,
                     2,
                 )
                 in volumes_set
@@ -443,9 +420,7 @@ class PhononsData:
             incar_data = {}
             for key in incar_keys:
                 try:
-                    incar_data[key] = Incar.from_file(
-                        os.path.join(self.path, phonon_folder, f"INCAR.{key}")
-                    )
+                    incar_data[key] = Incar.from_file(os.path.join(self.path, phonon_folder, f"INCAR.{key}"))
                 except FileNotFoundError:
                     if key == "1relax":
                         continue
@@ -453,15 +428,11 @@ class PhononsData:
                         raise
             self.incars.append(incar_data)
 
-            structure = Structure.from_file(
-                os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
-            )
+            structure = Structure.from_file(os.path.join(self.path, phonon_folder, "CONTCAR.2phonons"))
             self.phonon_structures.append(structure)
 
         if phonon_folders:
-            self.kpoints = Kpoints.from_file(
-                os.path.join(self.path, phonon_folders[0], "KPOINTS.2phonons")
-            )
+            self.kpoints = Kpoints.from_file(os.path.join(self.path, phonon_folders[0], "KPOINTS.2phonons"))
 
         try:
             self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
@@ -474,9 +445,7 @@ class PhononsData:
         padded_arrays = []
         for arr in arrays:
             if pad_type == "constant":
-                padded_arr = np.pad(
-                    arr, (0, max_length - len(arr)), constant_values=pad_value
-                )
+                padded_arr = np.pad(arr, (0, max_length - len(arr)), constant_values=pad_value)
             elif pad_type == "increasing":
                 increment = arr[-1] - arr[-2]
                 pad_values = np.arange(
@@ -502,15 +471,11 @@ class PhononsData:
         dos_array = []
 
         frequency_array = [
-            vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom][
-                "frequency_hz"
-            ].values
+            vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom]["frequency_hz"].values
             for volume_per_atom in volumes_per_atom
         ]
         dos_array = [
-            vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom][
-                "dos_1_per_hz"
-            ].values
+            vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom]["dos_1_per_hz"].values
             for volume_per_atom in volumes_per_atom
         ]
 
@@ -540,42 +505,26 @@ class PhononsData:
             f_vib_poly,
             s_vib_poly,
             cv_vib_poly,
-        ) = fit_harmonic(
-            self.volumes, self.temperatures, self.f_vib, self.s_vib, self.cv_vib, order
-        )
+        ) = fit_harmonic(self.volumes, self.temperatures, self.f_vib, self.s_vib, self.cv_vib, order)
 
         self.f_vib_fit = f_vib_fit
         self.s_vib_fit = s_vib_fit
         self.cv_vib_fit = cv_vib_fit
         self.volume_fit = volume_fit
 
-        self.helmholtz_energy = {
-            f"{temp}K": f_vib[i] for i, temp in enumerate(self.temperatures)
-        }
-        self.internal_energy = {
-            f"{temp}K": e_vib[i] for i, temp in enumerate(self.temperatures)
-        }
-        self.entropy = {
-            f"{temp}K": s_vib[i] for i, temp in enumerate(self.temperatures)
-        }
-        self.heat_capacity = {
-            f"{temp}K": cv_vib[i] for i, temp in enumerate(self.temperatures)
-        }
+        self.helmholtz_energy = {f"{temp}K": f_vib[i] for i, temp in enumerate(self.temperatures)}
+        self.internal_energy = {f"{temp}K": e_vib[i] for i, temp in enumerate(self.temperatures)}
+        self.entropy = {f"{temp}K": s_vib[i] for i, temp in enumerate(self.temperatures)}
+        self.heat_capacity = {f"{temp}K": cv_vib[i] for i, temp in enumerate(self.temperatures)}
 
         self.helmholtz_energy_fit = {
-            "polynomial_coefficients": {
-                f"{temp}K": coeff for temp, coeff in zip(self.temperatures, f_vib_poly)
-            }
+            "polynomial_coefficients": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, f_vib_poly)}
         }
         self.entropy_fit = {
-            "polynomial_coefficients": {
-                f"{temp}K": coeff for temp, coeff in zip(self.temperatures, s_vib_poly)
-            }
+            "polynomial_coefficients": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, s_vib_poly)}
         }
         self.heat_capacity_fit = {
-            "polynomial_coefficients": {
-                f"{temp}K": coeff for temp, coeff in zip(self.temperatures, cv_vib_poly)
-            }
+            "polynomial_coefficients": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, cv_vib_poly)}
         }
 
         # Temporary harmonic_fit_df for qha.
@@ -680,13 +629,9 @@ class ThermalElectronicData:
             elec_folders = [
                 elec_folder
                 for elec_folder in elec_folders
-                if os.path.exists(
-                    os.path.join(self.path, elec_folder, "CONTCAR.elec_dos")
-                )
+                if os.path.exists(os.path.join(self.path, elec_folder, "CONTCAR.elec_dos"))
                 and round(
-                    Structure.from_file(
-                        os.path.join(self.path, elec_folder, "CONTCAR.elec_dos")
-                    ).volume,
+                    Structure.from_file(os.path.join(self.path, elec_folder, "CONTCAR.elec_dos")).volume,
                     2,
                 )
                 in volumes_set
@@ -694,17 +639,12 @@ class ThermalElectronicData:
 
         for elec_folder in elec_folders:
             incar_data = {
-                key: Incar.from_file(
-                    os.path.join(self.path, elec_folder, f"INCAR.{key}")
-                )
-                for key in incar_keys
+                key: Incar.from_file(os.path.join(self.path, elec_folder, f"INCAR.{key}")) for key in incar_keys
             }
             self.incars.append(incar_data)
 
         if elec_folders:
-            self.kpoints = Kpoints.from_file(
-                os.path.join(self.path, elec_folders[0], "KPOINTS.elec_dos")
-            )
+            self.kpoints = Kpoints.from_file(os.path.join(self.path, elec_folders[0], "KPOINTS.elec_dos"))
 
         try:
             self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
@@ -717,9 +657,7 @@ class ThermalElectronicData:
         order: int,
     ):
         self.structures = [
-            Structure.from_file(
-                os.path.join(self.path, elec_folder, "CONTCAR.elec_dos")
-            )
+            Structure.from_file(os.path.join(self.path, elec_folder, "CONTCAR.elec_dos"))
             for elec_folder in self._get_elec_folders()
         ]
 
@@ -728,15 +666,11 @@ class ThermalElectronicData:
         self.number_of_atoms = self.electron_dos_data["number_of_atoms"].unique()[0]
 
         energy_array = [
-            self.electron_dos_data[self.electron_dos_data["volume"] == volume][
-                "energy_minus_fermi_energy"
-            ].values[0]
+            self.electron_dos_data[self.electron_dos_data["volume"] == volume]["energy_minus_fermi_energy"].values[0]
             for volume in volumes
         ]
         dos_array = [
-            self.electron_dos_data[self.electron_dos_data["volume"] == volume][
-                "total_dos"
-            ].values[0]
+            self.electron_dos_data[self.electron_dos_data["volume"] == volume]["total_dos"].values[0]
             for volume in volumes
         ]
 
@@ -756,10 +690,8 @@ class ThermalElectronicData:
         self.volumes = volumes
         self.temperatures = temperature_range
 
-        volume_fit, f_el_fit, s_el_fit, cv_el_fit, f_el_poly, s_el_poly, cv_el_poly = (
-            fit_thermal_electronic(
-                self.volumes, self.temperatures, f_el, s_el, cv_el, order
-            )
+        volume_fit, f_el_fit, s_el_fit, cv_el_fit, f_el_poly, s_el_poly, cv_el_poly = fit_thermal_electronic(
+            self.volumes, self.temperatures, f_el, s_el, cv_el, order
         )
 
         self.volume_fit = volume_fit
@@ -775,31 +707,19 @@ class ThermalElectronicData:
         self.entropy = {}
         self.heat_capacity = {}
 
-        self.helmholtz_energy = {
-            f"{temp}K": f_el[i] for i, temp in enumerate(self.temperatures)
-        }
-        self.internal_energy = {
-            f"{temp}K": e_el[i] for i, temp in enumerate(self.temperatures)
-        }
+        self.helmholtz_energy = {f"{temp}K": f_el[i] for i, temp in enumerate(self.temperatures)}
+        self.internal_energy = {f"{temp}K": e_el[i] for i, temp in enumerate(self.temperatures)}
         self.entropy = {f"{temp}K": s_el[i] for i, temp in enumerate(self.temperatures)}
-        self.heat_capacity = {
-            f"{temp}K": cv_el[i] for i, temp in enumerate(self.temperatures)
-        }
+        self.heat_capacity = {f"{temp}K": cv_el[i] for i, temp in enumerate(self.temperatures)}
 
         self.helmholtz_energy_fit = {
-            "polynomial_coefficients": {
-                f"{temp}K": coeff for temp, coeff in zip(self.temperatures, f_el_poly)
-            }
+            "polynomial_coefficients": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, f_el_poly)}
         }
         self.entropy_fit = {
-            "polynomial_coefficients": {
-                f"{temp}K": coeff for temp, coeff in zip(self.temperatures, s_el_poly)
-            }
+            "polynomial_coefficients": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, s_el_poly)}
         }
         self.heat_capacity_fit = {
-            "polynomial_coefficients": {
-                f"{temp}K": coeff for temp, coeff in zip(self.temperatures, cv_el_poly)
-            }
+            "polynomial_coefficients": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, cv_el_poly)}
         }
 
         # Temporary df for qha
@@ -819,15 +739,11 @@ class ThermalElectronicData:
 
         # Remove the outer layer of lists
         for col in ["number_of_atoms", "f_el_poly", "s_el_poly", "cv_el_poly"]:
-            thermal_electronic_fit_df[col] = thermal_electronic_fit_df[col].apply(
-                lambda x: x[0]
-            )
+            thermal_electronic_fit_df[col] = thermal_electronic_fit_df[col].apply(lambda x: x[0])
 
         self.thermal_electronic_fit_df = thermal_electronic_fit_df
 
-    def plot(
-        self, property_to_plot: str, selected_temperatures_plot: np.ndarray = None
-    ) -> tuple[go.Figure, go.Figure]:
+    def plot(self, property_to_plot: str, selected_temperatures_plot: np.ndarray = None) -> tuple[go.Figure, go.Figure]:
 
         property_mapping = {
             "helmholtz_energy": "f_el",
@@ -879,59 +795,64 @@ class QuasiHarmonicData:
             "phonons": {},
             "phonons_thermal_electronic": {},
         }
-# TODO: work here
+
+    # TODO: work here
     def get_quasi_harmonic_data(
         self,
         method: str,
         eos: str,
-        num_atoms_eos: int,
-        temperatures_list,
+        number_of_atoms: int,
+        temperatures,
         volume_range: np.ndarray,
         energy_eos: np.ndarray,
-        #harmonic_properties_fit: pd.DataFrame = None,
-        f_vib_fit = None,
-        s_vib_fit = None,
-        cv_vib_fit = None,
-        #debye_f_vib = None,
-        #debye_s_vib = None,
-        #debye_cv_vib = None,
-        #debye_properties: pd.DataFrame = None,
-        thermal_electronic_properties_fit: pd.DataFrame = None,
+        f_vib_fit=None,
+        s_vib_fit=None,
+        cv_vib_fit=None,
+        f_el_fit=None,
+        s_el_fit=None,
+        cv_el_fit=None,
         P: float = 0,
     ) -> None:
 
-        quasi_harmonic_properties = process_quasi_harmonic(
-            num_atoms_eos=num_atoms_eos,
-            temperature_list = temperatures_list,
+        (
+            f_plus_pv,
+            eos_constants,
+            s_coefficients,
+            cv_coefficients,
+            V0,
+            F0,
+            B,
+            BP,
+            S0,
+            CTE,
+            Cp,
+            H0,
+            quasi_harmonic_properties,
+        ) = process_quasi_harmonic(
+            number_of_atoms=number_of_atoms,
+            temperatures=temperatures,
             volume_range=volume_range,
             energy_eos=energy_eos,
-            #harmonic_properties_fit=harmonic_properties_fit,
-            f_vib_fit = f_vib_fit,
-            s_vib_fit = s_vib_fit,
-            cv_vib_fit = cv_vib_fit,
-            #debye_f_vib=debye_f_vib,
-            #debye_s_vib=debye_s_vib,
-            #debye_cv_vib=debye_cv_vib,
-            #debye_properties=debye_properties,
-            thermal_electronic_properties_fit=thermal_electronic_properties_fit,
+            f_vib_fit=f_vib_fit,
+            s_vib_fit=s_vib_fit,
+            cv_vib_fit=cv_vib_fit,
+            f_el_fit=f_el_fit,
+            s_el_fit=s_el_fit,
+            cv_el_fit=cv_el_fit,
             P=P,
             eos=eos,
         )
+        
+        f_
 
         self.quasi_harmonic_df = quasi_harmonic_properties
         self.method = method
         self.pressure = quasi_harmonic_properties["pressure"].values.tolist()[0]
-        self.number_of_atoms = int(
-            quasi_harmonic_properties["number_of_atoms"].values.tolist()[0]
-        )
+        self.number_of_atoms = int(quasi_harmonic_properties["number_of_atoms"].values.tolist()[0])
         self.temperatures = quasi_harmonic_properties["temperature"].values.tolist()
         self.volumes = quasi_harmonic_properties["volume_range"].values[0].tolist()
-        eos_constants = [
-            arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]
-        ]
-        s_coefficients = [
-            arr.tolist() for arr in quasi_harmonic_properties["s_coefficients"]
-        ]
+        eos_constants = [arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]]
+        s_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["s_coefficients"]]
 
         self.helmholtz_energy = {
             "eos_parameters": {
@@ -950,9 +871,7 @@ class QuasiHarmonicData:
         for temp, entropy in zip(self.temperatures, s_coefficients):
             self.entropy["polynomial_coefficients"][f"{temp}K"] = entropy
 
-        cv_coefficients = [
-            arr.tolist() for arr in quasi_harmonic_properties["cv_coefficients"]
-        ]
+        cv_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["cv_coefficients"]]
         self.heat_capacity = {"polynomial_coefficients": {}}
         for temp, cv in zip(self.temperatures, cv_coefficients):
             self.heat_capacity["polynomial_coefficients"][f"{temp}K"] = cv
@@ -974,9 +893,7 @@ class QuasiHarmonicData:
 
         pressure = P
         fig = plot_quasi_harmonic(
-            quasi_harmonic_properties=self.methods[method][pressure][
-                "quasi_harmonic_df"
-            ],
+            quasi_harmonic_properties=self.methods[method][pressure]["quasi_harmonic_df"],
             plot_type=plot_type,
             selected_temperatures_plot=selected_temperatures_plot,
         )
@@ -1008,9 +925,7 @@ class Configuration:
             "bridges2": "bridges2.json",
         }
         if template in templates_map:
-            with importlib.resources.path(
-                "dfttk.job_templates", templates_map[template]
-            ) as job_script_path:
+            with importlib.resources.path("dfttk.job_templates", templates_map[template]) as job_script_path:
                 with open(job_script_path, "r") as file:
                     self.job_script = json.load(file)
 
@@ -1035,9 +950,7 @@ class Configuration:
             file.write(f"#SBATCH -A {self.job_script['account']}\n")
             file.write(f"#SBATCH -p {self.job_script['partition']}\n")
             file.write(f"#SBATCH -N {self.job_script['nodes']}\n")
-            file.write(
-                f"#SBATCH --ntasks-per-node={self.job_script['ntasks_per_node']}\n"
-            )
+            file.write(f"#SBATCH --ntasks-per-node={self.job_script['ntasks_per_node']}\n")
             file.write(f"#SBATCH -t {self.job_script['time']}\n")
             file.write(f"#SBATCH -o {self.job_script['output_file']}\n")
             file.write(f"#SBATCH -e {self.job_script['error_file']}\n\n")
@@ -1213,9 +1126,7 @@ class Configuration:
 
         # Ensure ev_curves_settings_data is set and not empty
         if not self.ev_curves_settings_data:
-            raise AttributeError(
-                "EV curves settings data not set. Please call ev_curves_settings() first."
-            )
+            raise AttributeError("EV curves settings data not set. Please call ev_curves_settings() first.")
 
         # Prepare the VASP input files
         vasp_input.ev_curve_set(
@@ -1352,9 +1263,7 @@ workflows.NELM_reached(os.getcwd())
 
         # Ensure phonons_settings_data is set and not empty
         if not self.phonons_settings_data:
-            raise AttributeError(
-                "Phonons settings data not set. Please call phonons_settings() first."
-            )
+            raise AttributeError("Phonons settings data not set. Please call phonons_settings() first.")
 
         # Prepare the run_file script
         run_dfttk_script = f"""
@@ -1482,10 +1391,10 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         eos = self.ev_curves.eos_parameters["eos_name"]
         a = self.ev_curves.eos_parameters["a"]
         b = self.ev_curves.eos_parameters["b"]
-        c = self.ev_curves.eos_parameters["c"]  
+        c = self.ev_curves.eos_parameters["c"]
         d = self.ev_curves.eos_parameters["d"]
         e = self.ev_curves.eos_parameters["e"]
-        
+
         # Get the EOS energy at 0 K corresponding to the volume range
         equation_functions = {
             "mBM4": eos_fit.mBM4_equation,
@@ -1499,39 +1408,55 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             energy_eos = equation_functions[eos](volume_range, a, b, c, d)
         elif eos == "mBM5" or eos == "BM5" or eos == "LOG5":
             energy_eos = equation_functions[eos](volume_range, a, b, c, d, e)
-        
+
         phonons_f_vib_fit = []
         phonons_s_vib_fit = []
         phonons_cv_vib_fit = []
         debye_f_vib = []
         debye_s_vib = []
         debye_cv_vib = []
+        f_el_fit = []
+        s_el_fit = []
+        cv_el_fit = []
         phonon_temperatures_list = self.phonons.harmonic_fit_df.index.tolist()
+        phonon_temperatures_list = np.array(phonon_temperatures_list)
 
-        for index, temperatures in enumerate(phonon_temperatures_list):
-            f_vib_poly = self.phonons.harmonic_fit_df.loc[temperatures, "f_vib_poly"]
+        for index, temperature in enumerate(phonon_temperatures_list):
+            f_vib_poly = self.phonons.harmonic_fit_df.loc[temperature, "f_vib_poly"]
             f_vib_fit = f_vib_poly(volume_range)  # Evaluate the polynomial for the given volume range
             phonons_f_vib_fit.append(f_vib_fit)  # Append the result for this temperature
-            
-            s_vib_poly = self.phonons.harmonic_fit_df.loc[temperatures, "s_vib_poly"]
+
+            s_vib_poly = self.phonons.harmonic_fit_df.loc[temperature, "s_vib_poly"]
             order = s_vib_poly.order
             s_vib_fit = s_vib_poly(volume_range)
             phonons_s_vib_fit.append(s_vib_fit)  # Append the result for this temperature
-            
-            cv_vib_poly = self.phonons.harmonic_fit_df.loc[temperatures, "cv_vib_poly"]
+
+            cv_vib_poly = self.phonons.harmonic_fit_df.loc[temperature, "cv_vib_poly"]
             order = cv_vib_poly.order
             cv_vib_fit = cv_vib_poly(volume_range)
             phonons_cv_vib_fit.append(cv_vib_fit)  # Append the result for this temperature
-            
-            f_vib = self.debye.debye_df[self.debye.debye_df["temperatures"] == temperatures]["f_vib"].values[0]
+
+            f_vib = self.debye.debye_df[self.debye.debye_df["temperatures"] == temperature]["f_vib"].values[0]
             debye_f_vib.append(f_vib)
-            
-            s_vib = self.debye.debye_df[self.debye.debye_df["temperatures"] == temperatures]["s_vib"].values[0]
+
+            s_vib = self.debye.debye_df[self.debye.debye_df["temperatures"] == temperature]["s_vib"].values[0]
             debye_s_vib.append(s_vib)
-            
-            cv_vib = self.debye.debye_df[self.debye.debye_df["temperatures"] == temperatures]["cv_vib"].values[0]
+
+            cv_vib = self.debye.debye_df[self.debye.debye_df["temperatures"] == temperature]["cv_vib"].values[0]
             debye_cv_vib.append(cv_vib)
-            
+
+            f_el_poly = self.thermal_electronic.thermal_electronic_fit_df.loc[temperature]["f_el_poly"]
+            f_el = f_el_poly(volume_range)
+            f_el_fit.append(f_el)
+
+            s_el_poly = self.thermal_electronic.thermal_electronic_fit_df.loc[temperature]["s_el_poly"]
+            s_el = s_el_poly(volume_range)
+            s_el_fit.append(s_el)
+
+            cv_el_poly = self.thermal_electronic.thermal_electronic_fit_df.loc[temperature]["cv_el_poly"]
+            cv_el = cv_el_poly(volume_range)
+            cv_el_fit.append(cv_el)
+
         # Convert the list to a 2D NumPy array
         phonons_f_vib_fit = np.array(phonons_f_vib_fit)
         phonons_s_vib_fit = np.array(phonons_s_vib_fit)
@@ -1539,45 +1464,35 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         debye_f_vib = np.array(debye_f_vib)
         debye_s_vib = np.array(debye_s_vib)
         debye_cv_vib = np.array(debye_cv_vib)
-        
+
         if not hasattr(self, "qha"):
             self.qha = QuasiHarmonicData()
 
         if method == "debye":
-            #debye_properties = self.debye.debye_df
-            #harmonic_properties_fit = None
             f_vib_fit = debye_f_vib
             s_vib_fit = debye_s_vib
             cv_vib_fit = debye_cv_vib
-            thermal_electronic_properties_fit = None
+            f_el_fit = 0
+            s_el_fit = 0
+            cv_el_fit = 0
         elif method == "debye_thermal_electronic":
-            #debye_properties = self.debye.debye_df
-            #harmonic_properties_fit = None
             f_vib_fit = debye_f_vib
             s_vib_fit = debye_s_vib
             cv_vib_fit = debye_cv_vib
-            thermal_electronic_properties_fit = (
-                self.thermal_electronic.thermal_electronic_fit_df
-            )
         elif method == "phonons":
-            #debye_properties = None
-            #harmonic_properties_fit = self.phonons.harmonic_fit_df
             f_vib_fit = phonons_f_vib_fit
             s_vib_fit = phonons_s_vib_fit
             cv_vib_fit = phonons_cv_vib_fit
-            thermal_electronic_properties_fit = None
+            f_el_fit = 0
+            s_el_fit = 0
+            cv_el_fit = 0
         elif method == "phonons_thermal_electronic":
-            #debye_properties = None
-            #harmonic_properties_fit = self.phonons.harmonic_fit_df
             f_vib_fit = phonons_f_vib_fit
             s_vib_fit = phonons_s_vib_fit
             cv_vib_fit = phonons_cv_vib_fit
-            thermal_electronic_properties_fit = (
-                self.thermal_electronic.thermal_electronic_fit_df
-            )
         else:
             raise ValueError(f"Unknown option: {method}")
-        
+
         self.qha.get_quasi_harmonic_data(
             method,
             eos,
@@ -1585,24 +1500,18 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             phonon_temperatures_list,
             volume_range,
             energy_eos,
-            #harmonic_properties_fit=harmonic_properties_fit,
-            f_vib_fit = f_vib_fit,
-            s_vib_fit = s_vib_fit,
-            cv_vib_fit = cv_vib_fit,
-            #debye_f_vib=debye_f_vib,
-            #debye_s_vib=debye_s_vib,
-            #debye_cv_vib=debye_cv_vib,
-            #debye_properties=debye_properties,
-            thermal_electronic_properties_fit=thermal_electronic_properties_fit,
+            f_vib_fit=f_vib_fit,
+            s_vib_fit=s_vib_fit,
+            cv_vib_fit=cv_vib_fit,
+            f_el_fit=f_el_fit,
+            s_el_fit=s_el_fit,
+            cv_el_fit=cv_el_fit,
             P=P,
         )
 
     def replace_keys(self, d, key_mapping):
         if isinstance(d, dict):
-            return {
-                key_mapping.get(k, k): self.replace_keys(v, key_mapping)
-                for k, v in d.items()
-            }
+            return {key_mapping.get(k, k): self.replace_keys(v, key_mapping) for k, v in d.items()}
         elif isinstance(d, list):
             return [self.replace_keys(i, key_mapping) for i in d]
         else:
@@ -1637,11 +1546,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                     if hasattr(self, "ev_curves")
                     else None
                 ),
-                "numberOfAtoms": (
-                    self.ev_curves.number_of_atoms
-                    if hasattr(self, "ev_curves")
-                    else None
-                ),
+                "numberOfAtoms": (self.ev_curves.number_of_atoms if hasattr(self, "ev_curves") else None),
             },
         }
 
@@ -1681,9 +1586,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                     "scaleAtoms": number_of_atoms,
                     "volumes": self.ev_curves.volumes.tolist(),
                     "energies": self.ev_curves.energies.tolist(),
-                    "relaxedStructures": [
-                        s.as_dict() for s in self.ev_curves.relaxed_structures
-                    ],
+                    "relaxedStructures": [s.as_dict() for s in self.ev_curves.relaxed_structures],
                     "totalMagneticMoments": (
                         self.ev_curves.total_magnetic_moment
                         if isinstance(self.ev_curves.total_magnetic_moment, list)
@@ -1743,9 +1646,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 "output": {
                     "scaleAtoms": self.phonons.number_of_atoms,
                     "volumes": self.phonons.volumes.tolist(),
-                    "phononStructures": [
-                        s.as_dict() for s in self.phonons.phonon_structures
-                    ],
+                    "phononStructures": [s.as_dict() for s in self.phonons.phonon_structures],
                     "temperatures": {
                         "min": min_temperature.tolist(),
                         "max": max_temperature.tolist(),
@@ -1758,18 +1659,14 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             }
 
         if hasattr(self, "thermal_electronic"):
-            thermal_electronic_settings_copy = (
-                self.thermal_electronic_settings_data.copy()
-            )
+            thermal_electronic_settings_copy = self.thermal_electronic_settings_data.copy()
 
             temperatures = self.thermal_electronic.temperatures
             min_temperature = min(temperatures)
             max_temperature = max(temperatures)
             num_temperatures = len(temperatures)
 
-            helmholtz_energy = convert_poly1d(
-                self.thermal_electronic.helmholtz_energy_fit
-            )
+            helmholtz_energy = convert_poly1d(self.thermal_electronic.helmholtz_energy_fit)
             entropy = convert_poly1d(self.thermal_electronic.entropy_fit)
             heat_capacity = convert_poly1d(self.thermal_electronic.heat_capacity_fit)
 
@@ -1789,12 +1686,8 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 },
                 "output": {
                     "scaleAtoms": self.thermal_electronic.number_of_atoms.tolist(),
-                    "volumes": [
-                        round(s.volume, 2) for s in self.thermal_electronic.structures
-                    ],
-                    "structures": [
-                        s.as_dict() for s in self.thermal_electronic.structures
-                    ],
+                    "volumes": [round(s.volume, 2) for s in self.thermal_electronic.structures],
+                    "structures": [s.as_dict() for s in self.thermal_electronic.structures],
                     "temperatures": {
                         "min": min_temperature.tolist(),
                         "max": max_temperature.tolist(),
@@ -1820,10 +1713,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             }
             methods_copy = {
                 key_mapping.get(method, method): {
-                    str(P)
-                    + " GPa": {
-                        k: v for k, v in data.items() if k != "quasi_harmonic_df"
-                    }
+                    str(P) + " GPa": {k: v for k, v in data.items() if k != "quasi_harmonic_df"}
                     for P, data in pressures.items()
                 }
                 for method, pressures in self.qha.methods.items()
@@ -1901,9 +1791,7 @@ def plot_multiple_ev(
 
     combined_fig = go.Figure()
 
-    config_colors = assign_colors_to_configs(
-        config_names, alpha=marker_alpha, cmap=cmap
-    )
+    config_colors = assign_colors_to_configs(config_names, alpha=marker_alpha, cmap=cmap)
     config_symbols = assign_marker_symbols_to_configs(config_names)
 
     for config_name in config_names:
