@@ -16,87 +16,25 @@ EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 # TODO: Consider pulling out parallel code out of this function into separate functions
 # Remove the dataframe inputs here
-# Input - E, Fvib, Fel, volume_range
+# Input - temperatures, E, Fvib, Svib, Cv,vib, Fel, Sel, Cv,el, volume_range
 def process_quasi_harmonic(
     num_atoms_eos: int,
+    temperature_list: list, # temperatures
     volume_range: np.ndarray,
-    eos_constants: np.ndarray,
-    harmonic_properties_fit: pd.DataFrame = None,
-    phonons_f_vib_fit = None,
-    debye_properties: pd.DataFrame = None,
+    energy_eos: np.ndarray, # E
+    #harmonic_properties_fit: pd.DataFrame = None,
+    f_vib_fit = None, # Fvib
+    s_vib_fit = None, # Svib
+    cv_vib_fit = None, # Cv,vib
+    #debye_f_vib = None, # Fvib
+    #debye_s_vib = None, # Svib
+    #debye_cv_vib = None, # Cv,vib
+    #debye_properties: pd.DataFrame = None,
     thermal_electronic_properties_fit: pd.DataFrame = None,
     P: int = 0,
     eos: str = "BM4",
 ) -> pd.DataFrame:
-    """Calculates the quasi-harmonic properties
-
-    Args:
-        volume_range (np.ndarray): Volume range for the quasi-harmonic calculations
-        eos_parameters_df (pd.DataFrame): pandas dataframe containing the EOS parameters from the eos_fit.fit_to_all function
-        harmonic_properties_fit (pd.DataFrame, optional): pandas dataframe containing the fitted harmonic properties from the fit_harmonic function
-        debye_properties (pd.DataFrame, optional): pandas dataframe containing the Debye properties. Defaults to None.
-        thermal_electronic_properties_fit (pd.DataFrame, optional): pandas dataframe containing the fitted thermal electronic properties. Defaults to None.
-        P (int, optional): Pressure in GPa. Defaults to 0.
-        plot (bool, optional): Defaults to True.
-        plot_type (str, optional): Type of plots to include. Defaults to 'default'.
-        selected_temperatures_plot (list, optional): List of selected temperatures to plot. Defaults to None.
-
-    Returns:
-        pd.DataFrame: pandas dataframe containing the quasi-harmonic properties
-    """
-
-    # Phonons only
-    if harmonic_properties_fit is not None and debye_properties is None:
-        num_atoms_vib = harmonic_properties_fit["number_of_atoms"].values[0]
-        if num_atoms_eos != num_atoms_vib:
-            raise ValueError("The number of atoms do not match")
-        # Thermal electronic contribution
-        if thermal_electronic_properties_fit is not None:
-            num_atoms_tec = thermal_electronic_properties_fit["number_of_atoms"].values[
-                0
-            ]
-            if num_atoms_eos != num_atoms_tec:
-                raise ValueError("The number of atoms do not match")
-
-    # Debye model only
-    elif debye_properties is not None and harmonic_properties_fit is None:
-        num_atoms_debye = debye_properties["number_of_atoms"].values[0]
-        if num_atoms_eos != num_atoms_debye:
-            raise ValueError("The number of atoms do not match")
-        # Thermal electronic contribution
-        if thermal_electronic_properties_fit is not None:
-            num_atoms_tec = thermal_electronic_properties_fit["number_of_atoms"].values[
-                0
-            ]
-            if num_atoms_eos != num_atoms_tec:
-                raise ValueError("The number of atoms do not match")
-
-    # EOS parameters at 0 K
-    if eos == "murnaghan" or eos == "vinet" or eos == "morse":
-        raise NotImplementedError(
-            "Not implemented for Murnaghan, Vinet, or Morse EOS yet"
-        )
-
-    a = eos_constants[0]
-    b = eos_constants[1]
-    c = eos_constants[2]
-    d = eos_constants[3]
-    e = eos_constants[4]
-
-    # Get the EOS energy at 0 K corresponding to the volume range
-    equation_functions = {
-        "mBM4": eos_fit.mBM4_equation,
-        "mBM5": eos_fit.mBM5_equation,
-        "BM4": eos_fit.BM4_equation,
-        "BM5": eos_fit.BM5_equation,
-        "LOG4": eos_fit.LOG4_equation,
-        "LOG5": eos_fit.LOG5_equation,
-    }
-    if eos == "mBM4" or eos == "BM4" or eos == "LOG4":
-        energy_eos = equation_functions[eos](volume_range, a, b, c, d)
-    elif eos == "mBM5" or eos == "BM5" or eos == "LOG5":
-        energy_eos = equation_functions[eos](volume_range, a, b, c, d, e)
-
+    
     # For each temperature, add energy_eos to f_vib_fit, then fit to an EOS
     f_plus_pv_list = []
     volume_range_list = []
@@ -110,13 +48,7 @@ def process_quasi_harmonic(
     S0_list = []
 
     P = P / EV_PER_CUBIC_ANGSTROM_TO_GPA  # Convert GPa to eV/Å³
-
-    if harmonic_properties_fit is not None and debye_properties is None:
-        temperature_list = harmonic_properties_fit.index.tolist()
-
-    elif debye_properties is not None and harmonic_properties_fit is None:
-        temperature_list = debye_properties["temperatures"].tolist()
-
+    
     eos_fit_functions = {
         "mBM4": eos_fit.mBM4,
         "mBM5": eos_fit.mBM5,
@@ -127,32 +59,23 @@ def process_quasi_harmonic(
     }
 
     for index, temperature in enumerate(temperature_list):
-        if harmonic_properties_fit is not None and debye_properties is None:
-            f_vib_fit = phonons_f_vib_fit[index]
-            f_plus_pv = energy_eos + f_vib_fit + P * volume_range
+        #if harmonic_properties_fit is not None and debye_properties is None:
+        f_vib = f_vib_fit[index]
+        f_plus_pv = energy_eos + f_vib + P * volume_range
 
-            if thermal_electronic_properties_fit is not None:
-                f_el_poly = thermal_electronic_properties_fit.loc[temperature][
-                    "f_el_poly"
-                ]
-                f_el_fit = f_el_poly(volume_range)
-                f_plus_pv += f_el_fit
+        if thermal_electronic_properties_fit is not None:
+            f_el_poly = thermal_electronic_properties_fit.loc[temperature][
+                "f_el_poly"
+            ]
+            f_el_fit = f_el_poly(volume_range)
+            f_plus_pv += f_el_fit
 
-            f_plus_pv_list.append(f_plus_pv)
-            volume_range_list.append(volume_range)
+        f_plus_pv_list.append(f_plus_pv)
+        volume_range_list.append(volume_range)
 
+        '''
         elif debye_properties is not None and harmonic_properties_fit is None:
-            # Check if the volume range is the same as the one used for the Debye model
-            volume_range_debye = debye_properties[
-                debye_properties["temperatures"] == temperature
-            ]["volume"].values[0]
-            if not np.array_equal(volume_range, volume_range_debye):
-                raise ValueError(
-                    "The volume range used for the Debye model is different from the one used for the EOS"
-                )
-            f_vib = debye_properties[debye_properties["temperatures"] == temperature][
-                "f_vib"
-            ].values[0]
+            f_vib = debye_f_vib[index]
             f_plus_pv = energy_eos + f_vib + P * volume_range
 
             if thermal_electronic_properties_fit is not None:
@@ -164,7 +87,7 @@ def process_quasi_harmonic(
 
             f_plus_pv_list.append(f_plus_pv)
             volume_range_list.append(volume_range)
-
+        '''
         try:
             eos_constants, eos_parameters, _, _, _ = eos_fit_functions[eos](
                 volume_range, f_plus_pv
@@ -188,26 +111,16 @@ def process_quasi_harmonic(
         B_list.append(B)
         BP_list.append(BP)
 
-        if harmonic_properties_fit is not None and debye_properties is None:
-            s_vib_poly = harmonic_properties_fit.loc[temperature]["s_vib_poly"]
-            order = s_vib_poly.order
-            s_vib_fit = s_vib_poly(volume_range)
-            s_vib = s_vib_fit
-
-            cv_vib_poly = harmonic_properties_fit.loc[temperature]["cv_vib_poly"]
-            order = cv_vib_poly.order
-            cv_vib_fit = cv_vib_poly(volume_range)
-            cv_vib = cv_vib_fit
-
-        elif debye_properties is not None and harmonic_properties_fit is None:
-            s_vib = debye_properties[debye_properties["temperatures"] == temperature][
-                "s_vib"
-            ].values[0]
-
-            cv_vib = debye_properties[debye_properties["temperatures"] == temperature][
-                "cv_vib"
-            ].values[0]
-            order = 2
+        #if harmonic_properties_fit is not None and debye_properties is None:
+        s_vib = s_vib_fit[index]
+        cv_vib = cv_vib_fit[index]
+        order = 2
+        #order = 2
+            
+        #elif debye_properties is not None and harmonic_properties_fit is None:
+        #    s_vib = debye_s_vib[index]
+        #    cv_vib = debye_cv_vib[index]
+        #    order = 2
 
         if thermal_electronic_properties_fit is not None:
             s_el_poly = thermal_electronic_properties_fit.loc[temperature]["s_el_poly"]

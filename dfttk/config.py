@@ -27,6 +27,7 @@ from dfttk.aggregate_extraction import (
     calculate_encut_conv,
     calculate_kpoint_conv,
 )
+import dfttk.eos_fit as eos_fit
 from dfttk.eos_fit import (
     fit_to_eos,
     plot_ev,
@@ -884,22 +885,34 @@ class QuasiHarmonicData:
         method: str,
         eos: str,
         num_atoms_eos: int,
+        temperatures_list,
         volume_range: np.ndarray,
-        eos_constants: list,
-        harmonic_properties_fit: pd.DataFrame = None,
-        phonons_f_vib_fit = None,
-        debye_properties: pd.DataFrame = None,
+        energy_eos: np.ndarray,
+        #harmonic_properties_fit: pd.DataFrame = None,
+        f_vib_fit = None,
+        s_vib_fit = None,
+        cv_vib_fit = None,
+        #debye_f_vib = None,
+        #debye_s_vib = None,
+        #debye_cv_vib = None,
+        #debye_properties: pd.DataFrame = None,
         thermal_electronic_properties_fit: pd.DataFrame = None,
         P: float = 0,
     ) -> None:
 
         quasi_harmonic_properties = process_quasi_harmonic(
             num_atoms_eos=num_atoms_eos,
+            temperature_list = temperatures_list,
             volume_range=volume_range,
-            eos_constants=eos_constants,
-            harmonic_properties_fit=harmonic_properties_fit,
-            phonons_f_vib_fit=phonons_f_vib_fit,
-            debye_properties=debye_properties,
+            energy_eos=energy_eos,
+            #harmonic_properties_fit=harmonic_properties_fit,
+            f_vib_fit = f_vib_fit,
+            s_vib_fit = s_vib_fit,
+            cv_vib_fit = cv_vib_fit,
+            #debye_f_vib=debye_f_vib,
+            #debye_s_vib=debye_s_vib,
+            #debye_cv_vib=debye_cv_vib,
+            #debye_properties=debye_properties,
             thermal_electronic_properties_fit=thermal_electronic_properties_fit,
             P=P,
             eos=eos,
@@ -1465,66 +1478,121 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         volume_range: np.ndarray,
         P: float = 0,
     ):
-        if not hasattr(self, "qha"):
-            self.qha = QuasiHarmonicData()
-
-        if method == "debye":
-            debye_properties = self.debye.debye_df
-            harmonic_properties_fit = None
-            thermal_electronic_properties_fit = None
-        elif method == "debye_thermal_electronic":
-            debye_properties = self.debye.debye_df
-            harmonic_properties_fit = None
-            thermal_electronic_properties_fit = (
-                self.thermal_electronic.thermal_electronic_fit_df
-            )
-        elif method == "phonons":
-            debye_properties = None
-            harmonic_properties_fit = self.phonons.harmonic_fit_df
-            thermal_electronic_properties_fit = None
-        elif method == "phonons_thermal_electronic":
-            debye_properties = None
-            harmonic_properties_fit = self.phonons.harmonic_fit_df
-            thermal_electronic_properties_fit = (
-                self.thermal_electronic.thermal_electronic_fit_df
-            )
-        else:
-            raise ValueError(f"Unknown option: {method}")
 
         eos = self.ev_curves.eos_parameters["eos_name"]
-        eos_constants = np.array(
-            [
-                self.ev_curves.eos_parameters["a"],
-                self.ev_curves.eos_parameters["b"],
-                self.ev_curves.eos_parameters["c"],
-                self.ev_curves.eos_parameters["d"],
-                self.ev_curves.eos_parameters["e"],
-            ]
-        )
+        a = self.ev_curves.eos_parameters["a"]
+        b = self.ev_curves.eos_parameters["b"]
+        c = self.ev_curves.eos_parameters["c"]  
+        d = self.ev_curves.eos_parameters["d"]
+        e = self.ev_curves.eos_parameters["e"]
+        
+        # Get the EOS energy at 0 K corresponding to the volume range
+        equation_functions = {
+            "mBM4": eos_fit.mBM4_equation,
+            "mBM5": eos_fit.mBM5_equation,
+            "BM4": eos_fit.BM4_equation,
+            "BM5": eos_fit.BM5_equation,
+            "LOG4": eos_fit.LOG4_equation,
+            "LOG5": eos_fit.LOG5_equation,
+        }
+        if eos == "mBM4" or eos == "BM4" or eos == "LOG4":
+            energy_eos = equation_functions[eos](volume_range, a, b, c, d)
+        elif eos == "mBM5" or eos == "BM5" or eos == "LOG5":
+            energy_eos = equation_functions[eos](volume_range, a, b, c, d, e)
         
         phonons_f_vib_fit = []
+        phonons_s_vib_fit = []
+        phonons_cv_vib_fit = []
+        debye_f_vib = []
+        debye_s_vib = []
+        debye_cv_vib = []
         phonon_temperatures_list = self.phonons.harmonic_fit_df.index.tolist()
 
         for index, temperatures in enumerate(phonon_temperatures_list):
             f_vib_poly = self.phonons.harmonic_fit_df.loc[temperatures, "f_vib_poly"]
             f_vib_fit = f_vib_poly(volume_range)  # Evaluate the polynomial for the given volume range
             phonons_f_vib_fit.append(f_vib_fit)  # Append the result for this temperature
-            print(index)
+            
+            s_vib_poly = self.phonons.harmonic_fit_df.loc[temperatures, "s_vib_poly"]
+            order = s_vib_poly.order
+            s_vib_fit = s_vib_poly(volume_range)
+            phonons_s_vib_fit.append(s_vib_fit)  # Append the result for this temperature
+            
+            cv_vib_poly = self.phonons.harmonic_fit_df.loc[temperatures, "cv_vib_poly"]
+            order = cv_vib_poly.order
+            cv_vib_fit = cv_vib_poly(volume_range)
+            phonons_cv_vib_fit.append(cv_vib_fit)  # Append the result for this temperature
+            
+            f_vib = self.debye.debye_df[self.debye.debye_df["temperatures"] == temperatures]["f_vib"].values[0]
+            debye_f_vib.append(f_vib)
+            
+            s_vib = self.debye.debye_df[self.debye.debye_df["temperatures"] == temperatures]["s_vib"].values[0]
+            debye_s_vib.append(s_vib)
+            
+            cv_vib = self.debye.debye_df[self.debye.debye_df["temperatures"] == temperatures]["cv_vib"].values[0]
+            debye_cv_vib.append(cv_vib)
             
         # Convert the list to a 2D NumPy array
         phonons_f_vib_fit = np.array(phonons_f_vib_fit)
-        print(phonons_f_vib_fit.shape)
+        phonons_s_vib_fit = np.array(phonons_s_vib_fit)
+        phonons_cv_vib_fit = np.array(phonons_cv_vib_fit)
+        debye_f_vib = np.array(debye_f_vib)
+        debye_s_vib = np.array(debye_s_vib)
+        debye_cv_vib = np.array(debye_cv_vib)
+        
+        if not hasattr(self, "qha"):
+            self.qha = QuasiHarmonicData()
 
+        if method == "debye":
+            #debye_properties = self.debye.debye_df
+            #harmonic_properties_fit = None
+            f_vib_fit = debye_f_vib
+            s_vib_fit = debye_s_vib
+            cv_vib_fit = debye_cv_vib
+            thermal_electronic_properties_fit = None
+        elif method == "debye_thermal_electronic":
+            #debye_properties = self.debye.debye_df
+            #harmonic_properties_fit = None
+            f_vib_fit = debye_f_vib
+            s_vib_fit = debye_s_vib
+            cv_vib_fit = debye_cv_vib
+            thermal_electronic_properties_fit = (
+                self.thermal_electronic.thermal_electronic_fit_df
+            )
+        elif method == "phonons":
+            #debye_properties = None
+            #harmonic_properties_fit = self.phonons.harmonic_fit_df
+            f_vib_fit = phonons_f_vib_fit
+            s_vib_fit = phonons_s_vib_fit
+            cv_vib_fit = phonons_cv_vib_fit
+            thermal_electronic_properties_fit = None
+        elif method == "phonons_thermal_electronic":
+            #debye_properties = None
+            #harmonic_properties_fit = self.phonons.harmonic_fit_df
+            f_vib_fit = phonons_f_vib_fit
+            s_vib_fit = phonons_s_vib_fit
+            cv_vib_fit = phonons_cv_vib_fit
+            thermal_electronic_properties_fit = (
+                self.thermal_electronic.thermal_electronic_fit_df
+            )
+        else:
+            raise ValueError(f"Unknown option: {method}")
         
         self.qha.get_quasi_harmonic_data(
             method,
             eos,
             self.ev_curves.number_of_atoms,
+            phonon_temperatures_list,
             volume_range,
-            eos_constants,
-            harmonic_properties_fit=harmonic_properties_fit,
-            phonons_f_vib_fit=phonons_f_vib_fit,
-            debye_properties=debye_properties,
+            energy_eos,
+            #harmonic_properties_fit=harmonic_properties_fit,
+            f_vib_fit = f_vib_fit,
+            s_vib_fit = s_vib_fit,
+            cv_vib_fit = cv_vib_fit,
+            #debye_f_vib=debye_f_vib,
+            #debye_s_vib=debye_s_vib,
+            #debye_cv_vib=debye_cv_vib,
+            #debye_properties=debye_properties,
             thermal_electronic_properties_fit=thermal_electronic_properties_fit,
             P=P,
         )
