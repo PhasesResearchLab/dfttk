@@ -116,7 +116,7 @@ def process_quasi_harmonic(
         S0 = s_poly(V0)
         S0_list.append(S0)
     
-    # Create a quasi-harmonic dataframe
+    # Create a quasi-harmonic dataframe. Remove this.
     quasi_harmonic_properties = pd.DataFrame(
         data={
             "pressure": [P * EV_PER_CUBIC_ANGSTROM_TO_GPA] * len(temperatures),

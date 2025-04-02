@@ -843,7 +843,39 @@ class QuasiHarmonicData:
             eos=eos,
         )
         
-        f_
+        f_plus_pv_list = f_plus_pv.tolist()
+        eos_constants_list = [arr.tolist() for arr in eos_constants]
+        s_coefficients_list = [arr.tolist() for arr in s_coefficients]
+        cv_coefficients_list = [arr.tolist() for arr in cv_coefficients]
+        V0_list = V0.tolist()
+        F0_list = F0.tolist()
+        B_list = B.tolist()
+        BP_list = BP.tolist()
+        S0_list = S0.tolist()
+        CTE_list = CTE.tolist()
+        Cp_list = Cp.tolist()
+        H0_list = H0.tolist()
+        
+        test_qha_df = pd.DataFrame(
+            {
+                "pressure": [P] * len(temperatures),
+                "number_of_atoms": [number_of_atoms] * len(temperatures),
+                "temperature": temperatures,
+                "volume_range": [volume_range] * len(temperatures),
+                "f_plus_pv": f_plus_pv_list,
+                "eos_constants": eos_constants_list,
+                "s_coefficients": s_coefficients_list,
+                "cv_coefficients": cv_coefficients_list,
+                "V0": V0_list,
+                "F0": F0_list,
+                "B": B_list,
+                "BP": BP_list,
+                "S0": S0_list,
+                "CTE": CTE_list,
+                "Cp": Cp_list,
+                "H0": H0_list,
+            }
+        )
 
         self.quasi_harmonic_df = quasi_harmonic_properties
         self.method = method
