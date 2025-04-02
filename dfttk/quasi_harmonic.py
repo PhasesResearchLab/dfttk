@@ -14,7 +14,6 @@ from dfttk.plotly_format import plot_format
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 def process_quasi_harmonic(
-    number_of_atoms: int,
     temperatures: np.ndarray, 
     volume_range: np.ndarray,
     energy_eos: np.ndarray,
@@ -115,25 +114,6 @@ def process_quasi_harmonic(
 
         S0 = s_poly(V0)
         S0_list.append(S0)
-    
-    # Create a quasi-harmonic dataframe. Remove this.
-    quasi_harmonic_properties = pd.DataFrame(
-        data={
-            "pressure": [P * EV_PER_CUBIC_ANGSTROM_TO_GPA] * len(temperatures),
-            "number_of_atoms": [number_of_atoms] * len(temperatures),
-            "temperature": temperatures,
-            "volume_range": volume_range_list,
-            "f_plus_pv": f_plus_pv_list,
-            "eos_constants": eos_constants_list,
-            "s_coefficients": s_coefficients_list,
-            "cv_coefficients": cv_coefficients_list,
-            "V0": V0_list,
-            "G0": F0_list,
-            "B": B_list,
-            "BP": BP_list,
-            "S0": S0_list,
-        }
-    )
 
     # Calculate other properties using the finite difference method 
     V0 = np.array(V0_list)
@@ -153,13 +133,6 @@ def process_quasi_harmonic(
     Cp = np.insert(Cp, 0, 0)
 
     H0 = G0 + T * S0
-    
-    quasi_harmonic_properties["H0"] = (
-        quasi_harmonic_properties["G0"]
-        + quasi_harmonic_properties["temperature"] * quasi_harmonic_properties["S0"]
-    )
-    quasi_harmonic_properties["CTE"] = CTE
-    quasi_harmonic_properties["Cp"] = Cp
 
     f_plus_pv = np.array(f_plus_pv_list)
     eos_constants = np.array(eos_constants_list)
@@ -171,7 +144,7 @@ def process_quasi_harmonic(
     BP = np.array(BP_list)
     S0 = np.array(S0_list)
     
-    return f_plus_pv, eos_constants, s_coefficients, cv_coefficients, V0, F0, B, BP, S0, CTE, Cp, H0, quasi_harmonic_properties
+    return f_plus_pv, eos_constants, s_coefficients, cv_coefficients, V0, F0, B, BP, S0, CTE, Cp, H0
 
 
 def plot_quasi_harmonic(

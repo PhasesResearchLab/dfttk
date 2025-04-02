@@ -827,9 +827,7 @@ class QuasiHarmonicData:
             CTE,
             Cp,
             H0,
-            quasi_harmonic_properties,
         ) = process_quasi_harmonic(
-            number_of_atoms=number_of_atoms,
             temperatures=temperatures,
             volume_range=volume_range,
             energy_eos=energy_eos,
@@ -877,14 +875,21 @@ class QuasiHarmonicData:
             }
         )
 
-        self.quasi_harmonic_df = quasi_harmonic_properties
+        self.quasi_harmonic_df = test_qha_df#quasi_harmonic_properties
         self.method = method
-        self.pressure = quasi_harmonic_properties["pressure"].values.tolist()[0]
-        self.number_of_atoms = int(quasi_harmonic_properties["number_of_atoms"].values.tolist()[0])
-        self.temperatures = quasi_harmonic_properties["temperature"].values.tolist()
-        self.volumes = quasi_harmonic_properties["volume_range"].values[0].tolist()
-        eos_constants = [arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]]
-        s_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["s_coefficients"]]
+        #self.pressure = quasi_harmonic_properties["pressure"].values.tolist()[0]
+        #self.number_of_atoms = int(quasi_harmonic_properties["number_of_atoms"].values.tolist()[0])
+        #self.temperatures = quasi_harmonic_properties["temperature"].values.tolist()
+        #self.volumes = quasi_harmonic_properties["volume_range"].values[0].tolist()
+        #eos_constants = [arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]]
+        #s_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["s_coefficients"]]
+        
+        self.pressure = self.quasi_harmonic_df["pressure"].values.tolist()[0]
+        self.number_of_atoms = int(self.quasi_harmonic_df["number_of_atoms"].values.tolist()[0])
+        self.temperatures = self.quasi_harmonic_df["temperature"].values.tolist()
+        self.volumes = self.quasi_harmonic_df["volume_range"].values[0].tolist()
+        eos_constants = [arr for arr in self.quasi_harmonic_df["eos_constants"]]
+        s_coefficients = [arr for arr in self.quasi_harmonic_df["s_coefficients"]]
 
         self.helmholtz_energy = {
             "eos_parameters": {
@@ -903,7 +908,7 @@ class QuasiHarmonicData:
         for temp, entropy in zip(self.temperatures, s_coefficients):
             self.entropy["polynomial_coefficients"][f"{temp}K"] = entropy
 
-        cv_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["cv_coefficients"]]
+        cv_coefficients = [arr for arr in self.quasi_harmonic_df["cv_coefficients"]]
         self.heat_capacity = {"polynomial_coefficients": {}}
         for temp, cv in zip(self.temperatures, cv_coefficients):
             self.heat_capacity["polynomial_coefficients"][f"{temp}K"] = cv
