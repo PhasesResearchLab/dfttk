@@ -213,8 +213,8 @@ def _assert_selected_keys_almost_equal(dict1, dict2, keys, atol=1e-4):
 
 def test_process_ev_curve():
     ev_curve_files_and_attributes = [
-        ("test_config_data/expected_ev_curve_incars.json", "incars"),
-        ("test_config_data/expected_ev_curve_kpoints.json", "kpoints"),
+        ("test_config_data/expected_ev_curves_incars.json", "incars"),
+        ("test_config_data/expected_ev_curves_kpoints.json", "kpoints"),
     ]
 
     for filename, attribute in ev_curve_files_and_attributes:
@@ -291,7 +291,7 @@ def test_process_ev_curve():
 
     with open(
         os.path.join(
-            current_dir, "test_config_data/expected_ev_curve_relaxed_structures.json"
+            current_dir, "test_config_data/expected_ev_curves_relaxed_structures.json"
         ),
         "r",
     ) as f:
@@ -310,7 +310,7 @@ def test_process_ev_curve():
 def test_process_phonons():
     phonons_files_and_attributes = [
         ("test_config_data/expected_phonons_incars.json", "incars"),
-        ("test_config_data/expected_ev_curve_kpoints.json", "kpoints"),
+        ("test_config_data/expected_ev_curves_kpoints.json", "kpoints"),
     ]
 
     for filename, attribute in phonons_files_and_attributes:
