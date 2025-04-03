@@ -56,6 +56,8 @@ from dfttk.quasi_harmonic import process_quasi_harmonic, plot_quasi_harmonic
 
 
 class MetaData:
+    """A class to store metadata information for a configuration."""
+
     def __init__(
         self,
         affiliation: str = "DFTTK",
@@ -64,7 +66,18 @@ class MetaData:
         parent_database_id: str = None,
         parent_database_url: str = None,
         comment: str = None,
-    ):
+    ) -> None:
+        """Initialize the MetaData object with the given attributes.
+
+        Args:
+            affiliation (str, optional): Database affiliation. Defaults to "DFTTK".
+            mpdd_id (ObjectId, optional): The MongoDB ObjectId for the MPDD entry. Defaults to None.
+            parent_database (str, optional): The name of the parent database. Defaults to None.
+            parent_database_id (str, optional): The ID of the parent database entry. Defaults to None.
+            parent_database_url (str, optional): The URL of the parent database. Defaults to None.
+            comment (str, optional): Additional comments. Defaults to None.
+        """
+
         self.affiliation = affiliation
         self.mpdd_id = mpdd_id
         self.parent_database = parent_database
@@ -73,7 +86,9 @@ class MetaData:
         self.comment = comment
 
 
-class EvCurvesData:
+class EvCurveData:
+    """A class for handling energy-volume (E-V) curve data for a configuration."""    
+    #TODO: continue docstrings here.
     def __init__(self, path: str, name: str):
         self.path = path
         self.name = name
@@ -966,10 +981,10 @@ class Configuration:
         self.multiplicity = multiplicity
         self.job_script = {}
         self.vasp_cmd = None
-        self.ev_curves_settings_data = {}
+        self.ev_curve_settings_data = {}
         self.phonons_settings_data = {}
         self.thermal_electronic_settings_data = {}
-        self.ev_curves_job_script = {}
+        self.ev_curve_job_script = {}
         self.phonons_job_script = {}
         self.thermal_electronic_job_script = {}
 
@@ -1141,7 +1156,7 @@ class Configuration:
 
         return kpoints_conv_df, fig
 
-    def ev_curves_settings(
+    def ev_curve_settings(
         self,
         material_type: str,
         volumes: list[float],
@@ -1161,7 +1176,7 @@ class Configuration:
         max_errors: int = 10,
     ) -> None:
 
-        self.ev_curves_settings_data = {
+        self.ev_curve_settings_data = {
             "material_type": material_type,
             "volumes": volumes,
             "encut": encut,
@@ -1180,27 +1195,27 @@ class Configuration:
             "max_errors": max_errors,
         }
 
-        self.ev_curves_job_script = self.job_script
+        self.ev_curve_job_script = self.job_script
 
     # TODO: add a way to select the custodian handlers
-    def run_ev_curves(self) -> None:
+    def run_ev_curve(self) -> None:
 
-        # Ensure ev_curves_settings_data is set and not empty
-        if not self.ev_curves_settings_data:
+        # Ensure ev_curve_settings_data is set and not empty
+        if not self.ev_curve_settings_data:
             raise AttributeError(
-                "EV curves settings data not set. Please call ev_curves_settings() first."
+                "EV curves settings data not set. Please call ev_curve_settings() first."
             )
 
         # Prepare the VASP input files
         vasp_input.ev_curve_set(
             self.path,
-            material_type=self.ev_curves_settings_data["material_type"],
-            encut=self.ev_curves_settings_data["encut"],
-            kppa=self.ev_curves_settings_data["kppa"],
-            magmom_fm=self.ev_curves_settings_data["magmom_fm"],
-            potcar_functional=self.ev_curves_settings_data["potcar_functional"],
-            incar_functional=self.ev_curves_settings_data["incar_functional"],
-            other_settings=self.ev_curves_settings_data["other_settings"],
+            material_type=self.ev_curve_settings_data["material_type"],
+            encut=self.ev_curve_settings_data["encut"],
+            kppa=self.ev_curve_settings_data["kppa"],
+            magmom_fm=self.ev_curve_settings_data["magmom_fm"],
+            potcar_functional=self.ev_curve_settings_data["potcar_functional"],
+            incar_functional=self.ev_curve_settings_data["incar_functional"],
+            other_settings=self.ev_curve_settings_data["other_settings"],
         )
 
         # Prepare the run_dfttk.py script
@@ -1212,21 +1227,21 @@ import dfttk.workflows as workflows
 subset = list(VaspErrorHandler.error_msgs.keys())
 handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]
 vasp_cmd = {self.vasp_cmd}
-volumes = {self.ev_curves_settings_data["volumes"]}
+volumes = {self.ev_curve_settings_data["volumes"]}
 
 workflows.ev_curve_series(
     os.getcwd(),
     volumes,
     vasp_cmd,
     handlers,
-    restarting={self.ev_curves_settings_data["restarting"]},
-    keep_wavecar={self.ev_curves_settings_data["keep_wavecar"]},
-    keep_chgcar={self.ev_curves_settings_data["keep_chgcar"]},
-    copy_magmom={self.ev_curves_settings_data["copy_magmom"]},
-    default_settings={self.ev_curves_settings_data["default_settings"]},
-    override_2relax={self.ev_curves_settings_data["override_2relax"]},
-    override_3static={self.ev_curves_settings_data["override_3static"]},
-    max_errors={self.ev_curves_settings_data["max_errors"]}
+    restarting={self.ev_curve_settings_data["restarting"]},
+    keep_wavecar={self.ev_curve_settings_data["keep_wavecar"]},
+    keep_chgcar={self.ev_curve_settings_data["keep_chgcar"]},
+    copy_magmom={self.ev_curve_settings_data["copy_magmom"]},
+    default_settings={self.ev_curve_settings_data["default_settings"]},
+    override_2relax={self.ev_curve_settings_data["override_2relax"]},
+    override_3static={self.ev_curve_settings_data["override_3static"]},
+    max_errors={self.ev_curve_settings_data["max_errors"]}
 )
 workflows.custodian_errors_location(os.getcwd())
 workflows.NELM_reached(os.getcwd())
@@ -1238,7 +1253,7 @@ workflows.NELM_reached(os.getcwd())
         # Run the job
         subprocess.run(["sbatch", "job.sh"], cwd=self.path)
 
-    def process_ev_curves(
+    def process_ev_curve(
         self,
         volumes: list[float] = None,
         outcar_name: str = "OUTCAR.3static",
@@ -1254,14 +1269,14 @@ workflows.NELM_reached(os.getcwd())
         num_volumes: int = 1000,
     ) -> None:
 
-        # Initialize EvCurvesData
-        self.ev_curves = EvCurvesData(self.path, self.name)
+        # Initialize EvCurveData
+        self.ev_curve = EvCurveData(self.path, self.name)
 
         # Get VASP input
-        self.ev_curves.get_vasp_input(volumes)
+        self.ev_curve.get_vasp_input(volumes)
 
         # Get energy-volume data
-        self.ev_curves.get_energy_volume_data(
+        self.ev_curve.get_energy_volume_data(
             volumes=volumes,
             outcar_name=outcar_name,
             oszicar_name=oszicar_name,
@@ -1273,7 +1288,7 @@ workflows.NELM_reached(os.getcwd())
         )
 
         # Fit energy-volume data
-        self.ev_curves.fit_energy_volume_data(
+        self.ev_curve.fit_energy_volume_data(
             eos_name=eos_name,
             volume_min=volume_min,
             volume_max=volume_max,
@@ -1289,12 +1304,12 @@ workflows.NELM_reached(os.getcwd())
         self.debye = DebyeData()
 
         self.debye.get_debye_gruneisen_data(
-            self.ev_curves.number_of_atoms,
-            self.ev_curves.volumes,
-            self.ev_curves.average_mass,
-            self.ev_curves.eos_parameters["V0"],
-            self.ev_curves.eos_parameters["B"],
-            self.ev_curves.eos_parameters["BP"],
+            self.ev_curve.number_of_atoms,
+            self.ev_curve.volumes,
+            self.ev_curve.average_mass,
+            self.ev_curve.eos_parameters["V0"],
+            self.ev_curve.eos_parameters["B"],
+            self.ev_curve.eos_parameters["BP"],
             scaling_factor,
             gruneisen_x,
             temperatures,
@@ -1453,12 +1468,12 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         P: float = 0,
     ):
 
-        eos = self.ev_curves.eos_parameters["eos_name"]
-        a = self.ev_curves.eos_parameters["a"]
-        b = self.ev_curves.eos_parameters["b"]
-        c = self.ev_curves.eos_parameters["c"]
-        d = self.ev_curves.eos_parameters["d"]
-        e = self.ev_curves.eos_parameters["e"]
+        eos = self.ev_curve.eos_parameters["eos_name"]
+        a = self.ev_curve.eos_parameters["a"]
+        b = self.ev_curve.eos_parameters["b"]
+        c = self.ev_curve.eos_parameters["c"]
+        d = self.ev_curve.eos_parameters["d"]
+        e = self.ev_curve.eos_parameters["e"]
 
         # Get the EOS energy at 0 K corresponding to the volume range
         equation_functions = {
@@ -1527,7 +1542,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         self.qha.get_quasi_harmonic_data(
             method,
             eos,
-            self.ev_curves.number_of_atoms,
+            self.ev_curve.number_of_atoms,
             phonon_temperatures_list,
             volume_range,
             energy_eos,
@@ -1571,18 +1586,18 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 "alias": self.alias,
                 "multiplicity": self.multiplicity,
                 "reducedFormula": (
-                    self.ev_curves.relaxed_structures[0].composition.reduced_formula
-                    if hasattr(self, "ev_curves")
+                    self.ev_curve.relaxed_structures[0].composition.reduced_formula
+                    if hasattr(self, "ev_curve")
                     else None
                 ),
                 "nComponents": (
-                    len(self.ev_curves.relaxed_structures[0].composition.elements)
-                    if hasattr(self, "ev_curves")
+                    len(self.ev_curve.relaxed_structures[0].composition.elements)
+                    if hasattr(self, "ev_curve")
                     else None
                 ),
                 "numberOfAtoms": (
-                    self.ev_curves.number_of_atoms
-                    if hasattr(self, "ev_curves")
+                    self.ev_curve.number_of_atoms
+                    if hasattr(self, "ev_curve")
                     else None
                 ),
             },
@@ -1601,43 +1616,43 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 }
             )
 
-        if hasattr(self, "ev_curves"):
-            eos_parameters = self.ev_curves.eos_parameters.copy()
-            ev_curves_settings_copy = self.ev_curves_settings_data.copy()
-            ev_curves_settings_copy.pop("volumes")
-            number_of_atoms = self.ev_curves.number_of_atoms
+        if hasattr(self, "ev_curve"):
+            eos_parameters = self.ev_curve.eos_parameters.copy()
+            ev_curve_settings_copy = self.ev_curve_settings_data.copy()
+            ev_curve_settings_copy.pop("volumes")
+            number_of_atoms = self.ev_curve.number_of_atoms
 
             eos_parameters_ordered = OrderedDict()
             eos_parameters_ordered["eosName"] = eos_parameters.pop("eos_name")
             eos_parameters_ordered.update(eos_parameters)
 
-            document["evCurves"] = {
+            document["EvCurve"] = {
                 "input": {
-                    "jobScript": self.ev_curves_job_script,
-                    "settings": ev_curves_settings_copy,
-                    "poscar": self.ev_curves.starting_poscar.as_dict(),
-                    "incars": self.ev_curves.incars,
-                    "kpoints": self.ev_curves.kpoints.as_dict(),
-                    "potcar": self.ev_curves.potcar.as_dict(),
+                    "jobScript": self.ev_curve_job_script,
+                    "settings": ev_curve_settings_copy,
+                    "poscar": self.ev_curve.starting_poscar.as_dict(),
+                    "incars": self.ev_curve.incars,
+                    "kpoints": self.ev_curve.kpoints.as_dict(),
+                    "potcar": self.ev_curve.potcar.as_dict(),
                 },
                 "output": {
                     "scaleAtoms": number_of_atoms,
-                    "volumes": self.ev_curves.volumes.tolist(),
-                    "energies": self.ev_curves.energies.tolist(),
+                    "volumes": self.ev_curve.volumes.tolist(),
+                    "energies": self.ev_curve.energies.tolist(),
                     "relaxedStructures": [
-                        s.as_dict() for s in self.ev_curves.relaxed_structures
+                        s.as_dict() for s in self.ev_curve.relaxed_structures
                     ],
                     "totalMagneticMoments": (
-                        self.ev_curves.total_magnetic_moment
-                        if isinstance(self.ev_curves.total_magnetic_moment, list)
-                        else self.ev_curves.total_magnetic_moment.tolist()
+                        self.ev_curve.total_magnetic_moment
+                        if isinstance(self.ev_curve.total_magnetic_moment, list)
+                        else self.ev_curve.total_magnetic_moment.tolist()
                     ),
                     "magneticOrderings": (
-                        self.ev_curves.magnetic_ordering
-                        if isinstance(self.ev_curves.magnetic_ordering, list)
-                        else self.ev_curves.magnetic_ordering.tolist()
+                        self.ev_curve.magnetic_ordering
+                        if isinstance(self.ev_curve.magnetic_ordering, list)
+                        else self.ev_curve.magnetic_ordering.tolist()
                     ),
-                    "magData": self.ev_curves.mag_data,
+                    "magData": self.ev_curve.mag_data,
                     "eosParameters": eos_parameters_ordered,
                 },
             }
@@ -1850,7 +1865,7 @@ def plot_multiple_ev(
     config_symbols = assign_marker_symbols_to_configs(config_names)
 
     for config_name in config_names:
-        fig = config_objects[config_name].ev_curves.plot(
+        fig = config_objects[config_name].ev_curve.plot(
             volume_min=volume_min,
             volume_max=volume_max,
             num_volumes=num_volumes,
