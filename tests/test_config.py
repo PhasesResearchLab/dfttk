@@ -15,7 +15,7 @@ config_Al_conv = Configuration(conv_test_path, "config_Al")
 
 config_Al_path = os.path.join(current_dir, "vasp_data/Al/config_Al")
 config_Al = Configuration(config_Al_path, "config_Al")
-config_Al.process_ev_curves()
+config_Al.process_ev_curve()
 
 num_atoms = 4
 # TODO: rewrite some of the json files to include floats. Eg. 0.0K
@@ -211,17 +211,17 @@ def _assert_selected_keys_almost_equal(dict1, dict2, keys, atol=1e-4):
                 ), f"Expected {dict2[key]} for key '{key}', but got {dict1[key]}"
 
 
-def test_process_ev_curves():
-    ev_curves_files_and_attributes = [
-        ("test_config_data/expected_ev_curves_incars.json", "incars"),
-        ("test_config_data/expected_ev_curves_kpoints.json", "kpoints"),
+def test_process_ev_curve():
+    ev_curve_files_and_attributes = [
+        ("test_config_data/expected_ev_curve_incars.json", "incars"),
+        ("test_config_data/expected_ev_curve_kpoints.json", "kpoints"),
     ]
 
-    for filename, attribute in ev_curves_files_and_attributes:
+    for filename, attribute in ev_curve_files_and_attributes:
         with open(os.path.join(current_dir, filename), "r") as f:
             expected_data = json.load(f)
 
-        actual_data = getattr(config_Al.ev_curves, attribute)
+        actual_data = getattr(config_Al.ev_curve, attribute)
 
         if attribute == "kpoints":
             actual_data = actual_data.as_dict()
@@ -230,16 +230,16 @@ def test_process_ev_curves():
             assert actual == expected, f"Expected {expected}, but got {actual}"
 
     assert (
-        config_Al.ev_curves.number_of_atoms == 4
-    ), f"Expected 4, but got {config_Al.ev_curves.number_of_atoms}"
+        config_Al.ev_curve.number_of_atoms == 4
+    ), f"Expected 4, but got {config_Al.ev_curve.number_of_atoms}"
 
     assert np.array_equal(
-        config_Al.ev_curves.volumes,
+        config_Al.ev_curve.volumes,
         np.array([74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0]),
-    ), f"Expected [74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0], but got {config_Al.ev_curves.volumes}"
+    ), f"Expected [74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0], but got {config_Al.ev_curve.volumes}"
 
     assert np.array_equal(
-        config_Al.ev_curves.energies,
+        config_Al.ev_curve.energies,
         np.array(
             [
                 -14.787067,
@@ -252,26 +252,26 @@ def test_process_ev_curves():
                 -14.808673,
             ]
         ),
-    ), f"Expected [-14.787067, -14.863567, -14.92244, -14.960229, -14.973035, -14.955434, -14.902786, -14.808673], but got {config_Al.ev_curves.energies}"
+    ), f"Expected [-14.787067, -14.863567, -14.92244, -14.960229, -14.973035, -14.955434, -14.902786, -14.808673], but got {config_Al.ev_curve.energies}"
 
-    assert config_Al.ev_curves.atomic_masses == {
+    assert config_Al.ev_curve.atomic_masses == {
         "Al": 26.981
-    }, f"Expected {'Al': 26.981}, but got {config_Al.ev_curves.atomic_masses}"
+    }, f"Expected {'Al': 26.981}, but got {config_Al.ev_curve.atomic_masses}"
     assert (
-        config_Al.ev_curves.average_mass == 26.981
-    ), f"Expected 26.981, but got {config_Al.ev_curves.average_mass}"
+        config_Al.ev_curve.average_mass == 26.981
+    ), f"Expected 26.981, but got {config_Al.ev_curve.average_mass}"
 
     assert np.array_equal(
-        config_Al.ev_curves.total_magnetic_moment, np.array([])
-    ), f"Expected {np.array([])}, but got {config_Al.ev_curves.total_magnetic_moment}"
+        config_Al.ev_curve.total_magnetic_moment, np.array([])
+    ), f"Expected {np.array([])}, but got {config_Al.ev_curve.total_magnetic_moment}"
 
     assert np.array_equal(
-        config_Al.ev_curves.magnetic_ordering, np.array([])
-    ), f"Expected {np.array([])}, but got {config_Al.ev_curves.magnetic_ordering}"
+        config_Al.ev_curve.magnetic_ordering, np.array([])
+    ), f"Expected {np.array([])}, but got {config_Al.ev_curve.magnetic_ordering}"
 
     assert np.array_equal(
-        config_Al.ev_curves.mag_data, {}
-    ), f"Expected [], but got {config_Al.ev_curves.mag_data}"
+        config_Al.ev_curve.mag_data, {}
+    ), f"Expected [], but got {config_Al.ev_curve.mag_data}"
 
     expected_eos_parameters = {
         "V0": 66.10191547034127,
@@ -282,16 +282,16 @@ def test_process_ev_curves():
     }
     keys_to_compare = ["V0", "E0", "B", "BP", "B2P"]
     _assert_selected_keys_almost_equal(
-        config_Al.ev_curves.eos_parameters, expected_eos_parameters, keys_to_compare
+        config_Al.ev_curve.eos_parameters, expected_eos_parameters, keys_to_compare
     )
 
     actual_relaxed_structures = [
-        structure.as_dict() for structure in config_Al.ev_curves.relaxed_structures
+        structure.as_dict() for structure in config_Al.ev_curve.relaxed_structures
     ]
 
     with open(
         os.path.join(
-            current_dir, "test_config_data/expected_ev_curves_relaxed_structures.json"
+            current_dir, "test_config_data/expected_ev_curve_relaxed_structures.json"
         ),
         "r",
     ) as f:
@@ -310,7 +310,7 @@ def test_process_ev_curves():
 def test_process_phonons():
     phonons_files_and_attributes = [
         ("test_config_data/expected_phonons_incars.json", "incars"),
-        ("test_config_data/expected_ev_curves_kpoints.json", "kpoints"),
+        ("test_config_data/expected_ev_curve_kpoints.json", "kpoints"),
     ]
 
     for filename, attribute in phonons_files_and_attributes:
