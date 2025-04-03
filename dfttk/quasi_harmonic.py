@@ -97,7 +97,7 @@ def process_quasi_harmonic(
         # Calculate f_plus_pv
         f_vib = f_vib_fit[index]
         f_plus_pv = energy_eos + f_vib + P * volume_range
-        if f_el_fit != 0:
+        if not np.all(f_el_fit == 0):
             f_el = f_el_fit[index]
             f_plus_pv += f_el
         f_plus_pv_list.append(f_plus_pv)
@@ -125,7 +125,7 @@ def process_quasi_harmonic(
         s_vib = s_vib_fit[index]
         cv_vib = cv_vib_fit[index]
 
-        if s_el_fit and cv_el_fit:
+        if not np.all(s_el_fit == 0) and not np.all(cv_el_fit == 0):
             s_el = s_el_fit[index]
             cv_el = cv_el_fit[index]
         else:
