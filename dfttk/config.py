@@ -384,7 +384,6 @@ class PhononsData:
         self.helmholtz_energy_fit: dict = None
         self.entropy_fit: dict = None
         self.heat_capacity_fit: dict = None
-        self.harmonic_fit_df: pd.DataFrame = None
         self.f_vib: np.ndarray = None
         self.s_vib: np.ndarray = None
         self.cv_vib: np.ndarray = None
@@ -526,27 +525,6 @@ class PhononsData:
         self.heat_capacity_fit = {
             "polynomial_coefficients": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, cv_vib_poly)}
         }
-
-        # Temporary harmonic_fit_df for qha.
-        harmonic_fit_df = (
-            pd.DataFrame(
-                {
-                    "number_of_atoms": [self.number_of_atoms] * len(self.temperatures),
-                    "temperatures": self.temperatures,
-                    "f_vib_poly": f_vib_poly,
-                    "s_vib_poly": s_vib_poly,
-                    "cv_vib_poly": cv_vib_poly,
-                }
-            )
-            .groupby("temperatures")
-            .agg(list)
-        )
-
-        # Remove the outer layer of lists
-        for col in ["number_of_atoms", "f_vib_poly", "s_vib_poly", "cv_vib_poly"]:
-            harmonic_fit_df[col] = harmonic_fit_df[col].apply(lambda x: x[0])
-
-        self.harmonic_fit_df = harmonic_fit_df
 
     def plot_scaled_dos(self, number_of_atoms: int, plot: bool = True) -> None:
         yphon_results_path = os.path.join(self.path, "YPHON_results")
@@ -1448,24 +1426,9 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         f_el_fit = []
         s_el_fit = []
         cv_el_fit = []
-        phonon_temperatures_list = self.phonons.harmonic_fit_df.index.tolist()
-        phonon_temperatures_list = np.array(phonon_temperatures_list)
-
+        phonon_temperatures_list = self.phonons.temperatures
+        # TODO: get rid of the debye_df.
         for index, temperature in enumerate(phonon_temperatures_list):
-            f_vib_poly = self.phonons.harmonic_fit_df.loc[temperature, "f_vib_poly"]
-            f_vib_fit = f_vib_poly(volume_range)  # Evaluate the polynomial for the given volume range
-            phonons_f_vib_fit.append(f_vib_fit)  # Append the result for this temperature
-
-            s_vib_poly = self.phonons.harmonic_fit_df.loc[temperature, "s_vib_poly"]
-            order = s_vib_poly.order
-            s_vib_fit = s_vib_poly(volume_range)
-            phonons_s_vib_fit.append(s_vib_fit)  # Append the result for this temperature
-
-            cv_vib_poly = self.phonons.harmonic_fit_df.loc[temperature, "cv_vib_poly"]
-            order = cv_vib_poly.order
-            cv_vib_fit = cv_vib_poly(volume_range)
-            phonons_cv_vib_fit.append(cv_vib_fit)  # Append the result for this temperature
-
             f_vib = self.debye.debye_df[self.debye.debye_df["temperatures"] == temperature]["f_vib"].values[0]
             debye_f_vib.append(f_vib)
 
@@ -1488,9 +1451,9 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             cv_el_fit.append(cv_el)
 
         # Convert the list to a 2D NumPy array
-        phonons_f_vib_fit = np.array(phonons_f_vib_fit)
-        phonons_s_vib_fit = np.array(phonons_s_vib_fit)
-        phonons_cv_vib_fit = np.array(phonons_cv_vib_fit)
+        phonons_f_vib_fit = np.vstack(self.phonons.f_vib_fit)
+        phonons_s_vib_fit = np.vstack(self.phonons.s_vib_fit)
+        phonons_cv_vib_fit = np.vstack(self.phonons.cv_vib_fit)
         debye_f_vib = np.array(debye_f_vib)
         debye_s_vib = np.array(debye_s_vib)
         debye_cv_vib = np.array(debye_cv_vib)
