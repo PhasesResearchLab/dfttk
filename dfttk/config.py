@@ -820,7 +820,7 @@ class QuasiHarmonicData:
             s_coefficients,
             cv_coefficients,
             V0,
-            F0,
+            G0,
             B,
             BP,
             S0,
@@ -846,7 +846,7 @@ class QuasiHarmonicData:
         s_coefficients_list = [arr.tolist() for arr in s_coefficients]
         cv_coefficients_list = [arr.tolist() for arr in cv_coefficients]
         V0_list = V0.tolist()
-        F0_list = F0.tolist()
+        G0_list = G0.tolist()
         B_list = B.tolist()
         BP_list = BP.tolist()
         S0_list = S0.tolist()
@@ -865,7 +865,7 @@ class QuasiHarmonicData:
                 "s_coefficients": s_coefficients_list,
                 "cv_coefficients": cv_coefficients_list,
                 "V0": V0_list,
-                "F0": F0_list,
+                "G0": G0_list,
                 "B": B_list,
                 "BP": BP_list,
                 "S0": S0_list,
@@ -875,15 +875,8 @@ class QuasiHarmonicData:
             }
         )
 
-        self.quasi_harmonic_df = test_qha_df#quasi_harmonic_properties
+        self.quasi_harmonic_df = test_qha_df
         self.method = method
-        #self.pressure = quasi_harmonic_properties["pressure"].values.tolist()[0]
-        #self.number_of_atoms = int(quasi_harmonic_properties["number_of_atoms"].values.tolist()[0])
-        #self.temperatures = quasi_harmonic_properties["temperature"].values.tolist()
-        #self.volumes = quasi_harmonic_properties["volume_range"].values[0].tolist()
-        #eos_constants = [arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]]
-        #s_coefficients = [arr.tolist() for arr in quasi_harmonic_properties["s_coefficients"]]
-        
         self.pressure = self.quasi_harmonic_df["pressure"].values.tolist()[0]
         self.number_of_atoms = int(self.quasi_harmonic_df["number_of_atoms"].values.tolist()[0])
         self.temperatures = self.quasi_harmonic_df["temperature"].values.tolist()
