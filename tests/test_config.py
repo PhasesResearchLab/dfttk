@@ -527,8 +527,8 @@ def test_process_qha():
     ), f"Expected {expected_number_of_atoms}, but got {config_Al.qha.number_of_atoms}"
 
     expected_temperatures = list(range(0, 1010, 100))
-    assert (
-        config_Al.qha.temperatures == expected_temperatures
+    assert np.array_equal(
+        config_Al.qha.temperatures, expected_temperatures
     ), f"Expected {expected_temperatures}, but got {config_Al.qha.temperatures}"
 
     expected_volumes = np.linspace(0.98 * 60, 1.02 * 74, 1000)

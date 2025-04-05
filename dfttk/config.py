@@ -88,8 +88,15 @@ class MetaData:
 
 class EvCurveData:
     """A class for handling energy-volume (E-V) curve data for a configuration."""    
-    #TODO: continue docstrings here.
-    def __init__(self, path: str, name: str):
+
+    def __init__(self, path: str, name: str) -> None:
+        """Initialize the EvCurveData object.
+
+        Args:
+            path (str): path to the directory containing the vol_* folders. 
+            name (str): name of the configuration.
+        """        
+        
         self.path = path
         self.name = name
         self.incars = []
@@ -120,6 +127,7 @@ class EvCurveData:
         self.relaxed_structures = []
         self.starting_poscar = None
 
+    #TODO: continue the docstrings below:
     def _get_volume_folders(self) -> list[str]:
         return natsorted([f for f in os.listdir(self.path) if f.startswith("vol_")])
 
@@ -834,7 +842,7 @@ class QuasiHarmonicData:
             "phonons_thermal_electronic": {},
         }
 
-    # TODO: work here
+    
     def get_quasi_harmonic_data(
         self,
         method: str,
@@ -879,6 +887,20 @@ class QuasiHarmonicData:
             eos=eos,
         )
 
+        quasi_harmonic_output = (
+            f_plus_pv,
+            eos_constants,
+            s_coefficients,
+            cv_coefficients,
+            V0,
+            G0,
+            B,
+            BP,
+            S0,
+            CTE,
+            Cp,
+            H0,
+        )
         f_plus_pv_list = f_plus_pv.tolist()
         eos_constants_list = [arr.tolist() for arr in eos_constants]
         s_coefficients_list = [arr.tolist() for arr in s_coefficients]
@@ -892,37 +914,12 @@ class QuasiHarmonicData:
         Cp_list = Cp.tolist()
         H0_list = H0.tolist()
 
-        test_qha_df = pd.DataFrame(
-            {
-                "pressure": [P] * len(temperatures),
-                "number_of_atoms": [number_of_atoms] * len(temperatures),
-                "temperature": temperatures,
-                "volume_range": [volume_range] * len(temperatures),
-                "f_plus_pv": f_plus_pv_list,
-                "eos_constants": eos_constants_list,
-                "s_coefficients": s_coefficients_list,
-                "cv_coefficients": cv_coefficients_list,
-                "V0": V0_list,
-                "G0": G0_list,
-                "B": B_list,
-                "BP": BP_list,
-                "S0": S0_list,
-                "CTE": CTE_list,
-                "Cp": Cp_list,
-                "H0": H0_list,
-            }
-        )
-
-        self.quasi_harmonic_df = test_qha_df
         self.method = method
-        self.pressure = self.quasi_harmonic_df["pressure"].values.tolist()[0]
-        self.number_of_atoms = int(
-            self.quasi_harmonic_df["number_of_atoms"].values.tolist()[0]
-        )
-        self.temperatures = self.quasi_harmonic_df["temperature"].values.tolist()
-        self.volumes = self.quasi_harmonic_df["volume_range"].values[0].tolist()
-        eos_constants = [arr for arr in self.quasi_harmonic_df["eos_constants"]]
-        s_coefficients = [arr for arr in self.quasi_harmonic_df["s_coefficients"]]
+        self.pressure = P
+        self.number_of_atoms = number_of_atoms
+        self.temperatures = temperatures
+        self.volumes = volume_range
+        eos_constants = eos_constants
 
         self.helmholtz_energy = {
             "eos_parameters": {
@@ -941,16 +938,26 @@ class QuasiHarmonicData:
         for temp, entropy in zip(self.temperatures, s_coefficients):
             self.entropy["polynomial_coefficients"][f"{temp}K"] = entropy
 
-        cv_coefficients = [arr for arr in self.quasi_harmonic_df["cv_coefficients"]]
         self.heat_capacity = {"polynomial_coefficients": {}}
         for temp, cv in zip(self.temperatures, cv_coefficients):
             self.heat_capacity["polynomial_coefficients"][f"{temp}K"] = cv
 
         self.methods[method][P] = {
-            "quasi_harmonic_df": self.quasi_harmonic_df,
             "helmholtz_energy": self.helmholtz_energy,
             "entropy": self.entropy,
             "heat_capacity": self.heat_capacity,
+            "f_plus_pv": f_plus_pv,
+            "eos_constants": eos_constants,
+            "s_coefficients": s_coefficients,
+            "cv_coefficients": cv_coefficients,
+            "V0": V0,
+            "G0": G0,
+            "B": B,
+            "BP": BP,
+            "S0": S0,
+            "CTE": CTE,
+            "Cp": Cp,
+            "H0": H0,
         }
 
     def plot(
@@ -958,21 +965,38 @@ class QuasiHarmonicData:
         method: str,
         P: float,
         plot_type: str = "default",
-        selected_temperatures_plot: list = None,
+        selected_temperatures_plot: np.ndarray = None,
     ) -> go.Figure:
 
         pressure = P
+        
+        # Retrieve the tuple output from the quasi-harmonic data
+        quasi_harmonic_output = (
+            self.methods[method][pressure]["f_plus_pv"],
+            self.methods[method][pressure]["eos_constants"],
+            self.methods[method][pressure]["s_coefficients"],
+            self.methods[method][pressure]["cv_coefficients"],
+            self.methods[method][pressure]["V0"],
+            self.methods[method][pressure]["G0"],
+            self.methods[method][pressure]["B"],
+            self.methods[method][pressure]["BP"],
+            self.methods[method][pressure]["S0"],
+            self.methods[method][pressure]["CTE"],
+            self.methods[method][pressure]["Cp"],
+            self.methods[method][pressure]["H0"],
+        )
+
         fig = plot_quasi_harmonic(
-            quasi_harmonic_properties=self.methods[method][pressure][
-                "quasi_harmonic_df"
-            ],
+            quasi_harmonic_output=quasi_harmonic_output,
+            temperatures=self.temperatures,
+            volume_range=self.volumes,
+            number_of_atoms=self.number_of_atoms,
             plot_type=plot_type,
             selected_temperatures_plot=selected_temperatures_plot,
         )
         return fig
 
 
-# Continue refactoring here!
 class Configuration:
     def __init__(self, path, name, alias: str = None, multiplicity: int = None):
         self.path = path
@@ -1763,7 +1787,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                     "heatCapacity": heat_capacity,
                 },
             }
-
+        '''
         if hasattr(self, "qha"):
             key_mapping = {
                 "debye": "debye",
@@ -1813,7 +1837,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 },
                 "methods": methods_copy,
             }
-
+        '''
         if hasattr(self, "experiments"):
             document["experiments"] = self.experiments
 

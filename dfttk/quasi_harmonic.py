@@ -189,36 +189,43 @@ def process_quasi_harmonic(
     )
 
 
-# TODO: Change the input for this
+# TODO: Add docstrings
 def plot_quasi_harmonic(
-    quasi_harmonic_properties: pd.DataFrame,
+    quasi_harmonic_output: tuple,
+    temperatures: np.ndarray,
+    volume_range: np.ndarray,
+    number_of_atoms: int,
     plot_type: str,
-    selected_temperatures_plot: list = None,
+    selected_temperatures_plot: np.ndarray = None,
 ):
-    """Plots the quasi-harmonic properties
-
-    Args:
-        quasi_harmonic_properties (pd.DataFrame): pandas dataframe containing the quasi-harmonic properties from the quasi_harmonic function
-        plot_type (str, optional): Type of plots to include. Defaults to 'default'.
-        selected_temperatures_plot (list, optional): List of selected temperatures to plot. Defaults to None.
-
-    Returns:
-        go.Figure: The plotly figure object for the specified plot type.
-    """
-
-    temperature_list = quasi_harmonic_properties["temperature"].values
+    
+    (
+        f_plus_pv,
+        eos_constants,
+        s_coefficients,
+        cv_coefficients,
+        V0,
+        G0,
+        B,
+        BP,
+        S0,
+        CTE,
+        Cp,
+        H0,
+    ) = quasi_harmonic_output
+    
     if selected_temperatures_plot is None:
-        spaces = len(temperature_list) - 1
+        spaces = len(temperatures) - 1
         step = max(1, int(spaces / 10))
-        selected_temperatures = temperature_list[::step]
-        if selected_temperatures[-1] != temperature_list[-1]:
+        selected_temperatures = temperatures[::step]
+        if selected_temperatures[-1] != temperatures[-1]:
             selected_temperatures = np.append(
-                selected_temperatures, temperature_list[-1]
+                selected_temperatures, temperatures[-1]
             )
     else:
         selected_temperatures = selected_temperatures_plot
 
-    scale_atoms = quasi_harmonic_properties["number_of_atoms"].iloc[0]
+    scale_atoms = number_of_atoms
 
     def create_plot(x, y, x_label, y_label):
         fig = go.Figure()
@@ -229,42 +236,32 @@ def plot_quasi_harmonic(
 
     if plot_type == "helmholtz_energy_pv":
         fig = go.Figure()
-        for temperature in selected_temperatures:
-            x = quasi_harmonic_properties[
-                quasi_harmonic_properties["temperature"] == temperature
-            ]["volume_range"].values[0]
-            y = quasi_harmonic_properties[
-                quasi_harmonic_properties["temperature"] == temperature
-            ]["f_plus_pv"].values[0]
-            G0 = quasi_harmonic_properties[
-                quasi_harmonic_properties["temperature"] == temperature
-            ]["G0"].values[0]
-            V0 = quasi_harmonic_properties[
-                quasi_harmonic_properties["temperature"] == temperature
-            ]["V0"].values[0]
-
-            fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=y,
-                    mode="lines",
-                    marker=dict(size=10),
-                    name=(
-                        f"{int(temperature)} K"
-                        if temperature % 1 == 0
-                        else f"{temperature} K"
-                    ),
+        for index, temperature in enumerate(temperatures):
+            if temperature in selected_temperatures:
+                x = volume_range
+                y = f_plus_pv[index]
+                fig.add_trace(
+                    go.Scatter(
+                        x=x,
+                        y=y,
+                        mode="lines",
+                        marker=dict(size=10),
+                        name=(
+                            f"{int(temperature)} K"
+                            if temperature % 1 == 0
+                            else f"{temperature} K"
+                        ),
+                    )
                 )
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=[V0],
-                    y=[G0],
-                    mode="markers",
-                    marker=dict(size=10, symbol="cross", color="black"),
-                    showlegend=False,
+                fig.add_trace(
+                    go.Scatter(
+                        x=[V0[index]],
+                        y=[G0[index]],
+                        mode="markers",
+                        marker=dict(size=10, symbol="cross", color="black"),
+                        showlegend=False,
+                    )
                 )
-            )
         plot_format(
             fig,
             f"Volume (Å³/{scale_atoms} atoms)",
@@ -278,18 +275,17 @@ def plot_quasi_harmonic(
     else:
         fig = go.Figure()
         plot_mappings = {
-            "volume": ("V0", f"Volume (Å³/{scale_atoms} atoms)"),
-            "cte": ("CTE", "CTE (10<sup>-6</sup> K<sup>-1</sup>)"),
-            "entropy": ("S0", f"Entropy (eV/K/{scale_atoms} atoms)"),
-            "heat_capacity": ("Cp", f"C<sub>p</sub> (eV/K/{scale_atoms} atoms)"),
-            "enthalpy": ("H0", f"Enthalpy (eV/{scale_atoms} atoms)"),
-            "bulk_modulus": ("B", "Bulk modulus (GPa)"),
-            "gibbs_energy": ("G0", f"Gibbs energy (eV/{scale_atoms} atoms)"),
+            "volume": (V0, f"Volume (Å³/{number_of_atoms} atoms)"),
+            "cte": (CTE, "CTE (10⁻⁶ K⁻¹)"),
+            "entropy": (S0, f"Entropy (eV/K/{number_of_atoms} atoms)"),
+            "heat_capacity": (Cp, f"Cₚ (eV/K/{number_of_atoms} atoms)"),
+            "enthalpy": (H0, f"Enthalpy (eV/{number_of_atoms} atoms)"),
+            "bulk_modulus": (B, "Bulk modulus (GPa)"),
+            "gibbs_energy": (G0, f"Gibbs energy (eV/{number_of_atoms} atoms)"),
         }
 
         if plot_type in plot_mappings:
-            y_list, y_labels = plot_mappings[plot_type]
-            x = temperature_list
-            y = quasi_harmonic_properties[y_list].values
-            fig = create_plot(x, y, "Temperature (K)", y_labels)
+            y, y_label = plot_mappings[plot_type]
+            x = temperatures
+            fig = create_plot(x, y, "Temperature (K)", y_label)
         return fig
