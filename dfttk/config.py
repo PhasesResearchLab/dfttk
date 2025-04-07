@@ -1589,7 +1589,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             return [self.replace_keys(i, key_mapping) for i in d]
         else:
             return d
-
+    # TODO: Fix this!
     def to_mongodb(self, connection_string: str, db_name: str, collection_name: str):
         self.cluster = MongoClient(connection_string)
         self.db = self.cluster[db_name]
@@ -1650,7 +1650,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             eos_parameters_ordered["eosName"] = eos_parameters.pop("eos_name")
             eos_parameters_ordered.update(eos_parameters)
 
-            document["EvCurve"] = {
+            document["evCurve"] = {
                 "input": {
                     "jobScript": self.ev_curve_job_script,
                     "settings": ev_curve_settings_copy,
