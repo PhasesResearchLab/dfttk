@@ -3,10 +3,10 @@ name: tests
 on:
   push:
     branches:
-      - main
+      - quasi_harmonic_clean_up
   pull_request:
     branches:
-      - main
+      - quasi_harmonic_clean_up
 
 jobs:
   test:

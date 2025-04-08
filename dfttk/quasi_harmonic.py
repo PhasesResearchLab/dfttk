@@ -14,109 +14,68 @@ from dfttk.plotly_format import plot_format
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 
-# TODO: Consider pulling out parallel code out of this function into separate functions
 def process_quasi_harmonic(
-    num_atoms_eos: int,
+    temperatures: np.ndarray,
     volume_range: np.ndarray,
-    eos_constants: np.ndarray,
-    apply_smoothing: bool = False,
-    smoothing_window_length: int = 21,
-    smoothing_polyorder: int = 2,
-    harmonic_properties_fit: pd.DataFrame = None,
-    debye_properties: pd.DataFrame = None,
-    thermal_electronic_properties_fit: pd.DataFrame = None,
-    P: int = 0,
+    energy_eos: np.ndarray,
+    f_vib_fit: np.ndarray,
+    s_vib_fit: np.ndarray,
+    cv_vib_fit: np.ndarray,
+    f_el_fit: np.ndarray = None,
+    s_el_fit: np.ndarray = None,
+    cv_el_fit: np.ndarray = None,
+    P: float = 0.0,
     eos: str = "BM4",
-) -> pd.DataFrame:
-    """Calculates the quasi-harmonic properties
+) -> tuple[
+    np.ndarray,  # f_plus_pv
+    np.ndarray,  # eos_constants
+    np.ndarray,  # s_coefficients
+    np.ndarray,  # cv_coefficients
+    np.ndarray,  # V0
+    np.ndarray,  # F0
+    np.ndarray,  # B
+    np.ndarray,  # BP
+    np.ndarray,  # S0
+    np.ndarray,  # CTE
+    np.ndarray,  # Cp
+    np.ndarray,  # H0
+]:
+    """Calculates the quasiharmonic properties.
 
     Args:
-        volume_range (np.ndarray): Volume range for the quasi-harmonic calculations
-        eos_parameters_df (pd.DataFrame): pandas dataframe containing the EOS parameters from the eos_fit.fit_to_all function
-        harmonic_properties_fit (pd.DataFrame, optional): pandas dataframe containing the fitted harmonic properties from the fit_harmonic function
-        debye_properties (pd.DataFrame, optional): pandas dataframe containing the Debye properties. Defaults to None.
-        thermal_electronic_properties_fit (pd.DataFrame, optional): pandas dataframe containing the fitted thermal electronic properties. Defaults to None.
-        P (int, optional): Pressure in GPa. Defaults to 0.
-        plot (bool, optional): Defaults to True.
-        plot_type (str, optional): Type of plots to include. Defaults to 'default'.
-        selected_temperatures_plot (list, optional): List of selected temperatures to plot. Defaults to None.
+        temperatures (np.ndarray): Array of temperatures corresponding to vibrational and thermal electronic inputs.
+        volume_range (np.ndarray): Array of volumes corresponding to energy, vibrational, and thermal electronic inputs.
+        energy_eos (np.ndarray): Array of energy values corresponding to the volume range.
+        f_vib_fit (np.ndarray): Array of vibrational free energy values. Rows are temperatures, columns are volumes.
+        s_vib_fit (np.ndarray): Array of vibrational entropy values. Rows are temperatures, columns are volumes.
+        cv_vib_fit (np.ndarray): Array of vibrational heat capacity values. Rows are temperatures, columns are volumes.
+        f_el_fit (np.ndarray, optional): Array of thermal electronic free energy values. Rows are temperatures, columns are volumes. Defaults to None.
+        s_el_fit (np.ndarray, optional): Array of thermal electronic entropy values. Rows are temperatures, columns are volumes. Defaults to None.
+        cv_el_fit (np.ndarray, optional): Array of thermal electronic heat capacity values. Rows are temperatures, columns are volumes. Defaults to None.
+        P (float, optional): Pressure in GPa. Defaults to 0.0.
+        eos (str, optional): Equation of state (EOS) to use for fitting F + PV. Defaults to "BM4".
+        Available options are: "mBM4", "mBM5", "BM4", "BM5", "LOG4", "LOG5", "murnaghan", "vinet", "morse".
 
     Returns:
-        pd.DataFrame: pandas dataframe containing the quasi-harmonic properties
+        tuple: A tuple containing the following calculated properties:
+            - f_plus_pv (np.ndarray): Array of Helmholtz free energy plus PV. Rows are temperatures, columns are volumes.
+            - eos_constants (np.ndarray): Array of EOS fitting constants for f_plus_pv.
+            - s_coefficients (np.ndarray): Polynomial coefficients for entropy as a function of volume for each temperature.
+            - cv_coefficients (np.ndarray): Polynomial coefficients for heat capacity as a function of volume for each temperature.
+            - V0 (np.ndarray): Array of equilibrium volumes for P and T.
+            - G0 (np.ndarray): Array of Gibbs energies for P and T.
+            - B (np.ndarray): Array of bulk moduli for P and T.
+            - BP (np.ndarray): Array of bulk modulus pressure derivatives for P and T.
+            - S0 (np.ndarray): Array of entropies for P and T.
+            - CTE (np.ndarray): Array of thermal expansion coefficients for P and T.
+            - Cp (np.ndarray): Array of heat capacities at constant pressure for P and T.
+            - H0 (np.ndarray): Array of enthalpies for P and T.
     """
 
-    # Phonons only
-    if harmonic_properties_fit is not None and debye_properties is None:
-        num_atoms_vib = harmonic_properties_fit["number_of_atoms"].values[0]
-        if num_atoms_eos != num_atoms_vib:
-            raise ValueError("The number of atoms do not match")
-        # Thermal electronic contribution
-        if thermal_electronic_properties_fit is not None:
-            num_atoms_tec = thermal_electronic_properties_fit["number_of_atoms"].values[
-                0
-            ]
-            if num_atoms_eos != num_atoms_tec:
-                raise ValueError("The number of atoms do not match")
+    # Convert pressure to eV/Å³
+    P = P / EV_PER_CUBIC_ANGSTROM_TO_GPA
 
-    # Debye model only
-    elif debye_properties is not None and harmonic_properties_fit is None:
-        num_atoms_debye = debye_properties["number_of_atoms"].values[0]
-        if num_atoms_eos != num_atoms_debye:
-            raise ValueError("The number of atoms do not match")
-        # Thermal electronic contribution
-        if thermal_electronic_properties_fit is not None:
-            num_atoms_tec = thermal_electronic_properties_fit["number_of_atoms"].values[
-                0
-            ]
-            if num_atoms_eos != num_atoms_tec:
-                raise ValueError("The number of atoms do not match")
-
-    # EOS parameters at 0 K
-    if eos == "murnaghan" or eos == "vinet" or eos == "morse":
-        raise NotImplementedError(
-            "Not implemented for Murnaghan, Vinet, or Morse EOS yet"
-        )
-
-    a = eos_constants[0]
-    b = eos_constants[1]
-    c = eos_constants[2]
-    d = eos_constants[3]
-    e = eos_constants[4]
-
-    # Get the EOS energy at 0 K corresponding to the volume range
-    equation_functions = {
-        "mBM4": eos_fit.mBM4_equation,
-        "mBM5": eos_fit.mBM5_equation,
-        "BM4": eos_fit.BM4_equation,
-        "BM5": eos_fit.BM5_equation,
-        "LOG4": eos_fit.LOG4_equation,
-        "LOG5": eos_fit.LOG5_equation,
-    }
-    if eos == "mBM4" or eos == "BM4" or eos == "LOG4":
-        energy_eos = equation_functions[eos](volume_range, a, b, c, d)
-    elif eos == "mBM5" or eos == "BM5" or eos == "LOG5":
-        energy_eos = equation_functions[eos](volume_range, a, b, c, d, e)
-
-    # For each temperature, add energy_eos to f_vib_fit, then fit to an EOS
-    f_plus_pv_list = []
-    volume_range_list = []
-    eos_constants_list = []
-    s_coefficients_list = []
-    cv_coefficients_list = []
-    V0_list = []
-    F0_list = []
-    B_list = []
-    BP_list = []
-    S0_list = []
-
-    P = P / EV_PER_CUBIC_ANGSTROM_TO_GPA  # Convert GPa to eV/Å³
-
-    if harmonic_properties_fit is not None and debye_properties is None:
-        temperature_list = harmonic_properties_fit.index.tolist()
-
-    elif debye_properties is not None and harmonic_properties_fit is None:
-        temperature_list = debye_properties["temperatures"].tolist()
-
+    # List of available EOS functions
     eos_fit_functions = {
         "mBM4": eos_fit.mBM4,
         "mBM5": eos_fit.mBM5,
@@ -124,48 +83,26 @@ def process_quasi_harmonic(
         "BM5": eos_fit.BM5,
         "LOG4": eos_fit.LOG4,
         "LOG5": eos_fit.LOG5,
+        "murnaghan": eos_fit.murnaghan,
+        "vinet": eos_fit.vinet,
+        "morse": eos_fit.morse,
     }
 
-    for temperature in temperature_list:
-        if harmonic_properties_fit is not None and debye_properties is None:
-            f_vib_poly = harmonic_properties_fit.loc[temperature]["f_vib_poly"]
-            f_vib_fit = f_vib_poly(volume_range)
-            f_plus_pv = energy_eos + f_vib_fit + P * volume_range
+    # Initialize lists to store results
+    f_plus_pv_list, eos_constants_list = [], []
+    s_coefficients_list, cv_coefficients_list = [], []
+    V0_list, F0_list, B_list, BP_list, S0_list = [], [], [], [], []
 
-            if thermal_electronic_properties_fit is not None:
-                f_el_poly = thermal_electronic_properties_fit.loc[temperature][
-                    "f_el_poly"
-                ]
-                f_el_fit = f_el_poly(volume_range)
-                f_plus_pv += f_el_fit
+    for index, temperature in enumerate(temperatures):
+        # Calculate f_plus_pv
+        f_vib = f_vib_fit[index]
+        f_plus_pv = energy_eos + f_vib + P * volume_range
+        if not np.all(f_el_fit == 0):
+            f_el = f_el_fit[index]
+            f_plus_pv += f_el
+        f_plus_pv_list.append(f_plus_pv)
 
-            f_plus_pv_list.append(f_plus_pv)
-            volume_range_list.append(volume_range)
-
-        elif debye_properties is not None and harmonic_properties_fit is None:
-            # Check if the volume range is the same as the one used for the Debye model
-            volume_range_debye = debye_properties[
-                debye_properties["temperatures"] == temperature
-            ]["volume"].values[0]
-            if not np.array_equal(volume_range, volume_range_debye):
-                raise ValueError(
-                    "The volume range used for the Debye model is different from the one used for the EOS"
-                )
-            f_vib = debye_properties[debye_properties["temperatures"] == temperature][
-                "f_vib"
-            ].values[0]
-            f_plus_pv = energy_eos + f_vib + P * volume_range
-
-            if thermal_electronic_properties_fit is not None:
-                f_el_poly = thermal_electronic_properties_fit.loc[temperature][
-                    "f_el_poly"
-                ]
-                f_el_fit = f_el_poly(volume_range)
-                f_plus_pv += f_el_fit
-
-            f_plus_pv_list.append(f_plus_pv)
-            volume_range_list.append(volume_range)
-
+        # Fit EOS and extract parameters
         try:
             eos_constants, eos_parameters, _, _, _ = eos_fit_functions[eos](
                 volume_range, f_plus_pv
@@ -177,54 +114,25 @@ def process_quasi_harmonic(
                 f"Suggestion: Try using a different EOS. Available options are: {list(eos_fit_functions.keys())}"
             )
 
-        eos_constants_list.append(eos_constants)
-
-        V0 = eos_parameters[0]
-        F0 = eos_parameters[1]
-        B = eos_parameters[2]
-        BP = eos_parameters[3]
-
+        V0, F0, B, BP = eos_parameters[:4]
         V0_list.append(V0)
         F0_list.append(F0)
         B_list.append(B)
         BP_list.append(BP)
+        eos_constants_list.append(eos_constants)
 
-        if harmonic_properties_fit is not None and debye_properties is None:
-            s_vib_poly = harmonic_properties_fit.loc[temperature]["s_vib_poly"]
-            order = s_vib_poly.order
-            s_vib_fit = s_vib_poly(volume_range)
-            s_vib = s_vib_fit
+        # Calculate entropy and heat capacity
+        s_vib = s_vib_fit[index]
+        cv_vib = cv_vib_fit[index]
 
-            cv_vib_poly = harmonic_properties_fit.loc[temperature]["cv_vib_poly"]
-            order = cv_vib_poly.order
-            cv_vib_fit = cv_vib_poly(volume_range)
-            cv_vib = cv_vib_fit
-
-        elif debye_properties is not None and harmonic_properties_fit is None:
-            s_vib = debye_properties[debye_properties["temperatures"] == temperature][
-                "s_vib"
-            ].values[0]
-
-            cv_vib = debye_properties[debye_properties["temperatures"] == temperature][
-                "cv_vib"
-            ].values[0]
-            order = 2
-
-        if thermal_electronic_properties_fit is not None:
-            s_el_poly = thermal_electronic_properties_fit.loc[temperature]["s_el_poly"]
-            s_el_fit = s_el_poly(volume_range)
-            s_el = s_el_fit
-
-            cv_el_poly = thermal_electronic_properties_fit.loc[temperature][
-                "cv_el_poly"
-            ]
-            cv_el_fit = cv_el_poly(volume_range)
-            cv_el = cv_el_fit
-
-        elif thermal_electronic_properties_fit is None:
+        if not np.all(s_el_fit == 0) and not np.all(cv_el_fit == 0):
+            s_el = s_el_fit[index]
+            cv_el = cv_el_fit[index]
+        else:
             s_el = 0
             cv_el = 0
 
+        order = 2
         s = s_vib + s_el
         s_coefficients = np.polyfit(volume_range, s, order)
         s_coefficients_list.append(s_coefficients)
@@ -234,45 +142,18 @@ def process_quasi_harmonic(
         cv_coefficients = np.polyfit(volume_range, cv, order)
         cv_coefficients_list.append(cv_coefficients)
 
-        S0 = s_poly(V0)
-        S0_list.append(S0)
+        S0_list.append(s_poly(V0))
 
-    # Create a quasi-harmonic dataframe
-    quasi_harmonic_properties = pd.DataFrame(
-        data={
-            "pressure": [P * EV_PER_CUBIC_ANGSTROM_TO_GPA] * len(temperature_list),
-            "number_of_atoms": [num_atoms_eos] * len(temperature_list),
-            "temperature": temperature_list,
-            "volume_range": volume_range_list,
-            "f_plus_pv": f_plus_pv_list,
-            "eos_constants": eos_constants_list,
-            "s_coefficients": s_coefficients_list,
-            "cv_coefficients": cv_coefficients_list,
-            "V0": V0_list,
-            "G0": F0_list,
-            "B": B_list,
-            "BP": BP_list,
-            "S0": S0_list,
-        }
-    )
-
-    # Calculate other properties using the finite difference method
-    V0 = quasi_harmonic_properties["V0"].values
-    S0 = quasi_harmonic_properties["S0"].values
-    T = quasi_harmonic_properties["temperature"].values
-
-    from scipy.signal import savgol_filter
-
-    if apply_smoothing:
-        # Smooth the volume data
-        window_length = smoothing_window_length  # Choose an odd number
-        polyorder = smoothing_polyorder
-        V0 = savgol_filter(V0, window_length=window_length, polyorder=polyorder)
+    # Convert lists to arrays
+    V0, S0, G0 = np.array(V0_list), np.array(S0_list), np.array(F0_list)
+    T = temperatures
 
     dV = V0[1:] - V0[:-1]
     dS = S0[1:] - S0[:-1]
     dT = T[1:] - T[:-1]
 
+    # Calculate finite difference properties - CTE and Cp
+    dV, dS, dT = np.diff(V0), np.diff(S0), np.diff(T)
     CTE = (1 / V0[:-1]) * dV / dT * 1e6
     Cp = T[:-1] * dS / dT
 
@@ -280,45 +161,81 @@ def process_quasi_harmonic(
     CTE = np.insert(CTE, 0, 0)
     Cp = np.insert(Cp, 0, 0)
 
-    quasi_harmonic_properties["H0"] = (
-        quasi_harmonic_properties["G0"]
-        + quasi_harmonic_properties["temperature"] * quasi_harmonic_properties["S0"]
-    )
-    quasi_harmonic_properties["CTE"] = CTE
-    quasi_harmonic_properties["Cp"] = Cp
+    # Calculate enthalpy
+    H0 = G0 + T * S0
 
-    return quasi_harmonic_properties
+    # Convert results to arrays
+    f_plus_pv = np.array(f_plus_pv_list)
+    eos_constants = np.array(eos_constants_list)
+    s_coefficients = np.array(s_coefficients_list)
+    cv_coefficients = np.array(cv_coefficients_list)
+    G0 = np.array(F0_list)
+    B = np.array(B_list)
+    BP = np.array(BP_list)
+
+    return (
+        f_plus_pv,
+        eos_constants,
+        s_coefficients,
+        cv_coefficients,
+        V0,
+        G0,
+        B,
+        BP,
+        S0,
+        CTE,
+        Cp,
+        H0,
+    )
 
 
 def plot_quasi_harmonic(
-    quasi_harmonic_properties: pd.DataFrame,
+    quasi_harmonic_output: tuple,
+    temperatures: np.ndarray,
+    volume_range: np.ndarray,
+    number_of_atoms: int,
     plot_type: str,
-    selected_temperatures_plot: list = None,
-):
-    """Plots the quasi-harmonic properties
+    selected_temperatures_plot: np.ndarray = None,
+) -> go.Figure:
+    """Plot the quasiharmonic properties.
 
     Args:
-        quasi_harmonic_properties (pd.DataFrame): pandas dataframe containing the quasi-harmonic properties from the quasi_harmonic function
-        plot_type (str, optional): Type of plots to include. Defaults to 'default'.
-        selected_temperatures_plot (list, optional): List of selected temperatures to plot. Defaults to None.
+        quasi_harmonic_output (tuple): output tuple from process_quasi_harmonic function.
+        temperatures (np.ndarray): temperatures corresponding to the quasiharmonic properties.
+        volume_range (np.ndarray): volume range corresponding to the quasiharmonic properties.
+        number_of_atoms (int): number of atoms corresponding to the quasiharmonic properties.
+        plot_type (str): helmholtz_energy_pv, volume, cte, entropy, heat_capacity, enthalpy, bulk_modulus, gibbs_energy.
+        selected_temperatures_plot (np.ndarray, optional): temperatures to plot for helmholtz_energy_pv. If None, will select 11 evenly spaced temperatures. Defaults to None.
 
     Returns:
-        go.Figure: The plotly figure object for the specified plot type.
+        go.Figure: Plotly figure object for the quasiharmonic properties.
     """
 
-    temperature_list = quasi_harmonic_properties["temperature"].values
+    (
+        f_plus_pv,
+        eos_constants,
+        s_coefficients,
+        cv_coefficients,
+        V0,
+        G0,
+        B,
+        BP,
+        S0,
+        CTE,
+        Cp,
+        H0,
+    ) = quasi_harmonic_output
+
     if selected_temperatures_plot is None:
-        spaces = len(temperature_list) - 1
+        spaces = len(temperatures) - 1
         step = max(1, int(spaces / 10))
-        selected_temperatures = temperature_list[::step]
-        if selected_temperatures[-1] != temperature_list[-1]:
-            selected_temperatures = np.append(
-                selected_temperatures, temperature_list[-1]
-            )
+        selected_temperatures = temperatures[::step]
+        if selected_temperatures[-1] != temperatures[-1]:
+            selected_temperatures = np.append(selected_temperatures, temperatures[-1])
     else:
         selected_temperatures = selected_temperatures_plot
 
-    scale_atoms = quasi_harmonic_properties["number_of_atoms"].iloc[0]
+    scale_atoms = number_of_atoms
 
     def create_plot(x, y, x_label, y_label):
         fig = go.Figure()
@@ -329,42 +246,32 @@ def plot_quasi_harmonic(
 
     if plot_type == "helmholtz_energy_pv":
         fig = go.Figure()
-        for temperature in selected_temperatures:
-            x = quasi_harmonic_properties[
-                quasi_harmonic_properties["temperature"] == temperature
-            ]["volume_range"].values[0]
-            y = quasi_harmonic_properties[
-                quasi_harmonic_properties["temperature"] == temperature
-            ]["f_plus_pv"].values[0]
-            G0 = quasi_harmonic_properties[
-                quasi_harmonic_properties["temperature"] == temperature
-            ]["G0"].values[0]
-            V0 = quasi_harmonic_properties[
-                quasi_harmonic_properties["temperature"] == temperature
-            ]["V0"].values[0]
-
-            fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=y,
-                    mode="lines",
-                    marker=dict(size=10),
-                    name=(
-                        f"{int(temperature)} K"
-                        if temperature % 1 == 0
-                        else f"{temperature} K"
-                    ),
+        for index, temperature in enumerate(temperatures):
+            if temperature in selected_temperatures:
+                x = volume_range
+                y = f_plus_pv[index]
+                fig.add_trace(
+                    go.Scatter(
+                        x=x,
+                        y=y,
+                        mode="lines",
+                        marker=dict(size=10),
+                        name=(
+                            f"{int(temperature)} K"
+                            if temperature % 1 == 0
+                            else f"{temperature} K"
+                        ),
+                    )
                 )
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=[V0],
-                    y=[G0],
-                    mode="markers",
-                    marker=dict(size=10, symbol="cross", color="black"),
-                    showlegend=False,
+                fig.add_trace(
+                    go.Scatter(
+                        x=[V0[index]],
+                        y=[G0[index]],
+                        mode="markers",
+                        marker=dict(size=10, symbol="cross", color="black"),
+                        showlegend=False,
+                    )
                 )
-            )
         plot_format(
             fig,
             f"Volume (Å³/{scale_atoms} atoms)",
@@ -378,18 +285,18 @@ def plot_quasi_harmonic(
     else:
         fig = go.Figure()
         plot_mappings = {
-            "volume": ("V0", f"Volume (Å³/{scale_atoms} atoms)"),
-            "cte": ("CTE", "CTE (10<sup>-6</sup> K<sup>-1</sup>)"),
-            "entropy": ("S0", f"Entropy (eV/K/{scale_atoms} atoms)"),
-            "heat_capacity": ("Cp", f"C<sub>p</sub> (eV/K/{scale_atoms} atoms)"),
-            "enthalpy": ("H0", f"Enthalpy (eV/{scale_atoms} atoms)"),
-            "bulk_modulus": ("B", "Bulk modulus (GPa)"),
-            "gibbs_energy": ("G0", f"Gibbs energy (eV/{scale_atoms} atoms)"),
+            "volume": (V0, f"Volume (Å³/{number_of_atoms} atoms)"),
+            "cte": (CTE, "CTE (10⁻⁶ K⁻¹)"),
+            "entropy": (S0, f"Entropy (eV/K/{number_of_atoms} atoms)"),
+            "heat_capacity": (Cp, f"Cₚ (eV/K/{number_of_atoms} atoms)"),
+            "enthalpy": (H0, f"Enthalpy (eV/{number_of_atoms} atoms)"),
+            "bulk_modulus": (B, "Bulk modulus (GPa)"),
+            "gibbs_energy": (G0, f"Gibbs energy (eV/{number_of_atoms} atoms)"),
         }
 
         if plot_type in plot_mappings:
-            y_list, y_labels = plot_mappings[plot_type]
-            x = temperature_list
-            y = quasi_harmonic_properties[y_list].values
-            fig = create_plot(x, y, "Temperature (K)", y_labels)
+            y, y_label = plot_mappings[plot_type]
+            x = temperatures
+            fig = create_plot(x, y, "Temperature (K)", y_label)
+
         return fig

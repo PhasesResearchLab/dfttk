@@ -27,6 +27,7 @@ from dfttk.aggregate_extraction import (
     calculate_encut_conv,
     calculate_kpoint_conv,
 )
+import dfttk.eos_fit as eos_fit
 from dfttk.eos_fit import (
     fit_to_eos,
     plot_ev,
@@ -55,6 +56,8 @@ from dfttk.quasi_harmonic import process_quasi_harmonic, plot_quasi_harmonic
 
 
 class MetaData:
+    """A class to store metadata information for a configuration."""
+
     def __init__(
         self,
         affiliation: str = "DFTTK",
@@ -63,7 +66,18 @@ class MetaData:
         parent_database_id: str = None,
         parent_database_url: str = None,
         comment: str = None,
-    ):
+    ) -> None:
+        """Initialize the MetaData object with the given attributes.
+
+        Args:
+            affiliation (str, optional): Database affiliation. Defaults to "DFTTK".
+            mpdd_id (ObjectId, optional): The MongoDB ObjectId for the MPDD entry. Defaults to None.
+            parent_database (str, optional): The name of the parent database. Defaults to None.
+            parent_database_id (str, optional): The ID of the parent database entry. Defaults to None.
+            parent_database_url (str, optional): The URL of the parent database. Defaults to None.
+            comment (str, optional): Additional comments. Defaults to None.
+        """
+
         self.affiliation = affiliation
         self.mpdd_id = mpdd_id
         self.parent_database = parent_database
@@ -72,8 +86,17 @@ class MetaData:
         self.comment = comment
 
 
-class EvCurvesData:
-    def __init__(self, path: str, name: str):
+class EvCurveData:
+    """A class for handling energy-volume (E-V) curve data for a configuration."""    
+
+    def __init__(self, path: str, name: str) -> None:
+        """Initialize the EvCurveData object.
+
+        Args:
+            path (str): path to the directory containing the vol_* folders. 
+            name (str): name of the configuration.
+        """        
+        
         self.path = path
         self.name = name
         self.incars = []
@@ -104,6 +127,7 @@ class EvCurvesData:
         self.relaxed_structures = []
         self.starting_poscar = None
 
+    #TODO: continue the docstrings below:
     def _get_volume_folders(self) -> list[str]:
         return natsorted([f for f in os.listdir(self.path) if f.startswith("vol_")])
 
@@ -296,7 +320,6 @@ class EvCurvesData:
 
 class DebyeData:
     def __init__(self):
-        self.debye_df: pd.DataFrame = None
         self.number_of_atoms: int = None
         self.scaling_factor: float = None
         self.gruneisen_x: float = None
@@ -349,20 +372,6 @@ class DebyeData:
         self.entropy = s_vib
         self.heat_capacity = cv_vib
 
-        # Temporary until I fix the quasi_harmonic module
-        self.debye_df = pd.DataFrame(
-            {
-                "number_of_atoms": number_of_atoms,
-                "temperatures": temperatures,
-                "scaling_factor": [scaling_factor] * len(temperatures),
-                "gruneisen_x": [gruneisen_x] * len(temperatures),
-                "volume": [volumes] * len(temperatures),
-                "f_vib": [col for col in f_vib],
-                "s_vib": [col for col in s_vib],
-                "cv_vib": [col for col in cv_vib],
-            }
-        )
-
     def plot(
         self,
         property: str,
@@ -402,7 +411,6 @@ class PhononsData:
         self.helmholtz_energy_fit: dict = None
         self.entropy_fit: dict = None
         self.heat_capacity_fit: dict = None
-        self.harmonic_fit_df: pd.DataFrame = None
         self.f_vib: np.ndarray = None
         self.s_vib: np.ndarray = None
         self.cv_vib: np.ndarray = None
@@ -577,27 +585,6 @@ class PhononsData:
             }
         }
 
-        # Temporary harmonic_fit_df for qha.
-        harmonic_fit_df = (
-            pd.DataFrame(
-                {
-                    "number_of_atoms": [self.number_of_atoms] * len(self.temperatures),
-                    "temperatures": self.temperatures,
-                    "f_vib_poly": f_vib_poly,
-                    "s_vib_poly": s_vib_poly,
-                    "cv_vib_poly": cv_vib_poly,
-                }
-            )
-            .groupby("temperatures")
-            .agg(list)
-        )
-
-        # Remove the outer layer of lists
-        for col in ["number_of_atoms", "f_vib_poly", "s_vib_poly", "cv_vib_poly"]:
-            harmonic_fit_df[col] = harmonic_fit_df[col].apply(lambda x: x[0])
-
-        self.harmonic_fit_df = harmonic_fit_df
-
     def plot_scaled_dos(self, number_of_atoms: int, plot: bool = True) -> None:
         yphon_results_path = os.path.join(self.path, "YPHON_results")
         scale_phonon_dos(yphon_results_path, number_of_atoms, plot)
@@ -651,7 +638,6 @@ class ThermalElectronicData:
         self.kpoints: Kpoints = None
         self.potcar: Potcar = None
         self.electron_dos_data: pd.DataFrame = None
-        self.thermal_electronic_fit_df: pd.DataFrame = None
         self.number_of_atoms: int = None
         self.volumes: np.ndarray = None
         self.temperatures: np.ndarray = None
@@ -801,29 +787,6 @@ class ThermalElectronicData:
             }
         }
 
-        # Temporary df for qha
-        thermal_electronic_fit_df = (
-            pd.DataFrame(
-                {
-                    "number_of_atoms": [self.number_of_atoms] * len(self.temperatures),
-                    "temperatures": self.temperatures,
-                    "f_el_poly": f_el_poly,
-                    "s_el_poly": s_el_poly,
-                    "cv_el_poly": cv_el_poly,
-                }
-            )
-            .groupby("temperatures")
-            .agg(list)
-        )
-
-        # Remove the outer layer of lists
-        for col in ["number_of_atoms", "f_el_poly", "s_el_poly", "cv_el_poly"]:
-            thermal_electronic_fit_df[col] = thermal_electronic_fit_df[col].apply(
-                lambda x: x[0]
-            )
-
-        self.thermal_electronic_fit_df = thermal_electronic_fit_df
-
     def plot(
         self, property_to_plot: str, selected_temperatures_plot: np.ndarray = None
     ) -> tuple[go.Figure, go.Figure]:
@@ -879,50 +842,84 @@ class QuasiHarmonicData:
             "phonons_thermal_electronic": {},
         }
 
+    
     def get_quasi_harmonic_data(
         self,
         method: str,
         eos: str,
-        num_atoms_eos: int,
+        number_of_atoms: int,
+        temperatures,
         volume_range: np.ndarray,
-        eos_constants: list,
-        harmonic_properties_fit: pd.DataFrame = None,
-        debye_properties: pd.DataFrame = None,
-        thermal_electronic_properties_fit: pd.DataFrame = None,
+        energy_eos: np.ndarray,
+        f_vib_fit=None,
+        s_vib_fit=None,
+        cv_vib_fit=None,
+        f_el_fit=None,
+        s_el_fit=None,
+        cv_el_fit=None,
         P: float = 0,
-        apply_smoothing: bool = False,
-        smoothing_window_length: int = 21,
-        smoothing_polyorder: int = 2,
     ) -> None:
 
-        quasi_harmonic_properties = process_quasi_harmonic(
-            num_atoms_eos=num_atoms_eos,
+        (
+            f_plus_pv,
+            eos_constants,
+            s_coefficients,
+            cv_coefficients,
+            V0,
+            G0,
+            B,
+            BP,
+            S0,
+            CTE,
+            Cp,
+            H0,
+        ) = process_quasi_harmonic(
+            temperatures=temperatures,
             volume_range=volume_range,
-            eos_constants=eos_constants,
-            apply_smoothing=apply_smoothing,
-            smoothing_window_length=smoothing_window_length,
-            smoothing_polyorder=smoothing_polyorder,
-            harmonic_properties_fit=harmonic_properties_fit,
-            debye_properties=debye_properties,
-            thermal_electronic_properties_fit=thermal_electronic_properties_fit,
+            energy_eos=energy_eos,
+            f_vib_fit=f_vib_fit,
+            s_vib_fit=s_vib_fit,
+            cv_vib_fit=cv_vib_fit,
+            f_el_fit=f_el_fit,
+            s_el_fit=s_el_fit,
+            cv_el_fit=cv_el_fit,
             P=P,
             eos=eos,
         )
 
-        self.quasi_harmonic_df = quasi_harmonic_properties
-        self.method = method
-        self.pressure = quasi_harmonic_properties["pressure"].values.tolist()[0]
-        self.number_of_atoms = int(
-            quasi_harmonic_properties["number_of_atoms"].values.tolist()[0]
+        quasi_harmonic_output = (
+            f_plus_pv,
+            eos_constants,
+            s_coefficients,
+            cv_coefficients,
+            V0,
+            G0,
+            B,
+            BP,
+            S0,
+            CTE,
+            Cp,
+            H0,
         )
-        self.temperatures = quasi_harmonic_properties["temperature"].values.tolist()
-        self.volumes = quasi_harmonic_properties["volume_range"].values[0].tolist()
-        eos_constants = [
-            arr.tolist() for arr in quasi_harmonic_properties["eos_constants"]
-        ]
-        s_coefficients = [
-            arr.tolist() for arr in quasi_harmonic_properties["s_coefficients"]
-        ]
+        f_plus_pv_list = f_plus_pv.tolist()
+        eos_constants_list = [arr.tolist() for arr in eos_constants]
+        s_coefficients_list = [arr.tolist() for arr in s_coefficients]
+        cv_coefficients_list = [arr.tolist() for arr in cv_coefficients]
+        V0_list = V0.tolist()
+        G0_list = G0.tolist()
+        B_list = B.tolist()
+        BP_list = BP.tolist()
+        S0_list = S0.tolist()
+        CTE_list = CTE.tolist()
+        Cp_list = Cp.tolist()
+        H0_list = H0.tolist()
+
+        self.method = method
+        self.pressure = P
+        self.number_of_atoms = number_of_atoms
+        self.temperatures = temperatures
+        self.volumes = volume_range
+        eos_constants = eos_constants
 
         self.helmholtz_energy = {
             "eos_parameters": {
@@ -941,18 +938,26 @@ class QuasiHarmonicData:
         for temp, entropy in zip(self.temperatures, s_coefficients):
             self.entropy["polynomial_coefficients"][f"{temp}K"] = entropy
 
-        cv_coefficients = [
-            arr.tolist() for arr in quasi_harmonic_properties["cv_coefficients"]
-        ]
         self.heat_capacity = {"polynomial_coefficients": {}}
         for temp, cv in zip(self.temperatures, cv_coefficients):
             self.heat_capacity["polynomial_coefficients"][f"{temp}K"] = cv
 
         self.methods[method][P] = {
-            "quasi_harmonic_df": self.quasi_harmonic_df,
             "helmholtz_energy": self.helmholtz_energy,
             "entropy": self.entropy,
             "heat_capacity": self.heat_capacity,
+            "f_plus_pv": f_plus_pv,
+            "eos_constants": eos_constants,
+            "s_coefficients": s_coefficients,
+            "cv_coefficients": cv_coefficients,
+            "V0": V0,
+            "G0": G0,
+            "B": B,
+            "BP": BP,
+            "S0": S0,
+            "CTE": CTE,
+            "Cp": Cp,
+            "H0": H0,
         }
 
     def plot(
@@ -960,21 +965,38 @@ class QuasiHarmonicData:
         method: str,
         P: float,
         plot_type: str = "default",
-        selected_temperatures_plot: list = None,
+        selected_temperatures_plot: np.ndarray = None,
     ) -> go.Figure:
 
         pressure = P
+        
+        # Retrieve the tuple output from the quasi-harmonic data
+        quasi_harmonic_output = (
+            self.methods[method][pressure]["f_plus_pv"],
+            self.methods[method][pressure]["eos_constants"],
+            self.methods[method][pressure]["s_coefficients"],
+            self.methods[method][pressure]["cv_coefficients"],
+            self.methods[method][pressure]["V0"],
+            self.methods[method][pressure]["G0"],
+            self.methods[method][pressure]["B"],
+            self.methods[method][pressure]["BP"],
+            self.methods[method][pressure]["S0"],
+            self.methods[method][pressure]["CTE"],
+            self.methods[method][pressure]["Cp"],
+            self.methods[method][pressure]["H0"],
+        )
+
         fig = plot_quasi_harmonic(
-            quasi_harmonic_properties=self.methods[method][pressure][
-                "quasi_harmonic_df"
-            ],
+            quasi_harmonic_output=quasi_harmonic_output,
+            temperatures=self.temperatures,
+            volume_range=self.volumes,
+            number_of_atoms=self.number_of_atoms,
             plot_type=plot_type,
             selected_temperatures_plot=selected_temperatures_plot,
         )
         return fig
 
 
-# Continue refactoring here!
 class Configuration:
     def __init__(self, path, name, alias: str = None, multiplicity: int = None):
         self.path = path
@@ -983,10 +1005,10 @@ class Configuration:
         self.multiplicity = multiplicity
         self.job_script = {}
         self.vasp_cmd = None
-        self.ev_curves_settings_data = {}
+        self.ev_curve_settings_data = {}
         self.phonons_settings_data = {}
         self.thermal_electronic_settings_data = {}
-        self.ev_curves_job_script = {}
+        self.ev_curve_job_script = {}
         self.phonons_job_script = {}
         self.thermal_electronic_job_script = {}
 
@@ -1158,7 +1180,7 @@ class Configuration:
 
         return kpoints_conv_df, fig
 
-    def ev_curves_settings(
+    def ev_curve_settings(
         self,
         material_type: str,
         volumes: list[float],
@@ -1178,7 +1200,7 @@ class Configuration:
         max_errors: int = 10,
     ) -> None:
 
-        self.ev_curves_settings_data = {
+        self.ev_curve_settings_data = {
             "material_type": material_type,
             "volumes": volumes,
             "encut": encut,
@@ -1197,27 +1219,27 @@ class Configuration:
             "max_errors": max_errors,
         }
 
-        self.ev_curves_job_script = self.job_script
+        self.ev_curve_job_script = self.job_script
 
     # TODO: add a way to select the custodian handlers
-    def run_ev_curves(self) -> None:
+    def run_ev_curve(self) -> None:
 
-        # Ensure ev_curves_settings_data is set and not empty
-        if not self.ev_curves_settings_data:
+        # Ensure ev_curve_settings_data is set and not empty
+        if not self.ev_curve_settings_data:
             raise AttributeError(
-                "EV curves settings data not set. Please call ev_curves_settings() first."
+                "EV curves settings data not set. Please call ev_curve_settings() first."
             )
 
         # Prepare the VASP input files
         vasp_input.ev_curve_set(
             self.path,
-            material_type=self.ev_curves_settings_data["material_type"],
-            encut=self.ev_curves_settings_data["encut"],
-            kppa=self.ev_curves_settings_data["kppa"],
-            magmom_fm=self.ev_curves_settings_data["magmom_fm"],
-            potcar_functional=self.ev_curves_settings_data["potcar_functional"],
-            incar_functional=self.ev_curves_settings_data["incar_functional"],
-            other_settings=self.ev_curves_settings_data["other_settings"],
+            material_type=self.ev_curve_settings_data["material_type"],
+            encut=self.ev_curve_settings_data["encut"],
+            kppa=self.ev_curve_settings_data["kppa"],
+            magmom_fm=self.ev_curve_settings_data["magmom_fm"],
+            potcar_functional=self.ev_curve_settings_data["potcar_functional"],
+            incar_functional=self.ev_curve_settings_data["incar_functional"],
+            other_settings=self.ev_curve_settings_data["other_settings"],
         )
 
         # Prepare the run_dfttk.py script
@@ -1229,21 +1251,21 @@ import dfttk.workflows as workflows
 subset = list(VaspErrorHandler.error_msgs.keys())
 handlers = [VaspErrorHandler(errors_subset_to_catch=subset)]
 vasp_cmd = {self.vasp_cmd}
-volumes = {self.ev_curves_settings_data["volumes"]}
+volumes = {self.ev_curve_settings_data["volumes"]}
 
 workflows.ev_curve_series(
     os.getcwd(),
     volumes,
     vasp_cmd,
     handlers,
-    restarting={self.ev_curves_settings_data["restarting"]},
-    keep_wavecar={self.ev_curves_settings_data["keep_wavecar"]},
-    keep_chgcar={self.ev_curves_settings_data["keep_chgcar"]},
-    copy_magmom={self.ev_curves_settings_data["copy_magmom"]},
-    default_settings={self.ev_curves_settings_data["default_settings"]},
-    override_2relax={self.ev_curves_settings_data["override_2relax"]},
-    override_3static={self.ev_curves_settings_data["override_3static"]},
-    max_errors={self.ev_curves_settings_data["max_errors"]}
+    restarting={self.ev_curve_settings_data["restarting"]},
+    keep_wavecar={self.ev_curve_settings_data["keep_wavecar"]},
+    keep_chgcar={self.ev_curve_settings_data["keep_chgcar"]},
+    copy_magmom={self.ev_curve_settings_data["copy_magmom"]},
+    default_settings={self.ev_curve_settings_data["default_settings"]},
+    override_2relax={self.ev_curve_settings_data["override_2relax"]},
+    override_3static={self.ev_curve_settings_data["override_3static"]},
+    max_errors={self.ev_curve_settings_data["max_errors"]}
 )
 workflows.custodian_errors_location(os.getcwd())
 workflows.NELM_reached(os.getcwd())
@@ -1255,7 +1277,7 @@ workflows.NELM_reached(os.getcwd())
         # Run the job
         subprocess.run(["sbatch", "job.sh"], cwd=self.path)
 
-    def process_ev_curves(
+    def process_ev_curve(
         self,
         volumes: list[float] = None,
         outcar_name: str = "OUTCAR.3static",
@@ -1271,14 +1293,14 @@ workflows.NELM_reached(os.getcwd())
         num_volumes: int = 1000,
     ) -> None:
 
-        # Initialize EvCurvesData
-        self.ev_curves = EvCurvesData(self.path, self.name)
+        # Initialize EvCurveData
+        self.ev_curve = EvCurveData(self.path, self.name)
 
         # Get VASP input
-        self.ev_curves.get_vasp_input(volumes)
+        self.ev_curve.get_vasp_input(volumes)
 
         # Get energy-volume data
-        self.ev_curves.get_energy_volume_data(
+        self.ev_curve.get_energy_volume_data(
             volumes=volumes,
             outcar_name=outcar_name,
             oszicar_name=oszicar_name,
@@ -1290,7 +1312,7 @@ workflows.NELM_reached(os.getcwd())
         )
 
         # Fit energy-volume data
-        self.ev_curves.fit_energy_volume_data(
+        self.ev_curve.fit_energy_volume_data(
             eos_name=eos_name,
             volume_min=volume_min,
             volume_max=volume_max,
@@ -1306,12 +1328,12 @@ workflows.NELM_reached(os.getcwd())
         self.debye = DebyeData()
 
         self.debye.get_debye_gruneisen_data(
-            self.ev_curves.number_of_atoms,
-            self.ev_curves.volumes,
-            self.ev_curves.average_mass,
-            self.ev_curves.eos_parameters["V0"],
-            self.ev_curves.eos_parameters["B"],
-            self.ev_curves.eos_parameters["BP"],
+            self.ev_curve.number_of_atoms,
+            self.ev_curve.volumes,
+            self.ev_curve.average_mass,
+            self.ev_curve.eos_parameters["V0"],
+            self.ev_curve.eos_parameters["B"],
+            self.ev_curve.eos_parameters["BP"],
             scaling_factor,
             gruneisen_x,
             temperatures,
@@ -1468,59 +1490,93 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         method: str,
         volume_range: np.ndarray,
         P: float = 0,
-        apply_smoothing: bool = False,
-        smoothing_window_length: int = 21,
-        smoothing_polyorder: int = 2,
     ):
+
+        eos = self.ev_curve.eos_parameters["eos_name"]
+        a = self.ev_curve.eos_parameters["a"]
+        b = self.ev_curve.eos_parameters["b"]
+        c = self.ev_curve.eos_parameters["c"]
+        d = self.ev_curve.eos_parameters["d"]
+        e = self.ev_curve.eos_parameters["e"]
+
+        # Get the EOS energy at 0 K corresponding to the volume range
+        equation_functions = {
+            "mBM4": eos_fit.mBM4_equation,
+            "mBM5": eos_fit.mBM5_equation,
+            "BM4": eos_fit.BM4_equation,
+            "BM5": eos_fit.BM5_equation,
+            "LOG4": eos_fit.LOG4_equation,
+            "LOG5": eos_fit.LOG5_equation,
+        }
+        if eos == "mBM4" or eos == "BM4" or eos == "LOG4":
+            energy_eos = equation_functions[eos](volume_range, a, b, c, d)
+        elif eos == "mBM5" or eos == "BM5" or eos == "LOG5":
+            energy_eos = equation_functions[eos](volume_range, a, b, c, d, e)
+
+        phonons_f_vib_fit = []
+        phonons_s_vib_fit = []
+        phonons_cv_vib_fit = []
+        debye_f_vib = []
+        debye_s_vib = []
+        debye_cv_vib = []
+        f_el_fit = []
+        s_el_fit = []
+        cv_el_fit = []
+        phonon_temperatures_list = self.phonons.temperatures
+
+        # Convert the list to a 2D NumPy array
+        phonons_f_vib_fit = np.vstack(self.phonons.f_vib_fit)
+        phonons_s_vib_fit = np.vstack(self.phonons.s_vib_fit)
+        phonons_cv_vib_fit = np.vstack(self.phonons.cv_vib_fit)
+        debye_f_vib = self.debye.free_energy
+        debye_s_vib = self.debye.entropy
+        debye_cv_vib = self.debye.heat_capacity
+        f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
+        s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
+        cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
+
         if not hasattr(self, "qha"):
             self.qha = QuasiHarmonicData()
 
         if method == "debye":
-            debye_properties = self.debye.debye_df
-            harmonic_properties_fit = None
-            thermal_electronic_properties_fit = None
+            f_vib_fit = debye_f_vib
+            s_vib_fit = debye_s_vib
+            cv_vib_fit = debye_cv_vib
+            f_el_fit = 0
+            s_el_fit = 0
+            cv_el_fit = 0
         elif method == "debye_thermal_electronic":
-            debye_properties = self.debye.debye_df
-            harmonic_properties_fit = None
-            thermal_electronic_properties_fit = (
-                self.thermal_electronic.thermal_electronic_fit_df
-            )
+            f_vib_fit = debye_f_vib
+            s_vib_fit = debye_s_vib
+            cv_vib_fit = debye_cv_vib
         elif method == "phonons":
-            debye_properties = None
-            harmonic_properties_fit = self.phonons.harmonic_fit_df
-            thermal_electronic_properties_fit = None
+            f_vib_fit = phonons_f_vib_fit
+            s_vib_fit = phonons_s_vib_fit
+            cv_vib_fit = phonons_cv_vib_fit
+            f_el_fit = 0
+            s_el_fit = 0
+            cv_el_fit = 0
         elif method == "phonons_thermal_electronic":
-            debye_properties = None
-            harmonic_properties_fit = self.phonons.harmonic_fit_df
-            thermal_electronic_properties_fit = (
-                self.thermal_electronic.thermal_electronic_fit_df
-            )
+            f_vib_fit = phonons_f_vib_fit
+            s_vib_fit = phonons_s_vib_fit
+            cv_vib_fit = phonons_cv_vib_fit
         else:
             raise ValueError(f"Unknown option: {method}")
 
-        eos = self.ev_curves.eos_parameters["eos_name"]
-        eos_constants = np.array(
-            [
-                self.ev_curves.eos_parameters["a"],
-                self.ev_curves.eos_parameters["b"],
-                self.ev_curves.eos_parameters["c"],
-                self.ev_curves.eos_parameters["d"],
-                self.ev_curves.eos_parameters["e"],
-            ]
-        )
         self.qha.get_quasi_harmonic_data(
             method,
             eos,
-            self.ev_curves.number_of_atoms,
+            self.ev_curve.number_of_atoms,
+            phonon_temperatures_list,
             volume_range,
-            eos_constants,
-            harmonic_properties_fit=harmonic_properties_fit,
-            debye_properties=debye_properties,
-            thermal_electronic_properties_fit=thermal_electronic_properties_fit,
+            energy_eos,
+            f_vib_fit=f_vib_fit,
+            s_vib_fit=s_vib_fit,
+            cv_vib_fit=cv_vib_fit,
+            f_el_fit=f_el_fit,
+            s_el_fit=s_el_fit,
+            cv_el_fit=cv_el_fit,
             P=P,
-            apply_smoothing=apply_smoothing,
-            smoothing_window_length=smoothing_window_length,
-            smoothing_polyorder=smoothing_polyorder,
         )
 
     def replace_keys(self, d, key_mapping):
@@ -1533,7 +1589,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             return [self.replace_keys(i, key_mapping) for i in d]
         else:
             return d
-
+    # TODO: Fix this!
     def to_mongodb(self, connection_string: str, db_name: str, collection_name: str):
         self.cluster = MongoClient(connection_string)
         self.db = self.cluster[db_name]
@@ -1554,18 +1610,18 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 "alias": self.alias,
                 "multiplicity": self.multiplicity,
                 "reducedFormula": (
-                    self.ev_curves.relaxed_structures[0].composition.reduced_formula
-                    if hasattr(self, "ev_curves")
+                    self.ev_curve.relaxed_structures[0].composition.reduced_formula
+                    if hasattr(self, "ev_curve")
                     else None
                 ),
                 "nComponents": (
-                    len(self.ev_curves.relaxed_structures[0].composition.elements)
-                    if hasattr(self, "ev_curves")
+                    len(self.ev_curve.relaxed_structures[0].composition.elements)
+                    if hasattr(self, "ev_curve")
                     else None
                 ),
                 "numberOfAtoms": (
-                    self.ev_curves.number_of_atoms
-                    if hasattr(self, "ev_curves")
+                    self.ev_curve.number_of_atoms
+                    if hasattr(self, "ev_curve")
                     else None
                 ),
             },
@@ -1584,43 +1640,43 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 }
             )
 
-        if hasattr(self, "ev_curves"):
-            eos_parameters = self.ev_curves.eos_parameters.copy()
-            ev_curves_settings_copy = self.ev_curves_settings_data.copy()
-            ev_curves_settings_copy.pop("volumes")
-            number_of_atoms = self.ev_curves.number_of_atoms
+        if hasattr(self, "ev_curve"):
+            eos_parameters = self.ev_curve.eos_parameters.copy()
+            ev_curve_settings_copy = self.ev_curve_settings_data.copy()
+            ev_curve_settings_copy.pop("volumes")
+            number_of_atoms = self.ev_curve.number_of_atoms
 
             eos_parameters_ordered = OrderedDict()
             eos_parameters_ordered["eosName"] = eos_parameters.pop("eos_name")
             eos_parameters_ordered.update(eos_parameters)
 
-            document["evCurves"] = {
+            document["evCurve"] = {
                 "input": {
-                    "jobScript": self.ev_curves_job_script,
-                    "settings": ev_curves_settings_copy,
-                    "poscar": self.ev_curves.starting_poscar.as_dict(),
-                    "incars": self.ev_curves.incars,
-                    "kpoints": self.ev_curves.kpoints.as_dict(),
-                    "potcar": self.ev_curves.potcar.as_dict(),
+                    "jobScript": self.ev_curve_job_script,
+                    "settings": ev_curve_settings_copy,
+                    "poscar": self.ev_curve.starting_poscar.as_dict(),
+                    "incars": self.ev_curve.incars,
+                    "kpoints": self.ev_curve.kpoints.as_dict(),
+                    "potcar": self.ev_curve.potcar.as_dict(),
                 },
                 "output": {
                     "scaleAtoms": number_of_atoms,
-                    "volumes": self.ev_curves.volumes.tolist(),
-                    "energies": self.ev_curves.energies.tolist(),
+                    "volumes": self.ev_curve.volumes.tolist(),
+                    "energies": self.ev_curve.energies.tolist(),
                     "relaxedStructures": [
-                        s.as_dict() for s in self.ev_curves.relaxed_structures
+                        s.as_dict() for s in self.ev_curve.relaxed_structures
                     ],
                     "totalMagneticMoments": (
-                        self.ev_curves.total_magnetic_moment
-                        if isinstance(self.ev_curves.total_magnetic_moment, list)
-                        else self.ev_curves.total_magnetic_moment.tolist()
+                        self.ev_curve.total_magnetic_moment
+                        if isinstance(self.ev_curve.total_magnetic_moment, list)
+                        else self.ev_curve.total_magnetic_moment.tolist()
                     ),
                     "magneticOrderings": (
-                        self.ev_curves.magnetic_ordering
-                        if isinstance(self.ev_curves.magnetic_ordering, list)
-                        else self.ev_curves.magnetic_ordering.tolist()
+                        self.ev_curve.magnetic_ordering
+                        if isinstance(self.ev_curve.magnetic_ordering, list)
+                        else self.ev_curve.magnetic_ordering.tolist()
                     ),
-                    "magData": self.ev_curves.mag_data,
+                    "magData": self.ev_curve.mag_data,
                     "eosParameters": eos_parameters_ordered,
                 },
             }
@@ -1731,7 +1787,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                     "heatCapacity": heat_capacity,
                 },
             }
-
+        '''
         if hasattr(self, "qha"):
             key_mapping = {
                 "debye": "debye",
@@ -1781,7 +1837,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 },
                 "methods": methods_copy,
             }
-
+        '''
         if hasattr(self, "experiments"):
             document["experiments"] = self.experiments
 
@@ -1833,7 +1889,7 @@ def plot_multiple_ev(
     config_symbols = assign_marker_symbols_to_configs(config_names)
 
     for config_name in config_names:
-        fig = config_objects[config_name].ev_curves.plot(
+        fig = config_objects[config_name].ev_curve.plot(
             volume_min=volume_min,
             volume_max=volume_max,
             num_volumes=num_volumes,
