@@ -1044,10 +1044,9 @@ class Configuration:
     def set_vasp_cmd(self, vasp_cmd: list[str]) -> None:
         self.vasp_cmd = vasp_cmd
 
-    # TODO: At the moment this only works for the Bridges-2 template. Modify it to make it more general.
     def read_job_script(self, template: str) -> None:
         templates_map = {
-            "bridges2": "bridges2.json",
+            "slurm": "slurm.json",
         }
         if template in templates_map:
             with importlib.resources.path(

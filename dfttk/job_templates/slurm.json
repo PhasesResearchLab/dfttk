@@ -1,6 +1,6 @@
 {
-    "job_name": "Bridges-2",
-    "account": "dmr190011p",
+    "job_name": "your_job_name",
+    "account": "your_account_name",
     "partition": "RM",
     "nodes": 1,
     "ntasks_per_node": 128,
