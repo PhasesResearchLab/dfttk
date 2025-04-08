@@ -943,33 +943,6 @@ class QuasiHarmonicData:
             eos=eos,
         )
 
-        quasi_harmonic_output = (
-            f_plus_pv,
-            eos_constants,
-            s_coefficients,
-            cv_coefficients,
-            V0,
-            G0,
-            B,
-            BP,
-            S0,
-            CTE,
-            Cp,
-            H0,
-        )
-        f_plus_pv_list = f_plus_pv.tolist()
-        eos_constants_list = [arr.tolist() for arr in eos_constants]
-        s_coefficients_list = [arr.tolist() for arr in s_coefficients]
-        cv_coefficients_list = [arr.tolist() for arr in cv_coefficients]
-        V0_list = V0.tolist()
-        G0_list = G0.tolist()
-        B_list = B.tolist()
-        BP_list = BP.tolist()
-        S0_list = S0.tolist()
-        CTE_list = CTE.tolist()
-        Cp_list = Cp.tolist()
-        H0_list = H0.tolist()
-
         self.method = method
         self.pressure = P
         self.number_of_atoms = number_of_atoms
