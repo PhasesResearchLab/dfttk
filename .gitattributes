@@ -1,3 +1,5 @@
-*.3static linguist-detectable=false
 *.1relax linguist-detectable=false
 *.2relax linguist-detectable=false
+*.3static linguist-detectable=false
+*.2phonons linguist-detectable=false
+*.elec_dos linguist-detectable=false
