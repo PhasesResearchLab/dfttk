@@ -1,1 +1,3 @@
-*.roff linguist-detectable=false
+*.3static linguist-detectable=false
+*.1relax linguist-detectable=false
+*.2relax linguist-detectable=false
