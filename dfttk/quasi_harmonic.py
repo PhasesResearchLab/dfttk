@@ -189,7 +189,6 @@ def process_quasi_harmonic(
     )
 
 
-# TODO: Add docstrings
 def plot_quasi_harmonic(
     quasi_harmonic_output: tuple,
     temperatures: np.ndarray,
@@ -197,8 +196,21 @@ def plot_quasi_harmonic(
     number_of_atoms: int,
     plot_type: str,
     selected_temperatures_plot: np.ndarray = None,
-):
-    
+) -> go.Figure:
+    """Plot the quasiharmonic properties.
+
+    Args:
+        quasi_harmonic_output (tuple): output tuple from process_quasi_harmonic function.
+        temperatures (np.ndarray): temperatures corresponding to the quasiharmonic properties.
+        volume_range (np.ndarray): volume range corresponding to the quasiharmonic properties.
+        number_of_atoms (int): number of atoms corresponding to the quasiharmonic properties.
+        plot_type (str): helmholtz_energy_pv, volume, cte, entropy, heat_capacity, enthalpy, bulk_modulus, gibbs_energy.
+        selected_temperatures_plot (np.ndarray, optional): temperatures to plot for helmholtz_energy_pv. If None, will select 11 evenly spaced temperatures. Defaults to None.
+
+    Returns:
+        go.Figure: Plotly figure object for the quasiharmonic properties.
+    """
+
     (
         f_plus_pv,
         eos_constants,
@@ -213,15 +225,13 @@ def plot_quasi_harmonic(
         Cp,
         H0,
     ) = quasi_harmonic_output
-    
+
     if selected_temperatures_plot is None:
         spaces = len(temperatures) - 1
         step = max(1, int(spaces / 10))
         selected_temperatures = temperatures[::step]
         if selected_temperatures[-1] != temperatures[-1]:
-            selected_temperatures = np.append(
-                selected_temperatures, temperatures[-1]
-            )
+            selected_temperatures = np.append(selected_temperatures, temperatures[-1])
     else:
         selected_temperatures = selected_temperatures_plot
 
@@ -288,4 +298,5 @@ def plot_quasi_harmonic(
             y, y_label = plot_mappings[plot_type]
             x = temperatures
             fig = create_plot(x, y, "Temperature (K)", y_label)
+
         return fig
