@@ -18,7 +18,7 @@ from pymatgen.core import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 
 # DFTTK imports
-from dfttk.thermal_electronic_functions import (
+from dfttk.thermal_electronic.functions import (
     thermal_electronic,
     fit_thermal_electronic,
     read_total_electron_dos,
