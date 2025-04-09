@@ -11,7 +11,7 @@ from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 
 from dfttk.aggregate_extraction import extract_configuration_data
-from dfttk.eos_fit import fit_to_eos, plot_ev
+from dfttk.eos.fit import fit_to_eos, plot_ev
 
 class EvCurveData:
     """A class for handling energy-volume (E-V) curve data for a configuration."""

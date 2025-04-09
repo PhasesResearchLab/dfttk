@@ -23,12 +23,12 @@ from dfttk.aggregate_extraction import (
     calculate_encut_conv,
     calculate_kpoint_conv,
 )
-import dfttk.eos_functions as eos_functions
-from dfttk.eos_fit import (
+import dfttk.eos.functions as eos_functions
+from dfttk.eos.fit import (
     assign_colors_to_configs,
     assign_marker_symbols_to_configs,
 )
-from dfttk.ev_curve_data import EvCurveData
+from dfttk.eos.ev_curve_data import EvCurveData
 from dfttk.debye_data import DebyeData
 from dfttk.phonon_data import PhononData
 from dfttk.thermal_electronic_data import ThermalElectronicData

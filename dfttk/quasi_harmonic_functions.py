@@ -8,7 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # Local application/library specific imports
-import dfttk.eos_functions as eos_functions
+import dfttk.eos.functions as eos_functions
 from dfttk.plotly_format import plot_format
 
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa

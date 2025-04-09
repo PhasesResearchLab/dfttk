@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 from distinctipy import get_colors
 
 # DFTTK imports
-from dfttk.eos_functions import (
+from dfttk.eos.functions import (
     mBM4,
     mBM5,
     BM4,
