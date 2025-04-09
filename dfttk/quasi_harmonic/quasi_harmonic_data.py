@@ -7,7 +7,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 # Local application/library specific imports
-from dfttk.quasi_harmonic_functions import (
+from dfttk.quasi_harmonic.functions import (
     process_quasi_harmonic,
     plot_quasi_harmonic,
 )

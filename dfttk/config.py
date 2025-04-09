@@ -32,7 +32,7 @@ from dfttk.eos.ev_curve_data import EvCurveData
 from dfttk.debye.debye_data import DebyeData
 from dfttk.phonon.phonon_data import PhononData
 from dfttk.thermal_electronic.thermal_electronic_data import ThermalElectronicData
-from dfttk.quasi_harmonic_data import QuasiHarmonicData
+from dfttk.quasi_harmonic.quasi_harmonic_data import QuasiHarmonicData
 
 
 class MetaData:
