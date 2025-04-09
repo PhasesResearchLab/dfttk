@@ -8,7 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # Local application/library specific imports
-import dfttk.eos_fit as eos_fit
+import dfttk.eos_functions as eos_functions
 from dfttk.plotly_format import plot_format
 
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
@@ -77,15 +77,15 @@ def process_quasi_harmonic(
 
     # List of available EOS functions
     eos_fit_functions = {
-        "mBM4": eos_fit.mBM4,
-        "mBM5": eos_fit.mBM5,
-        "BM4": eos_fit.BM4,
-        "BM5": eos_fit.BM5,
-        "LOG4": eos_fit.LOG4,
-        "LOG5": eos_fit.LOG5,
-        "murnaghan": eos_fit.murnaghan,
-        "vinet": eos_fit.vinet,
-        "morse": eos_fit.morse,
+        "mBM4": eos_functions.mBM4,
+        "mBM5": eos_functions.mBM5,
+        "BM4": eos_functions.BM4,
+        "BM5": eos_functions.BM5,
+        "LOG4": eos_functions.LOG4,
+        "LOG5": eos_functions.LOG5,
+        "murnaghan": eos_functions.murnaghan,
+        "vinet": eos_functions.vinet,
+        "morse": eos_functions.morse,
     }
 
     # Initialize lists to store results
