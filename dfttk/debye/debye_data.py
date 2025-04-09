@@ -7,7 +7,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 # DFTTK imports
-from dfttk.debye_functions import(
+from dfttk.debye.functions import(
     process_debye_gruneisen,
     plot_debye,
 )
