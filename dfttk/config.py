@@ -32,7 +32,7 @@ from dfttk.eos_fit import (
     assign_marker_symbols_to_configs,
 )
 from dfttk.ev_curve_data import EvCurveData
-from dfttk.debye import DebyeData
+from dfttk.debye_data import DebyeData
 from dfttk.workflows import process_phonon_dos_YPHON
 from dfttk.phonons import (
     harmonic,
