@@ -1,5 +1,5 @@
 """
-Module for fitting equations of state (EOS) to energy-volume data and plotting the results.
+Module for managing energy-volume (E-V) data for a configuration using the EvCurveData class.
 """
 
 # Related third party imports
