@@ -8,8 +8,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from distinctipy import get_colors
-from scipy.optimize import fsolve, curve_fit
-from collections import namedtuple
 
 # DFTTK imports
 from dfttk.eos_functions import (
