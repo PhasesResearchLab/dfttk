@@ -29,7 +29,7 @@ from dfttk.data_extraction import extract_tot_mag_data
 
 def move_folders(src_path: str, dest_path: str, folders: list[str]) -> None:
     """Moves folders from the source path to the destination path. It is used to move previous error folders when restarting
-    a job to a temporary folder. 
+    a job to a temporary folder.
 
     Args:
         src_path (str): path to the source folder containing the error folders.
@@ -46,9 +46,9 @@ def rename_error_folders(
     path: str, error_folders_old: list[str], prev_error_folders_count: int
 ) -> None:
     """Renames the error folders in the path. It is used to rename the error folders when restarting a job according
-    to the number of error folders that were moved to a temporary folder from the previous run. For example, if the 
+    to the number of error folders that were moved to a temporary folder from the previous run. For example, if the
     error folders in the temporary folder are error.1.tar and error.2.tar, the error folders in the path will be renamed
-    from error.1.tar to error.3.tar and error.2.tar to error.4.tar. 
+    from error.1.tar to error.3.tar and error.2.tar to error.4.tar.
 
     Args:
         path (str): path to the folder containing the error folders.
@@ -69,9 +69,9 @@ def rename_error_folders(
 
 def process_error_folders(path: str, prev_error_folders_count: int) -> None:
     """Processes the error folders in the path by renaming and moving them. It is used to rename the error folders when restarting a job according
-    to the number of error folders that were moved to a temporary folder from the previous run. For example, if the 
+    to the number of error folders that were moved to a temporary folder from the previous run. For example, if the
     error folders in the temporary folder are error.1.tar and error.2.tar, the error folders in the path will be renamed
-    from error.1.tar to error.3.tar and error.2.tar to error.4.tar. Then, the error folders in the temporary folder will be moved to the path 
+    from error.1.tar to error.3.tar and error.2.tar to error.4.tar. Then, the error folders in the temporary folder will be moved to the path
     and the temporary folder will be removed.
 
     Args:
@@ -92,7 +92,7 @@ def process_error_folders(path: str, prev_error_folders_count: int) -> None:
 
 def merge_custodian_json_files(path: str) -> None:
     """Merges the custodian.json and prev_custodian.json files in the path. The prev_custodian.json file is
-    the custodian.json file from the previous run, while the custodian.json file is the custodian.json file from 
+    the custodian.json file from the previous run, while the custodian.json file is the custodian.json file from
     the current restart run. The merged custodian.json file will contain the combined settings from the two files.
 
     Args:
@@ -112,7 +112,7 @@ def merge_custodian_json_files(path: str) -> None:
             json.dump(combined_custodian_json, f, indent=4)
 
         os.remove(prev_custodian_json_path)
-        
+
 
 def custodian_errors_location(path: str) -> list[str]:
     """Prints the calculation folders containing the custodian errors in the specified path.
@@ -612,24 +612,24 @@ def run_phonons(
         relax (bool, optional): if True, runs a relaxation before the phonon calculation. Defaults to True.
     """
 
-    settings_override=[
-            {
-                "dict": "INCAR",
-                "action": {
-                    "_set": {
-                        "EDIFF": "1E-6",
-                        "IBRION": 6,
-                        "NSW": 1,
-                        "ISIF": 0,
-                        "POTIM": 0.015,
-                        "ISYM": 2,
-                        "NCORE": 1,
-                    }
-                },
+    settings_override = [
+        {
+            "dict": "INCAR",
+            "action": {
+                "_set": {
+                    "EDIFF": "1E-6",
+                    "IBRION": 6,
+                    "NSW": 1,
+                    "ISIF": 0,
+                    "POTIM": 0.015,
+                    "ISYM": 2,
+                    "NCORE": 1,
+                }
             },
-            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
-        ]
-    
+        },
+        {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
+    ]
+
     step1 = VaspJob(
         vasp_cmd=vasp_cmd,
         copy_magmom=copy_magmom,
@@ -648,7 +648,7 @@ def run_phonons(
             settings_override=settings_override,
         )
         jobs = [step1, step2]
-    
+
     else:
         settings_override = [settings_override[0]]
         step2 = VaspJob(
@@ -660,7 +660,7 @@ def run_phonons(
             settings_override=settings_override,
         )
         jobs = [step2]
-        
+
     c = Custodian(handlers, jobs, max_errors=max_errors)
     c.run()
 
@@ -668,20 +668,19 @@ def run_phonons(
 def phonons_parallel(
     path: str,
     phonon_volumes: list[float],
-    kppa: float,
+    kppa: int,
     run_file: str,
     scaling_matrix: tuple[tuple[int]] = ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
-    
 ) -> None:
-    """Runs the run_phonons function in parallel for a list of phonon volumes.
+    """Executes the run_phonons function in parallel for a list of phonon volumes.
 
     Args:
-        path: path to the folder containing the VASP input files.
-        phonon_volumes: a list of volumes to run the phonon calculations for.
-        kppa: k-point grid density.
-        run_file: bash script to run the phonon calculations.
-        scaling_matrix: scaling matrix for the supercell. The default is the identity matrix.
-        relax (bool, optional): if True, runs a relaxation before the phonon calculation. Defaults to True. 
+        path: path to the folder containing the vol_* folders.
+        phonon_volumes: a list of volumes to run the phonon calculations for. Must match the volumes in the vol_* folders.
+        kppa: kppa of the phonon calculations.
+        run_file: job script to run the phonon calculations.
+        scaling_matrix: scaling matrix for the supercell. Defaults to ((1, 0, 0), (0, 1, 0), (0, 0, 1)).
+        relax (bool, optional): whether to run a relaxation before the phonon calculation. Defaults to True.
     """
 
     # Create a new run_file to run the phonon calculations
@@ -698,7 +697,6 @@ def phonons_parallel(
 
     with open(run_file, "r") as file:
         run_file_contents = file.read()
-
     new_run_file = run_file_contents + "\n"
     new_run_file += "\n"
     new_run_file += "python << END_OF_PYTHON\n"
@@ -708,7 +706,7 @@ def phonons_parallel(
     new_run_file += "workflows.NELM_reached(os.getcwd())\n"
     new_run_file += "END_OF_PYTHON\n"
 
-    # Copy files to phonon folders
+    # Copy files from the vol_* folders to the phonon_* folders
     vol_folders = [
         folder
         for folder in os.listdir(path)
@@ -719,8 +717,8 @@ def phonons_parallel(
     ev_folder_names = []
     for vol_folder in vol_folders:
         structure_path = os.path.join(path, vol_folder, "CONTCAR.3static")
-        struct = Structure.from_file(structure_path)
-        ev_volumes_finished.append(round(struct.volume, 6))
+        structure = Structure.from_file(structure_path)
+        ev_volumes_finished.append(round(structure.volume, 6))
         ev_folder_names.append(vol_folder)
 
     ev_volumes_and_folders_finished = [
@@ -754,50 +752,43 @@ def phonons_parallel(
             if os.path.isfile(file_source):
                 shutil.copy2(file_source, file_dest)
 
-    # Create a supercell and write the KPOINTS file
     transformation = SupercellTransformation(scaling_matrix)
-
     for phonon_volume, phonon_folder in phonon_volumes_and_folders:
-        try:  # to get a magnetic structure
+        try:
+            # Try to get the magnetic structure
             structure = get_magnetic_structure(
                 os.path.join(path, f"vol_{phonon_folder}", "CONTCAR.3static"),
                 os.path.join(path, f"vol_{phonon_folder}", "OUTCAR.3static"),
-            )  # if magnetic data not in OUTCAR, will raise an exception.
-            structure = transformation.apply_transformation(structure)
-            structure.to_file(
-                os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
             )
-            structure_magmoms = structure.site_properties["magmom"]
-            numeric_strings = [str(value) for value in structure_magmoms]
-            magmom_string = " ".join(numeric_strings)
-            magmom_line = "MAGMOM = " + magmom_string
-            # Write the magmom_line to the INCAR file
-            incar_file = os.path.join(path, f"phonon_{phonon_folder}", "INCAR")
-            with open(incar_file, "r") as file:
-                lines = file.readlines()
-            with open(incar_file, "w") as file:
-                for line in lines:
-                    if line.startswith("MAGMOM ="):
-                        file.write(magmom_line + "\n")
-                    else:
-                        file.write(line)
+            scaled_structure = transformation.apply_transformation(structure)
+            structure_magmoms = scaled_structure.site_properties["magmom"]
+
+            # Read the INCAR file
+            incar_path = os.path.join(path, f"phonon_{phonon_folder}", "INCAR")
+            incar = Incar.from_file(incar_path)
+
+            # Update the INCAR file with the new MAGMOM values for the scaled structure
+            incar["MAGMOM"] = structure_magmoms
+            incar.write_file(incar_path)
+
         except ValueError:
-        # Swallow the ValueError and continue without outputting anything
+            # Swallow the ValueError and continue without outputting anything
+            structure = Structure.from_file(
+                os.path.join(path, f"phonon_{phonon_folder}", "POSCAR")
+            )
+            scaled_structure = transformation.apply_transformation(structure)
             pass
         except Exception as e:
             # Handle other exceptions
             print(f"An error occurred: {e}")
-        
-        # Apply transformation and save the structure regardless of the exception
-        structure = Structure.from_file(
-            os.path.join(path, f"phonon_{phonon_folder}", "POSCAR")
-        )
-        structure = transformation.apply_transformation(structure)
-        structure.to_file(
+
+        # Write the POSCAR file for the scaled structure
+        scaled_structure.to_file(
             os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
         )
 
-        kpoints = Kpoints.automatic_density(structure, kppa, force_gamma=True)
+        # Write the KPOINTS file for the scaled structure
+        kpoints = Kpoints.automatic_density(scaled_structure, kppa, force_gamma=True)
         kpoints.write_file(os.path.join(path, f"phonon_{phonon_folder}", "KPOINTS"))
 
     # Run the phonon calculations in parallel
