@@ -634,7 +634,6 @@ def run_phonons(
                         "ISIF": 0,
                         "POTIM": 0.015,
                         "ISYM": 2,
-                        "NCORE": 1,
                     }
                 },
             },
