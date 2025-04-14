@@ -824,7 +824,7 @@ def process_phonon_dos_YPHON(path: str):
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
 
-    # Go to each phonon folder and copy the CONTCAR, OUTCAR, and vasprun.xml files to the phonon_dos folder to be processed by YPHON
+    # Process the phonon dos in each phonon_folder
     phonon_folders = [
         folder
         for folder in os.listdir(path)
@@ -836,6 +836,8 @@ def process_phonon_dos_YPHON(path: str):
             phonon_folder = os.path.join(path, phonon_folder)
             if not os.path.exists(phonon_dos_folder):
                 os.makedirs(phonon_dos_folder, exist_ok=True)
+
+            # Copy the necessary files to the phonon_dos folder
             shutil.copy(
                 os.path.join(phonon_folder, "CONTCAR.2phonons"),
                 os.path.join(phonon_dos_folder, "CONTCAR"),
@@ -849,26 +851,29 @@ def process_phonon_dos_YPHON(path: str):
                 os.path.join(phonon_dos_folder, "vasprun.xml"),
             )
 
+            # Write the volume_per_atom to volph_* files
             index = phonon_folder.split("_")[-1]
             structure = Structure.from_file(os.path.join(phonon_dos_folder, "CONTCAR"))
             number_of_atoms = structure.num_sites
             volume = round(structure.volume, 6)
             volume_per_atom = volume / number_of_atoms
-
             with open(os.path.join(phonon_dos_folder, "volph_" + index), "w") as f:
                 f.write(str(volume_per_atom))
 
-            # YPHON commands
+            # Run YPHON commands to generate phonon DOS
             subprocess.run(["vasp_fij"], cwd=phonon_dos_folder)
             subprocess.run(["Yphon <superfij.out"], cwd=phonon_dos_folder, shell=True)
 
+            # Rename the phonon DOS file to vdos_*
             os.rename(
                 os.path.join(phonon_dos_folder, "vdos.out"),
                 os.path.join(phonon_dos_folder, "vdos_" + index),
             )
+
         except Exception as e:
             logging.error(f"Error processing folder {phonon_folder}: {e}")
 
+    # Copy all volph_* and vdos_* files to YPHON_results folder
     os.makedirs(os.path.join(path, "YPHON_results"), exist_ok=True)
     for phonon_folder in phonon_folders:
         try:
@@ -883,6 +888,7 @@ def process_phonon_dos_YPHON(path: str):
                 os.path.join(phonon_dos_folder, "volph_" + index),
                 os.path.join(path, "YPHON_results", "volph_" + index),
             )
+
         except Exception as e:
             logging.error(f"Error copying files from {phonon_folder}: {e}")
 
