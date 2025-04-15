@@ -7,7 +7,8 @@ The Jupyter Notebook for this tutorial can be found in the `examples/Al` directo
 - **Install YPHON**: `YPHON GitHub Repository <https://github.com/PhasesResearchLab/YPHON>`_
 - **Set up POTCAR for pymatgen**: Follow the instructions at `pymatgen POTCAR Setup <https://pymatgen.org/installation.html#potcar-setup>`_
 
-## Import Necessary Libraries
+Import Necessary Libraries
+--------------------------
 
 Before running the tutorial, ensure the required libraries are imported. Use the following code:
 
