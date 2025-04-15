@@ -7,5 +7,5 @@ This section provides tutorials on how to use DFTTK.
    :maxdepth: 2
    :caption: Tutorials:
 
-   al
+   Al_tutorial
    fe3pt
