@@ -590,23 +590,15 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         f_el_fit = []
         s_el_fit = []
         cv_el_fit = []
-        phonon_temperatures_list = self.phonons.temperatures
-
-        # Convert the list to a 2D NumPy array
-        phonons_f_vib_fit = np.vstack(self.phonons.f_vib_fit)
-        phonons_s_vib_fit = np.vstack(self.phonons.s_vib_fit)
-        phonons_cv_vib_fit = np.vstack(self.phonons.cv_vib_fit)
-        debye_f_vib = self.debye.free_energy
-        debye_s_vib = self.debye.entropy
-        debye_cv_vib = self.debye.heat_capacity
-        f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
-        s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
-        cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
 
         if not hasattr(self, "qha"):
             self.qha = QuasiHarmonicData()
 
         if method == "debye":
+            temperatures = np.array(self.debye.temperatures, dtype=int)
+            debye_f_vib = self.debye.free_energy
+            debye_s_vib = self.debye.entropy
+            debye_cv_vib = self.debye.heat_capacity
             f_vib_fit = debye_f_vib
             s_vib_fit = debye_s_vib
             cv_vib_fit = debye_cv_vib
@@ -614,10 +606,21 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             s_el_fit = 0
             cv_el_fit = 0
         elif method == "debye_thermal_electronic":
+            temperatures = np.array(self.debye.temperatures, dtype=int)
+            debye_f_vib = self.debye.free_energy
+            debye_s_vib = self.debye.entropy
+            debye_cv_vib = self.debye.heat_capacity
             f_vib_fit = debye_f_vib
             s_vib_fit = debye_s_vib
             cv_vib_fit = debye_cv_vib
+            f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
+            s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
+            cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
         elif method == "phonons":
+            temperatures = self.phonons.temperatures
+            phonons_f_vib_fit = np.vstack(self.phonons.f_vib_fit)
+            phonons_s_vib_fit = np.vstack(self.phonons.s_vib_fit)
+            phonons_cv_vib_fit = np.vstack(self.phonons.cv_vib_fit)
             f_vib_fit = phonons_f_vib_fit
             s_vib_fit = phonons_s_vib_fit
             cv_vib_fit = phonons_cv_vib_fit
@@ -625,9 +628,16 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             s_el_fit = 0
             cv_el_fit = 0
         elif method == "phonons_thermal_electronic":
+            temperatures = self.phonons.temperatures
+            phonons_f_vib_fit = np.vstack(self.phonons.f_vib_fit)
+            phonons_s_vib_fit = np.vstack(self.phonons.s_vib_fit)
+            phonons_cv_vib_fit = np.vstack(self.phonons.cv_vib_fit)
             f_vib_fit = phonons_f_vib_fit
             s_vib_fit = phonons_s_vib_fit
             cv_vib_fit = phonons_cv_vib_fit
+            f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
+            s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
+            cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
         else:
             raise ValueError(f"Unknown option: {method}")
 
@@ -635,7 +645,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             method,
             eos,
             self.ev_curve.number_of_atoms,
-            phonon_temperatures_list,
+            temperatures,
             volume_range,
             energy_eos,
             f_vib_fit=f_vib_fit,
