@@ -8,4 +8,3 @@ This section provides tutorials on how to use DFTTK.
    :caption: Tutorials:
 
    Al_tutorial
-   fe3pt
