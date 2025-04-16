@@ -16,7 +16,7 @@ EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 def process_quasi_harmonic(
     temperatures: np.ndarray,
-    volume_range: np.ndarray,
+    volumes: np.ndarray,
     energy_eos: np.ndarray,
     f_vib_fit: np.ndarray,
     s_vib_fit: np.ndarray,
@@ -44,7 +44,7 @@ def process_quasi_harmonic(
 
     Args:
         temperatures (np.ndarray): Array of temperatures corresponding to vibrational and thermal electronic inputs.
-        volume_range (np.ndarray): Array of volumes corresponding to energy, vibrational, and thermal electronic inputs.
+        volumes (np.ndarray): Array of volumes corresponding to energy, vibrational, and thermal electronic inputs.
         energy_eos (np.ndarray): Array of energy values corresponding to the volume range.
         f_vib_fit (np.ndarray): Array of vibrational free energy values. Rows are temperatures, columns are volumes.
         s_vib_fit (np.ndarray): Array of vibrational entropy values. Rows are temperatures, columns are volumes.
@@ -96,7 +96,7 @@ def process_quasi_harmonic(
     for index, temperature in enumerate(temperatures):
         # Calculate f_plus_pv
         f_vib = f_vib_fit[index]
-        f_plus_pv = energy_eos + f_vib + P * volume_range
+        f_plus_pv = energy_eos + f_vib + P * volumes
         if not np.all(f_el_fit == 0):
             f_el = f_el_fit[index]
             f_plus_pv += f_el
@@ -105,7 +105,7 @@ def process_quasi_harmonic(
         # Fit EOS and extract parameters
         try:
             eos_constants, eos_parameters, _, _, _ = eos_fit_functions[eos](
-                volume_range, f_plus_pv
+                volumes, f_plus_pv
             )
 
         except RuntimeError as e:
@@ -134,12 +134,12 @@ def process_quasi_harmonic(
 
         order = 2
         s = s_vib + s_el
-        s_coefficients = np.polyfit(volume_range, s, order)
+        s_coefficients = np.polyfit(volumes, s, order)
         s_coefficients_list.append(s_coefficients)
         s_poly = np.poly1d(s_coefficients)
 
         cv = cv_vib + cv_el
-        cv_coefficients = np.polyfit(volume_range, cv, order)
+        cv_coefficients = np.polyfit(volumes, cv, order)
         cv_coefficients_list.append(cv_coefficients)
 
         S0_list.append(s_poly(V0))
@@ -192,7 +192,7 @@ def process_quasi_harmonic(
 def plot_quasi_harmonic(
     quasi_harmonic_output: tuple,
     temperatures: np.ndarray,
-    volume_range: np.ndarray,
+    volumes: np.ndarray,
     number_of_atoms: int,
     plot_type: str,
     selected_temperatures_plot: np.ndarray = None,
@@ -202,7 +202,7 @@ def plot_quasi_harmonic(
     Args:
         quasi_harmonic_output (tuple): output tuple from process_quasi_harmonic function.
         temperatures (np.ndarray): temperatures corresponding to the quasiharmonic properties.
-        volume_range (np.ndarray): volume range corresponding to the quasiharmonic properties.
+        volumes (np.ndarray): volume range corresponding to the quasiharmonic properties.
         number_of_atoms (int): number of atoms corresponding to the quasiharmonic properties.
         plot_type (str): helmholtz_energy_pv, volume, cte, entropy, heat_capacity, enthalpy, bulk_modulus, gibbs_energy.
         selected_temperatures_plot (np.ndarray, optional): temperatures to plot for helmholtz_energy_pv. If None, will select 11 evenly spaced temperatures. Defaults to None.
@@ -248,7 +248,7 @@ def plot_quasi_harmonic(
         fig = go.Figure()
         for index, temperature in enumerate(temperatures):
             if temperature in selected_temperatures:
-                x = volume_range
+                x = volumes
                 y = f_plus_pv[index]
                 fig.add_trace(
                     go.Scatter(
