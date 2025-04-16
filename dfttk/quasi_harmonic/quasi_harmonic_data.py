@@ -52,7 +52,9 @@ class QuasiHarmonicData:
         (
             f_plus_pv,
             eos_constants,
+            s,
             s_coefficients,
+            cv,
             cv_coefficients,
             V0,
             G0,
@@ -76,34 +78,36 @@ class QuasiHarmonicData:
             eos=eos,
         )
 
-        self.helmholtz_energy = {
+        helmholtz_energy = {
             "eos_parameters": {
                 "eos_name": eos,
             }
         }
         for temp, constants in zip(self.temperatures, eos_constants):
-            self.helmholtz_energy["eos_parameters"][f"{temp}K"] = {
+            helmholtz_energy["eos_parameters"][f"{temp}K"] = {
                 "a": constants[0],
                 "b": constants[1],
                 "c": constants[2],
                 "d": constants[3],
                 "e": constants[4],
             }
-        self.entropy = {"polynomial_coefficients": {}}
-        for temp, entropy in zip(self.temperatures, s_coefficients):
-            self.entropy["polynomial_coefficients"][f"{temp}K"] = entropy
+        entropy = {"polynomial_coefficients": {}}
+        for temp, entropy_coeff in zip(self.temperatures, s_coefficients):
+            entropy["polynomial_coefficients"][f"{temp}K"] = entropy_coeff
 
-        self.heat_capacity = {"polynomial_coefficients": {}}
-        for temp, cv in zip(self.temperatures, cv_coefficients):
-            self.heat_capacity["polynomial_coefficients"][f"{temp}K"] = cv
+        heat_capacity = {"polynomial_coefficients": {}}
+        for temp, cv_coeff in zip(self.temperatures, cv_coefficients):
+            heat_capacity["polynomial_coefficients"][f"{temp}K"] = cv_coeff
 
         self.methods[method][P] = {
-            "helmholtz_energy": self.helmholtz_energy,
-            "entropy": self.entropy,
-            "heat_capacity": self.heat_capacity,
+            "helmholtz_energy": helmholtz_energy,
+            "entropy": entropy,
+            "heat_capacity": heat_capacity,
             "f_plus_pv": f_plus_pv,
             "eos_constants": eos_constants,
+            "s": s,
             "s_coefficients": s_coefficients,
+            "cv": cv,
             "cv_coefficients": cv_coefficients,
             "V0": V0,
             "G0": G0,

@@ -27,12 +27,14 @@ def process_quasi_harmonic(
     P: float = 0.0,
     eos: str = "BM4",
 ) -> tuple[
-    np.ndarray,  # f_plus_pv
+    np.ndarray,  # helmholtz_energy_pv
     np.ndarray,  # eos_constants
-    np.ndarray,  # s_coefficients
-    np.ndarray,  # cv_coefficients
+    np.ndarray,  # entropy
+    np.ndarray,  # entropy_coeffs
+    np.ndarray,  # heat_capacity
+    np.ndarray,  # heat_capacity_coeffs
     np.ndarray,  # V0
-    np.ndarray,  # F0
+    np.ndarray,  # G0
     np.ndarray,  # B
     np.ndarray,  # BP
     np.ndarray,  # S0
@@ -58,16 +60,18 @@ def process_quasi_harmonic(
 
     Returns:
         tuple: A tuple containing the following calculated properties:
-            - f_plus_pv (np.ndarray): Array of Helmholtz free energy plus PV. Rows are temperatures, columns are volumes.
-            - eos_constants (np.ndarray): Array of EOS fitting constants for f_plus_pv.
-            - s_coefficients (np.ndarray): Polynomial coefficients for entropy as a function of volume for each temperature.
-            - cv_coefficients (np.ndarray): Polynomial coefficients for heat capacity as a function of volume for each temperature.
+            - helmholtz_energy_pv (np.ndarray): Array of Helmholtz free energy plus PV. Rows are temperatures, columns are volumes.
+            - eos_constants (np.ndarray): Array of EOS fitting constants for helmholtz_energy_pv.
+            - entropy (np.ndarray): Array of entropy values. Rows are temperatures, columns are volumes.
+            - entropy_coeffs (np.ndarray): Polynomial coeffs for entropy as a function of volume for each temperature.
+            - heat_capacity (np.ndarray): Array of heat capacity values. Rows are temperatures, columns are volumes.
+            - heat_capacity_coeffs (np.ndarray): Polynomial coeffs for heat capacity as a function of volume for each temperature.
             - V0 (np.ndarray): Array of equilibrium volumes for P and T.
             - G0 (np.ndarray): Array of Gibbs energies for P and T.
             - B (np.ndarray): Array of bulk moduli for P and T.
             - BP (np.ndarray): Array of bulk modulus pressure derivatives for P and T.
             - S0 (np.ndarray): Array of entropies for P and T.
-            - CTE (np.ndarray): Array of thermal expansion coefficients for P and T.
+            - CTE (np.ndarray): Array of thermal expansion coeffs for P and T.
             - Cp (np.ndarray): Array of heat capacities at constant pressure for P and T.
             - H0 (np.ndarray): Array of enthalpies for P and T.
     """
@@ -89,23 +93,24 @@ def process_quasi_harmonic(
     }
 
     # Initialize lists to store results
-    f_plus_pv_list, eos_constants_list = [], []
-    s_coefficients_list, cv_coefficients_list = [], []
+    helmholtz_energy_pv_list, eos_constants_list = [], []
+    entropy_list, entropy_coeffs_list = [], []
+    heat_capacity_list, heat_capacity_coeffs_list = [], []
     V0_list, F0_list, B_list, BP_list, S0_list = [], [], [], [], []
 
     for index, temperature in enumerate(temperatures):
-        # Calculate f_plus_pv
+        # Calculate helmholtz_energy_pv
         f_vib = f_vib_fit[index]
-        f_plus_pv = energy_eos + f_vib + P * volumes
+        helmholtz_energy_pv = energy_eos + f_vib + P * volumes
         if not np.all(f_el_fit == 0):
             f_el = f_el_fit[index]
-            f_plus_pv += f_el
-        f_plus_pv_list.append(f_plus_pv)
+            helmholtz_energy_pv += f_el
+        helmholtz_energy_pv_list.append(helmholtz_energy_pv)
 
         # Fit EOS and extract parameters
         try:
             eos_constants, eos_parameters, _, _, _ = eos_fit_functions[eos](
-                volumes, f_plus_pv
+                volumes, helmholtz_energy_pv
             )
 
         except RuntimeError as e:
@@ -133,16 +138,18 @@ def process_quasi_harmonic(
             cv_el = 0
 
         order = 2
-        s = s_vib + s_el
-        s_coefficients = np.polyfit(volumes, s, order)
-        s_coefficients_list.append(s_coefficients)
-        s_poly = np.poly1d(s_coefficients)
+        entropy = s_vib + s_el
+        entropy_list.append(entropy)
+        entropy_coeffs = np.polyfit(volumes, entropy, order)
+        entropy_coeffs_list.append(entropy_coeffs)
+        entropy_poly = np.poly1d(entropy_coeffs)
 
-        cv = cv_vib + cv_el
-        cv_coefficients = np.polyfit(volumes, cv, order)
-        cv_coefficients_list.append(cv_coefficients)
+        heat_capacity = cv_vib + cv_el
+        heat_capacity_list.append(heat_capacity)
+        heat_capacity_coeffs = np.polyfit(volumes, heat_capacity, order)
+        heat_capacity_coeffs_list.append(heat_capacity_coeffs)
 
-        S0_list.append(s_poly(V0))
+        S0_list.append(entropy_poly(V0))
 
     # Convert lists to arrays
     V0, S0, G0 = np.array(V0_list), np.array(S0_list), np.array(F0_list)
@@ -165,19 +172,23 @@ def process_quasi_harmonic(
     H0 = G0 + T * S0
 
     # Convert results to arrays
-    f_plus_pv = np.array(f_plus_pv_list)
+    helmholtz_energy_pv = np.array(helmholtz_energy_pv_list)
     eos_constants = np.array(eos_constants_list)
-    s_coefficients = np.array(s_coefficients_list)
-    cv_coefficients = np.array(cv_coefficients_list)
+    entropy = np.array(entropy_list)
+    entropy_coeffs = np.array(entropy_coeffs_list)
+    heat_capacity = np.array(heat_capacity_list)
+    heat_capacity_coeffs = np.array(heat_capacity_coeffs_list)
     G0 = np.array(F0_list)
     B = np.array(B_list)
     BP = np.array(BP_list)
 
     return (
-        f_plus_pv,
+        helmholtz_energy_pv,
         eos_constants,
-        s_coefficients,
-        cv_coefficients,
+        entropy,
+        entropy_coeffs,
+        heat_capacity, 
+        heat_capacity_coeffs,
         V0,
         G0,
         B,
@@ -212,14 +223,14 @@ def plot_quasi_harmonic(
     """
 
     (
-        f_plus_pv,
-        eos_constants,
-        s_coefficients,
-        cv_coefficients,
+        helmholtz_energy_pv,
+        _,
+        _,
+        _,
         V0,
         G0,
         B,
-        BP,
+        _,
         S0,
         CTE,
         Cp,
@@ -235,8 +246,6 @@ def plot_quasi_harmonic(
     else:
         selected_temperatures = selected_temperatures_plot
 
-    scale_atoms = number_of_atoms
-
     def create_plot(x, y, x_label, y_label):
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=x, y=y, mode="lines", marker=dict(size=10)))
@@ -249,7 +258,7 @@ def plot_quasi_harmonic(
         for index, temperature in enumerate(temperatures):
             if temperature in selected_temperatures:
                 x = volumes
-                y = f_plus_pv[index]
+                y = helmholtz_energy_pv[index]
                 fig.add_trace(
                     go.Scatter(
                         x=x,
@@ -274,8 +283,8 @@ def plot_quasi_harmonic(
                 )
         plot_format(
             fig,
-            f"Volume (Å³/{scale_atoms} atoms)",
-            f"F + PV (eV/{scale_atoms} atoms)",
+            f"Volume (Å³/{number_of_atoms} atoms)",
+            f"F + PV (eV/{number_of_atoms} atoms)",
             width=650,
             height=600,
         )
