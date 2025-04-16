@@ -33,7 +33,7 @@ class QuasiHarmonicData:
         eos: str,
         number_of_atoms: int,
         temperatures,
-        volume_range: np.ndarray,
+        volumes: np.ndarray,
         energy_eos: np.ndarray,
         f_vib_fit=None,
         s_vib_fit=None,
@@ -44,6 +44,11 @@ class QuasiHarmonicData:
         P: float = 0,
     ) -> None:
 
+        self.method = method
+        self.number_of_atoms = number_of_atoms
+        self.temperatures = temperatures
+        self.volumes = volumes
+        
         (
             f_plus_pv,
             eos_constants,
@@ -59,7 +64,7 @@ class QuasiHarmonicData:
             H0,
         ) = process_quasi_harmonic(
             temperatures=temperatures,
-            volume_range=volume_range,
+            volumes=volumes,
             energy_eos=energy_eos,
             f_vib_fit=f_vib_fit,
             s_vib_fit=s_vib_fit,
@@ -70,13 +75,6 @@ class QuasiHarmonicData:
             P=P,
             eos=eos,
         )
-
-        self.method = method
-        self.pressure = P
-        self.number_of_atoms = number_of_atoms
-        self.temperatures = temperatures
-        self.volumes = volume_range
-        eos_constants = eos_constants
 
         self.helmholtz_energy = {
             "eos_parameters": {
@@ -125,28 +123,26 @@ class QuasiHarmonicData:
         selected_temperatures_plot: np.ndarray = None,
     ) -> go.Figure:
 
-        pressure = P
-
         # Retrieve the tuple output from the quasi-harmonic data
         quasi_harmonic_output = (
-            self.methods[method][pressure]["f_plus_pv"],
-            self.methods[method][pressure]["eos_constants"],
-            self.methods[method][pressure]["s_coefficients"],
-            self.methods[method][pressure]["cv_coefficients"],
-            self.methods[method][pressure]["V0"],
-            self.methods[method][pressure]["G0"],
-            self.methods[method][pressure]["B"],
-            self.methods[method][pressure]["BP"],
-            self.methods[method][pressure]["S0"],
-            self.methods[method][pressure]["CTE"],
-            self.methods[method][pressure]["Cp"],
-            self.methods[method][pressure]["H0"],
+            self.methods[method][P]["f_plus_pv"],
+            self.methods[method][P]["eos_constants"],
+            self.methods[method][P]["s_coefficients"],
+            self.methods[method][P]["cv_coefficients"],
+            self.methods[method][P]["V0"],
+            self.methods[method][P]["G0"],
+            self.methods[method][P]["B"],
+            self.methods[method][P]["BP"],
+            self.methods[method][P]["S0"],
+            self.methods[method][P]["CTE"],
+            self.methods[method][P]["Cp"],
+            self.methods[method][P]["H0"],
         )
 
         fig = plot_quasi_harmonic(
             quasi_harmonic_output=quasi_harmonic_output,
             temperatures=self.temperatures,
-            volume_range=self.volumes,
+            volumes=self.volumes,
             number_of_atoms=self.number_of_atoms,
             plot_type=plot_type,
             selected_temperatures_plot=selected_temperatures_plot,
