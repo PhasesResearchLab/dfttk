@@ -30,7 +30,29 @@ def fit_to_eos(
     volume_min: float = None,
     volume_max: float = None,
     num_volumes: int = 1000,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Fits the given energy-volume data to an equation of state (EOS) using the specified EOS function.
+    The EOS function should be defined in the dfttk.eos.functions module.
+
+    Args:
+        volumes (np.ndarray): array of volumes.
+        energies (np.ndarray): array of energies.
+        eos_name (str, optional): name of the EOS function to use. Defaults to "BM4".
+        volume_min (float, optional): minimum volume to consider for fitting. Defaults to None.
+        volume_max (float, optional): maximum volume to consider for fitting. Defaults to None.
+        num_volumes (int, optional): number of volumes to generate for the EOS fit. Defaults to 1000.
+
+    Raises:
+        ValueError: if the specified EOS function is not recognized.
+
+    Returns:
+        tuple(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray): tuple containing:
+            - eos_constants: array of EOS constants.
+            - eos_parameters: array of EOS parameters.
+            - volume_range: array of volumes for the EOS fit.
+            - energy_eos: array of energies for the EOS fit.
+            - pressure_eos: array of pressures for the EOS fit.
+    """
 
     eos_functions = {
         "mBM4": mBM4,
@@ -63,8 +85,19 @@ def fit_to_eos(
 
 
 def assign_colors_to_configs(
-    unique_configs, alpha: float = 1, cmap: str = "plotly"
+    unique_configs: list[str], alpha: float = 1, cmap: str = "plotly"
 ) -> dict:
+    """Assigns colors to configurations based on the specified color map.
+    The function supports two color maps: "plotly" and "distinctipy".
+
+    Args:
+        unique_configs (list[str]): List of unique configurations.
+        alpha (float, optional): Alpha value for the color. Defaults to 1.
+        cmap (str, optional): Color map to use. Defaults to "plotly".
+
+    Returns:
+        dict: dictionary mapping configurations to colors.
+    """
 
     if cmap == "plotly":
         colors = px.colors.qualitative.Plotly
@@ -99,7 +132,15 @@ def assign_colors_to_configs(
     return config_colors
 
 
-def assign_marker_symbols_to_configs(unique_configs):
+def assign_marker_symbols_to_configs(unique_configs: list[str]) -> dict:
+    """Assigns marker symbols to configurations.
+
+    Args:
+        unique_configs (list[str]): List of unique configurations.
+
+    Returns:
+        dict: Dictionary mapping configurations to marker symbols.
+    """
 
     symbols = [
         "circle",
@@ -149,46 +190,57 @@ def assign_marker_symbols_to_configs(unique_configs):
 
 
 def plot_ev(
-    name,
-    number_of_atoms,
-    volumes,
-    energies,
-    volume_min=None,
-    volume_max=None,
-    num_volumes=None,
-    eos_name="BM4",
-    highlight_minimum=True,
-    per_atom=False,
-    title=None,
-    show_fig=True,
-    cmap="plotly",
-    marker_alpha=1,
-    marker_size=10,
-):
+    name: str,
+    number_of_atoms: int,
+    volumes: np.ndarray,
+    energies: np.ndarray,
+    volume_min: float = None,
+    volume_max: float = None,
+    num_volumes: int = 1000,
+    eos_name: str = "BM4",
+    highlight_minimum: bool = True,
+    per_atom: bool = False,
+    title: str = None,
+    show_fig: bool = True,
+    cmap: str = "plotly",
+    marker_alpha: int = 1,
+    marker_size: int = 10,
+) -> go.Figure:
     """Plot the energy vs volume curves for each configuration.
 
     Args:
-        data (pandas.DataFrame, list of pandas.DataFrame, or list of str): Data must be a pandas
-        DataFrame or a list of pandas DataFrames.
+        name (str): Name of the configuration.
+        number_of_atoms (int): Number of atoms in the configuration.
+        volumes (np.ndarray): Array of volumes.
+        energies (np.ndarray): Array of energies.
+        volume_min (float, optional): Minimum volume to plot for EOS. Defaults to None.
+        volume_max (float, optional): Maximum volume to plot for EOS. Defaults to None.
+        num_volumes (int, optional): Number of volumes to plot for EOS. Defaults to None.
         eos_name (str, optional): EOS name. Defaults to "BM4".
-        highlight_minimum (bool, optional): Defaults to True.
-        per_atom (bool, optional):Defaults to False.
-        title (_type_, optional): Defaults to None.
-        show_fig (bool, optional): Defaults to True.
-        left_col (str, optional): Defaults to "volume".
-        right_col (str, optional): Defaults to "energy".
-        cmap (str, optional): Defaults to 'plotly'.
-        marker_alpha (int, optional): Defaults to 1.
-        marker_size (int, optional): Defaults to 10.
+        highlight_minimum (bool, optional): Whether to highlight the minimum energy. Defaults to True.
+        per_atom (bool, optional): Whether to plot energy and volume per atom. Defaults to False.
+        title (_type_, optional): Title of the plot. Defaults to None.
+        show_fig (bool, optional): Whether to show the figure. Defaults to True.
+        cmap (str, optional): Color map to use. Defaults to "plotly".
+        marker_alpha (int, optional): Alpha value for the marker color. Defaults to 1.
+        marker_size (int, optional): Size of the markers. Defaults to 10.
 
     Returns:
-        fig (plotly.graph_objs._figure.Figure): A Plotly figure.
+        fig (plotly.graph_objs._figure.Figure): A Plotly figure object containing the plot.
     """
 
     if eos_name != None:
         eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos = (
-            fit_to_eos(volumes, energies, eos_name=eos_name, volume_min=volume_min, volume_max=volume_max, num_volumes=num_volumes)
+            fit_to_eos(
+                volumes,
+                energies,
+                eos_name=eos_name,
+                volume_min=volume_min,
+                volume_max=volume_max,
+                num_volumes=num_volumes,
+            )
         )
+
     unique_configs = [name]
     config_colors = assign_colors_to_configs(
         unique_configs, alpha=marker_alpha, cmap=cmap
