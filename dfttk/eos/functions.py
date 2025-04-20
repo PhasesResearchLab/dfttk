@@ -23,28 +23,25 @@ from collections import namedtuple
 # Conversion factor
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
-TaylorCoefficients = namedtuple("TaylorCoefficients", ["a", "b", "c", "d", "e"])
+EosConstants = namedtuple("EosConstants", ["a", "b", "c", "d", "e"])
 
-def BM_parameters_to_taylor(
-        V,
-        E0,
-        B,
-        BP,
-        B2P
-    )->TaylorCoefficients:
+
+# TODO: double check all of these formulas
+def BM_parameters_to_taylor(V, E0, B, BP, B2P) -> EosConstants:
     """
-    Convert Birch-Murnaghan equation of state properties to Taylor 
-    coefficients a, b, c, d, e (4th order/five parameters). Returns a named 
+    Convert Birch-Murnaghan equation of state properties to Taylor
+    coefficients a, b, c, d, e (4th order/five parameters). Returns a named
     tuple with the coefficients.
     """
-    B = B/EV_PER_CUBIC_ANGSTROM_TO_GPA
-    B2P = B2P*EV_PER_CUBIC_ANGSTROM_TO_GPA
-    a = (128*E0 + 3*B*(287 + 9*B*B2P - 87*BP + 9*BP**2)*V)/128
-    b = (-3*B*(239 + 9*B*B2P - 81*BP + 9*BP**2)*V**(5/3))/32
-    c = (9*B*(199 + 9*B*B2P - 75*BP + 9*BP**2)*V**(7/3))/64
-    d = (-3*B*(167 + 9*B*B2P - 69*BP + 9*BP**2)*V**3)/32
-    e = (3*B*(143 + 9*B*B2P - 63*BP + 9*BP**2)*V**(11/3))/128
-    return TaylorCoefficients(a, b, c, d, e)
+    B = B / EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P * EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a = (128 * E0 + 3 * B * (287 + 9 * B * B2P - 87 * BP + 9 * BP**2) * V) / 128
+    b = (-3 * B * (239 + 9 * B * B2P - 81 * BP + 9 * BP**2) * V ** (5 / 3)) / 32
+    c = (9 * B * (199 + 9 * B * B2P - 75 * BP + 9 * BP**2) * V ** (7 / 3)) / 64
+    d = (-3 * B * (167 + 9 * B * B2P - 69 * BP + 9 * BP**2) * V**3) / 32
+    e = (3 * B * (143 + 9 * B * B2P - 63 * BP + 9 * BP**2) * V ** (11 / 3)) / 128
+    return EosConstants(a, b, c, d, e)
+
 
 def mBM_parameters_to_taylor(V, E0, B, BP, B2P):
     """
@@ -52,14 +49,15 @@ def mBM_parameters_to_taylor(V, E0, B, BP, B2P):
     coefficients a, b, c, d, e (4th order/five parameters). Returns a named
     tuple with the coefficients.
     """
-    B = B/EV_PER_CUBIC_ANGSTROM_TO_GPA
-    B2P = B2P*EV_PER_CUBIC_ANGSTROM_TO_GPA
-    a=(8*E0 + 3*B*(122 + 9*B*B2P - 57*BP + 9*BP**2)*V)/8
-    b=(-3*B*(107 + 9*B*B2P - 54*BP + 9*BP**2)*V**(4/3))/2
-    c=(9*B*(94 + 9*B*B2P - 51*BP + 9*BP**2)*V**(5/3))/4
-    d=(-3*B*(83 + 9*B*B2P - 48*BP + 9*BP**2)*V**2)/2
-    e=(3*B*(74 + 9*B*B2P - 45*BP + 9*BP**2)*V**(7/3))/8
-    return TaylorCoefficients(a, b, c, d, e)
+    B = B / EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P * EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a = (8 * E0 + 3 * B * (122 + 9 * B * B2P - 57 * BP + 9 * BP**2) * V) / 8
+    b = (-3 * B * (107 + 9 * B * B2P - 54 * BP + 9 * BP**2) * V ** (4 / 3)) / 2
+    c = (9 * B * (94 + 9 * B * B2P - 51 * BP + 9 * BP**2) * V ** (5 / 3)) / 4
+    d = (-3 * B * (83 + 9 * B * B2P - 48 * BP + 9 * BP**2) * V**2) / 2
+    e = (3 * B * (74 + 9 * B * B2P - 45 * BP + 9 * BP**2) * V ** (7 / 3)) / 8
+    return EosConstants(a, b, c, d, e)
+
 
 def LOG_parameters_to_taylor(V, E0, B, BP, B2P):
     """
@@ -67,37 +65,58 @@ def LOG_parameters_to_taylor(V, E0, B, BP, B2P):
     a, b, c, d, e (4th order/five parameters). Returns a named tuple with the
     coefficients.
     """
-    B = B/EV_PER_CUBIC_ANGSTROM_TO_GPA
-    B2P = B2P*EV_PER_CUBIC_ANGSTROM_TO_GPA
-    a=(24*E0 + 
-       12*B*V*np.np.log(V)**2 + 
-       4*B*(-2 + BP)*V*np.log(V)**3 + 
-       B*(3 + B*B2P - 3*BP + BP**2)*V*np.log(V)**4)/24
-    b=-(B*V*np.log(V)*(6 + 3*(-2 + BP)*np.log(V) + 
-            (3 + B*B2P - 3*BP + BP**2)*np.log(V)**2))/6
-    c=(B*V*(2 + 2*(-2 + BP)*np.log(V) + 
-            (3 + B*B2P - 3*BP + BP**2)*np.log(V)**2))/4
-    d=-(B*V*(-2 + BP + (3 + B*B2P - 3*BP + BP**2)*np.log(V)))/6
-    e=(B*(3 + B*B2P - 3*BP + BP**2)*V)/24
-    if abs(e) < 1e-8: # avoid numerical errors
+    B = B / EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P * EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a = (
+        24 * E0
+        + 12 * B * V * np.np.log(V) ** 2
+        + 4 * B * (-2 + BP) * V * np.log(V) ** 3
+        + B * (3 + B * B2P - 3 * BP + BP**2) * V * np.log(V) ** 4
+    ) / 24
+    b = (
+        -(
+            B
+            * V
+            * np.log(V)
+            * (
+                6
+                + 3 * (-2 + BP) * np.log(V)
+                + (3 + B * B2P - 3 * BP + BP**2) * np.log(V) ** 2
+            )
+        )
+        / 6
+    )
+    c = (
+        B
+        * V
+        * (
+            2
+            + 2 * (-2 + BP) * np.log(V)
+            + (3 + B * B2P - 3 * BP + BP**2) * np.log(V) ** 2
+        )
+    ) / 4
+    d = -(B * V * (-2 + BP + (3 + B * B2P - 3 * BP + BP**2) * np.log(V))) / 6
+    e = (B * (3 + B * B2P - 3 * BP + BP**2) * V) / 24
+    if abs(e) < 1e-8:  # avoid numerical errors
         e = 0
-    return TaylorCoefficients(a, b, c, d, e) 
+    return EosConstants(a, b, c, d, e)
+
 
 # mBM4 EOS Functions
 def mBM4_equation(
-    volume: float | np.ndarray, a: float, b: float, c: float, d: float
-) -> float | np.ndarray:
+    volume: np.ndarray, a: float, b: float, c: float, d: float
+) -> np.ndarray:
     """mBM4 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        a (float): a-parameter
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
+        volume (np.ndarray): array of input volumes
+        a (float): a constant
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
 
     Returns:
-        float | np.ndarray: energy
+        np.ndarray: array of energy values
     """
 
     energy = (
@@ -106,19 +125,17 @@ def mBM4_equation(
     return energy
 
 
-def mBM4_derivative(
-    volume: float | np.ndarray, b: float, c: float, d: float
-) -> float | np.ndarray:
+def mBM4_derivative(volume: np.ndarray, b: float, c: float, d: float) -> np.ndarray:
     """Derivative of mBM4 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
+        volume (np.ndarray): array of input volumes
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
 
     Returns:
-        float | np.ndarray: derivative of energy
+        np.ndarray: array of energy derivatives
     """
 
     energy_derivative = (
@@ -129,19 +146,17 @@ def mBM4_derivative(
     return energy_derivative
 
 
-def mBM4_derivative2(
-    volume: float | np.ndarray, b: float, c: float, d: float
-) -> float | np.ndarray:
+def mBM4_derivative2(volume: np.ndarray, b: float, c: float, d: float) -> np.ndarray:
     """Second derivative of mBM4 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
+        volume (np.ndarray): array of input volumes
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
 
     Returns:
-        float | np.ndarray: second derivative of energy
+        np.ndarray: array of second derivatives of energy
     """
 
     energy_derivative2 = (
@@ -158,10 +173,10 @@ def mBM4_eos_parameters(
     """Calculate V0, E0, B, BP, and B2P from a, b, c, and d.
 
     Args:
-        a (float): a-parameter
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
+        a (float): a constant
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
 
     Returns:
         tuple[float, float, float, float, float]: V0, E0, B, BP, B2P
@@ -196,8 +211,8 @@ def mBM4_eos_parameters(
 
 
 def mBM4(
-    volume: float | np.ndarray,
-    energy: float | np.ndarray,
+    volume: np.ndarray,
+    energy: np.ndarray,
     volume_min: float = None,
     volume_max: float = None,
     num_volumes: int = 1000,
@@ -205,11 +220,14 @@ def mBM4(
     """Fits the mBM4 EOS to the input volume and energy data.
 
     Args:
-        volume (float | np.ndarray): volume data
-        energy (float | np.ndarray): energy data
+        volume (np.ndarray): array of input volumes
+        energy (np.ndarray): array of input energies
+        volume_min (float, optional): minimum volume for EOS fitting. Defaults to None.
+        volume_max (float, optional): maximum volume for EOS fitting. Defaults to None.
+        num_volumes (int, optional): number of volumes for EOS fitting. Defaults to 1000.
 
     Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS parameters and the corresponding volume, energy, and pressure
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS constants, EOS parameters, volume range, energy EOS, and pressure EOS
     """
 
     a, b, c, d = curve_fit(mBM4_equation, volume, energy, p0=[100, 100, 100, 100])[0]
@@ -231,6 +249,7 @@ def mBM4(
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
+# TODO: continue cleaning up the code from here
 # mBM5 EOS Functions
 def mBM5_equation(
     volume: float | np.ndarray, a: float, b: float, c: float, d: float, e: float
@@ -1216,7 +1235,7 @@ def vinet(
     pressure_eos = (
         -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * vinet_derivative(volume_range, V0, B, BP)
     )
-    
+
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
@@ -1320,5 +1339,5 @@ def morse(
     pressure_eos = (
         -1 * EV_PER_CUBIC_ANGSTROM_TO_GPA * morse_derivative(volume_range, b, c, d)
     )
-    
+
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
