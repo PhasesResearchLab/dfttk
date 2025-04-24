@@ -18,7 +18,6 @@ and 4-parameter Morse.
 # Related third party imports
 import numpy as np
 from scipy.optimize import fsolve, curve_fit
-from collections import namedtuple
 
 # Conversion factor
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
