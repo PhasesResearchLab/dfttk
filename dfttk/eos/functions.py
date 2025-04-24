@@ -23,84 +23,6 @@ from collections import namedtuple
 # Conversion factor
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
-EosConstants = namedtuple("EosConstants", ["a", "b", "c", "d", "e"])
-
-
-# TODO: double check all of these formulas
-def BM_parameters_to_taylor(V, E0, B, BP, B2P) -> EosConstants:
-    """
-    Convert Birch-Murnaghan equation of state properties to Taylor
-    coefficients a, b, c, d, e (4th order/five parameters). Returns a named
-    tuple with the coefficients.
-    """
-    B = B / EV_PER_CUBIC_ANGSTROM_TO_GPA
-    B2P = B2P * EV_PER_CUBIC_ANGSTROM_TO_GPA
-    a = (128 * E0 + 3 * B * (287 + 9 * B * B2P - 87 * BP + 9 * BP**2) * V) / 128
-    b = (-3 * B * (239 + 9 * B * B2P - 81 * BP + 9 * BP**2) * V ** (5 / 3)) / 32
-    c = (9 * B * (199 + 9 * B * B2P - 75 * BP + 9 * BP**2) * V ** (7 / 3)) / 64
-    d = (-3 * B * (167 + 9 * B * B2P - 69 * BP + 9 * BP**2) * V**3) / 32
-    e = (3 * B * (143 + 9 * B * B2P - 63 * BP + 9 * BP**2) * V ** (11 / 3)) / 128
-    return EosConstants(a, b, c, d, e)
-
-
-def mBM_parameters_to_taylor(V, E0, B, BP, B2P):
-    """
-    Convert modified Birch-Murnaghan equation of state properties to Taylor
-    coefficients a, b, c, d, e (4th order/five parameters). Returns a named
-    tuple with the coefficients.
-    """
-    B = B / EV_PER_CUBIC_ANGSTROM_TO_GPA
-    B2P = B2P * EV_PER_CUBIC_ANGSTROM_TO_GPA
-    a = (8 * E0 + 3 * B * (122 + 9 * B * B2P - 57 * BP + 9 * BP**2) * V) / 8
-    b = (-3 * B * (107 + 9 * B * B2P - 54 * BP + 9 * BP**2) * V ** (4 / 3)) / 2
-    c = (9 * B * (94 + 9 * B * B2P - 51 * BP + 9 * BP**2) * V ** (5 / 3)) / 4
-    d = (-3 * B * (83 + 9 * B * B2P - 48 * BP + 9 * BP**2) * V**2) / 2
-    e = (3 * B * (74 + 9 * B * B2P - 45 * BP + 9 * BP**2) * V ** (7 / 3)) / 8
-    return EosConstants(a, b, c, d, e)
-
-
-def LOG_parameters_to_taylor(V, E0, B, BP, B2P):
-    """
-    Convert logarithmic equation of state properties to Taylor coefficients
-    a, b, c, d, e (4th order/five parameters). Returns a named tuple with the
-    coefficients.
-    """
-    B = B / EV_PER_CUBIC_ANGSTROM_TO_GPA
-    B2P = B2P * EV_PER_CUBIC_ANGSTROM_TO_GPA
-    a = (
-        24 * E0
-        + 12 * B * V * np.np.log(V) ** 2
-        + 4 * B * (-2 + BP) * V * np.log(V) ** 3
-        + B * (3 + B * B2P - 3 * BP + BP**2) * V * np.log(V) ** 4
-    ) / 24
-    b = (
-        -(
-            B
-            * V
-            * np.log(V)
-            * (
-                6
-                + 3 * (-2 + BP) * np.log(V)
-                + (3 + B * B2P - 3 * BP + BP**2) * np.log(V) ** 2
-            )
-        )
-        / 6
-    )
-    c = (
-        B
-        * V
-        * (
-            2
-            + 2 * (-2 + BP) * np.log(V)
-            + (3 + B * B2P - 3 * BP + BP**2) * np.log(V) ** 2
-        )
-    ) / 4
-    d = -(B * V * (-2 + BP + (3 + B * B2P - 3 * BP + BP**2) * np.log(V))) / 6
-    e = (B * (3 + B * B2P - 3 * BP + BP**2) * V) / 24
-    if abs(e) < 1e-8:  # avoid numerical errors
-        e = 0
-    return EosConstants(a, b, c, d, e)
-
 
 # mBM4 EOS Functions
 def mBM4_equation(
@@ -210,6 +132,28 @@ def mBM4_eos_parameters(
     return V0, E0, B, BP, B2P
 
 
+def mBM4_eos_constants(V0: float, E0: float, B: float, BP: float) -> np.ndarray:
+    """Calculate a, b, c, and d from V0, E0, B, and BP.
+
+    Args:
+        V0 (float): equilibrium volume
+        E0 (float): equilibrium energy
+        B (float): bulk modulus
+        BP (float): pressure derivative of bulk modulus
+
+    Returns:
+        tuple[float, float, float, float]: a, b, c, d
+    """
+
+    B = B / EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a = E0 + 9 * B * V0 * (4 - BP) / 2
+    b = -9 * B * V0 ** (4 / 3) * (11 - 3 * BP) / 2
+    c = 9 * B * V0 ** (5 / 3) * (10 - 3 * BP) / 2
+    d = -9 * B * V0**2 * (3 - BP) / 2
+
+    return a, b, c, d
+
+
 def mBM4(
     volume: np.ndarray,
     energy: np.ndarray,
@@ -249,23 +193,22 @@ def mBM4(
     return eos_constants, eos_parameters, volume_range, energy_eos, pressure_eos
 
 
-# TODO: continue cleaning up the code from here
 # mBM5 EOS Functions
 def mBM5_equation(
-    volume: float | np.ndarray, a: float, b: float, c: float, d: float, e: float
-) -> float | np.ndarray:
+    volume: np.ndarray, a: float, b: float, c: float, d: float, e: float
+) -> np.ndarray:
     """mBM5 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        a (float): a-parameter
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
-        e (float): e-parameter
+        volume (np.ndarray): array of input volumes
+        a (float): a constant
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
+        e (float): e constant
 
     Returns:
-        float | np.ndarray: energy
+        np.ndarray: array of energy values
     """
 
     energy = (
@@ -279,19 +222,19 @@ def mBM5_equation(
 
 
 def mBM5_derivative(
-    volume: float | np.ndarray, b: float, c: float, d: float, e: float
-) -> float | np.ndarray:
+    volume: np.ndarray, b: float, c: float, d: float, e: float
+) -> np.ndarray:
     """Derivative of mBM5 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
-        e (float): e-parameter
+        volume (np.ndarray): array of input volumes
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
+        e (float): e constant
 
     Returns:
-        float | np.ndarray: derivative of energy
+        np.ndarray: array of energy derivatives
     """
 
     energy_derivative = (
@@ -304,19 +247,19 @@ def mBM5_derivative(
 
 
 def mBM5_derivative2(
-    volume: float | np.ndarray, b: float, c: float, d: float, e: float
-) -> float | np.ndarray:
+    volume: np.ndarray, b: float, c: float, d: float, e: float
+) -> np.ndarray:
     """Second derivative of mBM5 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
-        e (float): e-parameter
+        volume (np.ndarray): array of input volumes
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
+        e (float): e constant
 
     Returns:
-        float | np.ndarray: second derivative of energy
+        np.ndarray: array of second derivatives of energy
     """
 
     energy_derivative2 = (
@@ -334,12 +277,12 @@ def mBM5_eos_parameters(
     """Calculate V0, E0, B, BP, and B2P from a, b, c, d, and e.
 
     Args:
-        volume_range (np.ndarray): range of volumes
-        a (float): a-parameter
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
-        e (float): e-parameter
+        volume_range (np.ndarray): array of input volumes
+        a (float): a constant
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
+        e (float): e constant
 
     Returns:
         tuple[float, float, float, float, float]: V0, E0, B, BP, B2P
@@ -371,9 +314,36 @@ def mBM5_eos_parameters(
     return V0, E0, B, BP, B2P
 
 
+def mBM5_eos_constants(
+    V0: float, E0: float, B: float, BP: float, B2P: float
+) -> np.ndarray:
+    """Calculate a, b, c, d, and e from V0, E0, B, BP, and B2P.
+
+    Args:
+        V0 (float): equilibrium volume
+        E0 (float): equilibrium energy
+        B (float): bulk modulus
+        BP (float): pressure derivative of bulk modulus
+        B2P (float): second pressure derivative of bulk modulus
+
+    Returns:
+        tuple [float, float, float, float, float]: a, b, c, d, e
+    """
+
+    B = B / EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P * EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a = E0 + 3 * B * V0 * (122 + 9 * B * B2P - 57 * BP + 9 * BP**2) / 8
+    b = -3 * B * V0 ** (4 / 3) * (107 + 9 * B * B2P - 54 * BP + 9 * BP**2) / 2
+    c = 9 * B * V0 ** (5 / 3) * (94 + 9 * B * B2P - 51 * BP + 9 * BP**2) / 4
+    d = -3 * B * V0**2 * (83 + 9 * B * B2P - 48 * BP + 9 * BP**2) / 2
+    e = 3 * B * V0 ** (7 / 3) * (74 + 9 * B * B2P - 45 * BP + 9 * BP**2) / 8
+
+    return a, b, c, d, e
+
+
 def mBM5(
-    volume: float | np.ndarray,
-    energy: float | np.ndarray,
+    volume: np.ndarray,
+    energy: np.ndarray,
     volume_min: float = None,
     volume_max: float = None,
     num_volumes: int = 1000,
@@ -381,11 +351,14 @@ def mBM5(
     """Fits the mBM5 EOS to the input volume and energy data.
 
     Args:
-        volume (float | np.ndarray): volume data
-        energy (float | np.ndarray): energy data
+        volume (np.ndarray): array of input volumes
+        energy (np.ndarray): array of input energies
+        volume_min (float, optional): minimum volume for EOS fitting. Defaults to None.
+        volume_max (float, optional): maximum volume for EOS fitting. Defaults to None.
+        num_volumes (int, optional): number of volumes for EOS fitting. Defaults to 1000.
 
     Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS parameters and the corresponding volume, energy, and pressure
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS constants, EOS parameters, volume range, energy EOS, and pressure EOS
     """
 
     a, b, c, d, e = curve_fit(
@@ -412,19 +385,19 @@ def mBM5(
 
 # BM4 EOS Functions
 def BM4_equation(
-    volume: float | np.ndarray, a: float, b: float, c: float, d: float
-) -> float | np.ndarray:
+    volume: np.ndarray, a: float, b: float, c: float, d: float
+) -> np.ndarray:
     """BM4 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        a (float): a-parameter
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
+        volume (np.ndarray): array of input volumes
+        a (float): a constant
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
 
     Returns:
-        float | np.ndarray: energy(s)
+        np.ndarray: array of energy values
     """
 
     energy = (
@@ -433,19 +406,17 @@ def BM4_equation(
     return energy
 
 
-def BM4_derivative(
-    volume: float | np.ndarray, b: float, c: float, d: float
-) -> float | np.ndarray:
+def BM4_derivative(volume: np.ndarray, b: float, c: float, d: float) -> np.ndarray:
     """Derivative of BM4 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
+        volume (np.ndarray): array of input volumes
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
 
     Returns:
-        float | np.ndarray: derivative of energy
+        np.ndarray: array of energy derivatives
     """
 
     energy_derivative = (
@@ -456,19 +427,17 @@ def BM4_derivative(
     return energy_derivative
 
 
-def BM4_derivative2(
-    volume: float | np.ndarray, b: float, c: float, d: float
-) -> float | np.ndarray:
+def BM4_derivative2(volume: np.ndarray, b: float, c: float, d: float) -> np.ndarray:
     """Second derivative of BM4 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
+        volume (np.ndarray): array of input volumes
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
 
     Returns:
-        float | np.ndarray: second derivative of energy
+        np.ndarray: array of second derivatives of energy
     """
 
     energy_derivative2 = (
@@ -485,10 +454,10 @@ def BM4_eos_parameters(
     """Calculate V0, E0, B, BP, and B2P from a, b, c, and d.
 
     Args:
-        a (float): a-parameter
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
+        a (float): a constant
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
 
     Returns:
         tuple[float, float, float, float, float]: V0, E0, B, BP, B2P
@@ -525,9 +494,31 @@ def BM4_eos_parameters(
     return V0, E0, B, BP, B2P
 
 
+def BM4_eos_constants(V0: float, E0: float, B: float, BP: float) -> np.ndarray:
+    """Calculate a, b, c, and d from V0, E0, B, and BP.
+
+    Args:
+        V0 (float): equilibrium volume
+        E0 (float): equilibrium energy
+        B (float): bulk modulus
+        BP (float): pressure derivative of bulk modulus
+
+    Returns:
+        tuple[float, float, float, float]: a, b, c, d
+    """
+
+    B = B / EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a = E0 + 9 * B * V0 * (6 - BP) / 16
+    b = -9 * B * V0 ** (5 / 3) * (16 - 3 * BP) / 16
+    c = 9 * B * V0 ** (7 / 3) * (14 - 3 * BP) / 16
+    d = -9 * B * V0**3 * (4 - BP) / 16
+
+    return a, b, c, d
+
+
 def BM4(
-    volume: float | np.ndarray,
-    energy: float | np.ndarray,
+    volume: np.ndarray,
+    energy: np.ndarray,
     volume_min: float = None,
     volume_max: float = None,
     num_volumes: int = 1000,
@@ -535,11 +526,11 @@ def BM4(
     """Fits the BM4 EOS to the input volume and energy data.
 
     Args:
-        volume (float | np.ndarray): volume data
-        energy (float | np.ndarray): energy data
+        volume (np.ndarray): array of input volumes
+        energy (np.ndarray): array of input energies
 
     Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS parameters and the corresponding volume, energy, and pressure
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS constants, EOS parameters, volume range, energy EOS, and pressure EOS
     """
 
     a, b, c, d = curve_fit(BM4_equation, volume, energy, p0=[100, 100, 100, 100])[0]
@@ -564,20 +555,20 @@ def BM4(
 
 # BM5 EOS Functions
 def BM5_equation(
-    volume: float | np.ndarray, a: float, b: float, c: float, d: float, e: float
-) -> float | np.ndarray:
+    volume: np.ndarray, a: float, b: float, c: float, d: float, e: float
+) -> np.ndarray:
     """BM5 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        a (float): a-parameter
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
-        e (float): e-parameter
+        volume (np.ndarray): array of input volumes
+        a (float): a constant
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
+        e (float): e constant
 
     Returns:
-        float | np.ndarray: energy
+        np.ndarray: array of energy values
     """
 
     energy = (
@@ -591,19 +582,19 @@ def BM5_equation(
 
 
 def BM5_derivative(
-    volume: float | np.ndarray, b: float, c: float, d: float, e: float
-) -> float | np.ndarray:
+    volume: np.ndarray, b: float, c: float, d: float, e: float
+) -> np.ndarray:
     """Derivative of BM5 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
-        e (float): e-parameter
+        volume (np.ndarray): array of input volumes
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
+        e (float): e constant
 
     Returns:
-        float | np.ndarray: derivative of energy
+        np.ndarray: array of energy derivatives
     """
 
     energy_derivative = (
@@ -616,19 +607,19 @@ def BM5_derivative(
 
 
 def BM5_derivative2(
-    volume: float | np.ndarray, b: float, c: float, d: float, e: float
-) -> float | np.ndarray:
+    volume: np.ndarray, b: float, c: float, d: float, e: float
+) -> np.ndarray:
     """Second derivative of BM5 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
-        e (float): e-parameter
+        volume (np.ndarray): array of input volumes
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
+        e (float): e constant
 
     Returns:
-        float | np.ndarray: second derivative of energy
+        np.ndarray: array of second derivatives of energy
     """
 
     energy_derivative2 = (
@@ -646,12 +637,12 @@ def BM5_eos_parameters(
     """Calculate V0, E0, B, BP, and B2P from a, b, c, d, and e.
 
     Args:
-        volume_range (np.ndarray): range of volumes
-        a (float): a-parameter
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
-        e (float): e-parameter
+        volume_range (np.ndarray): array of input volumes
+        a (float): a constant
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
+        e (float): e constant
 
     Returns:
         tuple[float, float, float, float, float]: V0, E0, B, BP, B2P
@@ -682,9 +673,36 @@ def BM5_eos_parameters(
     return V0, E0, B, BP, B2P
 
 
+def BM5_eos_constants(
+    V0: float, E0: float, B: float, BP: float, B2P: float
+) -> tuple[float, float, float, float, float]:
+    """Calculate a, b, c, d, and e from V0, E0, B, BP, and B2P.
+
+    Args:
+        V0 (float): equilibrium volume
+        E0 (float): equilibrium energy
+        B (float): bulk modulus
+        BP (float): pressure derivative of bulk modulus
+        B2P (float): second pressure derivative of bulk modulus
+
+    Returns:
+        tuple[float, float, float, float, float]: a, b, c, d, e
+    """
+
+    B = B / EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P * EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a = E0 + 3 * B * V0 * (287 + 9 * B * B2P - 87 * BP + 9 * BP**2) / 128
+    b = -3 * B * V0 ** (5 / 3) * (239 + 9 * B * B2P - 81 * BP + 9 * BP**2) / 32
+    c = 9 * B * V0 ** (7 / 3) * (199 + 9 * B * B2P - 75 * BP + 9 * BP**2) / 64
+    d = -3 * B * V0**3 * (167 + 9 * B * B2P - 69 * BP + 9 * BP**2) / 32
+    e = 3 * B * V0 ** (11 / 3) * (143 + 9 * B * B2P - 63 * BP + 9 * BP**2) / 128
+
+    return a, b, c, d, e
+
+
 def BM5(
-    volume: float | np.ndarray,
-    energy: float | np.ndarray,
+    volume: np.ndarray,
+    energy: np.ndarray,
     volume_min: float = None,
     volume_max: float = None,
     num_volumes: int = 1000,
@@ -692,11 +710,14 @@ def BM5(
     """Fits the BM5 EOS to the input volume and energy data.
 
     Args:
-        volume (float | np.ndarray): volume data
-        energy (float | np.ndarray): energy data
+        volume (np.ndarray): array of input volumes
+        energy (np.ndarray): array of input energies
+        volume_min (float, optional): minimum volume for EOS fitting. Defaults to None.
+        volume_max (float, optional): maximum volume for EOS fitting. Defaults to None.
+        num_volumes (int, optional): number of volumes for EOS fitting. Defaults to 1000.
 
     Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS parameters and the corresponding volume, energy, and pressure
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS constants, EOS parameters, volume range, energy EOS, and pressure EOS
     """
 
     a, b, c, d, e = curve_fit(
@@ -723,38 +744,36 @@ def BM5(
 
 # LOG4 EOS Functions
 def LOG4_equation(
-    volume: float | np.ndarray, a: float, b: float, c: float, d: float
-) -> float | np.ndarray:
+    volume: np.ndarray, a: float, b: float, c: float, d: float
+) -> np.ndarray:
     """LOG4 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        a (float): a-parameter
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
+        volume (np.ndarray): array of input volumes
+        a (float): a constant
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
 
     Returns:
-        float | np.ndarray: energy
+        np.ndarray: array of energy values
     """
 
     energy = a + b * np.log(volume) + c * np.log(volume) ** 2 + d * np.log(volume) ** 3
     return energy
 
 
-def LOG4_derivative(
-    volume: float | np.ndarray, b: float, c: float, d: float
-) -> float | np.ndarray:
+def LOG4_derivative(volume: np.ndarray, b: float, c: float, d: float) -> np.ndarray:
     """Derivative of LOG4 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
+        volume (np.ndarray): array of input volumes
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
 
     Returns:
-        float | np.ndarray: derivative of energy
+        np.ndarray: array of energy derivatives
     """
 
     energy_derivative = (
@@ -763,19 +782,17 @@ def LOG4_derivative(
     return energy_derivative
 
 
-def LOG4_derivative2(
-    volume: float | np.ndarray, b: float, c: float, d: float
-) -> float | np.ndarray:
+def LOG4_derivative2(volume: np.ndarray, b: float, c: float, d: float) -> np.ndarray:
     """Second derivative of LOG4 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
+        volume (np.ndarray): array of input volumes
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
 
     Returns:
-        float | np.ndarray: second derivative of energy
+        np.ndarray: array of second derivatives of energy
     """
 
     energy_derivative2 = (
@@ -792,10 +809,11 @@ def LOG4_eos_parameters(
     """Calculate V0, E0, B, BP, and B2P from a, b, c, and d.
 
     Args:
-        a (float): a-parameter
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
+        volume_range (np.ndarray): array of input volumes
+        a (float): a constant
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
 
     Returns:
         tuple[float, float, float, float, float]: V0, E0, B, BP, B2P
@@ -824,9 +842,33 @@ def LOG4_eos_parameters(
     return V0, E0, B, BP, B2P
 
 
+def LOG4_eos_constants(
+    V0: float, E0: float, B: float, BP: float
+) -> tuple[float, float, float, float]:
+    """Calculate a, b, c, and d from V0, E0, B, and BP.
+
+    Args:
+        V0 (float): equilibrium volume
+        E0 (float): equilibrium energy
+        B (float): bulk modulus
+        BP (float): pressure derivative of bulk modulus
+
+    Returns:
+        tuple[float, float, float, float]: a, b, c, d
+    """
+
+    B = B / EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a = E0 + B * V0 * (3 * (np.ln(V0)) ** 2 + (BP - 2) * (np.ln(V0)) ** 3) / 6
+    b = -B * V0 * (2 * np.ln(V0) + (BP - 2) * (np.ln(V0)) ** 2) / 2
+    c = B * V0 * (1 + (BP - 2) * np.ln(V0)) / 2
+    d = -B * V0 * (BP - 2) / 6
+
+    return a, b, c, d
+
+
 def LOG4(
-    volume: float | np.ndarray,
-    energy: float | np.ndarray,
+    volume: np.ndarray,
+    energy: np.ndarray,
     volume_min: float = None,
     volume_max: float = None,
     num_volumes: int = 1000,
@@ -834,11 +876,14 @@ def LOG4(
     """Fits the LOG4 EOS to the input volume and energy data.
 
     Args:
-        volume (float | np.ndarray): volume data
-        energy (float | np.ndarray): energy data
+        volume (np.ndarray): array of input volumes
+        energy (np.ndarray): array of input energies
+        volume_min (float, optional): minimum volume for EOS fitting. Defaults to None.
+        volume_max (float, optional): maximum volume for EOS fitting. Defaults to None.
+        num_volumes (int, optional): number of volumes for EOS fitting. Defaults to 1000.
 
     Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS parameters and the corresponding volume, energy, and pressure
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS constants, EOS parameters, volume range, energy EOS, and pressure EOS
     """
 
     a, b, c, d = curve_fit(LOG4_equation, volume, energy, p0=[100, 100, 100, 100])[0]
@@ -863,20 +908,20 @@ def LOG4(
 
 # LOG5 EOS Functions
 def LOG5_equation(
-    volume: float | np.ndarray, a: float, b: float, c: float, d: float, e: float
-) -> float | np.ndarray:
+    volume: np.ndarray, a: float, b: float, c: float, d: float, e: float
+) -> np.ndarray:
     """LOG5 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        a (float): a-parameter
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
-        e (float): e-parameter
+        volume (np.ndarray): array of input volumes
+        a (float): a constant
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
+        e (float): e constant
 
     Returns:
-        float | np.ndarray: energy
+        np.ndarray: array of energy values
     """
 
     energy = (
@@ -890,19 +935,19 @@ def LOG5_equation(
 
 
 def LOG5_derivative(
-    volume: float | np.ndarray, b: float, c: float, d: float, e: float
-) -> float | np.ndarray:
+    volume: np.ndarray, b: float, c: float, d: float, e: float
+) -> np.ndarray:
     """Derivative of LOG5 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
-        e (float): e-parameter
+        volume (np.ndarray): array of input volumes
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
+        e (float): e constant
 
     Returns:
-        float | np.ndarray: derivative of energy
+        np.ndarray: array of energy derivatives
     """
 
     energy = (
@@ -915,19 +960,19 @@ def LOG5_derivative(
 
 
 def LOG5_derivative2(
-    volume: float | np.ndarray, b: float, c: float, d: float, e: float
-) -> float | np.ndarray:
+    volume: np.ndarray, b: float, c: float, d: float, e: float
+) -> np.ndarray:
     """Second derivative of LOG5 EOS.
 
     Args:
-        volume (float | np.ndarray): input volume
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
-        e (float): e-parameter
+        volume (np.ndarray): array of input volumes
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
+        e (float): e constant
 
     Returns:
-        float | np.ndarray: second derivative of energy
+        np.ndarray: array of second derivatives of energy
     """
 
     energy_derivative2 = (
@@ -945,12 +990,12 @@ def LOG5_eos_parameters(
     """Calculate V0, E0, B, BP, and B2P from a, b, c, d, and e.
 
     Args:
-        volume_range (np.ndarray): range of volumes
-        a (float): a-parameter
-        b (float): b-parameter
-        c (float): c-parameter
-        d (float): d-parameter
-        e (float): e-parameter
+        volume_range (np.ndarray): array of input volumes
+        a (float): a constant
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
+        e (float): e constant
 
     Returns:
         tuple[float, float, float, float, float]: V0, E0, B, BP, B2P
@@ -1009,9 +1054,64 @@ def LOG5_eos_parameters(
     return V0, E0, B, BP, B2P
 
 
+def LOG5_eos_constants(
+    V0: float, E0: float, B: float, BP: float, B2P: float
+) -> tuple[float, float, float, float, float]:
+    """Calculate a, b, c, d, and e from V0, E0, B, BP, and B2P.
+
+    Args:
+        V0 (float): equilibrium volume
+        E0 (float): equilibrium energy
+        B (float): bulk modulus
+        BP (float): pressure derivative of bulk modulus
+        B2P (float): second pressure derivative of bulk modulus
+
+    Returns:
+        tuple[float, float, float, float, float]: a, b, c, d, e
+    """
+
+    B = B / EV_PER_CUBIC_ANGSTROM_TO_GPA
+    B2P = B2P * EV_PER_CUBIC_ANGSTROM_TO_GPA
+    a = (
+        E0
+        + B
+        * V0
+        * (
+            12 * (np.ln(V0)) ** 2
+            + 4 * (BP - 2) * (np.ln(V0)) ** 3
+            + (3 + B * B2P - 3 * BP + BP**2) * (np.ln(V0)) ** 4
+        )
+        / 24
+    )
+    b = (
+        -B
+        * V0
+        * (
+            6 * np.ln(V0)
+            + 3 * (BP - 2) * (np.ln(V0)) ** 2
+            + (3 + B * B2P - 3 * BP + BP**2) * (np.ln(V0)) ** 3
+        )
+        / 6
+    )
+    c = (
+        B
+        * V0
+        * (
+            2
+            + 2 * (BP - 2) * np.ln(V0)
+            + (3 + B * B2P - 3 * BP + BP**2) * (np.ln(V0)) ** 2
+        )
+        / 4
+    )
+    d = -B * V0 * (-2 + BP + (3 + B * B2P - 3 * BP + BP**2) * np.ln(V0)) / 6
+    e = B * V0 * (3 + B * B2P - 3 * BP + BP**2) / 24
+
+    return a, b, c, d, e
+
+
 def LOG5(
-    volume: float | np.ndarray,
-    energy: float | np.ndarray,
+    volume: np.ndarray,
+    energy: np.ndarray,
     volume_min: float = None,
     volume_max: float = None,
     num_volumes: int = 1000,
@@ -1019,11 +1119,14 @@ def LOG5(
     """Fits the LOG5 EOS to the input volume and energy data.
 
     Args:
-        volume (float | np.ndarray): volume data
-        energy (float | np.ndarray): energy data
+        volume (np.ndarray): array of input volumes
+        energy (np.ndarray): array of input energies
+        volume_min (float, optional): minimum volume for EOS fitting. Defaults to None.
+        volume_max (float, optional): maximum volume for EOS fitting. Defaults to None.
+        num_volumes (int, optional): number of volumes for EOS fitting. Defaults to 1000.
 
     Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS parameters and the corresponding volume, energy, and pressure
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS constants, EOS parameters, volume range, energy EOS, and pressure EOS
     """
 
     a, b, c, d, e = curve_fit(LOG5_equation, volume, energy, p0=[1, 1, 1, 1, 1])[0]
@@ -1048,19 +1151,19 @@ def LOG5(
 
 # Murnaghan EOS Functions
 def murnaghan_equation(
-    volume: float | np.ndarray, V0: float, E0: float, B: float, BP: float
-) -> float | np.ndarray:
+    volume: np.ndarray, V0: float, E0: float, B: float, BP: float
+) -> np.ndarray:
     """Murnaghan EOS
 
     Args:
-        volume (float | np.ndarray): input volume
+        volume (np.ndarray): array of input volumes
         V0 (float): equilibrium volume
         E0 (float): equilibrium energy
         B (float): bulk modulus
         BP (float): derivative of bulk modulus with respect to pressure
 
     Returns:
-        float | np.ndarray: energy
+        np.ndarray: array of energy values
     """
 
     energy = (
@@ -1072,18 +1175,18 @@ def murnaghan_equation(
 
 
 def murnaghan_derivative(
-    volume: float | np.ndarray, V0: float, B: float, BP: float
-) -> float | np.ndarray:
+    volume: np.ndarray, V0: float, B: float, BP: float
+) -> np.ndarray:
     """Derivative of Murnaghan EOS
 
     Args:
-        volume (float | np.ndarray): input volume
+        volume (np.ndarray): array of input volumes
         V0 (float): equilibrium volume
         B (float): bulk modulus
         BP (float): derivative of bulk modulus with respect to pressure
 
     Returns:
-        float | np.ndarray: derivative of energy
+        np.ndarray: array of energy derivatives
     """
 
     energy_derivative = (B / BP) * (1 - (V0 / volume) ** BP)
@@ -1091,8 +1194,8 @@ def murnaghan_derivative(
 
 
 def murnaghan(
-    volume: float | np.ndarray,
-    energy: float | np.ndarray,
+    volume: np.ndarray,
+    energy: np.ndarray,
     volume_min: float = None,
     volume_max: float = None,
     num_volumes: int = 1000,
@@ -1100,11 +1203,14 @@ def murnaghan(
     """Fits the Murnaghan EOS to the input volume and energy data.
 
     Args:
-        volume (float | np.ndarray): volume data
-        energy (float | np.ndarray): energy data
+        volume (np.ndarray): array of input volumes
+        energy (np.ndarray): array of input energies
+        volume_min (float, optional): minimum volume for EOS fitting. Defaults to None.
+        volume_max (float, optional): maximum volume for EOS fitting. Defaults to None.
+        num_volumes (int, optional): number of volumes for EOS fitting. Defaults to 1000.
 
     Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS parameters and the corresponding volume, energy, and pressure
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS constants, EOS parameters, volume range, energy EOS, and pressure EOS
     """
 
     if volume_min is None:
@@ -1140,19 +1246,19 @@ def murnaghan(
 
 # Vinet EOS Functions
 def vinet_equation(
-    volume: float | np.ndarray, V0: float, E0: float, B: float, BP: float
-) -> float | np.ndarray:
+    volume: np.ndarray, V0: float, E0: float, B: float, BP: float
+) -> np.ndarray:
     """Vinet EOS
 
     Args:
-        volume (float | np.ndarray): input volume
+        volume (np.ndarray): array of input volumes
         V0 (float): equilibrium volume
         E0 (float): equilibrium energy
         B (float): bulk modulus
         BP (float): derivative of bulk modulus with respect to pressure
 
     Returns:
-        float | np.ndarray: energy
+        np.ndarray: array of energy values
     """
 
     energy = (
@@ -1166,17 +1272,17 @@ def vinet_equation(
     return energy
 
 
-def vinet_derivative(volume: float | np.ndarray, V0, B, BP) -> float | np.ndarray:
+def vinet_derivative(volume: np.ndarray, V0: float, B: float, BP: float) -> np.ndarray:
     """Derivative of Vinet EOS
 
     Args:
-        volume (float | np.ndarray): input volume
+        volume (np.ndarray): array of input volumes
         V0 (float): equilibrium volume
         B (float): bulk modulus
         BP (float): derivative of bulk modulus with respect to pressure
 
     Returns:
-        float | np.ndarray: derivative of energy
+        np.ndarray: array of energy derivatives
     """
 
     energy_derivative = -(
@@ -1190,8 +1296,8 @@ def vinet_derivative(volume: float | np.ndarray, V0, B, BP) -> float | np.ndarra
 
 
 def vinet(
-    volume: float | np.ndarray,
-    energy: float | np.ndarray,
+    volume: np.ndarray,
+    energy: np.ndarray,
     volume_min: float = None,
     volume_max: float = None,
     num_volumes: int = 1000,
@@ -1199,11 +1305,14 @@ def vinet(
     """Fits the Vinet EOS to the input volume and energy data.
 
     Args:
-        volume (float | np.ndarray): volume data
-        energy (float | np.ndarray): energy data
+        volume (np.ndarray): array of input volumes
+        energy (np.ndarray): array of input energies
+        volume_min (float, optional): minimum volume for EOS fitting. Defaults to None.
+        volume_max (float, optional): maximum volume for EOS fitting. Defaults to None.
+        num_volumes (int, optional): number of volumes for EOS fitting. Defaults to 1000.
 
     Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS parameters and the corresponding volume, energy, and pressure
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS constants, EOS parameters, volume range, energy EOS, and pressure EOS
     """
 
     if volume_min is None:
@@ -1241,19 +1350,19 @@ def vinet(
 
 # Morse EOS Functions
 def morse_equation(
-    volume: float | np.ndarray, V0: float, E0: float, B: float, BP: float
-) -> float | np.ndarray:
+    volume: np.ndarray, V0: float, E0: float, B: float, BP: float
+) -> np.ndarray:
     """Morse EOS
 
     Args:
-        volume (float | np.ndarray): input volume
+        volume (np.ndarray): array of input volumes
         V0 (float): equilibrium volume
         E0 (float): equilibrium energy
         B (float): bulk modulus
         BP (float): derivative of bulk modulus with respect to pressure
 
     Returns:
-        float | np.ndarray: energy
+        np.ndarray: array of energy values
     """
 
     a = E0 + (9 * B * V0) / (2 * (BP - 1) ** 2)
@@ -1266,19 +1375,17 @@ def morse_equation(
     return energy
 
 
-def morse_derivative(
-    volume: float | np.ndarray, b: float, c: float, d: float
-) -> float | np.ndarray:
+def morse_derivative(volume: np.ndarray, b: float, c: float, d: float) -> np.ndarray:
     """Derivative of Morse EOS
 
     Args:
-        volume (float | np.ndarray): input volume
-        V0 (float): equilibrium volume
-        B (float): bulk modulus
-        BP (float): derivative of bulk modulus with respect to pressure
+        volume (np.ndarray): array of input volumes
+        b (float): b constant
+        c (float): c constant
+        d (float): d constant
 
     Returns:
-        float | np.ndarray: derivative of energy
+        np.ndarray: array of energy derivatives
     """
 
     energy_derivative = b * d * np.exp(d * volume ** (1 / 3)) / (
@@ -1288,8 +1395,8 @@ def morse_derivative(
 
 
 def morse(
-    volume: float | np.ndarray,
-    energy: float | np.ndarray,
+    volume: np.ndarray,
+    energy: np.ndarray,
     volume_min: float = None,
     volume_max: float = None,
     num_volumes: int = 1000,
@@ -1297,11 +1404,14 @@ def morse(
     """Fits the Morse EOS to the input volume and energy data.
 
     Args:
-        volume (float | np.ndarray): volume data
-        energy (float | np.ndarray): energy data
+        volume (np.ndarray): array of input volumes
+        energy (np.ndarray): array of input energies
+        volume_min (float, optional): minimum volume for EOS fitting. Defaults to None.
+        volume_max (float, optional): maximum volume for EOS fitting. Defaults to None.
+        num_volumes (int, optional): number of volumes for EOS fitting. Defaults to 1000.
 
     Returns:
-        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS parameters and the corresponding volume, energy, and pressure
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: EOS constants, EOS parameters, volume range, energy EOS, and pressure EOS
     """
 
     if volume_min is None:
