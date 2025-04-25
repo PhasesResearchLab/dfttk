@@ -33,7 +33,7 @@ energies = np.array(
     dtype=np.float64,
 )
 
-
+# Low atol is required to pass GitHub actions
 def assert_eos_results(
     eos_constants,
     eos_parameters,
@@ -48,19 +48,19 @@ def assert_eos_results(
 ):
     """Helper function to assert EOS results."""
     assert np.allclose(
-        eos_constants, expected_eos_constants, atol=1e-1
+        eos_constants, expected_eos_constants, rtol=1e-4
     ), f"Expected {expected_eos_constants}, got {eos_constants}"
     assert np.allclose(
-        eos_parameters, expected_eos_parameters, atol=1e-1
+        eos_parameters, expected_eos_parameters, rtol=1e-4
     ), f"Expected {expected_eos_parameters}, got {eos_parameters}"
     assert np.allclose(
-        volume_range, expected_volume_range, atol=1e-1
+        volume_range, expected_volume_range, rtol=1e-4
     ), f"Expected {expected_volume_range}, got {volume_range}"
     assert np.allclose(
-        energy_eos, expected_energy_eos, atol=1e-1
+        energy_eos, expected_energy_eos, rtol=1e-4
     ), f"Expected {expected_energy_eos}, got {energy_eos}"
     assert np.allclose(
-        pressure_eos, expected_pressure_eos, atol=1e-1
+        pressure_eos, expected_pressure_eos, rtol=1e-4
     ), f"Expected {expected_pressure_eos}, got {pressure_eos}"
 
 
