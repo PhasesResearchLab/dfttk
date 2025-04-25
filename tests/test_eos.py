@@ -18,7 +18,7 @@ from dfttk.eos.fit import fit_to_eos
 # Conversion factor
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
-volumes = np.array([74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0])
+volumes = np.array([74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0], dtype=np.float64)
 energies = np.array(
     [
         -14.787067,
@@ -29,7 +29,8 @@ energies = np.array(
         -14.955434,
         -14.902786,
         -14.808673,
-    ]
+    ],
+    dtype=np.float64,
 )
 
 
