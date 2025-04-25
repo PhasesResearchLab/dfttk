@@ -857,9 +857,9 @@ def LOG4_eos_constants(
     """
 
     B = B / EV_PER_CUBIC_ANGSTROM_TO_GPA
-    a = E0 + B * V0 * (3 * (np.ln(V0)) ** 2 + (BP - 2) * (np.ln(V0)) ** 3) / 6
-    b = -B * V0 * (2 * np.ln(V0) + (BP - 2) * (np.ln(V0)) ** 2) / 2
-    c = B * V0 * (1 + (BP - 2) * np.ln(V0)) / 2
+    a = E0 + B * V0 * (3 * (np.log(V0)) ** 2 + (BP - 2) * (np.log(V0)) ** 3) / 6
+    b = -B * V0 * (2 * np.log(V0) + (BP - 2) * (np.log(V0)) ** 2) / 2
+    c = B * V0 * (1 + (BP - 2) * np.log(V0)) / 2
     d = -B * V0 * (BP - 2) / 6
 
     return a, b, c, d
@@ -1076,9 +1076,9 @@ def LOG5_eos_constants(
         + B
         * V0
         * (
-            12 * (np.ln(V0)) ** 2
-            + 4 * (BP - 2) * (np.ln(V0)) ** 3
-            + (3 + B * B2P - 3 * BP + BP**2) * (np.ln(V0)) ** 4
+            12 * (np.log(V0)) ** 2
+            + 4 * (BP - 2) * (np.log(V0)) ** 3
+            + (3 + B * B2P - 3 * BP + BP**2) * (np.log(V0)) ** 4
         )
         / 24
     )
@@ -1086,9 +1086,9 @@ def LOG5_eos_constants(
         -B
         * V0
         * (
-            6 * np.ln(V0)
-            + 3 * (BP - 2) * (np.ln(V0)) ** 2
-            + (3 + B * B2P - 3 * BP + BP**2) * (np.ln(V0)) ** 3
+            6 * np.log(V0)
+            + 3 * (BP - 2) * (np.log(V0)) ** 2
+            + (3 + B * B2P - 3 * BP + BP**2) * (np.log(V0)) ** 3
         )
         / 6
     )
@@ -1097,12 +1097,12 @@ def LOG5_eos_constants(
         * V0
         * (
             2
-            + 2 * (BP - 2) * np.ln(V0)
-            + (3 + B * B2P - 3 * BP + BP**2) * (np.ln(V0)) ** 2
+            + 2 * (BP - 2) * np.log(V0)
+            + (3 + B * B2P - 3 * BP + BP**2) * (np.log(V0)) ** 2
         )
         / 4
     )
-    d = -B * V0 * (-2 + BP + (3 + B * B2P - 3 * BP + BP**2) * np.ln(V0)) / 6
+    d = -B * V0 * (-2 + BP + (3 + B * B2P - 3 * BP + BP**2) * np.log(V0)) / 6
     e = B * V0 * (3 + B * B2P - 3 * BP + BP**2) / 24
 
     return a, b, c, d, e
