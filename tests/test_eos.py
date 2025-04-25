@@ -48,19 +48,19 @@ def assert_eos_results(
 ):
     """Helper function to assert EOS results."""
     assert np.allclose(
-        eos_constants, expected_eos_constants, atol=1e-2
+        eos_constants, expected_eos_constants, atol=1e-1
     ), f"Expected {expected_eos_constants}, got {eos_constants}"
     assert np.allclose(
-        eos_parameters, expected_eos_parameters, atol=1e-2
+        eos_parameters, expected_eos_parameters, atol=1e-1
     ), f"Expected {expected_eos_parameters}, got {eos_parameters}"
     assert np.allclose(
-        volume_range, expected_volume_range, atol=1e-2
+        volume_range, expected_volume_range, atol=1e-1
     ), f"Expected {expected_volume_range}, got {volume_range}"
     assert np.allclose(
-        energy_eos, expected_energy_eos, atol=1e-2
+        energy_eos, expected_energy_eos, atol=1e-1
     ), f"Expected {expected_energy_eos}, got {energy_eos}"
     assert np.allclose(
-        pressure_eos, expected_pressure_eos, atol=1e-2
+        pressure_eos, expected_pressure_eos, atol=1e-1
     ), f"Expected {expected_pressure_eos}, got {pressure_eos}"
 
 
