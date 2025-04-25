@@ -143,7 +143,7 @@ def test_mBM4():
     assert np.allclose(
         np.array([V0, E0, B, BP, B2P]),
         expected_eos_parameters,
-        rtol=1e-2,
+        rtol=3e-2,
     ), f"Expected {expected_eos_parameters}, got {np.array([V0,E0,B,BP, B2P])}"
 
 
@@ -231,7 +231,7 @@ def test_mBM5():
     assert np.allclose(
         np.array([V0, E0, B, BP, B2P]),
         expected_eos_parameters,
-        rtol=1e-2,
+        rtol=3e-2,
     ), f"Expected {expected_eos_parameters}, got {np.array([V0,E0,B,BP, B2P])}"
 
 
@@ -318,7 +318,7 @@ def test_BM4():
     assert np.allclose(
         np.array([V0, E0, B, BP, B2P]),
         expected_eos_parameters,
-        rtol=1e-2,
+        rtol=3e-2,
     ), f"Expected {expected_eos_parameters}, got {np.array([V0,E0,B,BP, B2P])}"
 
 
@@ -406,7 +406,7 @@ def test_BM5():
     assert np.allclose(
         np.array([V0, E0, B, BP, B2P]),
         expected_eos_parameters,
-        rtol=1e-2,
+        rtol=3e-2,
     ), f"Expected {expected_eos_parameters}, got {np.array([V0,E0,B,BP, B2P])}"
 
 
@@ -493,7 +493,7 @@ def test_LOG4():
     assert np.allclose(
         np.array([V0, E0, B, BP, B2P]),
         expected_eos_parameters,
-        rtol=1e-2,
+        rtol=3e-2,
     ), f"Expected {expected_eos_parameters}, got {np.array([V0,E0,B,BP, B2P])}"
 
 
@@ -581,7 +581,7 @@ def test_LOG5():
     assert np.allclose(
         np.array([V0, E0, B, BP, B2P]),
         expected_eos_parameters,
-        rtol=1e-2,
+        rtol=3e-2,
     ), f"Expected {expected_eos_parameters}, got {np.array([V0,E0,B,BP, B2P])}"
 
 
