@@ -33,23 +33,19 @@ energies = np.array(
     dtype=np.float64,
 )
 
+
 # Low rtol is required to pass GitHub actions
 def assert_eos_results(
-    eos_constants,
     eos_parameters,
     volume_range,
     energy_eos,
     pressure_eos,
-    expected_eos_constants,
     expected_eos_parameters,
     expected_volume_range,
     expected_energy_eos,
     expected_pressure_eos,
 ):
     """Helper function to assert EOS results."""
-    #assert np.allclose(
-    #    eos_constants, expected_eos_constants, rtol=1e-2
-    #), f"Expected {expected_eos_constants}, got {eos_constants}"
     assert np.allclose(
         eos_parameters, expected_eos_parameters, rtol=3e-2
     ), f"Expected {expected_eos_parameters}, got {eos_parameters}"
@@ -77,16 +73,8 @@ def test_mBM4():
     B = eos_parameters[2]
     BP = eos_parameters[3]
     a, b, c, d = mBM4_eos_constants(V0, E0, B, BP)
+    V0, E0, B, BP, B2P = mBM4_eos_parameters(a, b, c, d)
 
-    expected_eos_constants = np.array(
-        [
-            -102.48259086791732,
-            1647.332314906896,
-            -9029.447536308013,
-            15362.206257426327,
-            0.0,
-        ]
-    )
     expected_eos_parameters = np.array(
         [
             66.10232407335344,
@@ -133,32 +121,30 @@ def test_mBM4():
 
     # Use the helper function for assertions
     assert_eos_results(
-        eos_constants,
         eos_parameters,
         volume_range,
         energy_eos,
         pressure_eos,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert_eos_results(
-        eos_constants2,
         eos_parameters2,
         volume_range2,
         energy_eos2,
         pressure_eos2,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert np.allclose(
-        np.array([a, b, c, d, 0]), expected_eos_constants, rtol=1e-2
-    ), f"Expected {expected_eos_constants}, got {np.array([a,b,c,d, 0])}"
+        np.array([V0, E0, B, BP, B2P]),
+        expected_eos_parameters,
+        rtol=1e-2,
+    ), f"Expected {expected_eos_parameters}, got {np.array([V0,E0,B,BP, B2P])}"
 
 
 def test_mBM5():
@@ -169,22 +155,18 @@ def test_mBM5():
         fit_to_eos(volumes, energies, eos_name="mBM5", num_volumes=10)
     )
 
+    volume_min = min(volumes)
+    volume_max = max(volumes)
+    expected_volume_range = np.linspace(volume_min, volume_max, 10)
+
     V0 = eos_parameters[0]
     E0 = eos_parameters[1]
     B = eos_parameters[2]
     BP = eos_parameters[3]
     B2P = eos_parameters[4]
     a, b, c, d, e = mBM5_eos_constants(V0, E0, B, BP, B2P)
+    V0, E0, B, BP, B2P = mBM5_eos_parameters(volume_range, a, b, c, d, e)
 
-    expected_eos_constants = np.array(
-        [
-            -853.0124885112899,
-            13819.945959859902,
-            -83047.67221528212,
-            215356.98925097284,
-            -202599.15453877283,
-        ]
-    )
     expected_eos_parameters = np.array(
         [
             66.10542344565768,
@@ -194,10 +176,6 @@ def test_mBM5():
             -0.16682566975204927,
         ]
     )
-
-    volume_min = min(volumes)
-    volume_max = max(volumes)
-    expected_volume_range = np.linspace(volume_min, volume_max, 10)
 
     expected_energy_eos = np.array(
         [
@@ -231,32 +209,30 @@ def test_mBM5():
 
     # Use the helper function for assertions
     assert_eos_results(
-        eos_constants,
         eos_parameters,
         volume_range,
         energy_eos,
         pressure_eos,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert_eos_results(
-        eos_constants2,
         eos_parameters2,
         volume_range2,
         energy_eos2,
         pressure_eos2,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert np.allclose(
-        np.array([a, b, c, d, e]), expected_eos_constants, rtol=1e-2
-    ), f"Expected {expected_eos_constants}, got {np.array([a,b,c,d, e])}"
+        np.array([V0, E0, B, BP, B2P]),
+        expected_eos_parameters,
+        rtol=1e-2,
+    ), f"Expected {expected_eos_parameters}, got {np.array([V0,E0,B,BP, B2P])}"
 
 
 def test_BM4():
@@ -272,16 +248,8 @@ def test_BM4():
     B = eos_parameters[2]
     BP = eos_parameters[3]
     a, b, c, d = BM4_eos_constants(V0, E0, B, BP)
+    V0, E0, B, BP, B2P = BM4_eos_parameters(a, b, c, d)
 
-    expected_eos_constants = np.array(
-        [
-            10.115871836386141,
-            -639.1561876497228,
-            781.9858370675397,
-            48419.8400405475,
-            0.0,
-        ]
-    )
     expected_eos_parameters = np.array(
         [
             66.10191547034127,
@@ -328,32 +296,30 @@ def test_BM4():
 
     # Use the helper function for assertions
     assert_eos_results(
-        eos_constants,
         eos_parameters,
         volume_range,
         energy_eos,
         pressure_eos,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert_eos_results(
-        eos_constants2,
         eos_parameters2,
         volume_range2,
         energy_eos2,
         pressure_eos2,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert np.allclose(
-        np.array([a, b, c, d, 0]), expected_eos_constants, rtol=1e-2
-    ), f"Expected {expected_eos_constants}, got {np.array([a,b,c,d, 0])}"
+        np.array([V0, E0, B, BP, B2P]),
+        expected_eos_parameters,
+        rtol=1e-2,
+    ), f"Expected {expected_eos_parameters}, got {np.array([V0,E0,B,BP, B2P])}"
 
 
 def test_BM5():
@@ -364,22 +330,18 @@ def test_BM5():
         fit_to_eos(volumes, energies, eos_name="BM5", num_volumes=10)
     )
 
+    volume_min = min(volumes)
+    volume_max = max(volumes)
+    expected_volume_range = np.linspace(volume_min, volume_max, 10)
+
     V0 = eos_parameters[0]
     E0 = eos_parameters[1]
     B = eos_parameters[2]
     BP = eos_parameters[3]
     B2P = eos_parameters[4]
     a, b, c, d, e = BM5_eos_constants(V0, E0, B, BP, B2P)
+    V0, E0, B, BP, B2P = BM5_eos_parameters(volume_range, a, b, c, d, e)
 
-    expected_eos_constants = np.array(
-        [
-            -48.32264004043502,
-            3204.2596680358665,
-            -93928.45938357542,
-            1084818.520079709,
-            -4249309.924239315,
-        ]
-    )
     expected_eos_parameters = np.array(
         [
             66.10494560451701,
@@ -389,10 +351,6 @@ def test_BM5():
             -0.1715488686904988,
         ]
     )
-
-    volume_min = min(volumes)
-    volume_max = max(volumes)
-    expected_volume_range = np.linspace(volume_min, volume_max, 10)
 
     expected_energy_eos = np.array(
         [
@@ -426,32 +384,30 @@ def test_BM5():
 
     # Use the helper function for assertions
     assert_eos_results(
-        eos_constants,
         eos_parameters,
         volume_range,
         energy_eos,
         pressure_eos,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert_eos_results(
-        eos_constants2,
         eos_parameters2,
         volume_range2,
         energy_eos2,
         pressure_eos2,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert np.allclose(
-        np.array([a, b, c, d, e]), expected_eos_constants, rtol=1e-2
-    ), f"Expected {expected_eos_constants}, got {np.array([a,b,c,d, e])}"
+        np.array([V0, E0, B, BP, B2P]),
+        expected_eos_parameters,
+        rtol=1e-2,
+    ), f"Expected {expected_eos_parameters}, got {np.array([V0,E0,B,BP, B2P])}"
 
 
 def test_LOG4():
@@ -462,21 +418,17 @@ def test_LOG4():
         fit_to_eos(volumes, energies, eos_name="LOG4", num_volumes=10)
     )
 
+    volume_min = min(volumes)
+    volume_max = max(volumes)
+    expected_volume_range = np.linspace(volume_min, volume_max, 10)
+
     V0 = eos_parameters[0]
     E0 = eos_parameters[1]
     B = eos_parameters[2]
     BP = eos_parameters[3]
     a, b, c, d = LOG4_eos_constants(V0, E0, B, BP)
+    V0, E0, B, BP, B2P = LOG4_eos_parameters(volume_range, a, b, c, d)
 
-    expected_eos_constants = np.array(
-        [
-            1287.0672157843683,
-            -864.2557274641168,
-            190.04846366479103,
-            -13.82976606339218,
-            0.0,
-        ]
-    )
     expected_eos_parameters = np.array(
         [
             66.10417220805562,
@@ -486,10 +438,6 @@ def test_LOG4():
             -0.12974474286845175,
         ]
     )
-
-    volume_min = min(volumes)
-    volume_max = max(volumes)
-    expected_volume_range = np.linspace(volume_min, volume_max, 10)
 
     expected_energy_eos = np.array(
         [
@@ -523,32 +471,30 @@ def test_LOG4():
 
     # Use the helper function for assertions
     assert_eos_results(
-        eos_constants,
         eos_parameters,
         volume_range,
         energy_eos,
         pressure_eos,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert_eos_results(
-        eos_constants2,
         eos_parameters2,
         volume_range2,
         energy_eos2,
         pressure_eos2,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert np.allclose(
-        np.array([a, b, c, d, 0]), expected_eos_constants, rtol=1e-2
-    ), f"Expected {expected_eos_constants}, got {np.array([a,b,c,d, 0])}"
+        np.array([V0, E0, B, BP, B2P]),
+        expected_eos_parameters,
+        rtol=1e-2,
+    ), f"Expected {expected_eos_parameters}, got {np.array([V0,E0,B,BP, B2P])}"
 
 
 def test_LOG5():
@@ -559,22 +505,18 @@ def test_LOG5():
         fit_to_eos(volumes, energies, eos_name="LOG5", num_volumes=10)
     )
 
+    volume_min = min(volumes)
+    volume_max = max(volumes)
+    expected_volume_range = np.linspace(volume_min, volume_max, 10)
+
     V0 = eos_parameters[0]
     E0 = eos_parameters[1]
     B = eos_parameters[2]
     BP = eos_parameters[3]
     B2P = eos_parameters[4]
     a, b, c, d, e = LOG5_eos_constants(V0, E0, B, BP, B2P)
+    V0, E0, B, BP, B2P = LOG5_eos_parameters(volume_range, a, b, c, d, e)
 
-    expected_eos_constants = np.array(
-        [
-            97.21090483634063,
-            269.45919413164813,
-            -214.99095649480188,
-            50.47764844893589,
-            -3.8283263266927334,
-        ]
-    )
     expected_eos_parameters = np.array(
         [
             66.10571794361299,
@@ -584,10 +526,6 @@ def test_LOG5():
             -0.16321711742191786,
         ]
     )
-
-    volume_min = min(volumes)
-    volume_max = max(volumes)
-    expected_volume_range = np.linspace(volume_min, volume_max, 10)
 
     expected_energy_eos = np.array(
         [
@@ -621,32 +559,30 @@ def test_LOG5():
 
     # Use the helper function for assertions
     assert_eos_results(
-        eos_constants,
         eos_parameters,
         volume_range,
         energy_eos,
         pressure_eos,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert_eos_results(
-        eos_constants2,
         eos_parameters2,
         volume_range2,
         energy_eos2,
         pressure_eos2,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert np.allclose(
-        np.array([a, b, c, d, e]), expected_eos_constants, rtol=1e-2
-    ), f"Expected {expected_eos_constants}, got {np.array([a,b,c,d, e])}"
+        np.array([V0, E0, B, BP, B2P]),
+        expected_eos_parameters,
+        rtol=1e-2,
+    ), f"Expected {expected_eos_parameters}, got {np.array([V0,E0,B,BP, B2P])}"
 
 
 def test_murnaghan():
@@ -657,15 +593,6 @@ def test_murnaghan():
         fit_to_eos(volumes, energies, eos_name="murnaghan", num_volumes=10)
     )
 
-    expected_eos_constants = np.array(
-        [
-            0,
-            0,
-            0,
-            0,
-            0,
-        ]
-    )
     expected_eos_parameters = np.array(
         [
             66.10051541316386,
@@ -712,24 +639,20 @@ def test_murnaghan():
 
     # Use the helper function for assertions
     assert_eos_results(
-        eos_constants,
         eos_parameters,
         volume_range,
         energy_eos,
         pressure_eos,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert_eos_results(
-        eos_constants2,
         eos_parameters2,
         volume_range2,
         energy_eos2,
         pressure_eos2,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
@@ -745,15 +668,6 @@ def test_vinet():
         fit_to_eos(volumes, energies, eos_name="vinet", num_volumes=10)
     )
 
-    expected_eos_constants = np.array(
-        [
-            0,
-            0,
-            0,
-            0,
-            0,
-        ]
-    )
     expected_eos_parameters = np.array(
         [
             66.102714503444,
@@ -800,24 +714,20 @@ def test_vinet():
 
     # Use the helper function for assertions
     assert_eos_results(
-        eos_constants,
         eos_parameters,
         volume_range,
         energy_eos,
         pressure_eos,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert_eos_results(
-        eos_constants2,
         eos_parameters2,
         volume_range2,
         energy_eos2,
         pressure_eos2,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
@@ -833,15 +743,6 @@ def test_morse():
         fit_to_eos(volumes, energies, eos_name="morse", num_volumes=10)
     )
 
-    expected_eos_constants = np.array(
-        [
-            -3.7973259801377353,
-            -818.9810070970155,
-            15004.49171866411,
-            -0.8906492259402166,
-            0.0,
-        ]
-    )
     expected_eos_parameters = np.array(
         [
             66.10258535018146,
@@ -888,24 +789,20 @@ def test_morse():
 
     # Use the helper function for assertions
     assert_eos_results(
-        eos_constants,
         eos_parameters,
         volume_range,
         energy_eos,
         pressure_eos,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
         expected_pressure_eos,
     )
     assert_eos_results(
-        eos_constants2,
         eos_parameters2,
         volume_range2,
         energy_eos2,
         pressure_eos2,
-        expected_eos_constants,
         expected_eos_parameters,
         expected_volume_range,
         expected_energy_eos,
