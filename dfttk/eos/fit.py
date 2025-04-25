@@ -4,7 +4,6 @@ Module for fitting equations of state (EOS) to energy-volume data and plotting t
 
 # Related third party imports
 import numpy as np
-import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from distinctipy import get_colors
