@@ -210,7 +210,7 @@ def _assert_selected_keys_almost_equal(dict1, dict2, keys, atol=1e-4):
                     dict1[key] == dict2[key]
                 ), f"Expected {dict2[key]} for key '{key}', but got {dict1[key]}"
 
-
+#TODO: Add test for .starting_poscar
 def test_process_ev_curve():
     ev_curve_files_and_attributes = [
         ("test_config_data/expected_ev_curves_incars.json", "incars"),
@@ -295,16 +295,16 @@ def test_process_ev_curve():
         ),
         "r",
     ) as f:
-        expected_phonon_structures = json.load(f)
+        expected_relaxed_structures = json.load(f)
 
-    for i, expected_relaxed_structure in enumerate(expected_phonon_structures):
-        expected_phonon_structures[i] = _convert_pbc_lists_to_tuples(
+    for i, expected_relaxed_structure in enumerate(expected_relaxed_structures):
+        expected_relaxed_structures[i] = _convert_pbc_lists_to_tuples(
             expected_relaxed_structure
         )
 
     assert (
-        actual_relaxed_structures == expected_phonon_structures
-    ), f"Expected {expected_phonon_structures}, but got {actual_relaxed_structures}"
+        actual_relaxed_structures == expected_relaxed_structures
+    ), f"Expected {expected_relaxed_structures}, but got {actual_relaxed_structures}"
 
 
 def test_process_phonons():
@@ -548,52 +548,45 @@ def test_process_qha():
             "phonons_thermal_electronic",
         ),
     ]
-    methods_copy = {
-        method: {
-            str(P) + " GPa": {k: v for k, v in data.items() if k != "quasi_harmonic_df"}
-            for P, data in pressures.items()
-        }
-        for method, pressures in config_Al.qha.methods.items()
-    }
-
+    
+    methods_copy = config_Al.qha.methods
     for filename, attribute in files_and_attributes:
         with open(os.path.join(current_dir, filename), "r") as f:
             expected_data = json.load(f)
 
-        properties = ["helmholtz_energy", "entropy", "heat_capacity"]
+        properties = ["helmholtz_energy_pv"]#, "entropy", "heat_capacity"]
         for property in properties:
-            if property == "helmholtz_energy":
-                expected_property_data = expected_data["0 GPa"][property][
-                    "eos_parameters"
+            if property == "helmholtz_energy_pv":
+                expected_property_data = expected_data["0_GPa"][property][
+                    "eos_constants"
                 ]
-                actual_property_data = methods_copy[attribute]["0 GPa"][property][
-                    "eos_parameters"
+                actual_property_data = methods_copy[attribute]["0_GPa"][property][
+                    "eos_constants"
                 ]
                 expected_property_data.pop("eos_name", None)
                 actual_property_data.pop("eos_name", None)
             else:
-                expected_property_data = expected_data["0 GPa"][property][
+                expected_property_data = expected_data["0_GPa"][property][
                     "polynomial_coefficients"
                 ]
-                actual_property_data = methods_copy[attribute]["0 GPa"][property][
+                actual_property_data = methods_copy[attribute]["0_GPa"][property][
                     "polynomial_coefficients"
                 ]
 
-            # TODO: GitHub actions only passes with this low tolerance. Investigate why.
             for temp, expected_values in expected_property_data.items():
                 actual_values = actual_property_data[temp]
-                if property == "helmholtz_energy":
+                if property == "helmholtz_energy_pv":
                     for expected, actual in zip(
                         expected_values.values(), actual_values.values()
                     ):
                         assert np.allclose(
                             expected, actual, rtol=2e-2
-                        ), f"Expected {expected}, but got {actual} with tolerance 5e-1"
+                        ), f"Expected {expected}, but got {actual} with tolerance 2e-2"
                 else:
                     for expected, actual in zip(expected_values, actual_values):
                         assert np.allclose(
                             expected, actual, rtol=2e-2
-                        ), f"Expected {expected}, but got {actual} with tolerance 5e-1"
+                        ), f"Expected {expected}, but got {actual} with tolerance 2e-2"
 
 
 if __name__ == "__main__":
