@@ -81,9 +81,9 @@
                     "e": 0.0
                 }
             }
-        },
+        }},
         "entropy": {
-            "polynomial_coefficients": {
+            "poly_coeffs": {
                 "0K": [
                     -0.0
                 ],
@@ -140,7 +140,7 @@
             }
         },
         "heat_capacity": {
-            "polynomial_coefficients": {
+            "poly_coeffs": {
                 "0K": [
                     -0.0
                 ],
@@ -197,4 +197,3 @@
             }
         }
     }
-}

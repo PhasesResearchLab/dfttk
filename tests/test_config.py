@@ -1,3 +1,7 @@
+"""
+Tests for the Configuration class.
+"""
+
 # Standard library imports
 import os
 import json
@@ -210,7 +214,8 @@ def _assert_selected_keys_almost_equal(dict1, dict2, keys, atol=1e-4):
                     dict1[key] == dict2[key]
                 ), f"Expected {dict2[key]} for key '{key}', but got {dict1[key]}"
 
-#TODO: Add test for .starting_poscar
+
+# TODO: Add test for .starting_poscar
 def test_process_ev_curve():
     ev_curve_files_and_attributes = [
         ("test_config_data/expected_ev_curves_incars.json", "incars"),
@@ -548,13 +553,13 @@ def test_process_qha():
             "phonons_thermal_electronic",
         ),
     ]
-    
+
     methods_copy = config_Al.qha.methods
     for filename, attribute in files_and_attributes:
         with open(os.path.join(current_dir, filename), "r") as f:
             expected_data = json.load(f)
 
-        properties = ["helmholtz_energy_pv"]#, "entropy", "heat_capacity"]
+        properties = ["helmholtz_energy_pv", "entropy", "heat_capacity"]
         for property in properties:
             if property == "helmholtz_energy_pv":
                 expected_property_data = expected_data["0_GPa"][property][
@@ -566,12 +571,8 @@ def test_process_qha():
                 expected_property_data.pop("eos_name", None)
                 actual_property_data.pop("eos_name", None)
             else:
-                expected_property_data = expected_data["0_GPa"][property][
-                    "polynomial_coefficients"
-                ]
-                actual_property_data = methods_copy[attribute]["0_GPa"][property][
-                    "polynomial_coefficients"
-                ]
+                expected_property_data = expected_data[property]["poly_coeffs"]
+                actual_property_data = methods_copy[attribute][property]["poly_coeffs"]
 
             for temp, expected_values in expected_property_data.items():
                 actual_values = actual_property_data[temp]
