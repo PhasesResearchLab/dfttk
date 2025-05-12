@@ -1,7 +1,7 @@
 {
-    "0 GPa": {
-        "helmholtz_energy": {
-            "eos_parameters": {
+    "0_GPa": {
+        "helmholtz_energy_pv": {
+            "eos_constants": {
                 "eos_name": "BM4",
                 "0K": {
                     "a": 10.09849852528968,
