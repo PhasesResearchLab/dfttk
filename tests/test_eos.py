@@ -2,6 +2,10 @@
 Tests for the dfttk.eos module.    
 """
 
+# Standard library imports
+import os
+import json
+
 # Third-party library imports
 import pytest
 import numpy as np
@@ -9,16 +13,15 @@ import numpy as np
 # DFTTK imports
 from dfttk.eos.functions import *
 from dfttk.eos.fit import fit_to_eos
+from dfttk.eos.ev_curve_data import EvCurveData
 
 # TODO: Write tests for the 2nd derivatives of the equations of state
 # The first derivative is already covered by the pressure test
 
-# No tests for EvCurveData as test_config.py should be sufficient
-
 # Conversion factor
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
-volumes = np.array([74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0], dtype=np.float64)
+volumes = np.array([74., 72., 70., 68., 66., 64., 62., 60.])
 energies = np.array(
     [
         -14.787067,
@@ -29,9 +32,7 @@ energies = np.array(
         -14.955434,
         -14.902786,
         -14.808673,
-    ],
-    dtype=np.float64,
-)
+    ])
 
 
 # Low rtol is required to pass GitHub actions
@@ -809,6 +810,133 @@ def test_morse():
         expected_pressure_eos,
     )
 
+def _convert_pbc_lists_to_tuples(data):
+    data["lattice"]["pbc"] = tuple(data["lattice"]["pbc"])
+    return data
 
+
+def _assert_selected_keys_almost_equal(dict1, dict2, keys, atol=1e-4):
+    for key in keys:
+        if key in dict1 and key in dict2:
+            if isinstance(dict1[key], float) and isinstance(dict2[key], float):
+                assert np.isclose(
+                    dict1[key], dict2[key], atol=atol
+                ), f"Expected {dict2[key]} for key '{key}', but got {dict1[key]}"
+            else:
+                assert (
+                    dict1[key] == dict2[key]
+                ), f"Expected {dict2[key]} for key '{key}', but got {dict1[key]}"
+                
+# TODO: writes tests for volume != None
+def test_EvCurveData():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    config_Al_path = os.path.join(current_dir, "vasp_data/Al/config_Al")
+    
+    # Initialize EvCurveData
+    ev_curve_data = EvCurveData(config_Al_path, "Al")
+    
+    # Get VASP input
+    ev_curve_data.get_vasp_input()
+    
+    # Get energy-volume data
+    ev_curve_data.get_energy_volume_data()
+    
+    # Fit energy-volume data
+    ev_curve_data.fit_energy_volume_data()
+
+    ev_curve_files_and_attributes = [
+        ("test_config_data/expected_ev_curves_incars.json", "incars"),
+        ("test_config_data/expected_ev_curves_kpoints.json", "kpoints"),
+    ]
+
+    for filename, attribute in ev_curve_files_and_attributes:
+        with open(os.path.join(current_dir, filename), "r") as f:
+            expected_data = json.load(f)
+
+        actual_data = getattr(ev_curve_data, attribute)
+
+        if attribute == "kpoints":
+            actual_data = actual_data.as_dict()
+
+        for actual, expected in zip(actual_data, expected_data):
+            assert actual == expected, f"Expected {expected}, but got {actual}"
+
+    assert (
+        ev_curve_data.number_of_atoms == 4
+    ), f"Expected 4, but got {ev_curve_data.number_of_atoms}"
+    
+    assert np.array_equal(
+        ev_curve_data.volumes,
+        np.array([74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0]),
+    ), f"Expected [74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0], but got {ev_curve_data.volumes}"
+    
+    assert np.array_equal(
+        ev_curve_data.energies,
+        np.array(
+            [
+                -14.787067,
+                -14.863567,
+                -14.92244,
+                -14.960229,
+                -14.973035,
+                -14.955434,
+                -14.902786,
+                -14.808673,
+            ]
+        ),
+    ), f"Expected [-14.787067, -14.863567, -14.92244, -14.960229, -14.973035, -14.955434, -14.902786, -14.808673], but got {ev_curve_data.energies}"
+    
+    assert ev_curve_data.atomic_masses == {
+        "Al": 26.981
+    }, f"Expected {'Al': 26.981}, but got {ev_curve_data.atomic_masses}"
+    assert (
+        ev_curve_data.average_mass == 26.981
+    ), f"Expected 26.981, but got {ev_curve_data.average_mass}"
+
+    assert np.array_equal(
+        ev_curve_data.total_magnetic_moment, np.array([])
+    ), f"Expected {np.array([])}, but got {ev_curve_data.total_magnetic_moment}"
+
+    assert np.array_equal(
+        ev_curve_data.magnetic_ordering, np.array([])
+    ), f"Expected {np.array([])}, but got {ev_curve_data.magnetic_ordering}"
+
+    assert np.array_equal(
+        ev_curve_data.mag_data, {}
+    ), f"Expected [], but got {ev_curve_data.mag_data}"
+    
+    expected_eos_parameters = {
+        "V0": 66.10191547034127,
+        "E0": -14.972775074363833,
+        "B": 77.92792067011315,
+        "BP": 4.612739661291564,
+        "B2P": -0.06258448064264342,
+    }
+    keys_to_compare = ["V0", "E0", "B", "BP", "B2P"]
+    _assert_selected_keys_almost_equal(
+        ev_curve_data.eos_parameters, expected_eos_parameters, keys_to_compare
+    )
+
+    actual_relaxed_structures = [
+        structure.as_dict() for structure in ev_curve_data.relaxed_structures
+    ]
+
+    with open(
+        os.path.join(
+            current_dir, "test_config_data/expected_ev_curves_relaxed_structures.json"
+        ),
+        "r",
+    ) as f:
+        expected_relaxed_structures = json.load(f)
+
+    for i, expected_relaxed_structure in enumerate(expected_relaxed_structures):
+        expected_relaxed_structures[i] = _convert_pbc_lists_to_tuples(
+            expected_relaxed_structure
+        )
+
+    assert (
+        actual_relaxed_structures == expected_relaxed_structures
+    ), f"Expected {expected_relaxed_structures}, but got {actual_relaxed_structures}"
+    
 if __name__ == "__main__":
     pytest.main()
