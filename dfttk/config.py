@@ -84,47 +84,6 @@ class Configuration:
     def set_vasp_cmd(self, vasp_cmd: list[str]) -> None:
         self.vasp_cmd = vasp_cmd
 
-    def read_job_script(self, template: str) -> None:
-        templates_map = {
-            "slurm": "slurm.json",
-        }
-        if template in templates_map:
-            with importlib.resources.path(
-                "dfttk.job_templates", templates_map[template]
-            ) as job_script_path:
-                with open(job_script_path, "r") as file:
-                    self.job_script = json.load(file)
-
-    def modify_job_script(self, key, value, position=None, action="add") -> None:
-        if key in self.job_script and key != "commands":
-            self.job_script[key] = value
-        elif key == "commands":
-            if action == "add":
-                if position is None:
-                    self.job_script["commands"].append(value)
-                else:
-                    self.job_script["commands"].insert(position, value)
-            elif action == "remove" and position is not None:
-                if 0 <= position < len(self.job_script["commands"]):
-                    self.job_script["commands"].pop(position)
-
-    def write_job_script(self, job_script_file="job.sh") -> None:
-        job_script_path = os.path.join(self.path, job_script_file)
-        with open(job_script_path, "w") as file:
-            file.write("#!/bin/bash\n")
-            file.write(f"#SBATCH --job-name={self.job_script['job_name']}\n")
-            file.write(f"#SBATCH -A {self.job_script['account']}\n")
-            file.write(f"#SBATCH -p {self.job_script['partition']}\n")
-            file.write(f"#SBATCH -N {self.job_script['nodes']}\n")
-            file.write(
-                f"#SBATCH --ntasks-per-node={self.job_script['ntasks_per_node']}\n"
-            )
-            file.write(f"#SBATCH -t {self.job_script['time']}\n")
-            file.write(f"#SBATCH -o {self.job_script['output_file']}\n")
-            file.write(f"#SBATCH -e {self.job_script['error_file']}\n\n")
-            for command in self.job_script["commands"]:
-                file.write(f"{command}\n")
-
     def add_metadata(
         self,
         mpdd_id=None,
