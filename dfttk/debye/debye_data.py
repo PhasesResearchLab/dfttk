@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 # DFTTK imports
 from dfttk.debye.functions import(
     process_debye_gruneisen,
-    plot_debye,
+    plot,
 )
 
 
@@ -37,26 +37,21 @@ class DebyeData:
         gruneisen_x: float = 1,
         temperatures: np.ndarray = np.linspace(0, 1000, 101),
     ) -> None:
-        volumes = np.linspace(0.98 * min(volumes), 1.02 * max(volumes), 1000)
+        volumes = np.linspace(0.98 * min(volumes), 1.02 * max(volumes), 1000) # Temporary for testing
         (
-            number_of_atoms,
-            scaling_factor,
-            gruneisen_x,
-            temperatures,
-            volumes,
             f_vib,
             s_vib,
             cv_vib,
         ) = process_debye_gruneisen(
             number_of_atoms,
             volumes,
+            temperatures,
             average_mass,
             volume_0,
             bulk_modulus,
             bulk_modulus_prime,
             scaling_factor,
             gruneisen_x,
-            temperatures,
         )
 
         self.number_of_atoms = number_of_atoms
@@ -75,15 +70,15 @@ class DebyeData:
         volumes: np.ndarray = None,
     ) -> tuple[go.Figure, go.Figure]:
 
-        fig_t, fig_v = plot_debye(
-            property_to_plot=property,
+        fig_t, fig_v = plot(
+            property=property,
             number_of_atoms=self.number_of_atoms,
             temperatures=self.temperatures,
             volumes=self.volumes,
-            f_vib=self.free_energy,
-            s_vib=self.entropy,
-            cv_vib=self.heat_capacity,
-            selected_temperatures_plot=temperatures,
+            helmholtz_energies=self.free_energy,
+            entropies=self.entropy,
+            heat_capacities=self.heat_capacity,
+            selected_temperatures=temperatures,
             selected_volumes=volumes,
         )
 

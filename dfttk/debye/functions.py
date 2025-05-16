@@ -1,331 +1,309 @@
 """
-Debye-Grüneisen module to calculate the vibrational contribution to the Helmholtz energy, entropy, and heat capacity.    
+Debye-Grüneisen module to calculate the vibrational contribution to the Helmholtz energy, entropy, and heat capacity.
 """
 
 # Related third party imports
 import numpy as np
 import plotly.graph_objects as go
 from scipy import constants
-from scipy.special import bernoulli, gamma
+from scipy.integrate import quad
 
 # DFTTK imports
 from dfttk.plotly_format import plot_format
-    
-# The definition of the Debye temperature is A * hbar/k_B * N/V) where A is
-# A = (6 * pi^2)^1/3 * hbar/k_B = 2.977*10^-11 s*K
-# converting to the of the eos_parameters,
-# A = (hbar/kb) * (6*math.pi**2)**(1/3) * (1*10**-10 m/Å)**(1/2) * (1*10**12 (g/(ms^2))/GPa)**(1/2) / ((1.66054*10**-24 g/u)**(1/2))
-# A = 231.0389521318254 K/(Å*GPa/u)^1/2
-A = 231.0389521318254
+
 BOLTZMANN_CONSTANT = constants.physical_constants["Boltzmann constant in eV/K"][0]
+HBAR = constants.physical_constants["Planck constant over 2 pi in eV s"][0]
 
 
-def gruneisen_parameter(bulk_modulus_prime: float, gruneisen_x: float) -> float:
-    """Calculates the gruneisen parameter, gamma
+def calculate_gruneisen_parameter(BP: float, gruneisen_x: float) -> float:
+    """Calculates the Gruneisen parameter (gamma).
 
     Args:
-        bulk_modulus_prime: B_0', first derivative of the bulk modulus with respect to pressure
-        gruneisen_x: Typical values include x = 2/3 (high temperature) and x = 1 (low temperature)
+        BP (float): First derivative of the bulk modulus with respect to pressure.
+        gruneisen_x (float): Typical values are 2/3 (high temperature) and 1 (low temperature).
 
     Returns:
-        gamma, the gruneisen parameter
+        float: Gruneisen parameter (gamma).
     """
-    return (1 + bulk_modulus_prime) / 2 - gruneisen_x
+    return (1 + BP) / 2 - gruneisen_x
 
 
-def debye_temperature(
-    volume: float,
-    volume_0: float,
-    bulk_modulus: float,
-    mass: float,
-    gru_param: float,
+def calculate_debye_temperatures(
+    volumes: np.ndarray,
+    V0: float,
+    B: float,
+    atomic_mass: float,
+    gruneisen_parameter: float,
     scaling_factor: float = 0.617,
-) -> float:
-    """Calculates the Debye temperature within the Debye-Gruneisen model.
+) -> np.ndarray:
+    """Calculates the Debye temperatures in Kelvin within the Debye-Gruneisen model.
 
     Args:
-        volume: Volume of the cell
-        eos_parameters: The parameters of the equation of state: (volume_0, energy_0, bulk_modulus, bulk_modulus_prime)
-        mass: Total mass of the cell
-        gru_param: gruneisen parameter
-        scaling_factor: The scaling factor defaults to 0.617, as determined by Moruzzi et al. from their study on
-        nonmagnetic cubic metals (https://doi.org/10.1103/PhysRevB.37.790).
+        volumes (np.ndarray): Volumes of the supercell in Å^3.
+        V0 (float): Equilibrium volume of the supercell in Å^3.
+        B (float): Bulk modulus in GPa.
+        atomic_mass (float): Atomic mass in u.
+        gruneisen_parameter (float): Gruneisen parameter.
+        scaling_factor (float, optional): The scaling factor defaults to 0.617, as determined by Moruzzi et al. from their study on
+            nonmagnetic cubic metals (https://doi.org/10.1103/PhysRevB.37.790).
 
     Returns:
-        Debye temperature
+        np.ndarray: Debye temperatures in Kelvin for each volume in the input array.
     """
-
-    debye_temperature = scaling_factor * A * volume_0 ** (1 / 6) * (
-        bulk_modulus / mass
-    ) ** (1 / 2) * (volume_0 / volume) ** gru_param
+    A = (6 * np.pi**2)**(1/3) * HBAR / BOLTZMANN_CONSTANT # Constant in s.K
+    B = B * 1e12 # Convert GPa to g/(ms^2)
+    V0 = V0 * 1e-30 # Convert Å^3 to m^3
+    volumes = volumes * 1e-30 # Convert Å^3 to m^3
+    atomic_mass = atomic_mass * 1.66054e-24 # Convert u to g
     
-    return debye_temperature
+    debye_temperatures = scaling_factor * A * V0 ** (1 / 6) * (
+        B / atomic_mass
+    ) ** (1 / 2) * (V0 / volumes) ** gruneisen_parameter
+    
+    return debye_temperatures
 
 
-def debye_function(
-    x_array: np.array, prec: float = 1e-12, nth_bernoulli: int = 100
-) -> np.array:
-    r"""Calculates the debye function with n = 3 using one of two series expansions. Valid for |x|<2𝜋 and n≥1.
+def calculate_debye_integral_n3(x_array: np.array) -> np.array:
+    """Calculate the Debye integral of order 3 for an array of upper limits, x_array.
 
-    For -2pi < x < 0.7𝜋:
-    D_3(x) = 1 - \frac{3}{8}x + 3 \sum_{k=1}^{\infty} \frac{B_{2k}}{(2k+3) \Gamma(2k+1)} x^{2k}
-    Reference: Eq. (4) by Gonzalez et al. (https://doi.org/10.3390/math10101745)
-
-    For x >= 0.7𝜋:
-    D(x) = \frac{\pi^4}{5x^3} - 3 \sum_{k=1}^{\infty} \frac{1}{k} \left(1 + \frac{3}{kx} + \frac{6}{k^2x^2} + \frac{6}{k^3x^3}\right) e^{-kx}
-    Reference: Eq. (17) by Khishchenko (https://doi.org/10.20948/MATHMONTIS-2020-49-8)
-
-    Other reference:
-    Abramowitz, M. and Stegun, I.A. eds., 1968. Handbook of mathematical functions with formulas, graphs, and mathematical tables (Vol. 55).
+    For each x in x_array, computes:
+        D(x) = (3 / x^3) * ∫₀ˣ (t^3 / (exp(t) - 1)) dt.
 
     Args:
-        x_array: array of input values for the debye function
-        prec: Precision. Terminates the series expansion when the absolute value of the term is less than prec.
-        nth_bernoulli: Determines the nth Bernoulli number to calculate. A list of Bernoulli numbers is generated prior to calculating the series
-        expansion. There should be no reason to change this value under normal circumstances.
-
-    Raises:
-        ValueError: If the precision is not between 0 and 1
-        ValueError: If x < -2𝜋
-        IndexError: If the bernoulli number at index 2k is not available. This indicates slow convergence of the Debye function series expansion.
-        If you wish to calculate values for x < -𝜋, convergence may be slow and you may need to increase nth_bernoulli.
+        x_array (np.ndarray): Array of upper integration limits, where each x is debye_temperature / temperature.
+            The debye_temperature is fixed at a single volume and the temperature is varied.
 
     Returns:
-        np.array: The value of the debye function evaluated at each x in x_array
+        np.ndarray: Array of calculated Debye integrals of order 3 for each upper limit in x_array.
     """
-
-    if not 0 < prec < 1:
-        raise ValueError("The precision must be between 0 and 1")
-
-    result = np.zeros_like(x_array)
-    bern_list = bernoulli(nth_bernoulli)  # 2*k must be less than 100
-
+    
+    debye_integrals = np.zeros_like(x_array, dtype=float)
     for i, x in enumerate(x_array):
-        term = 1  # Ensures the while loop runs at least once
-        k = 1
-
-        if x >= 0.7 * np.pi:
-            debye_value = np.pi**4 / (5 * x**3)
-            while abs(term) > prec:
-                term = -3 * (
-                    1
-                    / k
-                    * (1 + 3 / (k * x) + 6 / (k**2 * x**2) + 6 / (k**3 * x**3))
-                    * np.exp(-k * x)
-                )
-                debye_value += term
-                k += 1
-            result[i] = debye_value
-
-        elif -2 * np.pi < x < 0.7 * np.pi:
-            debye_value = 1 - 3 / 8 * x
-            while abs(term) > prec:
-                try:
-                    term = 3 * (
-                        bern_list[2 * k]
-                        / ((2 * k + 3) * gamma(2 * k + 1))
-                        * x ** (2 * k)
-                    )
-                except IndexError:
-                    raise IndexError(
-                        f"IndexError: the bernoulli number at index {2*k} is not available. This indicates slow convergence of the Debye function series expansion. \
-                            If you wish to calculate values for x < -𝜋, convergence may be slow and you may need to increase nth_bernoulli."
-                    )
-                debye_value += term
-                k += 1
-            result[i] = debye_value
-
-        else:
-            raise ValueError(
-                "The debye function series expansions used are only valid for x > -2𝜋"
-            )
-
-    return result
+        factor = 3. / x ** 3
+        integral, _ = quad(lambda t: t ** 3 / (np.exp(t) - 1.), 0, x)
+        debye_integrals[i] = integral * factor
+    return debye_integrals
 
 
-def vibrational_entropy(temperature: float, theta: float, number_of_atoms) -> float:
-    """Evaluates the debye function at x = theta/temperature, then calculates the vibrational entropy in eV/K.
+def calculate_entropies(temperatures: np.ndarray, debye_temperature: float, number_of_atoms: int) -> np.ndarray:
+    """Calculate the vibrational entropy using the Debye model.
 
     Args:
-        temperature : Temperature in Kelvin
-        theta: Debye temperature in Kelvin
-        number_of_atoms: Number of atoms in the cell
+        temperatures (np.ndarray): Array of temperatures in Kelvin.
+        debye_temperature (float): Debye temperature in Kelvin for a given volume.
+        number_of_atoms (int): Number of atoms in the supercell.
 
     Returns:
-        float: Vibrational entropy in eV/K
-
+        np.ndarray: Array of vibrational entropy values in eV/K/number_of_atoms for each temperature.
     """
+    
+    temperatures = temperatures.astype(float)
+    zero_temp_mask = temperatures == 0
+    non_zero_temp_mask = temperatures > 0
 
-    zero_temp_mask = temperature == 0
-    non_zero_temp_mask = temperature > 0
+    entropies = np.zeros_like(temperatures)
+    x_array = np.zeros_like(temperatures)
+    debye_integrals = np.zeros_like(temperatures)
 
-    s_vib = np.zeros_like(temperature)
-    x = np.zeros_like(temperature)
-    debye_value = np.zeros_like(temperature)
+    # Entropy at T = 0 K
+    entropies[zero_temp_mask] = 0
 
-    s_vib[zero_temp_mask] = 0
+    x_array[non_zero_temp_mask] = debye_temperature / temperatures[non_zero_temp_mask]
+    debye_integrals[non_zero_temp_mask] = calculate_debye_integral_n3(x_array[non_zero_temp_mask])
 
-    x[non_zero_temp_mask] = theta / temperature[non_zero_temp_mask]
-    debye_value[non_zero_temp_mask] = debye_function(x[non_zero_temp_mask])
-
-    s_vib[non_zero_temp_mask] = (
+    entropies[non_zero_temp_mask] = (
         3
         * number_of_atoms
         * BOLTZMANN_CONSTANT
         * (
-            4 / 3 * debye_value[non_zero_temp_mask]
-            - np.log(1 - np.exp(-x[non_zero_temp_mask]))
+            4 / 3 * debye_integrals[non_zero_temp_mask]
+            - np.log(1 - np.exp(-x_array[non_zero_temp_mask]))
         )
     )
 
-    return s_vib
+    return entropies
 
 
-def vibrational_helmholtz_energy(
-    temperature: np.ndarray | float, theta: float, number_of_atoms
-) -> float:
-    """Evaluates the debye function at x = theta/temperature, then calculates the vibrational Helmholtz energy in eV.
+def calculate_helmholtz_energies(
+    temperatures: np.ndarray , debye_temperature: float, number_of_atoms: int
+) -> np.ndarray:
+    """Calculates the vibrational Helmholtz energy using the Debye model.
 
     Args:
-        temperature : Temperature in Kelvin
-        theta: Debye temperature in Kelvin
-        number_of_atoms: Number of atoms in the cell
+        temperatures: Array of temperatures in Kelvin.
+        debye_temperature: Debye temperature in Kelvin for a given volume.
+        number_of_atoms: Number of atoms in the supercell.
 
     Returns:
-        float: Vibrational Helmholtz energy in eV
+        np.ndarray: Array of vibrational Helmholtz energy values in eV/number_of_atoms for each temperature.
     """
+    
+    temperatures = temperatures.astype(float)
+    zero_temp_mask = temperatures == 0
+    non_zero_temp_mask = temperatures > 0
 
-    zero_temp_mask = temperature == 0
-    non_zero_temp_mask = temperature > 0
-
-    f_vib = np.zeros_like(temperature)
-    x = np.zeros_like(temperature)
-    debye_value = np.zeros_like(temperature)
+    helmholtz_energies = np.zeros_like(temperatures)
+    x_array = np.zeros_like(temperatures)
+    debye_integrals= np.zeros_like(temperatures)
 
     # Zero point energy
-    f_vib[zero_temp_mask] = number_of_atoms * (9 / 8 * BOLTZMANN_CONSTANT * theta)
+    helmholtz_energies[zero_temp_mask] = number_of_atoms * (9 / 8 * BOLTZMANN_CONSTANT * debye_temperature)
 
-    x[non_zero_temp_mask] = theta / temperature[non_zero_temp_mask]
-    debye_value[non_zero_temp_mask] = debye_function(x[non_zero_temp_mask])
+    x_array[non_zero_temp_mask] = debye_temperature / temperatures[non_zero_temp_mask]
+    debye_integrals[non_zero_temp_mask] = calculate_debye_integral_n3(x_array[non_zero_temp_mask])
 
-    f_vib[non_zero_temp_mask] = number_of_atoms * (
-        9 / 8 * BOLTZMANN_CONSTANT * theta
+    helmholtz_energies[non_zero_temp_mask] = number_of_atoms * (
+        9 / 8 * BOLTZMANN_CONSTANT * debye_temperature
         + BOLTZMANN_CONSTANT
-        * temperature[non_zero_temp_mask]
+        * temperatures[non_zero_temp_mask]
         * (
-            3 * np.log(1 - np.exp(-x[non_zero_temp_mask]))
-            - debye_value[non_zero_temp_mask]
+            3 * np.log(1 - np.exp(-x_array[non_zero_temp_mask]))
+            - debye_integrals[non_zero_temp_mask]
         )
     )
 
-    return f_vib
+    return helmholtz_energies
 
 
-def vibrational_heat_capacity(
-    temperature: np.ndarray | float, theta: float, number_of_atoms
-) -> float:
-    """Evaluates the debye function and its derivative at x = theta/temperature, then calculates the vibrational heat capacity in eV/K.
-    The formula is taken from Eq. (13) from Khishchenko (https://doi.org/10.20948/MATHMONTIS-2020-49-8).
-
+def calculate_heat_capacities(
+    temperatures: np.ndarray, debye_temperature: float, number_of_atoms: int
+) -> np.ndarray:
+    """Calculates the vibrational heat capacity using the Debye model.
+    
+    The integral evaluated is:
+       (3/x³) * ∫₀ˣ [(t⁴ * exp(t)) / (exp(t) - 1)²] dt.
+        
     Args:
-        temperature : Temperature in Kelvin
-        theta: Debye temperature in Kelvin
-        number_of_atoms: Number of atoms in the cell
+        temperatures (np.ndarray): Array of temperatures in Kelvin.
+        debye_temperature (float): Debye temperature in Kelvin for a given volume.
+        number_of_atoms (int): Number of atoms in the supercell.
 
     Returns:
-        float: Vibrational heat capacity in eV/K
+        np.ndarray: Array of vibrational heat capacity values in eV/K/number_of_atoms for each temperature.
     """
+    
+    temperatures = temperatures.astype(float)
+    non_zero_temp_mask = temperatures > 0
+    x_array = np.zeros_like(temperatures)
+    debye_integrals = np.zeros_like(x_array, dtype=float)
+    heat_capacities = np.zeros_like(temperatures, dtype=float)
+    
+    x_array[non_zero_temp_mask] = debye_temperature / temperatures[non_zero_temp_mask]
+    
+    for i, x in enumerate(x_array):
+        if x == 0:
+            debye_integrals[i] = 0
+            heat_capacities[i] = 0 # Cv at T = 0 K
+        else:
+            factor = 3. / x ** 3
+            integral, _ = quad(lambda t: (t ** 4 * np.exp(t)) / (np.exp(t) - 1.)**2, 0, x)
+            debye_integrals[i] = integral * factor
+            heat_capacities[i] = 3 * number_of_atoms * BOLTZMANN_CONSTANT * debye_integrals[i]  
 
-    zero_temp_mask = temperature == 0
-    non_zero_temp_mask = temperature > 0
-
-    cv_vib = np.zeros_like(temperature)
-    x = np.zeros_like(temperature)
-    debye_value = np.zeros_like(temperature)
-
-    cv_vib[zero_temp_mask] = 0
-
-    x[non_zero_temp_mask] = theta / temperature[non_zero_temp_mask]
-    debye_value[non_zero_temp_mask] = debye_function(x[non_zero_temp_mask])
-
-    cv_vib[non_zero_temp_mask] = (
-        3
-        * number_of_atoms
-        * BOLTZMANN_CONSTANT
-        * (
-            4 * debye_value[non_zero_temp_mask]
-            - 3 * x[non_zero_temp_mask] / (np.exp(x[non_zero_temp_mask]) - 1)
-        )
-    )
-    return cv_vib
+    return heat_capacities
 
 
 def process_debye_gruneisen(
     number_of_atoms: int,
-    volumes: np.array,
+    volumes: np.ndarray,
+    temperatures: np.ndarray,
     atomic_mass: float,
-    volume_0: float,
-    bulk_modulus: float,
-    bulk_modulus_prime: float,
+    V0: float,
+    B: float,
+    BP: float,
     scaling_factor: float = 0.617,
-    gruneisen_x: float = 1,
-    temperatures: np.array = np.linspace(0, 1000, 101),
-):
+    gruneisen_x: float = 2/3,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Convenience function to calculate the Helmholtz energy, entropy, and heat capacity using the Debye model.
+
+    Args:
+        number_of_atoms (int): Number of atoms in the supercell.
+        volumes (np.ndarray): Array of input volumes in Å^3.
+        temperatures (np.ndarray): Array of input temperatures in Kelvin.
+        atomic_mass (float): Atomic mass in u.
+        V0 (float): Equilibrium volume in Å^3.
+        B (float): Bulk modulus in GPa.
+        BP (float): First derivative of the bulk modulus with respect to pressure.
+        scaling_factor (float, optional): Scaling factor for the Debye temperature calculation. Defaults to 0.617.
+        gruneisen_x (float, optional): x parameter for the Gruneisen parameter calculation. Defaults to 2/3.
+
+    Returns:
+        tuple[np.ndarray, np.ndarray, np.ndarray]: 
+            Each 2D array has shape (volumes, temperatures):
+            - Helmholtz energies (eV/number_of_atoms).
+            - Entropies (eV/K/number_of_atoms).
+            - Heat capacities (eV/K/number_of_atoms).
+    """    
+
     temperatures = temperatures.astype(float)
-    s = scaling_factor
-    gru_param = gruneisen_parameter(bulk_modulus_prime, gruneisen_x)
+    gruneisen_parameter = calculate_gruneisen_parameter(BP, gruneisen_x)
+    debye_temperature = calculate_debye_temperatures(volumes, V0, B, atomic_mass, gruneisen_parameter, scaling_factor)
 
-    if volumes is None:
-        volume_min = volume.min() * 0.98
-        volume_max = volume.max() * 1.02
-        volumes = np.linspace(volume_min, volume_max, 1000)
-
-    theta = debye_temperature(volumes, volume_0, bulk_modulus, atomic_mass, gru_param, s)
-
-    s_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-    f_vib_v_t = np.zeros((len(volumes), len(temperatures)))
-    cv_vib_v_t = np.zeros((len(volumes), len(temperatures)))
+    entropies_v_t = np.zeros((len(volumes), len(temperatures)))
+    helmholtz_energies_v_t = np.zeros((len(volumes), len(temperatures)))
+    heat_capacities_v_t = np.zeros((len(volumes), len(temperatures)))
 
     for i, volume in enumerate(volumes):
-        s_vib = vibrational_entropy(temperatures, theta[i], number_of_atoms)
-        f_vib = vibrational_helmholtz_energy(temperatures, theta[i], number_of_atoms)
-        cv_vib = vibrational_heat_capacity(temperatures, theta[i], number_of_atoms)
-        s_vib_v_t[i, :] = s_vib
-        f_vib_v_t[i, :] = f_vib
-        cv_vib_v_t[i, :] = cv_vib
+        entropies_t = calculate_entropies(temperatures, debye_temperature[i], number_of_atoms)
+        helmholtz_energies_t = calculate_helmholtz_energies(temperatures, debye_temperature[i], number_of_atoms)
+        heat_capacities_t = calculate_heat_capacities(temperatures, debye_temperature[i], number_of_atoms)
+        entropies_v_t[i, :] = entropies_t
+        helmholtz_energies_v_t[i, :] = helmholtz_energies_t
+        heat_capacities_v_t[i, :] = heat_capacities_t
 
-    f_vib = f_vib_v_t.T
-    s_vib= s_vib_v_t.T
-    cv_vib = cv_vib_v_t.T
+    helmholtz_energies = helmholtz_energies_v_t.T
+    entropies = entropies_v_t.T
+    heat_capacities = heat_capacities_v_t.T
+    print(heat_capacities)
 
-    return number_of_atoms, scaling_factor, gruneisen_x, temperatures, volumes, f_vib, s_vib, cv_vib
+    return helmholtz_energies, entropies, heat_capacities
 
 
-def plot_debye(
-    property_to_plot: str,
-    number_of_atoms,
-    temperatures,
-    volumes,
-    f_vib,
-    s_vib,
-    cv_vib,
-    selected_temperatures_plot: np.array = None,
-    selected_volumes: np.array = None,
-    volume_decimals: int = 2,
+def plot(
+    property: str,
+    number_of_atoms: int,
+    temperatures: np.ndarray,
+    volumes: np.ndarray,
+    helmholtz_energies: np.ndarray,
+    entropies: np.ndarray,
+    heat_capacities: np.ndarray,
+    selected_temperatures: np.ndarray = None,
+    selected_volumes: np.ndarray = None,
 ) -> tuple[go.Figure, go.Figure]:
+    """Plot the Helmholtz energy, entropy, or heat capacity as a function of temperature and volume.
+
+    Args:
+        property (str): Property to plot. Must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
+        number_of_atoms (int): Number of atoms in the supercell.
+        temperatures (np.ndarray): Array of temperatures in Kelvin.
+        volumes (np.ndarray): Array of volumes in Å^3.
+        helmholtz_energies (np.ndarray): 2D array of Helmholtz energies in eV/number_of_atoms.
+        entropies (np.ndarray): 2D array of entropies in eV/K/number_of_atoms.
+        heat_capacities (np.ndarray): 2D array of heat capacities in eV/K/number_of_atoms.
+        selected_temperatures (np.ndarray, optional): Array of selected temperatures for plotting. Defaults to None.
+        selected_volumes (np.ndarray, optional): Array of selected volumes for plotting. Defaults to None.
+
+    Raises:
+        ValueError: If the property is not one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
+
+    Returns:
+        tuple[go.Figure, go.Figure]: Plotly figures as a function of temperature and volume.
+            1. fig_debye_t: Plot of the selected property as a function of temperature for selected volumes.
+            2. fig_debye_v: Plot of the selected property as a function of volume for selected temperatures.
+    """    
 
     properties = {
-        'helmholtz_energy': (f_vib.T, f"F<sub>vib</sub> (eV/{number_of_atoms} atoms)"),
-        'entropy': (s_vib.T, f"S<sub>vib</sub> (eV/K/{number_of_atoms} atoms)"),
-        'heat_capacity': (cv_vib.T, f"C<sub>v,vib</sub> (eV/K/{number_of_atoms} atoms)")
+        'helmholtz_energy': (helmholtz_energies.T, f"F<sub>vib</sub> (eV/{number_of_atoms} atoms)"),
+        'entropy': (entropies.T, f"S<sub>vib</sub> (eV/K/{number_of_atoms} atoms)"),
+        'heat_capacity': (heat_capacities.T, f"C<sub>v,vib</sub> (eV/K/{number_of_atoms} atoms)")
     }
 
-    if property_to_plot not in properties:
-        raise ValueError("property_to_plot must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'")
+    if property not in properties:
+        raise ValueError("property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'")
 
-    y, y_label = properties[property_to_plot]
+    y, y_label = properties[property]
 
-    s_t_fig = go.Figure()
+    fig_debye_t = go.Figure()
     if selected_volumes is None:
         indices = np.linspace(0, len(volumes) - 1, 5, dtype=int)
     else:
@@ -339,28 +317,28 @@ def plot_debye(
 
     for i, volume in enumerate(volumes):
         if i in indices:
-            s_t_fig.add_trace(
+            fig_debye_t.add_trace(
                 go.Scatter(
                     x=temperatures,
                     y=y[i],
                     mode="lines",
-                    name=f"{volume:.{volume_decimals}f} \u212B<sup>3</sup>",
+                    name=f"{volume:.2f} \u212B<sup>3</sup>",
                 )
             )
     plot_format(
-        s_t_fig,
+        fig_debye_t,
         "Temperature (K)",
         y_label,
     )
-    s_t_fig.show()
+    fig_debye_t.show()
 
-    s_v_fig = go.Figure()
-    if selected_temperatures_plot is None:
+    fig_debye_v = go.Figure()
+    if selected_temperatures is None:
         indices = np.linspace(0, len(temperatures) - 1, 5, dtype=int)
-        selected_temperatures_plot = np.array([temperatures[j] for j in indices])
+        selected_temperatures = np.array([temperatures[j] for j in indices])
     else:
         indices = []
-        for t in selected_temperatures_plot:
+        for t in selected_temperatures:
             try:
                 indices.append(np.where(temperatures == t)[0][0])
             except IndexError:
@@ -369,7 +347,7 @@ def plot_debye(
                 ]
                 indices.append(np.where(temperatures == nearest_temperature)[0][0])
     for i in indices:
-        s_v_fig.add_trace(
+        fig_debye_v.add_trace(
             go.Scatter(
                 x=volumes,
                 y=y[:, i],
@@ -378,10 +356,10 @@ def plot_debye(
             )
         )
     plot_format(
-        s_v_fig,
+        fig_debye_v,
         "Volume (\u212B<sup>3</sup>)",
         y_label,
     )
-    s_v_fig.show()
+    fig_debye_v.show()
 
-    return s_t_fig, s_v_fig
+    return fig_debye_t, fig_debye_v
