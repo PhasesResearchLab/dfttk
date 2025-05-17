@@ -29,7 +29,7 @@ from dfttk.eos.fit import (
     assign_marker_symbols_to_configs,
 )
 from dfttk.eos.ev_curve_data import EvCurveData
-from dfttk.debye.debye_data import DebyeData
+from dfttk.debye.debye_gruneisen import DebyeGruneisen
 from dfttk.phonon.phonon_data import PhononData
 from dfttk.thermal_electronic.thermal_electronic_data import ThermalElectronicData
 from dfttk.quasi_harmonic.quasi_harmonic_data import QuasiHarmonicData
@@ -390,9 +390,10 @@ workflows.NELM_reached(os.getcwd())
     def process_debye(
         self,
         scaling_factor: float = 0.617,
-        gruneisen_x: float = 1,
+        gruneisen_x: float = 2/3,
         temperatures: np.array = np.linspace(0, 1000, 101),
     ):
+        '''
         self.debye = DebyeData()
 
         self.debye.get_debye_gruneisen_data(
@@ -406,7 +407,21 @@ workflows.NELM_reached(os.getcwd())
             gruneisen_x,
             temperatures,
         )
-
+        '''
+        volumes = np.linspace(0.98 * min(self.ev_curve.volumes), 1.02 * max(self.ev_curve.volumes), 1000)
+        self.debye = DebyeGruneisen()
+        self.debye.process_debye_gruneisen(
+            number_of_atoms=self.ev_curve.number_of_atoms,
+            volumes=volumes,
+            temperatures=temperatures,
+            atomic_mass=self.ev_curve.average_mass,
+            V0=self.ev_curve.eos_parameters["V0"],
+            B=self.ev_curve.eos_parameters["B"],
+            BP=self.ev_curve.eos_parameters["BP"],
+            scaling_factor=scaling_factor,
+            gruneisen_x=gruneisen_x,
+        )
+        
     def phonons_settings(
         self,
         phonon_volumes: list[float],
@@ -596,9 +611,9 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
 
         if method == "debye":
             temperatures = np.array(self.debye.temperatures, dtype=int)
-            debye_f_vib = self.debye.free_energy
-            debye_s_vib = self.debye.entropy
-            debye_cv_vib = self.debye.heat_capacity
+            debye_f_vib = self.debye.helmholtz_energies
+            debye_s_vib = self.debye.entropies
+            debye_cv_vib = self.debye.heat_capacities
             f_vib_fit = debye_f_vib
             s_vib_fit = debye_s_vib
             cv_vib_fit = debye_cv_vib
@@ -607,9 +622,9 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             cv_el_fit = 0
         elif method == "debye_thermal_electronic":
             temperatures = np.array(self.debye.temperatures, dtype=int)
-            debye_f_vib = self.debye.free_energy
-            debye_s_vib = self.debye.entropy
-            debye_cv_vib = self.debye.heat_capacity
+            debye_f_vib = self.debye.helmholtz_energies
+            debye_s_vib = self.debye.entropies
+            debye_cv_vib = self.debye.heat_capacities
             f_vib_fit = debye_f_vib
             s_vib_fit = debye_s_vib
             cv_vib_fit = debye_cv_vib
