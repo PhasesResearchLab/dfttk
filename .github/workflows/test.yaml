@@ -3,10 +3,10 @@ name: tests
 on:
   push:
     branches:
-      - debye_tests
+      - main
   pull_request:
     branches:
-      - debye_tests
+      - main
 
 jobs:
   test:
