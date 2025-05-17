@@ -3,10 +3,10 @@ name: tests
 on:
   push:
     branches:
-      - main
+      - debye_tests
   pull_request:
     branches:
-      - main
+      - debye_tests
 
 jobs:
   test:
@@ -39,5 +39,6 @@ jobs:
         pytest tests/test_config.py
         pytest tests/test_data_extraction.py
         pytest tests/test_eos.py
+        pytest tests/test_debye.py
         pytest tests/test_magnetism.py
     

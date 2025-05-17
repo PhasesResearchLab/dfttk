@@ -426,9 +426,9 @@ def test_process_debye():
     ), f"Expected {expected_volumes}, but got {config_Al.debye.volumes}"
 
     debye_files_and_attributes = [
-        ("test_config_data/expected_debye_free_energy.json", "free_energy"),
-        ("test_config_data/expected_debye_entropy.json", "entropy"),
-        ("test_config_data/expected_debye_heat_capacity.json", "heat_capacity"),
+        ("test_config_data/expected_debye_free_energy.json", "helmholtz_energies"),
+        ("test_config_data/expected_debye_entropy.json", "entropies"),
+        ("test_config_data/expected_debye_heat_capacity.json", "heat_capacities"),
     ]
 
     for filename, attribute in debye_files_and_attributes:
