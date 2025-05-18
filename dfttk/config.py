@@ -352,24 +352,10 @@ workflows.NELM_reached(os.getcwd())
         gruneisen_x: float = 2/3,
         temperatures: np.array = np.linspace(0, 1000, 101),
     ):
-        '''
-        self.debye = DebyeData()
 
-        self.debye.get_debye_gruneisen_data(
-            self.ev_curve.number_of_atoms,
-            self.ev_curve.volumes,
-            self.ev_curve.average_mass,
-            self.ev_curve.eos_parameters["V0"],
-            self.ev_curve.eos_parameters["B"],
-            self.ev_curve.eos_parameters["BP"],
-            scaling_factor,
-            gruneisen_x,
-            temperatures,
-        )
-        '''
         volumes = np.linspace(0.98 * min(self.ev_curve.volumes), 1.02 * max(self.ev_curve.volumes), 1000)
         self.debye = DebyeGruneisen()
-        self.debye.process_debye_gruneisen(
+        self.debye.process(
             number_of_atoms=self.ev_curve.number_of_atoms,
             volumes=volumes,
             temperatures=temperatures,
