@@ -2,11 +2,7 @@ name: tests
 
 on:
   push:
-    branches:
-      - main
   pull_request:
-    branches:
-      - main
 
 jobs:
   test:
@@ -41,4 +37,4 @@ jobs:
         pytest tests/test_eos.py
         pytest tests/test_debye.py
         pytest tests/test_magnetism.py
-    
+

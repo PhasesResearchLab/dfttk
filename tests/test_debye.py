@@ -69,7 +69,7 @@ expected_heat_capacities = np.array([
 
 def test_DebyeGruneisen():
     debye = DebyeGruneisen()
-    debye.process_debye_gruneisen(
+    debye.process(
         number_of_atoms,
         volumes,
         temperatures,

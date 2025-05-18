@@ -170,7 +170,7 @@ class DebyeGruneisen:
                 heat_capacities[i] = 3 * self.number_of_atoms * BOLTZMANN_CONSTANT * debye_integrals[i]
         return heat_capacities
 
-    def process_debye_gruneisen(
+    def process(
         self,
         number_of_atoms: int,
         volumes: np.ndarray,
