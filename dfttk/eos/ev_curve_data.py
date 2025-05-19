@@ -10,18 +10,20 @@ from natsort import natsorted
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 
+# DFTTK imports
 from dfttk.aggregate_extraction import extract_configuration_data
-from dfttk.eos.fit import fit_to_eos, plot_ev
+from dfttk.eos.fit import EOSFitter
 
 class EvCurveData:
-    """A class for handling energy-volume (E-V) curve data for a configuration."""
+    """Class for handling energy-volume (E-V) curve data for a configuration."""
 
     def __init__(self, path: str, name: str) -> None:
-        """Initialize the EvCurveData object.
+        """
+        Initialize the EvCurveData object.
 
         Args:
-            path (str): path to the directory containing the vol_* folders.
-            name (str): name of the configuration.
+            path (str): Path to the directory containing the vol_* folders.
+            name (str): Name of the configuration.
         """
 
         self.path = path
@@ -63,19 +65,21 @@ class EvCurveData:
         }
 
     def _get_volume_folders(self) -> list[str]:
-        """Gets the list of vol_* folders in the specified path and sorts them.
+        """
+        Get the list of vol_* folders in the specified path, sorted in natural order.
 
         Returns:
-            list[str]: list of vol_* folders sorted in natural order.
+            list[str]: List of vol_* folders sorted in natural order.
         """
 
         return natsorted([f for f in os.listdir(self.path) if f.startswith("vol_")])
 
     def get_vasp_input(self, volumes: list[float] = None) -> None:
-        """Gets the VASP input files from the specified path and stores them in the class attributes.
+        """
+        Get the VASP input files from the specified path and store them in the class attributes.
 
         Args:
-            volumes (list[float], optional): List of volumes to filter the folders. If None, all folders are considered. Defaults to None.
+            volumes (list[float], optional): List of volumes to filter the folders. If None, all folders are considered.
         """
 
         # Get the list of volume folders
@@ -133,17 +137,18 @@ class EvCurveData:
         total_magnetic_moment_tolerance: float = 1e-12,
         mass_average: str = "geometric",
     ) -> None:
-        """Gets the energy-volume data from the specified path and stores them in the class attributes.
+        """
+        Get the energy-volume data from the specified path and store them in the class attributes.
 
         Args:
-            volumes (list[float], optional): List of volumes to filter the folders. If None, all folders are considered. Defaults to None.
-            outcar_name (str, optional): Path to the OUTCAR file. Defaults to "OUTCAR.3static".
-            oszicar_name (str, optional): Path to the OSZICAR file. Defaults to "OSZICAR.3static".
-            contcar_name (str, optional): Path to the CONTCAR file. Defaults to "CONTCAR.3static".
+            volumes (list[float], optional): List of volumes to filter the folders. If None, all folders are considered.
+            outcar_name (str, optional): Name of the OUTCAR file. Defaults to "OUTCAR.3static".
+            oszicar_name (str, optional): Name of the OSZICAR file. Defaults to "OSZICAR.3static".
+            contcar_name (str, optional): Name of the CONTCAR file. Defaults to "CONTCAR.3static".
             collect_mag_data (bool, optional): Whether to collect magnetic data. Defaults to False.
             magmom_tolerance (float, optional): Tolerance for magnetic moment. Defaults to 1e-12.
             total_magnetic_moment_tolerance (float, optional): Tolerance for total magnetic moment. Defaults to 1e-12.
-            mass_average (str, optional): Available options are "arithmetic", "geometric", or "harmonic". Defaults to "geometric".
+            mass_average (str, optional): "arithmetic", "geometric", or "harmonic". Defaults to "geometric".
         """
 
         # Extract configuration data
@@ -223,23 +228,20 @@ class EvCurveData:
         volume_max: float = None,
         num_volumes: int = 1000,
     ) -> None:
-        """Fit the energy-volume data to an equation of state (EOS).
+        """
+        Fit the energy-volume data to an equation of state (EOS).
 
         Args:
-            eos_name (str, optional): Available options are "mBM4", "mBM5", "BM4", "BM5", "LOG4", "LOG5", "vinet", "murnaghan", and "morse". Defaults to "BM4".
+            eos_name (str, optional): EOS function to use. Options: "mBM4", "mBM5", "BM4", "BM5", "LOG4", "LOG5", "vinet", "murnaghan", "morse". Defaults to "BM4".
             volume_min (float, optional): Minimum volume for fitted EOS. Defaults to None.
             volume_max (float, optional): Maximum volume for fitted EOS. Defaults to None.
             num_volumes (int, optional): Number of volumes for fitted EOS. Defaults to 1000.
         """
-
-        eos_constants, eos_parameters, *_ = fit_to_eos(
-            self.volumes,
-            self.energies,
-            eos_name,
-            volume_min,
-            volume_max,
-            num_volumes,
-        )
+        self.fitter = EOSFitter(self.name, self.number_of_atoms, self.volumes, self.energies)
+        self.fitter.fit(eos_name=eos_name, volume_min=volume_min, volume_max=volume_max, num_volumes=num_volumes)
+        
+        eos_constants = self.fitter.eos_constants
+        eos_parameters = self.fitter.eos_parameters
 
         self.eos_parameters = {
             "eos_name": eos_name,
@@ -249,29 +251,20 @@ class EvCurveData:
 
     def plot(
         self,
-        volume_min: float = None,
-        volume_max: float = None,
-        num_volumes: int = 1000,
-        eos_name: str = "BM4",
         highlight_minimum: bool = True,
         per_atom: bool = False,
         title: str = None,
-        show_fig: bool = True,
         cmap: str = "plotly",
         marker_alpha: float = 1.0,
         marker_size: int = 10,
     ) -> go.Figure:
-        """Plots the energy-volume data and the fitted EOS.
+        """
+        Plot the energy-volume data and the fitted EOS.
 
         Args:
-            volume_min (float, optional): Minimum volume for fitted EOS. Defaults to None.
-            volume_max (float, optional): Maximum volume for fitted EOS. Defaults to None.
-            num_volumes (int, optional): Number of volumes for fitted EOS. Defaults to 1000.
-            eos_name (str, optional): Available options are "mBM4", "mBM5", "BM4", "BM5", "LOG4", "LOG5", "vinet", "murnaghan", and "morse". Defaults to "BM4".
             highlight_minimum (bool, optional): Whether to highlight the minimum energy. Defaults to True.
             per_atom (bool, optional): Whether to plot the energy per atom. Defaults to False.
-            title (str, optional): Whether to add a title to the plot. Defaults to None.
-            show_fig (bool, optional): Whether to show the plot. Defaults to True.
+            title (str, optional): Title for the plot. Defaults to None.
             cmap (str, optional): Color map for the plot. Defaults to "plotly".
             marker_alpha (float, optional): Transparency of the markers. Defaults to 1.0.
             marker_size (int, optional): Size of the markers. Defaults to 10.
@@ -279,23 +272,14 @@ class EvCurveData:
         Returns:
             go.Figure: Plotly figure object containing the energy-volume plot.
         """
-
-        fig = plot_ev(
-            name=self.name,
-            number_of_atoms=self.number_of_atoms,
-            volumes=self.volumes,
-            energies=self.energies,
-            volume_min=volume_min,
-            volume_max=volume_max,
-            num_volumes=num_volumes,
-            eos_name=eos_name,
+        if not hasattr(self, "fitter") or self.fitter is None:
+            raise RuntimeError("You must call fit_energy_volume_data() before plotting.")
+        fig = self.fitter.plot(
             highlight_minimum=highlight_minimum,
             per_atom=per_atom,
             title=title,
-            show_fig=show_fig,
             cmap=cmap,
             marker_alpha=marker_alpha,
             marker_size=marker_size,
         )
-
         return fig
