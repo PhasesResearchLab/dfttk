@@ -32,7 +32,7 @@ from dfttk.eos.ev_curve_data import EvCurveData
 from dfttk.debye.debye_gruneisen import DebyeGruneisen
 from dfttk.phonon.phonon_data import PhononData
 from dfttk.thermal_electronic.thermal_electronic_data import ThermalElectronicData
-from dfttk.quasi_harmonic.quasi_harmonic_data import QuasiHarmonicData
+from dfttk.quasi_harmonic import QuasiHarmonic
 
 
 class MetaData:
@@ -552,21 +552,19 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         cv_el_fit = []
 
         if not hasattr(self, "qha"):
-            self.qha = QuasiHarmonicData()
+            self.qha = QuasiHarmonic(self.ev_curve.number_of_atoms, volume_range, temperatures = self.phonons.temperatures)
 
         if method == "debye":
-            temperatures = np.array(self.debye.temperatures, dtype=int)
             debye_f_vib = self.debye.helmholtz_energies
             debye_s_vib = self.debye.entropies
             debye_cv_vib = self.debye.heat_capacities
             f_vib_fit = debye_f_vib
             s_vib_fit = debye_s_vib
             cv_vib_fit = debye_cv_vib
-            f_el_fit = 0
-            s_el_fit = 0
-            cv_el_fit = 0
+            f_el_fit = None
+            s_el_fit = None
+            cv_el_fit = None
         elif method == "debye_thermal_electronic":
-            temperatures = np.array(self.debye.temperatures, dtype=int)
             debye_f_vib = self.debye.helmholtz_energies
             debye_s_vib = self.debye.entropies
             debye_cv_vib = self.debye.heat_capacities
@@ -577,18 +575,16 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
             cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
         elif method == "phonons":
-            temperatures = self.phonons.temperatures
             phonons_f_vib_fit = np.vstack(self.phonons.f_vib_fit)
             phonons_s_vib_fit = np.vstack(self.phonons.s_vib_fit)
             phonons_cv_vib_fit = np.vstack(self.phonons.cv_vib_fit)
             f_vib_fit = phonons_f_vib_fit
             s_vib_fit = phonons_s_vib_fit
             cv_vib_fit = phonons_cv_vib_fit
-            f_el_fit = 0
-            s_el_fit = 0
-            cv_el_fit = 0
+            f_el_fit = None
+            s_el_fit = None
+            cv_el_fit = None
         elif method == "phonons_thermal_electronic":
-            temperatures = self.phonons.temperatures
             phonons_f_vib_fit = np.vstack(self.phonons.f_vib_fit)
             phonons_s_vib_fit = np.vstack(self.phonons.s_vib_fit)
             phonons_cv_vib_fit = np.vstack(self.phonons.cv_vib_fit)
@@ -601,20 +597,17 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         else:
             raise ValueError(f"Unknown option: {method}")
 
-        self.qha.get_quasi_harmonic_data(
-            method,
-            eos,
-            self.ev_curve.number_of_atoms,
-            temperatures,
-            volume_range,
-            energy_eos,
-            f_vib_fit=f_vib_fit,
-            s_vib_fit=s_vib_fit,
-            cv_vib_fit=cv_vib_fit,
-            f_el_fit=f_el_fit,
-            s_el_fit=s_el_fit,
-            cv_el_fit=cv_el_fit,
+        self.qha.process(
+            method=method,
+            energy_eos=energy_eos,
+            vibrational_helmholtz_energy=f_vib_fit,
+            vibrational_entropy=s_vib_fit,
+            vibrational_heat_capacity=cv_vib_fit,
+            electronic_helmholtz_energy=f_el_fit,
+            electronic_entropy=s_el_fit,
+            electronic_heat_capacity=cv_el_fit,
             P=P,
+            eos_name=eos,
         )
 
     def replace_keys(self, d, key_mapping):
