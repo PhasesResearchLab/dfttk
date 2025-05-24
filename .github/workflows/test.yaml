@@ -32,7 +32,7 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}
       run: |
         pytest tests/test_aggregate_extraction.py
-        pytest tests/test_config.py
+        pytest tests/test_configuration.py
         pytest tests/test_data_extraction.py
         pytest tests/test_eos.py
         pytest tests/test_debye.py
