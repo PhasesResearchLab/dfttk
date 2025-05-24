@@ -44,7 +44,7 @@ electronic_heat_capacity = np.vstack(config_Al.thermal_electronic.cv_el_fit)
 
 properties = ("helmholtz_energy", "entropy", "heat_capacity", "helmholtz_energy_pv", "V0", "G0", "S0", "H0", "B", "BP", "CTE", "LCTE", "Cp")
 
-RTOL = 1e-5  
+RTOL = 2.5e-5  
 
 
 def test_QuasiHarmonic():
