@@ -13,7 +13,7 @@ import numpy as np
 # DFTTK imports
 from dfttk.eos.functions import BM4_equation
 from dfttk.quasi_harmonic import QuasiHarmonic
-from dfttk.config import Configuration
+from dfttk.configuration import Configuration
 
 number_of_atoms = 4
 volumes = np.linspace(0.98 * 60, 1.02 * 74, 1000)

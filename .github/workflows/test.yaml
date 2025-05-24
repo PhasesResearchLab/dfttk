@@ -37,4 +37,5 @@ jobs:
         pytest tests/test_eos.py
         pytest tests/test_debye.py
         pytest tests/test_magnetism.py
+        pytest tests/test_quasi_harmonic.py
 
