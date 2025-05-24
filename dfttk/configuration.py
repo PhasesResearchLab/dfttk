@@ -30,7 +30,7 @@ from dfttk.eos.fit import (
 )
 from dfttk.eos.ev_curve_data import EvCurveData
 from dfttk.debye.debye_gruneisen import DebyeGruneisen
-from dfttk.phonon.phonon_data import PhononData
+from dfttk.phonon.yphon_phonon_data import YphonPhononData
 from dfttk.thermal_electronic.thermal_electronic_data import ThermalElectronicData
 from dfttk.quasi_harmonic import QuasiHarmonic
 
@@ -424,7 +424,7 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
         os.remove(os.path.join(self.path, run_file))
 
     def generate_phonon_dos(self):
-        self.phonons = PhononData(self.path)
+        self.phonons = YphonPhononData(self.path)
         self.phonons.process_phonon_dos()
 
     def process_phonons(
@@ -434,7 +434,7 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
         volumes: list[float] = None,
         order: int = 2,
     ):
-        self.phonons = PhononData(self.path)
+        self.phonons = YphonPhononData(self.path)
         self.phonons.get_vasp_input(volumes)
         self.phonons.get_harmonic_data(
             scale_atoms,
@@ -575,9 +575,9 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
             cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
         elif method == "phonons":
-            phonons_f_vib_fit = np.vstack(self.phonons.f_vib_fit)
-            phonons_s_vib_fit = np.vstack(self.phonons.s_vib_fit)
-            phonons_cv_vib_fit = np.vstack(self.phonons.cv_vib_fit)
+            phonons_f_vib_fit = self.phonons.helmholtz_energy_fit
+            phonons_s_vib_fit = self.phonons.entropy_fit
+            phonons_cv_vib_fit = self.phonons.heat_capacity_fit
             f_vib_fit = phonons_f_vib_fit
             s_vib_fit = phonons_s_vib_fit
             cv_vib_fit = phonons_cv_vib_fit
@@ -585,9 +585,9 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             s_el_fit = None
             cv_el_fit = None
         elif method == "phonons_thermal_electronic":
-            phonons_f_vib_fit = np.vstack(self.phonons.f_vib_fit)
-            phonons_s_vib_fit = np.vstack(self.phonons.s_vib_fit)
-            phonons_cv_vib_fit = np.vstack(self.phonons.cv_vib_fit)
+            phonons_f_vib_fit = self.phonons.helmholtz_energy_fit
+            phonons_s_vib_fit = self.phonons.entropy_fit
+            phonons_cv_vib_fit = self.phonons.heat_capacity_fit
             f_vib_fit = phonons_f_vib_fit
             s_vib_fit = phonons_s_vib_fit
             cv_vib_fit = phonons_cv_vib_fit
