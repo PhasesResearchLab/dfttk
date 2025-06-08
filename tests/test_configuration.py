@@ -11,7 +11,7 @@ import pytest
 import numpy as np
 
 # DFTTK imports
-from dfttk.config import Configuration
+from dfttk.configuration import Configuration
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 conv_test_path = os.path.join(current_dir, "vasp_data/Al/conv_test")
@@ -218,8 +218,8 @@ def _assert_selected_keys_almost_equal(dict1, dict2, keys, atol=1e-4):
 # TODO: Add test for .starting_poscar
 def test_process_ev_curve():
     ev_curve_files_and_attributes = [
-        ("test_config_data/expected_ev_curves_incars.json", "incars"),
-        ("test_config_data/expected_ev_curves_kpoints.json", "kpoints"),
+        ("test_configuration_data/expected_ev_curves_incars.json", "incars"),
+        ("test_configuration_data/expected_ev_curves_kpoints.json", "kpoints"),
     ]
 
     for filename, attribute in ev_curve_files_and_attributes:
@@ -296,7 +296,7 @@ def test_process_ev_curve():
 
     with open(
         os.path.join(
-            current_dir, "test_config_data/expected_ev_curves_relaxed_structures.json"
+            current_dir, "test_configuration_data/expected_ev_curves_relaxed_structures.json"
         ),
         "r",
     ) as f:
@@ -314,8 +314,8 @@ def test_process_ev_curve():
 
 def test_process_phonons():
     phonons_files_and_attributes = [
-        ("test_config_data/expected_phonons_incars.json", "incars"),
-        ("test_config_data/expected_ev_curves_kpoints.json", "kpoints"),
+        ("test_configuration_data/expected_phonons_incars.json", "incars"),
+        ("test_configuration_data/expected_ev_curves_kpoints.json", "kpoints"),
     ]
 
     for filename, attribute in phonons_files_and_attributes:
@@ -335,7 +335,7 @@ def test_process_phonons():
     ]
     with open(
         os.path.join(
-            current_dir, "test_config_data/expected_phonons_phonon_structures.json"
+            current_dir, "test_configuration_data/expected_phonons_phonon_structures.json"
         ),
         "r",
     ) as f:
@@ -364,18 +364,18 @@ def test_process_phonons():
     ), f"Expected {expected_volumes}, but got {config_Al.phonons.volumes}"
 
     files_and_attributes = [
-        ("test_config_data/expected_phonons_helmholtz_energy.json", "helmholtz_energy"),
-        ("test_config_data/expected_phonons_internal_energy.json", "internal_energy"),
-        ("test_config_data/expected_phonons_entropy.json", "entropy"),
-        ("test_config_data/expected_phonons_heat_capacity.json", "heat_capacity"),
+        ("test_configuration_data/expected_phonons_helmholtz_energy.json", "_helmholtz_energy_to_db"),
+        ("test_configuration_data/expected_phonons_internal_energy.json", "_internal_energy_to_db"),
+        ("test_configuration_data/expected_phonons_entropy.json", "_entropy_to_db"),
+        ("test_configuration_data/expected_phonons_heat_capacity.json", "_heat_capacity_to_db"),
         (
-            "test_config_data/expected_phonons_helmholtz_energy_fit.json",
-            "helmholtz_energy_fit",
+            "test_configuration_data/expected_phonons_helmholtz_energy_fit.json",
+            "_helmholtz_energy_fit_to_db",
         ),
-        ("test_config_data/expected_phonons_entropy_fit.json", "entropy_fit"),
+        ("test_configuration_data/expected_phonons_entropy_fit.json", "_entropy_fit_to_db"),
         (
-            "test_config_data/expected_phonons_heat_capacity_fit.json",
-            "heat_capacity_fit",
+            "test_configuration_data/expected_phonons_heat_capacity_fit.json",
+            "_heat_capacity_fit_to_db",
         ),
     ]
 
@@ -384,9 +384,9 @@ def test_process_phonons():
             expected_data = json.load(f)
 
         if "fit" in attribute:
-            expected_data = expected_data["polynomial_coefficients"]
+            expected_data = expected_data["poly_coeffs"]
             actual_data = getattr(config_Al.phonons, attribute)[
-                "polynomial_coefficients"
+                "poly_coeffs"
             ]
         else:
             actual_data = getattr(config_Al.phonons, attribute)
@@ -426,9 +426,9 @@ def test_process_debye():
     ), f"Expected {expected_volumes}, but got {config_Al.debye.volumes}"
 
     debye_files_and_attributes = [
-        ("test_config_data/expected_debye_free_energy.json", "helmholtz_energies"),
-        ("test_config_data/expected_debye_entropy.json", "entropies"),
-        ("test_config_data/expected_debye_heat_capacity.json", "heat_capacities"),
+        ("test_configuration_data/expected_debye_free_energy.json", "helmholtz_energies"),
+        ("test_configuration_data/expected_debye_entropy.json", "entropies"),
+        ("test_configuration_data/expected_debye_heat_capacity.json", "heat_capacities"),
     ]
 
     for filename, attribute in debye_files_and_attributes:
@@ -447,8 +447,8 @@ def test_process_debye():
 
 def test_process_thermal_electronic():
     thermal_electronic_files_and_attributes = [
-        ("test_config_data/expected_thermal_electronic_incars.json", "incars"),
-        ("test_config_data/expected_thermal_electronic_kpoints.json", "kpoints"),
+        ("test_configuration_data/expected_thermal_electronic_incars.json", "incars"),
+        ("test_configuration_data/expected_thermal_electronic_kpoints.json", "kpoints"),
     ]
     for filename, attribute in thermal_electronic_files_and_attributes:
         with open(os.path.join(current_dir, filename), "r") as f:
@@ -479,28 +479,28 @@ def test_process_thermal_electronic():
 
     files_and_attributes = [
         (
-            "test_config_data/expected_thermal_electronic_helmholtz_energy.json",
+            "test_configuration_data/expected_thermal_electronic_helmholtz_energy.json",
             "helmholtz_energy",
         ),
         (
-            "test_config_data/expected_thermal_electronic_internal_energy.json",
+            "test_configuration_data/expected_thermal_electronic_internal_energy.json",
             "internal_energy",
         ),
-        ("test_config_data/expected_thermal_electronic_entropy.json", "entropy"),
+        ("test_configuration_data/expected_thermal_electronic_entropy.json", "entropy"),
         (
-            "test_config_data/expected_thermal_electronic_heat_capacity.json",
+            "test_configuration_data/expected_thermal_electronic_heat_capacity.json",
             "heat_capacity",
         ),
         (
-            "test_config_data/expected_thermal_electronic_helmholtz_energy_fit.json",
+            "test_configuration_data/expected_thermal_electronic_helmholtz_energy_fit.json",
             "helmholtz_energy_fit",
         ),
         (
-            "test_config_data/expected_thermal_electronic_entropy_fit.json",
+            "test_configuration_data/expected_thermal_electronic_entropy_fit.json",
             "entropy_fit",
         ),
         (
-            "test_config_data/expected_thermal_electronic_heat_capacity_fit.json",
+            "test_configuration_data/expected_thermal_electronic_heat_capacity_fit.json",
             "heat_capacity_fit",
         ),
     ]
@@ -542,14 +542,14 @@ def test_process_qha():
     ), f"Expected {expected_volumes}, but got {config_Al.qha.volumes}"
 
     files_and_attributes = [
-        ("test_config_data/expected_qha_debye.json", "debye"),
+        ("test_configuration_data/expected_qha_debye.json", "debye"),
         (
-            "test_config_data/expected_qha_debye_thermal_electronic.json",
+            "test_configuration_data/expected_qha_debye_thermal_electronic.json",
             "debye_thermal_electronic",
         ),
-        ("test_config_data/expected_qha_phonons.json", "phonons"),
+        ("test_configuration_data/expected_qha_phonons.json", "phonons"),
         (
-            "test_config_data/expected_qha_phonons_thermal_electronic.json",
+            "test_configuration_data/expected_qha_phonons_thermal_electronic.json",
             "phonons_thermal_electronic",
         ),
     ]

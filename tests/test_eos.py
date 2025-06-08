@@ -441,8 +441,8 @@ def test_EvCurveData():
     ev_curve_data.fit_energy_volume_data()
 
     ev_curve_files_and_attributes = [
-        ("test_config_data/expected_ev_curves_incars.json", "incars"),
-        ("test_config_data/expected_ev_curves_kpoints.json", "kpoints"),
+        ("test_configuration_data/expected_ev_curves_incars.json", "incars"),
+        ("test_configuration_data/expected_ev_curves_kpoints.json", "kpoints"),
     ]
 
     for filename, attribute in ev_curve_files_and_attributes:
@@ -508,7 +508,7 @@ def test_EvCurveData():
 
     with open(
         os.path.join(
-            current_dir, "test_config_data/expected_ev_curves_relaxed_structures.json"
+            current_dir, "test_configuration_data/expected_ev_curves_relaxed_structures.json"
         ),
         "r",
     ) as f:
