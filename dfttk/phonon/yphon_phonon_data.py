@@ -271,10 +271,10 @@ class YphonPhononData:
         properties = ["helmholtz_energy", "entropy", "heat_capacity"]
         if property not in properties:
             raise ValueError(f"Invalid property_to_plot: {property}")
-        fig_harmonic = self._harmonic_phonon.plot_harmonic(property_name=property)
+        fig_harmonic = self._harmonic_phonon.plot_harmonic(property=property)
         fig_fit_harmonic = self._harmonic_phonon.plot_fit_harmonic(
-            property_name=property,
-            selected_temperatures_plot=selected_temperatures,
+            property=property,
+            selected_temperatures=selected_temperatures,
         )
         return fig_harmonic, fig_fit_harmonic
 
