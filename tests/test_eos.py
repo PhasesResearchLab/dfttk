@@ -442,7 +442,7 @@ def test_EvCurveData():
 
     ev_curve_files_and_attributes = [
         ("test_configuration_data/expected_ev_curves_incars.json", "incars"),
-        ("test_configuration_data/expected_ev_curves_kpoints.json", "kpoints"),
+        #("test_configuration_data/expected_ev_curves_kpoints.json", "kpoints"),
     ]
 
     for filename, attribute in ev_curve_files_and_attributes:

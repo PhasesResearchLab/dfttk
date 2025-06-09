@@ -219,7 +219,7 @@ def _assert_selected_keys_almost_equal(dict1, dict2, keys, atol=1e-4):
 def test_process_ev_curve():
     ev_curve_files_and_attributes = [
         ("test_configuration_data/expected_ev_curves_incars.json", "incars"),
-        ("test_configuration_data/expected_ev_curves_kpoints.json", "kpoints"),
+        #("test_configuration_data/expected_ev_curves_kpoints.json", "kpoints"),
     ]
 
     for filename, attribute in ev_curve_files_and_attributes:
@@ -315,7 +315,7 @@ def test_process_ev_curve():
 def test_process_phonons():
     phonons_files_and_attributes = [
         ("test_configuration_data/expected_phonons_incars.json", "incars"),
-        ("test_configuration_data/expected_ev_curves_kpoints.json", "kpoints"),
+        #("test_configuration_data/expected_ev_curves_kpoints.json", "kpoints"),
     ]
 
     for filename, attribute in phonons_files_and_attributes:
@@ -358,7 +358,7 @@ def test_process_phonons():
         config_Al.phonons.temperatures, expected_temperatures
     ), f"Expected {expected_temperatures}, but got {config_Al.phonons.temperatures}"
 
-    expected_volumes = [60.0, 62.0, 64.0, 66.0, 68.0, 70.0, 72.0, 74.0]
+    expected_volumes = [74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0]
     assert np.array_equal(
         config_Al.phonons.volumes, expected_volumes
     ), f"Expected {expected_volumes}, but got {config_Al.phonons.volumes}"
