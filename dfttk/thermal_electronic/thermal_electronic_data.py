@@ -32,7 +32,7 @@ class ThermalElectronicData:
     def __init__(self, path: str):
         self.path = path
         self.incars: list[dict] = []
-        self.kpoints: Kpoints = None
+        self.kpoints: list[dict] = []
         self.potcar: Potcar = None
         self.electron_dos_data: pd.DataFrame = None
         self.number_of_atoms: int = None
@@ -82,11 +82,19 @@ class ThermalElectronicData:
                 for key in incar_keys
             }
             self.incars.append(incar_data)
+            
+            kpoints_data = {
+                key: Kpoints.from_file(
+                    os.path.join(self.path, elec_folder, f"KPOINTS.{key}")
+                )
+                for key in incar_keys
+            }
+            self.kpoints.append(kpoints_data)
 
-        if elec_folders:
-            self.kpoints = Kpoints.from_file(
-                os.path.join(self.path, elec_folders[0], "KPOINTS.elec_dos")
-            )
+        #if elec_folders:
+            #self.kpoints = Kpoints.from_file(
+            #    os.path.join(self.path, elec_folders[0], "KPOINTS.elec_dos")
+            #)
 
         try:
             self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))

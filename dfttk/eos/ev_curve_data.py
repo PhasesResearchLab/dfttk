@@ -31,7 +31,7 @@ class EvCurveData:
 
         # VASP input files
         self.incars = []
-        self.kpoints = None
+        self.kpoints = []
         self.potcar = None
         self.starting_poscar = None
 
@@ -115,7 +115,15 @@ class EvCurveData:
             self.incars.append(incar_data)
 
         # Read the KPOINTS file
-        self.kpoints = Kpoints.from_file(os.path.join(self.path, "KPOINTS"))
+        kpoints_keys = ["1relax", "2relax", "3static"]
+        for vol_folder in vol_folders:
+            kpoints_data = {
+                key: Kpoints.from_file(
+                    os.path.join(self.path, vol_folder, f"KPOINTS.{key}")
+                )
+                for key in kpoints_keys
+            }
+            self.kpoints.append(kpoints_data)
 
         # Read the POTCAR file
         try:

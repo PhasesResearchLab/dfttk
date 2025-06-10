@@ -64,7 +64,7 @@ class YphonPhononData:
         
         self.path = path
         self.incars: list[dict] = []
-        self.kpoints: Kpoints = None
+        self.kpoints: list[dict] = []
         self.potcar: Potcar = None
         self.phonon_structures: list[Structure] = []
         
@@ -109,6 +109,7 @@ class YphonPhononData:
         """
         phonon_folders = self._get_phonon_folders()
         incar_keys = ["1relax", "2phonons"]
+        kpoints_keys = ["1relax", "2phonons"]
 
         if volumes is not None:
             volumes_set = {round(volume, 2) for volume in volumes}
@@ -126,7 +127,8 @@ class YphonPhononData:
                 )
                 in volumes_set
             ]
-
+        
+        volumes_per_atom = []
         for phonon_folder in phonon_folders:
             incar_data = {}
             for key in incar_keys:
@@ -145,11 +147,22 @@ class YphonPhononData:
                 os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
             )
             self.phonon_structures.append(structure)
-
-        if phonon_folders:
-            self.kpoints = Kpoints.from_file(
-                os.path.join(self.path, phonon_folders[0], "KPOINTS.2phonons")
-            )
+            phonon_atoms = structure.num_sites
+            volumes_per_atom.append(round(structure.volume/phonon_atoms, 2))
+            
+            kpoints_data = {}
+            for key in kpoints_keys:
+                try:
+                    kpoints_data[key] = Kpoints.from_file(
+                        os.path.join(self.path, phonon_folder, f"KPOINTS.{key}")
+                    )
+                except FileNotFoundError:
+                    if key == "1relax":
+                        continue
+                    else:
+                        raise
+            self.kpoints.append(kpoints_data)
+        self._volumes_per_atom = np.array(volumes_per_atom)
 
         try:
             self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
@@ -176,7 +189,8 @@ class YphonPhononData:
         hp.load_dos(yphon_results_path)
         hp.scale_dos(number_of_atoms)
         self.number_of_atoms = number_of_atoms
-        self.volumes = hp.volumes
+        #self.volumes = hp.volumes
+        self.volumes = self._volumes_per_atom * self.number_of_atoms
         self.temperatures = temperatures
         hp.calculate_harmonic(temperatures)
         self.helmholtz_energy = hp.helmholtz_energy
