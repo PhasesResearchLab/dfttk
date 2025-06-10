@@ -827,7 +827,6 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         if isinstance(d, dict):
             new_dict = {}
             for k, v in d.items():
-                # Convert pressure keys like "0_GPa" to "p0GPa"
                 if isinstance(k, str) and re.match(r"^\d+_GPa$", k):
                     new_key = "p" + k.replace("_GPa", "GPa")
                 else:
@@ -840,6 +839,17 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             return d
 
     def to_mongodb(self, connection_string: str, db_name: str, collection_name: str):
+        """
+        Connect to a MongoDB database collection for storing configuration data.
+
+        Args:
+            connection_string (str): The MongoDB connection string.
+            db_name (str): The name of the MongoDB database to use.
+            collection_name (str): The name of the collection within the database.
+
+        This method initializes the MongoDB client, selects the specified database and collection,
+        and prepares the object for subsequent data insertion or updates.
+        """
         self.cluster = MongoClient(connection_string)
         self.db = self.cluster[db_name]
         self.collection = self.db[collection_name]
@@ -1122,7 +1132,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         # Close the MongoDB connection
         self.cluster.close()
 
-
+#TODO: test and fix this function
 def plot_multiple_ev(
     config_objects: dict[str, Configuration],
     config_names: list[str],
@@ -1138,7 +1148,27 @@ def plot_multiple_ev(
     marker_alpha: float = 1,
     marker_size: int = 10,
 ):
+    """
+    Plot multiple energy-volume (E-V) curves on a single figure.
 
+    Args:
+        config_objects (dict[str, Configuration]): Dictionary mapping configuration names to Configuration objects.
+        config_names (list[str]): List of configuration names to plot.
+        volume_min (float, optional): Minimum volume for the plot. Defaults to None.
+        volume_max (float, optional): Maximum volume for the plot. Defaults to None.
+        num_volumes (int, optional): Number of volume points for EOS fit. Defaults to 1000.
+        eos_name (str, optional): Name of the equation of state to use (e.g., "BM4"). Defaults to "BM4".
+        highlight_minimum (bool, optional): Whether to highlight the minimum energy point. Defaults to True.
+        per_atom (bool, optional): Whether to plot energy per atom. Defaults to False.
+        title (str, optional): Title for the plot. Defaults to None.
+        show_fig (bool, optional): Whether to display the figure immediately. Defaults to False.
+        cmap (str, optional): Colormap to use for the plot. Defaults to "plotly".
+        marker_alpha (float, optional): Alpha (opacity) for markers. Defaults to 1.
+        marker_size (int, optional): Size of the markers. Defaults to 10.
+
+    Returns:
+        plotly.graph_objects.Figure: The combined Plotly figure containing all E-V curves.
+    """
     combined_fig = go.Figure()
 
     config_colors = assign_colors_to_configs(
