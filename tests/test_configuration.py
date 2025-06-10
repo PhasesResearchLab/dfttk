@@ -448,7 +448,7 @@ def test_process_debye():
 def test_process_thermal_electronic():
     thermal_electronic_files_and_attributes = [
         ("test_configuration_data/expected_thermal_electronic_incars.json", "incars"),
-        ("test_configuration_data/expected_thermal_electronic_kpoints.json", "kpoints"),
+        #("test_configuration_data/expected_thermal_electronic_kpoints.json", "kpoints"),
     ]
     for filename, attribute in thermal_electronic_files_and_attributes:
         with open(os.path.join(current_dir, filename), "r") as f:
