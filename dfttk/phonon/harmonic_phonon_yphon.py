@@ -183,7 +183,7 @@ class HarmonicPhononYphon:
                     ),
                     margin=dict(t=130),
                 )
-                fig.show()
+                return fig
 
         self.volumes = self.volumes_per_atom * number_of_atoms
         self.scaled_phonon_dos = vdos_data_scaled
@@ -210,7 +210,7 @@ class HarmonicPhononYphon:
                 font=dict(size=24, color="rgb(0,0,0)"),
             )
         )
-        fig.show()
+        return fig
 
 
     def calculate_harmonic(
@@ -396,7 +396,7 @@ class HarmonicPhononYphon:
                 )
             )
         plot_format(fig, "Temperature (K)", y_title)
-        fig.show()
+
         return fig
         
 
@@ -476,7 +476,7 @@ class HarmonicPhononYphon:
             )
 
         plot_format(fig, f"Volume (Å³/{self.number_of_atoms} atoms)", y_title)
-        fig.show()
+
         return fig
     
     @staticmethod

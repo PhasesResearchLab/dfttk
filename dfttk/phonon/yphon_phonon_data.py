@@ -77,12 +77,12 @@ class YphonPhononData:
         self.heat_capacity: np.ndarray = None
         
         self.volumes_fit: np.ndarray = None
-        self.helmholtz_energy_fit: dict = None
-        self.entropy_fit: dict = None
-        self.heat_capacity_fit: dict = None
-        self.helmholtz_energy_poly_coeffs = None
-        self.entropy_poly_coeffs = None
-        self.heat_capacity_poly_coeffs = None
+        self.helmholtz_energy_fit: np.ndarray = None
+        self.entropy_fit: np.ndarray = None
+        self.heat_capacity_fit: np.ndarray = None
+        self.helmholtz_energy_poly_coeffs: np.ndarray = None
+        self.entropy_poly_coeffs: np.ndarray = None
+        self.heat_capacity_poly_coeffs: np.ndarray = None
         self._harmonic_phonon = None  # cache the instance
 
     def process_phonon_dos(self):
@@ -189,7 +189,6 @@ class YphonPhononData:
         hp.load_dos(yphon_results_path)
         hp.scale_dos(number_of_atoms)
         self.number_of_atoms = number_of_atoms
-        #self.volumes = hp.volumes
         self.volumes = self._volumes_per_atom * self.number_of_atoms
         self.temperatures = temperatures
         hp.calculate_harmonic(temperatures)
@@ -234,34 +233,37 @@ class YphonPhononData:
             }
         }
 
-    def plot_scaled_dos(self, number_of_atoms: int, plot: bool = True) -> None:
+    def plot_scaled_dos(self, number_of_atoms: int, plot: bool = True) -> go.Figure:
         """
         Plot the scaled phonon DOS for the specified number of atoms.
 
         Args:
             number_of_atoms (int): Number of atoms to scale the DOS to.
             plot (bool): If True, display the plot.
-        
+
+        Returns:
+            go.Figure: The Plotly figure object for the scaled DOS.
+
         Raises:
             RuntimeError: If get_harmonic_data() has not been called.
         """
         if self._harmonic_phonon is None:
             raise RuntimeError("Call get_harmonic_data() before plotting.")
-        self._harmonic_phonon.scale_dos(number_of_atoms=number_of_atoms, plot=plot)
+        return self._harmonic_phonon.scale_dos(number_of_atoms=number_of_atoms, plot=plot)
 
-    def plot_multiple_dos(self, number_of_atoms: int) -> None:
+    def plot_multiple_dos(self) -> go.Figure:
         """
         Plot the scaled phonon DOS for multiple volumes.
 
-        Args:
-            number_of_atoms (int): Number of atoms to scale the DOS to.
-        
+        Returns:
+            go.Figure: The Plotly figure object for the multiple DOS plot.
+
         Raises:
             RuntimeError: If get_harmonic_data() has not been called.
         """
         if self._harmonic_phonon is None:
             raise RuntimeError("Call get_harmonic_data() before plotting.")
-        self._harmonic_phonon.plot_dos()
+        return self._harmonic_phonon.plot_dos()
 
     def plot_harmonic(
         self, property: str, selected_temperatures: np.ndarray = None
