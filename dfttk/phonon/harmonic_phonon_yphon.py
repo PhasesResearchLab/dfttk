@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import scipy.constants
 import plotly.graph_objects as go
+from typing import Optional
 
 # DFTTK imports
 from dfttk.plotly_format import plot_format
@@ -40,27 +41,27 @@ class HarmonicPhononYphon:
         entropy_poly_coeffs (np.ndarray): Polynomial coefficients for entropy fit.
         heat_capacity_poly_coeffs (np.ndarray): Polynomial coefficients for heat capacity fit.
     """
-    
+
     def __init__(self):
-        self.phonon_dos = None
-        self.scaled_phonon_dos = None
-        
-        self.number_of_atoms = None
-        self.volumes_per_atom = None
-        self.volumes = None 
-        self.temperatures = None
-        self.helmholtz_energy = None 
-        self.entropy = None
-        self.heat_capacity = None
-        
-        self.volumes_fit = None
-        self.helmholtz_energy_fit = None 
-        self.entropy_fit = None
-        self.heat_capacity_fit = None
-        self.helmholtz_energy_poly_coeffs = None
-        self.entropy_poly_coeffs = None
-        self.heat_capacity_poly_coeffs = None
-    
+        self.phonon_dos: pd.DataFrame = None
+        self.scaled_phonon_dos: pd.DataFrame = None
+
+        self.number_of_atoms: int = None
+        self.volumes_per_atom: np.ndarray = None
+        self.volumes: np.ndarray = None
+        self.temperatures: np.ndarray = None
+        self.helmholtz_energy: np.ndarray = None
+        self.entropy: np.ndarray = None
+        self.heat_capacity: np.ndarray = None
+
+        self.volumes_fit: np.ndarray = None
+        self.helmholtz_energy_fit: np.ndarray = None
+        self.entropy_fit: np.ndarray = None
+        self.heat_capacity_fit: np.ndarray = None
+        self.helmholtz_energy_poly_coeffs: np.ndarray = None
+        self.entropy_poly_coeffs: np.ndarray = None
+        self.heat_capacity_poly_coeffs: np.ndarray = None
+
     def load_dos(self, path: str) -> None:
         """
         Load phonon DOS data from vdos and volph files in the specified directory.
@@ -70,10 +71,18 @@ class HarmonicPhononYphon:
 
         Returns:
             pd.DataFrame: Combined phonon DOS data.
+
+        Raises:
+            FileNotFoundError: If no vdos or volph files are found in the directory.
+            ValueError: If the number of vdos files does not match the number of volph files,
+                        or if the indexes of vdos and volph files do not match.
         """
         file_list = os.listdir(path)
         vdos_files = sorted([f for f in file_list if f.startswith("vdos_")])
         volph_files = sorted([f for f in file_list if f.startswith("volph_")])
+
+        if not vdos_files or not volph_files:
+            raise FileNotFoundError("No vdos_ or volph_ files found in the specified directory.")
 
         if len(vdos_files) != len(volph_files):
             raise ValueError("The number of vdos files does not match the number of volph files.")
@@ -99,19 +108,25 @@ class HarmonicPhononYphon:
         self.phonon_dos = pd.concat(dataframes, ignore_index=True)
         self.volumes_per_atom = np.sort(self.phonon_dos["volume_per_atom"].unique())
 
-    def scale_dos(self, number_of_atoms: int, plot: bool = False) -> None:
+    def scale_dos(self, number_of_atoms: int, plot: bool = False) -> Optional[go.Figure]:
         """
         Scale the area under the phonon DOS to 3N, where N is the number of atoms.
 
         Args:
             number_of_atoms (int): Number of atoms to scale the DOS to.
-            plot (bool): If True, plot the original and scaled DOS.
+            plot (bool): If True, return a plotly Figure of the original and scaled DOS.
 
         Returns:
-            pd.DataFrame: Scaled phonon DOS.
+            Optional[go.Figure]: Plotly Figure if plot is True, otherwise None.
+
+        Raises:
+            RuntimeError: If phonon DOS data is not loaded (call load_dos() before scale_dos()).
         """
         vdos_data = self.phonon_dos
         self.number_of_atoms = number_of_atoms
+
+        if self.phonon_dos is None:
+            raise RuntimeError("Phonon DOS data not loaded. Call load_dos() before scale_dos().")
 
         # Count the area % of positive and negative frequencies
         area_count = []
@@ -125,13 +140,7 @@ class HarmonicPhononYphon:
             area_count.append((volume_per_atom, area_pos / area_tot * 100, area_neg / area_tot * 100))
 
         # Count the original number of atoms before scaling
-        original_atoms = [
-            round(np.trapz(
-                vdos_data[vdos_data["volume_per_atom"] == volume_per_atom]["dos_1_per_hz"],
-                vdos_data[vdos_data["volume_per_atom"] == volume_per_atom]["frequency_hz"]
-            ) / 3)
-            for volume_per_atom in self.volumes_per_atom
-        ]
+        original_atoms = [round(np.trapz(vdos_data[vdos_data["volume_per_atom"] == volume_per_atom]["dos_1_per_hz"], vdos_data[vdos_data["volume_per_atom"] == volume_per_atom]["frequency_hz"]) / 3) for volume_per_atom in self.volumes_per_atom]
 
         # Remove negative frequencies
         vdos_data_scaled = vdos_data[vdos_data["frequency_hz"] > 0].reset_index(drop=True)
@@ -165,20 +174,12 @@ class HarmonicPhononYphon:
                 scaled_freq = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom]["frequency_hz"]
                 scaled_dos = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom]["dos_1_per_hz"]
 
-                fig.add_trace(go.Scatter(
-                    x=freq / 1e12, y=dos * 1e12, mode="lines",
-                    name=f"Original - {original_atoms[i]} atoms", showlegend=True
-                ))
-                fig.add_trace(go.Scatter(
-                    x=scaled_freq / 1e12, y=scaled_dos * 1e12, mode="lines",
-                    name=f"Scaled - {number_of_atoms} atoms", showlegend=True
-                ))
+                fig.add_trace(go.Scatter(x=freq / 1e12, y=dos * 1e12, mode="lines", name=f"Original - {original_atoms[i]} atoms", showlegend=True))
+                fig.add_trace(go.Scatter(x=scaled_freq / 1e12, y=scaled_dos * 1e12, mode="lines", name=f"Scaled - {number_of_atoms} atoms", showlegend=True))
                 plot_format(fig, "Frequency (THz)", "DOS (1/THz)")
                 fig.update_layout(
                     title=dict(
-                        text=f"Original volume: {volume_per_atom * original_atoms[i]} Å³/{original_atoms[i]} atoms"
-                            f"<br> Scaled volume: {volume_per_atom * number_of_atoms} Å³/{number_of_atoms} atoms"
-                            f"<br> (Area: {area_count[i][1]:.1f}% positive, {area_count[i][2]:.1f}% negative)",
+                        text=f"Original volume: {volume_per_atom * original_atoms[i]} Å³/{original_atoms[i]} atoms" f"<br> Scaled volume: {volume_per_atom * number_of_atoms} Å³/{number_of_atoms} atoms" f"<br> (Area: {area_count[i][1]:.1f}% positive, {area_count[i][2]:.1f}% negative)",
                         font=dict(size=20, color="rgb(0,0,0)"),
                     ),
                     margin=dict(t=130),
@@ -188,10 +189,19 @@ class HarmonicPhononYphon:
         self.volumes = self.volumes_per_atom * number_of_atoms
         self.scaled_phonon_dos = vdos_data_scaled
 
-    def plot_dos(self) -> None:
+    def plot_dos(self) -> go.Figure:
         """
-        Plot the scaled phonon DOS for multiple volumes.
+        Plot the scaled phonon density of states (DOS) for multiple volumes.
+
+        Returns:
+            go.Figure: Plotly Figure object showing the scaled phonon DOS for each volume.
+
+        Raises:
+            RuntimeError: If scaled phonon DOS data or volumes_per_atom is not set.
         """
+        if self.scaled_phonon_dos is None or self.volumes_per_atom is None:
+            raise RuntimeError("Scaled phonon DOS data not calculated. Call scale_dos() before plot_dos().")
+
         vdos_data_scaled = self.scaled_phonon_dos
         volumes_per_atom = self.volumes_per_atom
 
@@ -199,10 +209,7 @@ class HarmonicPhononYphon:
         for volume_per_atom in volumes_per_atom:
             freq = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom]["frequency_hz"]
             dos = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom]["dos_1_per_hz"]
-            fig.add_trace(go.Scatter(
-                x=freq / 1e12, y=dos * 1e12, mode="lines",
-                name=f"{volume_per_atom * self.number_of_atoms} Å³", showlegend=True
-            ))
+            fig.add_trace(go.Scatter(x=freq / 1e12, y=dos * 1e12, mode="lines", name=f"{volume_per_atom * self.number_of_atoms} Å³", showlegend=True))
         plot_format(fig, "Frequency (THz)", "DOS (1/THz)")
         fig.update_layout(
             title=dict(
@@ -211,7 +218,6 @@ class HarmonicPhononYphon:
             )
         )
         return fig
-
 
     def calculate_harmonic(
         self,
@@ -223,24 +229,19 @@ class HarmonicPhononYphon:
 
         Args:
             temperatures (np.ndarray): 1D array of temperatures in Kelvin.
+
+        Raises:
+            RuntimeError: If scaled phonon DOS data or volumes_per_atom is not set (call scale_dos() before calculate_harmonic()).
         """
-        
+        if self.scaled_phonon_dos is None or self.volumes_per_atom is None:
+            raise RuntimeError("Scaled phonon DOS data not calculated. Call scale_dos() before calculate_harmonic().")
+
         self.temperatures = temperatures
-        frequency_array = [
-            self.scaled_phonon_dos[self.scaled_phonon_dos["volume_per_atom"] == volume_per_atom][
-                "frequency_hz"
-            ].values
-            for volume_per_atom in self.volumes_per_atom
-        ]
-        dos_array = [
-            self.scaled_phonon_dos[self.scaled_phonon_dos["volume_per_atom"] == volume_per_atom][
-                "dos_1_per_hz"
-            ].values
-            for volume_per_atom in self.volumes_per_atom
-        ]
+        frequency_array = [self.scaled_phonon_dos[self.scaled_phonon_dos["volume_per_atom"] == volume_per_atom]["frequency_hz"].values for volume_per_atom in self.volumes_per_atom]
+        dos_array = [self.scaled_phonon_dos[self.scaled_phonon_dos["volume_per_atom"] == volume_per_atom]["dos_1_per_hz"].values for volume_per_atom in self.volumes_per_atom]
         frequency_array = self.pad_arrays(frequency_array, pad_type="increasing")
         dos_array = self.pad_arrays(dos_array, pad_value=0, pad_type="constant")
-        
+
         num_volumes = len(self.volumes_per_atom)
         num_temps = len(temperatures)
 
@@ -285,7 +286,7 @@ class HarmonicPhononYphon:
                     S = BOLTZMANN_CONSTANT * np.sum(integrand_S)
                     entropy[j, i] = S
                     # Heat capacity
-                    integrand_C = (ratio ** 2) * (1 / sinh_ratio) ** 2 * d_mid * df
+                    integrand_C = (ratio**2) * (1 / sinh_ratio) ** 2 * d_mid * df
                     Cv = BOLTZMANN_CONSTANT * np.sum(integrand_C)
                     heat_capacity[j, i] = Cv
 
@@ -293,16 +294,16 @@ class HarmonicPhononYphon:
         self.internal_energy = internal_energy
         self.entropy = entropy
         self.heat_capacity = heat_capacity
-        
 
     def fit_harmonic(
         self,
-        order: int=2,
+        order: int = 2,
         min_volume: float = None,
         max_volume: float = None,
         num_volumes: int = 1000,
     ) -> None:
-        """Fit the Helmholtz energy, entropy, and heat capacity as a function of volume
+        """
+        Fit the Helmholtz energy, entropy, and heat capacity as a function of volume
         using polynomial regression for each temperature.
 
         Args:
@@ -310,8 +311,13 @@ class HarmonicPhononYphon:
             min_volume (float, optional): Minimum volume for fitting. Defaults to None.
             max_volume (float, optional): Maximum volume for fitting. Defaults to None.
             num_volumes (int, optional): Number of volumes for fitting. Defaults to 1000.
-        """        
-        
+
+        Raises:
+            RuntimeError: If required thermodynamic properties are not set (call calculate_harmonic() before fit_harmonic()).
+        """
+        if self.helmholtz_energy is None or self.entropy is None or self.heat_capacity is None or self.temperatures is None:
+            raise RuntimeError("Thermodynamic properties not calculated. Call calculate_harmonic() before fit_harmonic().")
+
         helmholtz_energy_fit_list = []
         entropy_fit_list = []
         heat_capacity_fit_list = []
@@ -330,13 +336,13 @@ class HarmonicPhononYphon:
             helmholtz_energy_poly_coeffs_list.append(helmholtz_energy_coefficients)
             entropy_poly_coeffs_list.append(entropy_coefficients)
             heat_capacity_poly_coeffs_list.append(heat_capacity_coefficients)
-            
+
             if min_volume is None:
                 min_volume = min(self.volumes) * 0.98
             if max_volume is None:
                 max_volume = max(self.volumes) * 1.02
             volumes_fit = np.linspace(min_volume, max_volume, num_volumes)
-                
+
             helmholtz_energy_fit = helmholtz_energy_polynomial(volumes_fit)
             entropy_fit = entropy_polynomial(volumes_fit)
             heat_capacity_fit = heat_capacity_polynomial(volumes_fit)
@@ -349,11 +355,10 @@ class HarmonicPhononYphon:
         self.helmholtz_energy_fit = np.array(helmholtz_energy_fit_list)
         self.entropy_fit = np.array(entropy_fit_list)
         self.heat_capacity_fit = np.array(heat_capacity_fit_list)
-        
+
         self.helmholtz_energy_poly_coeffs = np.array(helmholtz_energy_poly_coeffs_list)
         self.entropy_poly_coeffs = np.array(entropy_poly_coeffs_list)
         self.heat_capacity_poly_coeffs = np.array(heat_capacity_poly_coeffs_list)
-        
 
     def plot_harmonic(
         self,
@@ -369,7 +374,14 @@ class HarmonicPhononYphon:
 
         Returns:
             go.Figure: Plotly Figure object with the property vs. temperature curves.
+
+        Raises:
+            RuntimeError: If required thermodynamic properties are not set (call calculate_harmonic() before fit_harmonic()).
+            ValueError: If property is not one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
         """
+        if self.helmholtz_energy is None or self.entropy is None or self.heat_capacity is None or self.temperatures is None:
+            raise RuntimeError("Thermodynamic properties not calculated. Call calculate_harmonic() before fit_harmonic().")
+
         valid_properties = {
             "helmholtz_energy": ("helmholtz_energy", f"F<sub>vib</sub> (eV/{self.number_of_atoms} atoms)"),
             "entropy": ("entropy", f"S<sub>vib</sub> (eV/K/{self.number_of_atoms} atoms)"),
@@ -377,9 +389,7 @@ class HarmonicPhononYphon:
         }
 
         if property not in valid_properties:
-            raise ValueError(
-                "property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'"
-            )
+            raise ValueError("property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'")
 
         attr_name, y_title = valid_properties[property]
         property_data = getattr(self, attr_name)
@@ -398,7 +408,6 @@ class HarmonicPhononYphon:
         plot_format(fig, "Temperature (K)", y_title)
 
         return fig
-        
 
     def plot_fit_harmonic(
         self,
@@ -417,7 +426,14 @@ class HarmonicPhononYphon:
 
         Returns:
             go.Figure: Plotly Figure object with the fitted property vs. volume curves.
+
+        Raises:
+            RuntimeError: If fitted thermodynamic properties are not set (call fit_harmonic() before plot_fit_harmonic()).
+            ValueError: If property is not one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
         """
+        if self.volumes_fit is None or self.helmholtz_energy_fit is None or self.entropy_fit is None or self.heat_capacity_fit is None or self.temperatures is None:
+            raise RuntimeError("Fitted thermodynamic properties not calculated. Call fit_harmonic() before plot_fit_harmonic().")
+
         valid_properties = {
             "helmholtz_energy": ("helmholtz_energy", "helmholtz_energy_fit", f"F<sub>vib</sub> (eV/{self.number_of_atoms} atoms)"),
             "entropy": ("entropy", "entropy_fit", f"S<sub>vib</sub> (eV/K/{self.number_of_atoms} atoms)"),
@@ -425,9 +441,7 @@ class HarmonicPhononYphon:
         }
 
         if property not in valid_properties:
-            raise ValueError(
-                "property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'"
-            )
+            raise ValueError("property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'")
 
         attr_name, fit_attr_name, y_title = valid_properties[property]
         property_data = getattr(self, attr_name)
@@ -439,13 +453,18 @@ class HarmonicPhononYphon:
 
         fig = go.Figure()
         colors = [
-            "#636EFA", "#EF553B", "#00CC96", "#AB63FA", "#FFA15A",
-            "#19D3F3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52",
+            "#636EFA",
+            "#EF553B",
+            "#00CC96",
+            "#AB63FA",
+            "#FFA15A",
+            "#19D3F3",
+            "#FF6692",
+            "#B6E880",
+            "#FF97FF",
+            "#FECB52",
         ]
-        colors = [
-            f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, 1)"
-            for color in colors
-        ]
+        colors = [f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, 1)" for color in colors]
 
         for i, temperature in enumerate(selected_temperatures):
             index = np.where(self.temperatures == temperature)[0][0]
@@ -478,7 +497,7 @@ class HarmonicPhononYphon:
         plot_format(fig, f"Volume (Å³/{self.number_of_atoms} atoms)", y_title)
 
         return fig
-    
+
     @staticmethod
     def pad_arrays(arrays, pad_value=0, pad_type="constant"):
         """
@@ -498,9 +517,7 @@ class HarmonicPhononYphon:
         padded_arrays = []
         for arr in arrays:
             if pad_type == "constant":
-                padded_arr = np.pad(
-                    arr, (0, max_length - len(arr)), constant_values=pad_value
-                )
+                padded_arr = np.pad(arr, (0, max_length - len(arr)), constant_values=pad_value)
             elif pad_type == "increasing":
                 increment = arr[-1] - arr[-2]
                 pad_values = np.arange(
