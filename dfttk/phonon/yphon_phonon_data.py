@@ -1,6 +1,6 @@
-'''
+"""
 YphonPhononData class for storing and processing phonon data from VASP and YPHON calculations.
-'''
+"""
 
 # Standard library imports
 import os
@@ -15,6 +15,7 @@ from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 # DFTTK imports
 from dfttk.workflows import process_phonon_dos_YPHON
 from dfttk.phonon.harmonic_phonon_yphon import HarmonicPhononYphon
+
 
 class YphonPhononData:
     """
@@ -61,13 +62,13 @@ class YphonPhononData:
         Args:
             path (str): Path to the directory containing phonon calculation results.
         """
-        
+
         self.path = path
         self.incars: list[dict] = []
-        self.kpoints: Kpoints = None
+        self.kpoints: list[dict] = []
         self.potcar: Potcar = None
         self.phonon_structures: list[Structure] = []
-        
+
         self.number_of_atoms: int = None
         self.volumes: np.ndarray = None
         self.temperatures: np.ndarray = None
@@ -75,14 +76,14 @@ class YphonPhononData:
         self.internal_energy: np.ndarray = None
         self.entropy: np.ndarray = None
         self.heat_capacity: np.ndarray = None
-        
+
         self.volumes_fit: np.ndarray = None
-        self.helmholtz_energy_fit: dict = None
-        self.entropy_fit: dict = None
-        self.heat_capacity_fit: dict = None
-        self.helmholtz_energy_poly_coeffs = None
-        self.entropy_poly_coeffs = None
-        self.heat_capacity_poly_coeffs = None
+        self.helmholtz_energy_fit: np.ndarray = None
+        self.entropy_fit: np.ndarray = None
+        self.heat_capacity_fit: np.ndarray = None
+        self.helmholtz_energy_poly_coeffs: np.ndarray = None
+        self.entropy_poly_coeffs: np.ndarray = None
+        self.heat_capacity_poly_coeffs: np.ndarray = None
         self._harmonic_phonon = None  # cache the instance
 
     def process_phonon_dos(self):
@@ -109,31 +110,27 @@ class YphonPhononData:
         """
         phonon_folders = self._get_phonon_folders()
         incar_keys = ["1relax", "2phonons"]
+        kpoints_keys = ["1relax", "2phonons"]
 
         if volumes is not None:
             volumes_set = {round(volume, 2) for volume in volumes}
             phonon_folders = [
                 phonon_folder
                 for phonon_folder in phonon_folders
-                if os.path.exists(
-                    os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
-                )
+                if os.path.exists(os.path.join(self.path, phonon_folder, "CONTCAR.2phonons"))
                 and round(
-                    Structure.from_file(
-                        os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
-                    ).volume,
+                    Structure.from_file(os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")).volume,
                     2,
                 )
                 in volumes_set
             ]
 
+        volumes_per_atom = []
         for phonon_folder in phonon_folders:
             incar_data = {}
             for key in incar_keys:
                 try:
-                    incar_data[key] = Incar.from_file(
-                        os.path.join(self.path, phonon_folder, f"INCAR.{key}")
-                    )
+                    incar_data[key] = Incar.from_file(os.path.join(self.path, phonon_folder, f"INCAR.{key}"))
                 except FileNotFoundError:
                     if key == "1relax":
                         continue
@@ -141,15 +138,22 @@ class YphonPhononData:
                         raise
             self.incars.append(incar_data)
 
-            structure = Structure.from_file(
-                os.path.join(self.path, phonon_folder, "CONTCAR.2phonons")
-            )
+            structure = Structure.from_file(os.path.join(self.path, phonon_folder, "CONTCAR.2phonons"))
             self.phonon_structures.append(structure)
+            phonon_atoms = structure.num_sites
+            volumes_per_atom.append(round(structure.volume / phonon_atoms, 2))
 
-        if phonon_folders:
-            self.kpoints = Kpoints.from_file(
-                os.path.join(self.path, phonon_folders[0], "KPOINTS.2phonons")
-            )
+            kpoints_data = {}
+            for key in kpoints_keys:
+                try:
+                    kpoints_data[key] = Kpoints.from_file(os.path.join(self.path, phonon_folder, f"KPOINTS.{key}"))
+                except FileNotFoundError:
+                    if key == "1relax":
+                        continue
+                    else:
+                        raise
+            self.kpoints.append(kpoints_data)
+        self._volumes_per_atom = np.array(volumes_per_atom)
 
         try:
             self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
@@ -176,7 +180,7 @@ class YphonPhononData:
         hp.load_dos(yphon_results_path)
         hp.scale_dos(number_of_atoms)
         self.number_of_atoms = number_of_atoms
-        self.volumes = hp.volumes
+        self.volumes = self._volumes_per_atom * self.number_of_atoms
         self.temperatures = temperatures
         hp.calculate_harmonic(temperatures)
         self.helmholtz_energy = hp.helmholtz_energy
@@ -192,66 +196,47 @@ class YphonPhononData:
         self.entropy_poly_coeffs = hp.entropy_poly_coeffs
         self.heat_capacity_poly_coeffs = hp.heat_capacity_poly_coeffs
 
-        self._helmholtz_energy_to_db = {
-            f"{temp}K": self.helmholtz_energy[i] for i, temp in enumerate(self.temperatures)
-        }
-        self._internal_energy_to_db = {
-            f"{temp}K": self.internal_energy[i] for i, temp in enumerate(self.temperatures)
-        }
-        self._entropy_to_db = {
-            f"{temp}K": self.entropy[i] for i, temp in enumerate(self.temperatures)
-        }
-        self._heat_capacity_to_db = {
-            f"{temp}K": self.heat_capacity[i] for i, temp in enumerate(self.temperatures)
-        }
-        self._helmholtz_energy_fit_to_db = {
-            "poly_coeffs": {
-                f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.helmholtz_energy_poly_coeffs)
-            }
-        }
-        self._entropy_fit_to_db = {
-            "poly_coeffs": {
-                f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.entropy_poly_coeffs)
-            }
-        }
-        self._heat_capacity_fit_to_db = {
-            "poly_coeffs": {
-                f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.heat_capacity_poly_coeffs)
-            }
-        }
+        self._helmholtz_energy_to_db = {f"{temp}K": self.helmholtz_energy[i] for i, temp in enumerate(self.temperatures)}
+        self._internal_energy_to_db = {f"{temp}K": self.internal_energy[i] for i, temp in enumerate(self.temperatures)}
+        self._entropy_to_db = {f"{temp}K": self.entropy[i] for i, temp in enumerate(self.temperatures)}
+        self._heat_capacity_to_db = {f"{temp}K": self.heat_capacity[i] for i, temp in enumerate(self.temperatures)}
+        self._helmholtz_energy_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.helmholtz_energy_poly_coeffs)}}
+        self._entropy_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.entropy_poly_coeffs)}}
+        self._heat_capacity_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.heat_capacity_poly_coeffs)}}
 
-    def plot_scaled_dos(self, number_of_atoms: int, plot: bool = True) -> None:
+    def plot_scaled_dos(self, number_of_atoms: int, plot: bool = True) -> go.Figure:
         """
         Plot the scaled phonon DOS for the specified number of atoms.
 
         Args:
             number_of_atoms (int): Number of atoms to scale the DOS to.
             plot (bool): If True, display the plot.
-        
+
+        Returns:
+            go.Figure: The Plotly figure object for the scaled DOS.
+
         Raises:
             RuntimeError: If get_harmonic_data() has not been called.
         """
         if self._harmonic_phonon is None:
             raise RuntimeError("Call get_harmonic_data() before plotting.")
-        self._harmonic_phonon.scale_dos(number_of_atoms=number_of_atoms, plot=plot)
+        return self._harmonic_phonon.scale_dos(number_of_atoms=number_of_atoms, plot=plot)
 
-    def plot_multiple_dos(self, number_of_atoms: int) -> None:
+    def plot_multiple_dos(self) -> go.Figure:
         """
         Plot the scaled phonon DOS for multiple volumes.
 
-        Args:
-            number_of_atoms (int): Number of atoms to scale the DOS to.
-        
+        Returns:
+            go.Figure: The Plotly figure object for the multiple DOS plot.
+
         Raises:
             RuntimeError: If get_harmonic_data() has not been called.
         """
         if self._harmonic_phonon is None:
             raise RuntimeError("Call get_harmonic_data() before plotting.")
-        self._harmonic_phonon.plot_dos()
+        return self._harmonic_phonon.plot_dos()
 
-    def plot_harmonic(
-        self, property: str, selected_temperatures: np.ndarray = None
-    ) -> tuple[go.Figure, go.Figure]:
+    def plot_harmonic(self, property: str, selected_temperatures: np.ndarray = None) -> tuple[go.Figure, go.Figure]:
         """
         Plot harmonic thermodynamic properties and their polynomial fits.
 
@@ -261,7 +246,7 @@ class YphonPhononData:
 
         Returns:
             tuple[go.Figure, go.Figure]: (property vs. temperature, property fit vs. volume)
-        
+
         Raises:
             RuntimeError: If get_harmonic_data() has not been called.
             ValueError: If property is not a valid option.
@@ -277,4 +262,3 @@ class YphonPhononData:
             selected_temperatures=selected_temperatures,
         )
         return fig_harmonic, fig_fit_harmonic
-
