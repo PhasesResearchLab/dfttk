@@ -1132,18 +1132,13 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         # Close the MongoDB connection
         self.cluster.close()
 
-#TODO: test and fix this function
+
 def plot_multiple_ev(
     config_objects: dict[str, Configuration],
     config_names: list[str],
-    volume_min: float = None,
-    volume_max: float = None,
-    num_volumes: int = 1000,
-    eos_name: str = "BM4",
     highlight_minimum: bool = True,
     per_atom: bool = False,
     title: str = None,
-    show_fig: bool = False,
     cmap: str = "plotly",
     marker_alpha: float = 1,
     marker_size: int = 10,
@@ -1154,14 +1149,9 @@ def plot_multiple_ev(
     Args:
         config_objects (dict[str, Configuration]): Dictionary mapping configuration names to Configuration objects.
         config_names (list[str]): List of configuration names to plot.
-        volume_min (float, optional): Minimum volume for the plot. Defaults to None.
-        volume_max (float, optional): Maximum volume for the plot. Defaults to None.
-        num_volumes (int, optional): Number of volume points for EOS fit. Defaults to 1000.
-        eos_name (str, optional): Name of the equation of state to use (e.g., "BM4"). Defaults to "BM4".
         highlight_minimum (bool, optional): Whether to highlight the minimum energy point. Defaults to True.
         per_atom (bool, optional): Whether to plot energy per atom. Defaults to False.
         title (str, optional): Title for the plot. Defaults to None.
-        show_fig (bool, optional): Whether to display the figure immediately. Defaults to False.
         cmap (str, optional): Colormap to use for the plot. Defaults to "plotly".
         marker_alpha (float, optional): Alpha (opacity) for markers. Defaults to 1.
         marker_size (int, optional): Size of the markers. Defaults to 10.
@@ -1178,16 +1168,11 @@ def plot_multiple_ev(
 
     for config_name in config_names:
         fig = config_objects[config_name].ev_curve.plot(
-            volume_min=volume_min,
-            volume_max=volume_max,
-            num_volumes=num_volumes,
-            eos_name=eos_name,
             highlight_minimum=highlight_minimum,
             per_atom=per_atom,
             cmap=cmap,
             marker_alpha=marker_alpha,
             marker_size=marker_size,
-            show_fig=False,
         )
         if fig is not None:
             for trace in fig.data:
@@ -1200,8 +1185,5 @@ def plot_multiple_ev(
 
     if title:
         combined_fig.update_layout(title=title)
-
-    if show_fig:
-        combined_fig.show()
 
     return combined_fig
