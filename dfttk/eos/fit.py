@@ -21,9 +21,7 @@ from dfttk.eos.functions import (
 )
 
 
-def assign_colors_to_configs(
-    unique_configs: list[str], alpha: float = 1, cmap: str = "plotly"
-) -> dict:
+def assign_colors_to_configs(unique_configs: list[str], alpha: float = 1, cmap: str = "plotly") -> dict:
     """
     Assign colors to configurations based on the specified color map.
 
@@ -36,8 +34,12 @@ def assign_colors_to_configs(
 
     Returns:
         dict: Dictionary mapping configurations to colors.
+
+    Raises:
+        ValueError: If cmap is not 'plotly' or 'distinctipy'.
     """
     if cmap == "plotly":
+        # Use a fixed set of Plotly qualitative colors
         colors = px.colors.qualitative.Plotly
         colors = [
             "#636EFA",
@@ -51,21 +53,17 @@ def assign_colors_to_configs(
             "#FF97FF",
             "#FECB52",
         ]
-        colors = [
-            f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {alpha})"
-            for color in colors
-        ]
+        # Convert hex colors to rgba strings with the specified alpha
+        colors = [f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {alpha})" for color in colors]
     elif cmap == "distinctipy":
+        # Use distinctipy to generate visually distinct colors
         colors = get_colors(len(unique_configs))
-        colors = [
-            f"rgba({color[0]}, {color[1]}, {color[2]}, {alpha})" for color in colors
-        ]
+        colors = [f"rgba({color[0]}, {color[1]}, {color[2]}, {alpha})" for color in colors]
     else:
-        print("cmap must be 'plotly' or 'distinctipy'")
+        raise ValueError("cmap must be 'plotly' or 'distinctipy'")
 
-    config_colors = {
-        config: colors[i % len(colors)] for i, config in enumerate(unique_configs)
-    }
+    # Assign colors to each config, cycling if there are more configs than colors
+    config_colors = {config: colors[i % len(colors)] for i, config in enumerate(unique_configs)}
     return config_colors
 
 
@@ -79,6 +77,7 @@ def assign_marker_symbols_to_configs(unique_configs: list[str]) -> dict:
     Returns:
         dict: Dictionary mapping configurations to marker symbols.
     """
+    # List of marker symbols to cycle through
     symbols = [
         "circle",
         "square",
@@ -120,9 +119,8 @@ def assign_marker_symbols_to_configs(unique_configs: list[str]) -> dict:
         "triangle-right-open",
         "pentagon-open",
     ]
-    config_symbols = {
-        config: symbols[i % len(symbols)] for i, config in enumerate(unique_configs)
-    }
+    # Assign symbols to each config, cycling if there are more configs than symbols
+    config_symbols = {config: symbols[i % len(symbols)] for i, config in enumerate(unique_configs)}
     return config_symbols
 
 
@@ -131,7 +129,13 @@ class EOSFitter:
     Class for fitting and plotting energy-volume data using various equations of state (EOS).
     """
 
-    def __init__(self, name, number_of_atoms, volumes, energies):
+    def __init__(
+        self,
+        name: str,
+        number_of_atoms: int,
+        volumes: list[float],
+        energies: list[float],
+    ):
         """
         Initialize the EOSFitter.
 
@@ -151,6 +155,10 @@ class EOSFitter:
         self.volume_range = None
         self.energy_eos = None
         self.pressure_eos = None
+
+        # Ensure input data is consistent
+        if len(self.volumes) != len(self.energies):
+            raise ValueError("Volumes and energies must have the same length.")
 
     def fit(
         self,
@@ -172,7 +180,9 @@ class EOSFitter:
 
         Raises:
             ValueError: If the specified EOS function is not recognized.
+            RuntimeError: If an unexpected error occurs during fitting.
         """
+        # Dictionary mapping EOS function names to their implementations
         eos_functions = {
             "mBM4": mBM4,
             "mBM5": mBM5,
@@ -184,24 +194,25 @@ class EOSFitter:
             "vinet": vinet,
             "morse": morse,
         }
+        # Select the EOS function based on the provided name
         eos_function = eos_functions.get(eos_name)
         if eos_function is None:
             raise ValueError(f"EOS function '{eos_name}' not recognized.")
 
         try:
+            # Perform the EOS fit using the selected function
             (
                 eos_constants,
                 eos_parameters,
                 volume_range,
                 energy_eos,
                 pressure_eos,
-            ) = eos_function(
-                self.volumes, self.energies, volume_min, volume_max, num_volumes
-            )
-            eos_name = eos_function.__name__
+            ) = eos_function(self.volumes, self.energies, volume_min, volume_max, num_volumes)
         except Exception as e:
-            print(f"Error fitting config: {e}")
+            # Raise a RuntimeError for any unexpected error during fitting
+            raise RuntimeError(f"Error fitting config: {e}") from e
 
+        # Store the fit results as attributes
         self.eos_name = eos_name
         self.eos_constants = eos_constants
         self.eos_parameters = eos_parameters
@@ -222,8 +233,8 @@ class EOSFitter:
         Plot the energy vs volume curves for each configuration.
 
         Args:
-            highlight_minimum (bool, optional): Whether to highlight the minimum energy. Defaults to True.
-            per_atom (bool, optional): Whether to plot energy and volume per atom. Defaults to False.
+            highlight_minimum (bool, optional): Whether to highlight the minimum energy. Must be True or False. Defaults to True.
+            per_atom (bool, optional): Whether to plot energy and volume per atom. Must be True or False. Defaults to False.
             title (str, optional): Title of the plot. Defaults to None.
             cmap (str, optional): Color map to use. Defaults to "plotly".
             marker_alpha (int, optional): Alpha value for the marker color. Defaults to 1.
@@ -231,14 +242,20 @@ class EOSFitter:
 
         Returns:
             go.Figure: A Plotly figure object containing the plot.
+
+        Raises:
+            ValueError: If fit() has not been called before plot().
         """
+        # Ensure fit() has been called before plotting
+        if not hasattr(self, "eos_name") or self.eos_name is None:
+            raise ValueError("You must call fit() before plot().")
+
+        # Prepare color and symbol assignments for plotting
         unique_configs = [self.name]
-        config_colors = assign_colors_to_configs(
-            unique_configs, alpha=marker_alpha, cmap=cmap
-        )
+        config_colors = assign_colors_to_configs(unique_configs, alpha=marker_alpha, cmap=cmap)
         config_symbols = assign_marker_symbols_to_configs(unique_configs)
 
-        # First, plot the energy vs volume data points.
+        # Create a new Plotly figure
         fig = go.Figure()
         fig.update_layout(
             font=dict(
@@ -246,16 +263,17 @@ class EOSFitter:
             )
         )
 
+        # Prepare x and y data for plotting
         if isinstance(per_atom, bool):
             x = self.volumes
             y = self.energies
 
+            # Convert to per atom if requested
             if per_atom:
                 x = x / self.number_of_atoms
                 y = y / self.number_of_atoms
-        else:
-            raise ValueError("per_atom must be True or False")
 
+        # Plot the raw energy vs volume data points
         fig.add_trace(
             go.Scatter(
                 x=x,
@@ -272,6 +290,7 @@ class EOSFitter:
             )
         )
 
+        # Set axis labels
         if isinstance(per_atom, bool):
             atom_suffix = "/atom" if per_atom else ""
             fig.update_xaxes(
@@ -287,7 +306,7 @@ class EOSFitter:
                 )
             )
 
-        # Second, plot the EOS fit.
+        # Plot the EOS fit curve
         if self.eos_name is not None:
             x = self.volume_range
             y = self.energy_eos
@@ -308,6 +327,7 @@ class EOSFitter:
                 )
             )
 
+            # Optionally highlight the minimum energy point
             if highlight_minimum is True:
                 x = self.eos_parameters[0]
                 y = self.eos_parameters[1]
@@ -330,9 +350,8 @@ class EOSFitter:
                 )
             elif highlight_minimum is False:
                 pass
-            else:
-                raise ValueError("highlight_minimum must be True or False")
 
+        # Update layout with common parameters
         axis_params = dict(
             showline=True,
             linecolor="black",
@@ -354,9 +373,8 @@ class EOSFitter:
             yaxis=axis_params,
         )
 
+        # Set the title if provided
         if title is not None:
-            fig.update_layout(
-                title=dict(text=title, x=0.5, font=dict(color="rgb(0,0,0)", size=30))
-            )
+            fig.update_layout(title=dict(text=title, x=0.5, font=dict(color="rgb(0,0,0)", size=30)))
 
         return fig
