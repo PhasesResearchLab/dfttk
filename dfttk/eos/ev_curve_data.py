@@ -11,6 +11,7 @@ from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 
 # DFTTK imports
+from dfttk.magnetism import get_magnetic_structure
 from dfttk.aggregate_extraction import extract_configuration_data
 from dfttk.eos.fit import EOSFitter
 
@@ -47,22 +48,7 @@ class EvCurveData:
         self.total_magnetic_moment = None
         self.magnetic_ordering = None
         self.mag_data = []
-        self.eos_parameters = {
-            key: None
-            for key in [
-                "eos_name",
-                "a",
-                "b",
-                "c",
-                "d",
-                "e",
-                "V0",
-                "E0",
-                "B",
-                "BP",
-                "B2P",
-            ]
-        }
+        self.eos_parameters = {key: None for key in ["eos_name", "a", "b", "c", "d", "e", "V0", "E0", "B", "BP", "B2P"]}
 
     def _get_volume_folders(self) -> list[str]:
         """
@@ -223,11 +209,21 @@ class EvCurveData:
                 in volumes_set
             ]
 
-        # Read the relaxed structures from the CONTCAR files
-        self.relaxed_structures = [
-            Structure.from_file(os.path.join(self.path, vol_folder, contcar_name))
-            for vol_folder in vol_folders
-        ]
+        if collect_mag_data:
+            # Read the magnetic structures from the CONTCAR files
+            self.relaxed_structures = [
+                get_magnetic_structure(
+                    os.path.join(self.path, vol_folder, "CONTCAR.3static"),
+                    os.path.join(self.path, vol_folder, "OUTCAR.3static"),
+                )
+                for vol_folder in vol_folders
+            ]
+        else:
+            # Read the relaxed structures from the CONTCAR files
+            self.relaxed_structures = [
+                Structure.from_file(os.path.join(self.path, vol_folder, contcar_name))
+                for vol_folder in vol_folders
+            ]
 
     def fit_energy_volume_data(
         self,
