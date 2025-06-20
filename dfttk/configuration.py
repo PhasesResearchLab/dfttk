@@ -410,8 +410,8 @@ workflows.NELM_reached(os.getcwd())
         oszicar_name: str = "OSZICAR.3static",
         contcar_name: str = "CONTCAR.3static",
         collect_mag_data: bool = False,
-        magmom_tolerance: float = 1e-12,
-        total_magnetic_moment_tolerance: float = 1e-12,
+        magmom_tolerance: float = 0.01,
+        total_magnetic_moment_tolerance: float = 0.01,
         mass_average: str = "geometric",
         eos_name: str = "BM4",
         volume_min: float = None,
@@ -430,8 +430,8 @@ workflows.NELM_reached(os.getcwd())
             oszicar_name (str, optional): Name of the OSZICAR file. Defaults to "OSZICAR.3static".
             contcar_name (str, optional): Name of the CONTCAR file. Defaults to "CONTCAR.3static".
             collect_mag_data (bool, optional): Whether to collect magnetic data. Defaults to False.
-            magmom_tolerance (float, optional): Tolerance for magnetic moment. Defaults to 1e-12.
-            total_magnetic_moment_tolerance (float, optional): Tolerance for total magnetic moment. Defaults to 1e-12.
+            magmom_tolerance (float, optional): Tolerance for magnetic moment. Defaults to 0.01.
+            total_magnetic_moment_tolerance (float, optional): Tolerance for total magnetic moment. Defaults to 0.01.
             mass_average (str, optional): Method for mass averaging. Defaults to "geometric".
             eos_name (str, optional): Name of the equation of state to fit. Defaults to "BM4".
             volume_min (float, optional): Minimum volume for fitting. Defaults to None.
@@ -872,22 +872,22 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 "multiplicity": self.multiplicity,
                 "reducedFormula": (
                     self.ev_curve.relaxed_structures[0].composition.reduced_formula
-                    if hasattr(self, "ev_curve")
+                    if getattr(self, "ev_curve", None) is not None
                     else None
                 ),
                 "nComponents": (
                     len(self.ev_curve.relaxed_structures[0].composition.elements)
-                    if hasattr(self, "ev_curve")
+                    if getattr(self, "ev_curve", None) is not None
                     else None
                 ),
                 "numberOfAtoms": (
-                    self.ev_curve.number_of_atoms if hasattr(self, "ev_curve") else None
+                    self.ev_curve.number_of_atoms if getattr(self, "ev_curve", None) is not None else None
                 ),
             },
         }
 
         # Update metadata with actual values if they exist
-        if hasattr(self, "metadata"):
+        if getattr(self, "metadata", None) is not None:
             document["metadata"].update(
                 {
                     "vaspVersion": self.metadata.vasp_version,
@@ -900,10 +900,8 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 }
             )
 
-        if hasattr(self, "ev_curve"):
+        if getattr(self, "ev_curve", None) is not None:
             eos_parameters = self.ev_curve.eos_parameters.copy()
-            ev_curve_settings_copy = self.ev_curve_settings_data.copy()
-            ev_curve_settings_copy.pop("volumes")
             number_of_atoms = self.ev_curve.number_of_atoms
 
             eos_parameters_ordered = OrderedDict()
@@ -942,7 +940,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 },
             }
         
-        if hasattr(self, "debye"):
+        if getattr(self, "debye", None) is not None:
             document["debye"] = {
                 "atomicMass": self.debye.atomic_mass,
                 "V0": self.debye.V0,
@@ -964,7 +962,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 return [convert_poly1d(v) for v in obj]
             return obj
 
-        if hasattr(self, "phonons"):
+        if getattr(self, "phonons", None) is not None:
             temperatures = self.phonons.temperatures
             min_temperature = min(temperatures)
             max_temperature = max(temperatures)
@@ -1005,7 +1003,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 },
             }
         
-        if hasattr(self, "thermal_electronic"):
+        if getattr(self, "thermal_electronic", None) is not None:
             temperatures = self.thermal_electronic.temperatures
             min_temperature = min(temperatures)
             max_temperature = max(temperatures)
@@ -1050,7 +1048,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 },
             }
         
-        if hasattr(self, "qha"):
+        if getattr(self, "qha", None) is not None:
             key_mapping = {
                 "debye": "debye",
                 "debye_thermal_electronic": "debyeThermalElectronic",
@@ -1106,19 +1104,14 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 "methods": methods_copy,
             }
         
-        if hasattr(self, "experiments"):
+        if getattr(self, "experiments", None) is not None:
             document["experiments"] = self.experiments
 
-        # Determine the field to use for comparison
-        comparison_field = "metadata.parentDatabaseId"
-        comparison_value = document["metadata"]["parentDatabaseId"]
+        # Use configuration.name as the unique identifier for upsert
+        unique_field = "configuration.name"
+        unique_value = document["configuration"]["name"]
 
-        if comparison_value is None:
-            comparison_field = "metadata.comment"
-            comparison_value = document["metadata"]["comment"]
-
-        # Check if a document with the same comparison field exists
-        existing_doc = self.collection.find_one({comparison_field: comparison_value})
+        existing_doc = self.collection.find_one({unique_field: unique_value})
 
         if existing_doc:
             # Preserve the original "created" field while updating the rest

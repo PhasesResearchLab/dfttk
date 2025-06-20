@@ -127,8 +127,8 @@ class EvCurveData:
         oszicar_name: str = "OSZICAR.3static",
         contcar_name: str = "CONTCAR.3static",
         collect_mag_data: bool = False,
-        magmom_tolerance: float = 1e-12,
-        total_magnetic_moment_tolerance: float = 1e-12,
+        magmom_tolerance: float = 0.01,
+        total_magnetic_moment_tolerance: float = 0.01,
         mass_average: str = "geometric",
     ) -> None:
         """
@@ -140,8 +140,8 @@ class EvCurveData:
             oszicar_name (str, optional): Name of the OSZICAR file. Defaults to "OSZICAR.3static".
             contcar_name (str, optional): Name of the CONTCAR file. Defaults to "CONTCAR.3static".
             collect_mag_data (bool, optional): Whether to collect magnetic data. Defaults to False.
-            magmom_tolerance (float, optional): Tolerance for magnetic moment. Defaults to 1e-12.
-            total_magnetic_moment_tolerance (float, optional): Tolerance for total magnetic moment. Defaults to 1e-12.
+            magmom_tolerance (float, optional): Tolerance for magnetic moment. Defaults to 1e-12. #TODO: change
+            total_magnetic_moment_tolerance (float, optional): Tolerance for total magnetic moment. Defaults to 1e-12.# TODO: change
             mass_average (str, optional): "arithmetic", "geometric", or "harmonic". Defaults to "geometric".
         """
 
@@ -169,10 +169,28 @@ class EvCurveData:
         # Store extracted data
         self.volumes = all_volumes
         self.energies = all_energies
-        self.mag_data = {
-            str(index): {f"{item[0]}": {item[2]: item[1]} for item in sublist}
-            for index, sublist in enumerate(all_mag_data_list.tolist())
-        }
+
+        # Convert all_mag_data_list to a list of dicts (one per volume)
+        self.mag_data = []
+        for mag_data_per_volume in all_mag_data_list:
+            element_dict = {}
+            for atom in mag_data_per_volume:
+                # atom is typically (atom_index, magmom, element) or (atom_index, element, magmom)
+                # Adjust the indices below if needed
+                if isinstance(atom, dict):
+                    element = atom.get("element")
+                    magmom = atom.get("magmom")
+                else:
+                    # Try to infer element and magmom position
+                    if isinstance(atom[1], str):
+                        element = atom[1]
+                        magmom = atom[2]
+                    else:
+                        element = atom[2]
+                        magmom = atom[1]
+                element_dict.setdefault(element, []).append(magmom)
+            self.mag_data.append(element_dict)
+
         self.total_magnetic_moment = all_total_magnetic_moments
         self.magnetic_ordering = all_magnetic_orderings
 
