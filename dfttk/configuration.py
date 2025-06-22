@@ -405,7 +405,7 @@ workflows.NELM_reached(os.getcwd())
 
     def process_ev_curve(
         self,
-        volumes: list[float] = None,
+        selected_volumes: list[float] = None,
         outcar_name: str = "OUTCAR.3static",
         oszicar_name: str = "OSZICAR.3static",
         contcar_name: str = "CONTCAR.3static",
@@ -425,7 +425,7 @@ workflows.NELM_reached(os.getcwd())
         and fits the energy-volume data to an equation of state.
 
         Args:
-            volumes (list[float], optional): List of volumes to process. Defaults to None.
+            selected_volumes (list[float], optional): List of volumes to process. Defaults to None.
             outcar_name (str, optional): Name of the OUTCAR file. Defaults to "OUTCAR.3static".
             oszicar_name (str, optional): Name of the OSZICAR file. Defaults to "OSZICAR.3static".
             contcar_name (str, optional): Name of the CONTCAR file. Defaults to "CONTCAR.3static".
@@ -442,11 +442,11 @@ workflows.NELM_reached(os.getcwd())
         self.ev_curve = EvCurveData(self.path, self.name)
 
         # Get VASP input
-        self.ev_curve.get_vasp_input(volumes)
+        self.ev_curve.get_vasp_input(selected_volumes)
 
         # Get energy-volume data
         self.ev_curve.get_energy_volume_data(
-            volumes=volumes,
+            selected_volumes=selected_volumes,
             outcar_name=outcar_name,
             oszicar_name=oszicar_name,
             contcar_name=contcar_name,
