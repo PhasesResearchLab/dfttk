@@ -274,9 +274,7 @@ def test_process_ev_curve():
         config_Al.ev_curve.magnetic_ordering, np.array([])
     ), f"Expected {np.array([])}, but got {config_Al.ev_curve.magnetic_ordering}"
 
-    assert np.array_equal(
-        config_Al.ev_curve.mag_data, {}
-    ), f"Expected [], but got {config_Al.ev_curve.mag_data}"
+    assert config_Al.ev_curve.mag_data == [], f"Expected [], but got {config_Al.ev_curve.mag_data}"
 
     expected_eos_parameters = {
         "V0": 66.10191547034127,

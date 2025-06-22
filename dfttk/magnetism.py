@@ -15,17 +15,17 @@ from dfttk.data_extraction import extract_tot_mag_data
 
 def determine_magnetic_ordering(
     df: pd.DataFrame,
-    magmom_tolerance: float = 1e-12,
-    total_magnetic_moment_tolerance: float = 1e-12,
+    magmom_tolerance: float = 0.01,
+    total_magnetic_moment_tolerance: float = 0.01,
 ) -> str:
     """Determines the magnetic ordering of a structure from the magnetization
     data in a pandas DataFrame. e.g. 'FM', 'AFM', 'FiM', 'NM', 'SF'.
 
     Args:
         df (pandas DataFrame): a pandas DataFrame containing the magnetization data.
-        magmom_tolerance (float, optional): the tolerance for the total magnetic moment on each atom to be considered zero.
+        magmom_tolerance (float, optional): the tolerance for the total magnetic moment on each atom to be considered zero. Defaults to 0.01 to handle floating point errors.
         Total_magmom_tolerance (float, optional) the tolerance for the sum of the total magnentic moments for each atom.
-        Defaults to 1e-12 to handle floating point errors.
+        Defaults to 0.01 to handle floating point errors.
 
     Returns:
         str: the magnetic ordering of the structure.
