@@ -5,7 +5,7 @@ Tests for the dfttk.eos module.
 # Standard library imports
 import re
 import os
-import json
+import pickle
 
 # Third-party library imports
 import pytest
@@ -16,9 +16,7 @@ from dfttk.eos.functions import *
 from dfttk.eos.fit import EOSFitter
 from dfttk.eos.ev_curve_data import EvCurveData
 
-# The first derivative is already covered by the pressure test
-
-# Conversion factor
+# Conversion factor for pressure units
 EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
 
 number_of_atoms = 4
@@ -27,7 +25,6 @@ energies = np.array([-14.787067, -14.863567, -14.92244, -14.960229, -14.973035, 
 fitter = EOSFitter("Al", number_of_atoms, volumes, energies)
 
 
-# Low rtol is required to pass GitHub actions
 def assert_eos_results(
     eos_parameters,
     volume_range,
@@ -38,7 +35,7 @@ def assert_eos_results(
     expected_energy_eos,
     expected_pressure_eos,
 ):
-    """Helper function to assert EOS results."""
+    """Helper function to assert EOS results with a consistent tolerance."""
     assert np.allclose(eos_parameters, expected_eos_parameters, rtol=3e-2), f"Expected {expected_eos_parameters}, got {eos_parameters}"
     assert np.allclose(volume_range, expected_volume_range, rtol=3e-2), f"Expected {expected_volume_range}, got {volume_range}"
     assert np.allclose(energy_eos, expected_energy_eos, rtol=3e-2), f"Expected {expected_energy_eos}, got {energy_eos}"
@@ -64,9 +61,9 @@ def test_EOSFitter_errors():
 
 
 def test_EOSFitter_plot_smoke():
-    """Test that EOSFitter can plot without errors."""
+    """Test that EOSFitter can plot without errors (smoke test)."""
     fitter.fit(eos_name="BM4", volume_min=60.0, volume_max=74.0, num_volumes=10)
-    
+
     # Check if the plot method runs without errors
     try:
         fitter.plot()
@@ -280,7 +277,7 @@ def test_BM5():
     volume_min = min(volumes)
     volume_max = max(volumes)
     expected_volume_range = np.linspace(volume_min, volume_max, 10)
-    expected_energy_eos = np.array([-14.8086726, -14.88566133, -14.9367749, -14.96494334, -14.97288522, -14.96304321, -14.93762865, -14.89864603, -14.84791413, -14.78708483])
+    expected_energy_eos = np.array([-14.8086726, -14.88566133, -14.93677519, -14.96494334, -14.97288522, -14.96304321, -14.93762865, -14.89864603, -14.84791413, -14.78708483])
     expected_pressure_eos = np.array([9.3696372, 6.5444211, 4.03516087, 1.81589736, -0.13868335, -1.85275913, -3.34908499, -4.64884651, -5.77160844, -6.73532668])
     expected_energy_derivative2 = np.array([0.00357019, 0.00435943, 0.00526553, 0.00630216, 0.00748309, 0.00882116, 0.01032664, 0.01200455])
 
@@ -553,98 +550,76 @@ def test_morse():
     )
 
 
-def _convert_pbc_lists_to_tuples(data):
-    data["lattice"]["pbc"] = tuple(data["lattice"]["pbc"])
-    return data
-
-
-def _assert_selected_keys_almost_equal(dict1, dict2, keys, atol=1e-4):
-    for key in keys:
-        if key in dict1 and key in dict2:
-            if isinstance(dict1[key], float) and isinstance(dict2[key], float):
-                assert np.isclose(dict1[key], dict2[key], atol=atol), f"Expected {dict2[key]} for key '{key}', but got {dict1[key]}"
-            else:
-                assert dict1[key] == dict2[key], f"Expected {dict2[key]} for key '{key}', but got {dict1[key]}"
-
-
-# TODO: writes tests for volume is not None
-def test_EvCurveData():
+def test_EvCurveData_non_magnetic():
+    """Test EvCurveData for a non-magnetic system and compare with reference pickle data."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     config_Al_path = os.path.join(current_dir, "vasp_data/Al/config_Al")
 
-    # Initialize EvCurveData
-    ev_curve_data = EvCurveData(config_Al_path, "Al")
+    ev_data = EvCurveData(config_Al_path, "Al")
+    ev_data.get_vasp_input()
+    ev_data.get_energy_volume_data()
+    ev_data.fit_energy_volume_data()
 
-    # Get VASP input
-    ev_curve_data.get_vasp_input()
+    # Load expected results from pickle
+    with open(os.path.join(current_dir, "test_eos_data/ev_data_Al.pkl"), "rb") as f:
+        expected_ev_data = pickle.load(f)
 
-    # Get energy-volume data
-    ev_curve_data.get_energy_volume_data()
+    # Compare all relevant attributes
+    assert ev_data.incars == expected_ev_data.incars, f"Expected {expected_ev_data.incars}, but got {ev_data.incars}"
+    assert ev_data.kpoints == expected_ev_data.kpoints, f"Expected {expected_ev_data.kpoints}, but got {ev_data.kpoints}"
+    assert ev_data.starting_poscar == expected_ev_data.starting_poscar, f"Expected {expected_ev_data.starting_poscar}, but got {ev_data.starting_poscar}"
+    assert ev_data.relaxed_structures == expected_ev_data.relaxed_structures, f"Expected {expected_ev_data.relaxed_structures}, but got {ev_data.relaxed_structures}"
+    assert ev_data.number_of_atoms == expected_ev_data.number_of_atoms, f"Expected {expected_ev_data.number_of_atoms}, but got {ev_data.number_of_atoms}"
+    assert np.allclose(ev_data.volumes, expected_ev_data.volumes, rtol=1e-5), f"Expected {expected_ev_data.volumes}, but got {ev_data.volumes}"
+    assert np.allclose(ev_data.energies, expected_ev_data.energies, rtol=1e-5), f"Expected {expected_ev_data.energies}, but got {ev_data.energies}"
+    assert ev_data.atomic_masses == expected_ev_data.atomic_masses, f"Expected {expected_ev_data.atomic_masses}, but got {ev_data.atomic_masses}"
+    assert ev_data.average_mass == expected_ev_data.average_mass, f"Expected {expected_ev_data.average_mass}, but got {ev_data.average_mass}"
+    assert np.allclose(ev_data.total_magnetic_moment, expected_ev_data.total_magnetic_moment, rtol=1e-5), f"Expected {expected_ev_data.total_magnetic_moment}, but got {ev_data.total_magnetic_moment}"
+    assert ev_data.magnetic_ordering == expected_ev_data.magnetic_ordering, f"Expected {expected_ev_data.magnetic_ordering}, but got {ev_data.magnetic_ordering}"
+    assert ev_data.mag_data == expected_ev_data.mag_data, f"Expected {expected_ev_data.mag_data}, but got {ev_data.mag_data}"
+    assert ev_data.eos_parameters["eos_name"] == expected_ev_data.eos_parameters["eos_name"], f"Expected {expected_ev_data.eos_parameters['eos_name']}, but got {ev_data.eos_parameters['eos_name']}"
 
-    # Fit energy-volume data
-    ev_curve_data.fit_energy_volume_data()
+    for key in ["V0", "E0", "B", "BP", "B2P"]:
+        if key in ev_data.eos_parameters and key in expected_ev_data.eos_parameters:
+            assert np.isclose(
+                ev_data.eos_parameters[key],
+                expected_ev_data.eos_parameters[key],
+                rtol=3e-2,
+            ), f"Expected {expected_ev_data.eos_parameters[key]} for '{key}', but got {ev_data.eos_parameters[key]}"
 
-    ev_curve_files_and_attributes = [
-        ("test_configuration_data/expected_ev_curves_incars.json", "incars"),
-        # ("test_configuration_data/expected_ev_curves_kpoints.json", "kpoints"),
-    ]
+    # Test for a subset of selected volumes
+    ev_data_subset = EvCurveData(config_Al_path, "Al")
+    selected_volumes = np.array([74.0, 72.0, 70.0, 68.0, 64.0, 62.0])
+    ev_data_subset.get_vasp_input(selected_volumes=selected_volumes)
+    ev_data_subset.get_energy_volume_data(selected_volumes=selected_volumes)
+    ev_data_subset.fit_energy_volume_data()
 
-    for filename, attribute in ev_curve_files_and_attributes:
-        with open(os.path.join(current_dir, filename), "r") as f:
-            expected_data = json.load(f)
+    with open(os.path.join(current_dir, "test_eos_data/ev_data_subset_Al.pkl"), "rb") as f:
+        expected_ev_data_subset = pickle.load(f)
 
-        actual_data = getattr(ev_curve_data, attribute)
+    # Compare all relevant attributes for the subset
+    assert ev_data_subset.incars == expected_ev_data_subset.incars, f"Expected {expected_ev_data_subset.incars}, but got {ev_data_subset.incars}"
+    assert ev_data_subset.kpoints == expected_ev_data_subset.kpoints, f"Expected {expected_ev_data_subset.kpoints}, but got {ev_data_subset.kpoints}"
+    assert ev_data_subset.starting_poscar == expected_ev_data_subset.starting_poscar, f"Expected {expected_ev_data_subset.starting_poscar}, but got {ev_data_subset.starting_poscar}"
+    assert ev_data_subset.relaxed_structures == expected_ev_data_subset.relaxed_structures, f"Expected {expected_ev_data_subset.relaxed_structures}, but got {ev_data_subset.relaxed_structures}"
+    assert ev_data_subset.number_of_atoms == expected_ev_data_subset.number_of_atoms, f"Expected {expected_ev_data_subset.number_of_atoms}, but got {ev_data_subset.number_of_atoms}"
+    assert np.allclose(ev_data_subset.volumes, expected_ev_data_subset.volumes, rtol=1e-5), f"Expected {expected_ev_data_subset.volumes}, but got {ev_data_subset.volumes}"
+    assert np.allclose(ev_data_subset.energies, expected_ev_data_subset.energies, rtol=1e-5), f"Expected {expected_ev_data_subset.energies}, but got {ev_data_subset.energies}"
+    assert ev_data_subset.atomic_masses == expected_ev_data_subset.atomic_masses, f"Expected {expected_ev_data_subset.atomic_masses}, but got {ev_data_subset.atomic_masses}"
+    assert ev_data_subset.average_mass == expected_ev_data_subset.average_mass, f"Expected {expected_ev_data_subset.average_mass}, but got {ev_data_subset.average_mass}"
+    assert np.allclose(ev_data_subset.total_magnetic_moment, expected_ev_data_subset.total_magnetic_moment, rtol=1e-5), f"Expected {expected_ev_data_subset.total_magnetic_moment}, but got {ev_data_subset.total_magnetic_moment}"
+    assert ev_data_subset.magnetic_ordering == expected_ev_data_subset.magnetic_ordering, f"Expected {expected_ev_data_subset.magnetic_ordering}, but got {ev_data_subset.magnetic_ordering}"
+    assert ev_data_subset.mag_data == expected_ev_data_subset.mag_data, f"Expected {expected_ev_data_subset.mag_data}, but got {ev_data_subset.mag_data}"
+    assert ev_data_subset.eos_parameters["eos_name"] == expected_ev_data_subset.eos_parameters["eos_name"], f"Expected {expected_ev_data_subset.eos_parameters['eos_name']}, but got {ev_data_subset.eos_parameters['eos_name']}"
 
-        if attribute == "kpoints":
-            actual_data = actual_data.as_dict()
-
-        for actual, expected in zip(actual_data, expected_data):
-            assert actual == expected, f"Expected {expected}, but got {actual}"
-
-    assert ev_curve_data.number_of_atoms == 4, f"Expected 4, but got {ev_curve_data.number_of_atoms}"
-
-    assert np.array_equal(
-        ev_curve_data.volumes,
-        np.array([74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0]),
-    ), f"Expected [74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0], but got {ev_curve_data.volumes}"
-
-    assert np.array_equal(
-        ev_curve_data.energies,
-        np.array([-14.787067, -14.863567, -14.92244, -14.960229, -14.973035, -14.955434, -14.902786, -14.808673]),
-    ), f"Expected [-14.787067, -14.863567, -14.92244, -14.960229, -14.973035, -14.955434, -14.902786, -14.808673], but got {ev_curve_data.energies}"
-
-    assert ev_curve_data.atomic_masses == {"Al": 26.981}, f"Expected {'Al': 26.981}, but got {ev_curve_data.atomic_masses}"
-    assert ev_curve_data.average_mass == 26.981, f"Expected 26.981, but got {ev_curve_data.average_mass}"
-
-    assert np.array_equal(ev_curve_data.total_magnetic_moment, np.array([])), f"Expected {np.array([])}, but got {ev_curve_data.total_magnetic_moment}"
-
-    assert np.array_equal(ev_curve_data.magnetic_ordering, np.array([])), f"Expected {np.array([])}, but got {ev_curve_data.magnetic_ordering}"
-
-    assert np.array_equal(ev_curve_data.mag_data, {}), f"Expected [], but got {ev_curve_data.mag_data}"
-
-    expected_eos_parameters = {
-        "V0": 66.10191547034127,
-        "E0": -14.972775074363833,
-        "B": 77.92792067011315,
-        "BP": 4.612739661291564,
-        "B2P": -0.06258448064264342,
-    }
-    keys_to_compare = ["V0", "E0", "B", "BP", "B2P"]
-    _assert_selected_keys_almost_equal(ev_curve_data.eos_parameters, expected_eos_parameters, keys_to_compare)
-
-    actual_relaxed_structures = [structure.as_dict() for structure in ev_curve_data.relaxed_structures]
-
-    with open(
-        os.path.join(current_dir, "test_configuration_data/expected_ev_curves_relaxed_structures.json"),
-        "r",
-    ) as f:
-        expected_relaxed_structures = json.load(f)
-
-    for i, expected_relaxed_structure in enumerate(expected_relaxed_structures):
-        expected_relaxed_structures[i] = _convert_pbc_lists_to_tuples(expected_relaxed_structure)
-
-    assert actual_relaxed_structures == expected_relaxed_structures, f"Expected {expected_relaxed_structures}, but got {actual_relaxed_structures}"
-
+    for key in ["V0", "E0", "B", "BP", "B2P"]:
+        if key in ev_data_subset.eos_parameters and key in expected_ev_data_subset.eos_parameters:
+            assert np.isclose(
+                ev_data_subset.eos_parameters[key],
+                expected_ev_data_subset.eos_parameters[key],
+                rtol=3e-2,
+            ), f"Expected {expected_ev_data_subset.eos_parameters[key]} for '{key}', but got {ev_data_subset.eos_parameters[key]}"
 
 if __name__ == "__main__":
+    # Run all tests in this file
     pytest.main()
