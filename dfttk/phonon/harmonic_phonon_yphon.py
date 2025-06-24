@@ -108,7 +108,7 @@ class HarmonicPhononYphon:
         self.phonon_dos = pd.concat(dataframes, ignore_index=True)
         self.volumes_per_atom = np.sort(self.phonon_dos["volume_per_atom"].unique())
 
-    def scale_dos(self, number_of_atoms: int, plot: bool = False) -> Optional[go.Figure]:
+    def scale_dos(self, number_of_atoms: int, plot: bool = False) -> None:
         """
         Scale the area under the phonon DOS to 3N, where N is the number of atoms.
 
@@ -184,7 +184,7 @@ class HarmonicPhononYphon:
                     ),
                     margin=dict(t=130),
                 )
-                return fig
+                fig.show()
 
         self.volumes = self.volumes_per_atom * number_of_atoms
         self.scaled_phonon_dos = vdos_data_scaled

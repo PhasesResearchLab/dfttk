@@ -888,7 +888,7 @@ def plot_thermal_electronic(
             )
         )
     plot_format(fig, "Temperature (K)", y_title)
-    fig.show()
+
     return fig
 
 
@@ -985,6 +985,5 @@ def plot_thermal_electronic_properties_fit(
         y_title = f"C<sub>v, el</sub> (eV/K/{number_of_atoms} atoms)"
 
     plot_format(fig, f"Volume (Å³/{number_of_atoms} atoms)", y_title)
-    fig.show()
 
     return fig

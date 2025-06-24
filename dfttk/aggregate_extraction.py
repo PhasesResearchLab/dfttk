@@ -35,8 +35,8 @@ def extract_configuration_data(
     oszicar_name: str = "OSZICAR.3static",
     contcar_name: str = "CONTCAR.3static",
     collect_mag_data: bool = False,
-    magmom_tolerance: float = 1e-12,
-    total_magnetic_moment_tolerance: float = 1e-12,
+    magmom_tolerance: float = 0.01,
+    total_magnetic_moment_tolerance: float = 0.01,
     mass_average: str = "geometric",
 ) -> pd.DataFrame:
     """Extracts the volume, configuration, energy, number of atoms, and magnetization data (if specified) from calculations
@@ -49,7 +49,9 @@ def extract_configuration_data(
         contcar_name: name of the CONTCAR file. Defaults to "CONTCAR".
         collect_mag_data: if True, collect the magnetization data using extract_tot_mag_data. Defaults to
         False.
-        magmom_tolerance: the tolerance for the total magnetic moment to be considered zero. Defaults to 0.
+        magmom_tolerance: the tolerance for the total magnetic moment to be considered zero. Defaults to 0.01 to handle floating point errors.
+        total_magnetic_moment_tolerance: the tolerance for the sum of the total magnetic moments for each atom.
+        Defaults to 0.01 to handle floating point errors.
         mass_average: the method used to calculate the average atomic mass. Options are "geometric" and "arithmetic".
 
     Returns:

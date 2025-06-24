@@ -208,7 +208,7 @@ class QuasiHarmonic:
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=x, y=y, mode="lines", marker=dict(size=10)))
             plot_format(fig, x_label, y_label, width=650, height=600)
-            fig.show()
+            
             return fig
 
         if plot_type == "helmholtz_energy_pv":
@@ -242,7 +242,7 @@ class QuasiHarmonic:
                 width=650,
                 height=600,
             )
-            fig.show()
+
             return fig
 
         plot_mappings = {
