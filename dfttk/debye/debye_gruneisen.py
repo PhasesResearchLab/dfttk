@@ -290,7 +290,6 @@ class DebyeGruneisen:
                     )
                 )
         plot_format(fig_debye_t, "Temperature (K)", y_label)
-        fig_debye_t.show()
 
         fig_debye_v = go.Figure()
         if selected_temperatures is None:
@@ -314,6 +313,5 @@ class DebyeGruneisen:
                 )
             )
         plot_format(fig_debye_v, "Volume (\u212B<sup>3</sup>)", y_label)
-        fig_debye_v.show()
 
         return fig_debye_t, fig_debye_v
