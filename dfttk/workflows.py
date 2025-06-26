@@ -16,6 +16,7 @@ from natsort import natsorted
 # Local application/library specific imports
 from custodian.custodian import Custodian
 from custodian.vasp.jobs import VaspJob
+from custodian.vasp.handlers import VaspErrorHandler
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp import Incar
 from pymatgen.io.vasp.inputs import Kpoints
@@ -178,8 +179,60 @@ def NELM_reached(path: str) -> None:
                 for line in file:
                     if target_line in line:
                         print(f"{filepath} has reached NELM.")
-                        break
+                        break   
 
+class SingleJobWorkflow:
+    def __init__(
+        self,
+        path: str,
+        vasp_cmd: list[str],
+        error_msgs: list[str] = list(VaspErrorHandler.error_msgs.keys()),
+        max_errors: int = 10,
+        vaspjob_kwargs: dict = None,
+        custodian_kwargs: dict = None,
+    ):
+        self.path = path
+        self.vasp_cmd = vasp_cmd
+        self.error_msgs = error_msgs
+        self.max_errors = max_errors
+        self.vaspjob_kwargs = vaspjob_kwargs or {}
+        self.custodian_kwargs = custodian_kwargs or {}
+
+    def write_run_dfttk(self) -> None:
+        run_dfttk_script = f"""
+import os
+from dfttk.workflows import SingleJobWorkflow
+
+workflow = SingleJobWorkflow(
+    path=".",
+    vasp_cmd={self.vasp_cmd},
+    error_msgs={self.error_msgs},
+    max_errors={self.max_errors},
+    vaspjob_kwargs={self.vaspjob_kwargs},
+    custodian_kwargs={self.custodian_kwargs}
+)
+workflow.run()
+""".strip()
+
+        with open(os.path.join(self.path, "run_dfttk.py"), "w") as file:
+            file.write(run_dfttk_script)
+
+    def run(self) -> None:
+        original_dir = os.getcwd()
+        os.chdir(self.path)
+        step1 = VaspJob(
+            vasp_cmd=self.vasp_cmd,
+            final=True,
+            backup=False,
+            **self.vaspjob_kwargs
+        )
+
+        handlers = [VaspErrorHandler(errors_subset_to_catch=self.error_msgs)]
+        jobs = [step1]
+        c = Custodian(handlers, jobs, max_errors=self.max_errors, **self.custodian_kwargs)
+        c.run()
+        os.chdir(original_dir)
+    
 
 def three_step_relaxation(
     path: str,
