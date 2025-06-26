@@ -4,15 +4,14 @@ Tests for the dfttk.phonon module.
 
 # Standard library imports
 import os
-import pickle
 import re
+import pickle
 
 # Third-party imports
+import pytest
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import pytest
-from unittest.mock import patch
 
 # DFTTK imports
 from dfttk.phonon.harmonic_phonon_yphon import HarmonicPhononYphon
