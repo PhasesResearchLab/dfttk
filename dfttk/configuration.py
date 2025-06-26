@@ -21,9 +21,11 @@ import pandas as pd
 from pymongo import MongoClient
 from bson import ObjectId
 import plotly.graph_objects as go
+from custodian.vasp.handlers import VaspErrorHandler
 
 # DFTTK Module Imports
 import dfttk.vasp_input as vasp_input
+from dfttk.workflows import SingleJobWorkflow
 from dfttk.aggregate_extraction import (
     calculate_encut_conv,
     calculate_kpoint_conv,
@@ -158,25 +160,37 @@ class Configuration:
     def run_volume_relax(
         self,
         material_type: str,
+        error_msgs: list[str] = list(VaspErrorHandler.error_msgs.keys()),
+        max_errors: int = 10,
         encut: int = 520,
         kppa: int = 4000,
         magmom_fm: bool = False,
         potcar_functional: str = "PBE_54",
         incar_functional: str = "PBE",
         other_settings: dict = None,
+        vaspjob_kwargs: dict = None,
+        custodian_kwargs: dict = None,
     ) -> None:
         """
         Set up and submit a volume relaxation job.
 
         Args:
             material_type (str): Type of material (e.g., "metal" or "non_metal").
+            error_msgs (list[str], optional): List of error messages for VaspErrorHandler. Defaults to all known messages.
+            max_errors (int, optional): Maximum number of errors allowed before Custodian stops. Defaults to 10.
             encut (int, optional): Plane-wave cutoff energy. Defaults to 520.
             kppa (int, optional): K-points per reciprocal atom. Defaults to 4000.
             magmom_fm (bool, optional): Use ferromagnetic magmom. Defaults to False.
             potcar_functional (str, optional): POTCAR functional. Defaults to "PBE_54".
             incar_functional (str, optional): INCAR functional. Defaults to "PBE".
-            other_settings (dict, optional): Additional VASP settings. Defaults to None.
+            other_settings (dict, optional): Additional VASP INCAR/KPOINTS settings. Defaults to None.
+            vaspjob_kwargs (dict, optional): Additional keyword arguments to pass to VaspJob (e.g., output_file, stderr_file).
+            custodian_kwargs (dict, optional): Additional keyword arguments to pass to Custodian (e.g., scratch_dir, gzipped_output).
+
+        Returns:
+            None
         """
+        # Write VASP input files
         if other_settings is None:
             other_settings = {}
 
@@ -190,7 +204,19 @@ class Configuration:
             incar_functional,
             other_settings,
         )
-
+        
+        # Write run_dfttk.py script
+        workflow = SingleJobWorkflow(
+            path=self.path,
+            vasp_cmd=self.vasp_cmd,
+            error_msgs=error_msgs,
+            max_errors=max_errors,
+            vaspjob_kwargs=vaspjob_kwargs,
+            custodian_kwargs=custodian_kwargs,
+            )
+        workflow.write_run_dfttk()
+        
+        # Submit the job using SLURM
         subprocess.run(["sbatch", "job.sh"], cwd=self.path)
 
     # TODO: add a way to select the custodian handlers
