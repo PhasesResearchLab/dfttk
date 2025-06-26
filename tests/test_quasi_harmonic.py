@@ -7,7 +7,7 @@ import os
 import json
 
 # Third-party library imports
-import pytest
+import pickle
 import numpy as np
 
 # DFTTK imports
@@ -42,13 +42,11 @@ electronic_helmholtz_energy = np.vstack(config_Al.thermal_electronic.f_el_fit)
 electronic_entropy = np.vstack(config_Al.thermal_electronic.s_el_fit)
 electronic_heat_capacity = np.vstack(config_Al.thermal_electronic.cv_el_fit)
 
-properties = ("helmholtz_energy", "entropy", "heat_capacity", "helmholtz_energy_pv", "V0", "G0", "S0", "H0", "B", "BP", "CTE", "LCTE", "Cp")
-
-RTOL = 2.5e-5  
+RTOL = 2.5e-5
 
 
-def test_QuasiHarmonic():
-    """Test QuasiHarmonic results against reference data."""
+def test_quasiharmonic_regression():
+    """Regression test: QuasiHarmonic results against reference data."""
     qha.process(
         "debye",
         energy_eos,
@@ -67,61 +65,32 @@ def test_QuasiHarmonic():
         electronic_heat_capacity,
     )
 
-    assert qha.number_of_atoms == number_of_atoms
-    assert np.allclose(qha.volumes, volumes)
-    assert np.allclose(qha.temperatures, temperatures)
+    with open(os.path.join(current_dir, "test_quasi_harmonic_data/expected_qha.pkl"), "rb") as f:
+        expected_qha = pickle.load(f)
 
-    files_and_attributes = [
-        ("test_quasi_harmonic_data/qha_debye.json", "debye"),
-        ("test_quasi_harmonic_data/qha_debye_thermal_electronic.json", "debye_thermal_electronic"),
-    ]
+    assert qha.number_of_atoms == expected_qha.number_of_atoms
+    assert np.allclose(qha.volumes, expected_qha.volumes)
+    assert np.allclose(qha.temperatures, expected_qha.temperatures)
 
-    methods_copy = qha.methods
-    for filename, attribute in files_and_attributes:
-        with open(os.path.join(current_dir, filename), "r") as f:
-            expected_data = json.load(f)
+    # Debye
+    assert qha.methods["debye"]["helmholtz_energy"]["eos_constants"]["eos_name"] == expected_qha.methods["debye"]["helmholtz_energy"]["eos_constants"]["eos_name"]
+    assert np.allclose(qha.methods["debye"]["helmholtz_energy"]["values"], expected_qha.methods["debye"]["helmholtz_energy"]["values"], rtol=RTOL)
+    assert np.allclose(qha.methods["debye"]["entropy"]["values"], expected_qha.methods["debye"]["entropy"]["values"], rtol=RTOL)
+    assert np.allclose(qha.methods["debye"]["heat_capacity"]["values"], expected_qha.methods["debye"]["heat_capacity"]["values"], rtol=RTOL)
+    assert qha.methods["debye"]["0_GPa"]["helmholtz_energy_pv"]["eos_constants"]["eos_name"] == expected_qha.methods["debye"]["0_GPa"]["helmholtz_energy_pv"]["eos_constants"]["eos_name"]
+    assert np.allclose(qha.methods["debye"]["0_GPa"]["helmholtz_energy_pv"]["values"], expected_qha.methods["debye"]["0_GPa"]["helmholtz_energy_pv"]["values"], rtol=RTOL)
+    for prop in ("V0", "G0", "S0", "H0", "B", "BP", "CTE", "LCTE", "Cp"):
+        assert np.allclose(qha.methods["debye"]["0_GPa"][prop], expected_qha.methods["debye"]["0_GPa"][prop], rtol=RTOL)
 
-        for prop in properties:
-            if prop == "helmholtz_energy":
-                expected_consts = expected_data[prop]["eos_constants"]
-                actual_consts = methods_copy[attribute][prop]["eos_constants"]
+    # Debye + thermal electronic
+    assert qha.methods["debye_thermal_electronic"]["helmholtz_energy"]["eos_constants"]["eos_name"] == expected_qha.methods["debye_thermal_electronic"]["helmholtz_energy"]["eos_constants"]["eos_name"]
+    assert np.allclose(qha.methods["debye_thermal_electronic"]["helmholtz_energy"]["values"], expected_qha.methods["debye_thermal_electronic"]["helmholtz_energy"]["values"], rtol=RTOL)
+    assert np.allclose(qha.methods["debye_thermal_electronic"]["entropy"]["values"], expected_qha.methods["debye_thermal_electronic"]["entropy"]["values"], rtol=RTOL)
+    assert np.allclose(qha.methods["debye_thermal_electronic"]["heat_capacity"]["values"], expected_qha.methods["debye_thermal_electronic"]["heat_capacity"]["values"], rtol=RTOL)
+    assert qha.methods["debye_thermal_electronic"]["0_GPa"]["helmholtz_energy_pv"]["eos_constants"]["eos_name"] == expected_qha.methods["debye_thermal_electronic"]["0_GPa"]["helmholtz_energy_pv"]["eos_constants"]["eos_name"]
+    assert np.allclose(qha.methods["debye_thermal_electronic"]["0_GPa"]["helmholtz_energy_pv"]["values"], expected_qha.methods["debye_thermal_electronic"]["0_GPa"]["helmholtz_energy_pv"]["values"], rtol=RTOL)
+    for prop in ("V0", "G0", "S0", "H0", "B", "BP", "CTE", "LCTE", "Cp"):
+        assert np.allclose(qha.methods["debye_thermal_electronic"]["0_GPa"][prop], expected_qha.methods["debye_thermal_electronic"]["0_GPa"][prop], rtol=RTOL)
 
-                assert expected_consts["eos_name"] == actual_consts["eos_name"]
-                expected_consts.pop("eos_name", None)
-                actual_consts.pop("eos_name", None)
-
-                expected_vals = np.array(expected_data[prop]["values"])
-                actual_vals = methods_copy[attribute][prop]["values"]
-                assert np.allclose(expected_vals, actual_vals, rtol=RTOL), f"Expected {expected_vals}, but got {actual_vals} with tolerance {RTOL}"
-
-            elif prop == "helmholtz_energy_pv":
-                expected_consts = expected_data["0_GPa"][prop]["eos_constants"]
-                actual_consts = methods_copy[attribute]["0_GPa"][prop]["eos_constants"]
-
-                expected_vals = np.array(expected_data["0_GPa"][prop]["values"])
-                actual_vals = methods_copy[attribute]["0_GPa"][prop]["values"]
-                assert np.allclose(expected_vals, actual_vals, rtol=RTOL), f"Expected {expected_vals}, but got {actual_vals} with tolerance {RTOL}"
-
-                assert expected_consts["eos_name"] == actual_consts["eos_name"]
-                expected_consts.pop("eos_name", None)
-                actual_consts.pop("eos_name", None)
-
-            elif prop in ("entropy", "heat_capacity"):
-                expected_consts = expected_data[prop]["poly_coeffs"]
-                actual_consts = methods_copy[attribute][prop]["poly_coeffs"]
-
-                expected_vals = np.array(expected_data[prop]["values"])
-                actual_vals = methods_copy[attribute][prop]["values"]
-                assert np.allclose(expected_vals, actual_vals, rtol=RTOL), f"Expected {expected_vals}, but got {actual_vals} with tolerance {RTOL}"
-
-            elif prop in ("V0", "G0", "S0", "H0", "B", "BP", "CTE", "LCTE", "Cp"):
-                expected_arr = np.array(expected_data["0_GPa"][prop])
-                actual_arr = methods_copy[attribute]["0_GPa"][prop]
-                assert np.allclose(expected_arr, actual_arr, rtol=RTOL), f"Expected {expected_arr}, but got {actual_arr} with tolerance {RTOL}"
-
-            # The temperature-dependent eos_constants and poly_coeffs are not checked due to large differences during GitHub testing
-            # But as long as the other properties are correct, we can assume the temperature-dependent properties are also correct
-
-
-if __name__ == "__main__":
-    pytest.main()
+    # The temperature-dependent eos_constants and poly_coeffs are not checked due to large differences during GitHub testing
+    # But as long as the other properties are correct, we can assume the temperature-dependent properties are also correct
