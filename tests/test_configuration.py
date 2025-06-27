@@ -560,10 +560,10 @@ def test_process_qha():
         properties = ["helmholtz_energy_pv", "entropy", "heat_capacity"]
         for property in properties:
             if property == "helmholtz_energy_pv":
-                expected_property_data = expected_data["0_GPa"][property][
+                expected_property_data = expected_data["0.00_GPa"][property][
                     "eos_constants"
                 ]
-                actual_property_data = methods_copy[attribute]["0_GPa"][property][
+                actual_property_data = methods_copy[attribute]["0.00_GPa"][property][
                     "eos_constants"
                 ]
                 expected_property_data.pop("eos_name", None)
@@ -586,7 +586,3 @@ def test_process_qha():
                         assert np.allclose(
                             expected, actual, rtol=2e-2
                         ), f"Expected {expected}, but got {actual} with tolerance 2e-2"
-
-
-if __name__ == "__main__":
-    pytest.main()

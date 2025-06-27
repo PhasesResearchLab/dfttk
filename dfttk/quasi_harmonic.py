@@ -45,7 +45,7 @@ class QuasiHarmonic:
         electronic_helmholtz_energy: np.ndarray = None,
         electronic_entropy: np.ndarray = None,
         electronic_heat_capacity: np.ndarray = None,
-        P: float = 0.0,
+        P: float = 0.00,
         eos_name: str = "BM4",
     ) -> None:
         """
@@ -60,8 +60,13 @@ class QuasiHarmonic:
             electronic_helmholtz_energy (np.ndarray, optional): Electronic helmholtz energies (shape: [n_temps, n_volumes]). Defaults to None.
             electronic_entropy (np.ndarray, optional): Electronic entropies (shape: [n_temps, n_volumes]). Defaults to None.
             electronic_heat_capacity (np.ndarray, optional): Electronic heat capacities (shape: [n_temps, n_volumes]). Defaults to None.
-            P (float, optional): Pressure in GPa. Defaults to 0.0.
+            P (float, optional): Pressure in GPa. Defaults to 0.00.
             eos_name (str, optional): Equation of state to use. Defaults to "BM4".
+
+        Raises:
+            ValueError: If the array does not have the expected shape.
+            ValueError: If P is negative.
+            ValueError: If eos_name is not a supported EOS function.
         """
 
         # Convert P from GPa to eV/Å³
@@ -89,9 +94,9 @@ class QuasiHarmonic:
         helmholtz_eos_constants = np.empty((n_temps, 5))
         helmholtz_pv_eos_constants = np.empty((n_temps, 5))
         entropy = np.empty((n_temps, n_vols))
-        entropy_poly_coeffs = np.empty((n_temps, 3))
+        entropy_poly_coeffs = np.empty((n_temps, 3))  # Assuming 2nd degree polynomial coefficients
         heat_capacity = np.empty((n_temps, n_vols))
-        heat_capacity_poly_coeffs = np.empty((n_temps, 3))
+        heat_capacity_poly_coeffs = np.empty((n_temps, 3))  # Assuming 2nd degree polynomial coefficients
         V0 = np.empty(n_temps)
         G0 = np.empty(n_temps)
         S0 = np.empty(n_temps)
@@ -155,7 +160,7 @@ class QuasiHarmonic:
                 "poly_coeffs": {f"{t}K": heat_capacity_poly_coeffs[i] for i, t in enumerate(self.temperatures)},
                 "values": heat_capacity,
             },
-            f"{int(P)}_GPa": {
+            f"{P:.2f}_GPa": {
                 "helmholtz_energy_pv": {
                     "eos_constants": {"eos_name": eos_name, **{f"{t}K": dict(zip("abcde", helmholtz_pv_eos_constants[i])) for i, t in enumerate(self.temperatures)}},
                     "values": helmholtz_energy_pv,
@@ -190,8 +195,16 @@ class QuasiHarmonic:
 
         Returns:
             go.Figure: Plotly figure object for the selected data.
+
+        Raises:
+            ValueError: If the requested method or pressure data is not available.
+            ValueError: If plot_type is not recognized.
         """
-        data = self.methods[method][f"{int(P)}_GPa"]
+
+        if f"{P:.2f}_GPa" not in self.methods[method]:
+            raise ValueError(f"No data found for method '{method}' at {P} GPa. Call the 'process' method first for this method and pressure.")
+
+        data = self.methods[method][f"{P:.2f}_GPa"]
         V0, G0, S0, H0, B, BP, CTE, LCTE, Cp = (data["V0"], data["G0"], data["S0"], data["H0"], data["B"], data["BP"], data["CTE"], data["LCTE"], data["Cp"])
         helmholtz_energy_pv = data["helmholtz_energy_pv"]["values"]
 
@@ -202,13 +215,16 @@ class QuasiHarmonic:
             if selected_temperatures[-1] != self.temperatures[-1]:
                 selected_temperatures = np.append(selected_temperatures, self.temperatures[-1])
         else:
-            selected_temperatures = selected_temperatures
+            # Map each requested temperature to the closest available
+            selected_temperatures = np.array([self.temperatures[np.abs(self.temperatures - t).argmin()] for t in selected_temperatures])
+            # Remove duplicates in case multiple requested temps map to the same available temp
+            selected_temperatures = np.unique(selected_temperatures)
 
         def create_plot(x, y, x_label, y_label):
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=x, y=y, mode="lines", marker=dict(size=10)))
             plot_format(fig, x_label, y_label, width=650, height=600)
-            
+
             return fig
 
         if plot_type == "helmholtz_energy_pv":
@@ -262,8 +278,8 @@ class QuasiHarmonic:
             fig = create_plot(x, y, "Temperature (K)", y_label)
             return fig
 
-        # If plot_type is not recognized, return an empty figure
-        return go.Figure()
+        # Raise error for unknown plot_type
+        raise ValueError(f"Unknown plot_type '{plot_type}'. Valid options are: {list(plot_mappings.keys()) + ['helmholtz_energy_pv']}")
 
     def _check_shape(
         self,
@@ -303,6 +319,9 @@ class QuasiHarmonic:
 
         Returns:
             tuple: (eos_constants, eos_parameters)
+
+        Raises:
+            ValueError: If eos_name is not a supported EOS function.
         """
         eos_fit_functions = {
             "mBM4": eos_functions.mBM4,
@@ -315,11 +334,12 @@ class QuasiHarmonic:
             "vinet": eos_functions.vinet,
             "morse": eos_functions.morse,
         }
+        if eos_name not in eos_fit_functions:
+            raise ValueError(f"Unknown EOS function '{eos_name}'. Valid options are: {list(eos_fit_functions.keys())}")
         try:
             eos_constants, eos_parameters, _, _, _ = eos_fit_functions[eos_name](volumes, energies)
         except RuntimeError as e:
             print(f"Error fitting EOS at {temperature} K: {e}")
-            print(f"Suggestion: Try using a different EOS. Available options are: {list(eos_fit_functions.keys())}")
             eos_constants = eos_parameters = np.full(5, np.nan)
         return eos_constants, eos_parameters
 
