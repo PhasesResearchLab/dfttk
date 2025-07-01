@@ -35,7 +35,7 @@ class EvCurveData:
         self.incars = []
         self.kpoints = []
         self.potcar = None
-        self.starting_poscar = None
+        self.initial_poscar = None
 
         # VASP output files
         self.relaxed_structures = []
@@ -105,7 +105,7 @@ class EvCurveData:
             self.potcar = None
 
         # Read the starting POSCAR file
-        self.starting_poscar = Structure.from_file(os.path.join(self.path, "POSCAR"))
+        self.initial_poscar = Structure.from_file(os.path.join(self.path, "POSCAR"))
 
     def get_energy_volume_data(
         self,

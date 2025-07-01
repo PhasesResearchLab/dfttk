@@ -864,7 +864,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         else:
             return d
 
-    def to_mongodb(self, connection_string: str, db_name: str, collection_name: str):
+    def to_mongodb(self, connection_string: str, db_name: str, collection_name: str) -> dict:
         """
         Connect to a MongoDB database collection for storing configuration data.
 
@@ -875,6 +875,9 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
 
         This method initializes the MongoDB client, selects the specified database and collection,
         and prepares the object for subsequent data insertion or updates.
+        
+        Returns:
+            dict: A dictionary representation of the configuration object, ready for insertion into MongoDB.
         """
         self.cluster = MongoClient(connection_string)
         self.db = self.cluster[db_name]
@@ -936,7 +939,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
 
             document["evCurve"] = {
                 "input": {
-                    "poscar": self.ev_curve.starting_poscar.as_dict(),
+                    "initialPoscar": self.ev_curve.initial_poscar.as_dict(),
                     "incars": self.ev_curve.incars,
                     "kpoints": [
                         {key: kp.as_dict() for key, kp in kpoints_dict.items()}
@@ -998,7 +1001,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             entropy = convert_poly1d(self.phonons._entropy_fit_to_db)
             heat_capacity = convert_poly1d(self.phonons._heat_capacity_fit_to_db)
 
-            key_mapping = {"poly_coeffs": "polynomialCoefficients"}
+            key_mapping = {"poly_coeffs": "polyCoeffs"}
             helmholtz_energy = self.replace_keys(helmholtz_energy, key_mapping)
             entropy = self.replace_keys(entropy, key_mapping)
             heat_capacity = self.replace_keys(heat_capacity, key_mapping)
@@ -1041,7 +1044,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             entropy = convert_poly1d(self.thermal_electronic.entropy_fit)
             heat_capacity = convert_poly1d(self.thermal_electronic.heat_capacity_fit)
 
-            key_mapping = {"polynomial_coefficients": "polynomialCoefficients"}
+            key_mapping = {"polynomial_coefficients": "polyCoeffs"}
             helmholtz_energy = self.replace_keys(helmholtz_energy, key_mapping)
             entropy = self.replace_keys(entropy, key_mapping)
             heat_capacity = self.replace_keys(heat_capacity, key_mapping)
@@ -1084,7 +1087,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 "heat_capacity": "heatCapacity",
                 "eos_parameters": "eosParameters",
                 "eos_name": "eosName",
-                "poly_coeffs": "polynomialCoefficients",
+                "poly_coeffs": "polyCoeffs",
             }
 
             def remove_values_and_convert_arrays(d):
@@ -1150,6 +1153,8 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
 
         # Close the MongoDB connection
         self.cluster.close()
+        
+        return document
 
 
 def plot_multiple_ev(
