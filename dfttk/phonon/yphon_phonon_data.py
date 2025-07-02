@@ -34,17 +34,17 @@ class YphonPhononData:
         number_of_atoms (int): Number of atoms used for scaling the phonon DOS.
         volumes (np.ndarray): Array of volumes for each structure, shape (n_volumes,).
         temperatures (np.ndarray): Array of temperatures used for thermodynamic calculations, shape (n_temperatures,).
-        helmholtz_energy (np.ndarray): Helmholtz free energy (eV/atom), shape (n_temperatures, n_volumes).
-        internal_energy (np.ndarray): Internal energy (eV/atom), shape (n_temperatures, n_volumes).
-        entropy (np.ndarray): Entropy (eV/K/atom), shape (n_temperatures, n_volumes).
-        heat_capacity (np.ndarray): Heat capacity (eV/K/atom), shape (n_temperatures, n_volumes).
+        helmholtz_energies (np.ndarray): Helmholtz free energy (eV/atom), shape (n_temperatures, n_volumes).
+        internal_energies (np.ndarray): Internal energy (eV/atom), shape (n_temperatures, n_volumes).
+        entropies (np.ndarray): Entropy (eV/K/atom), shape (n_temperatures, n_volumes).
+        heat_capacities (np.ndarray): Heat capacity (eV/K/atom), shape (n_temperatures, n_volumes).
         volumes_fit (np.ndarray): Volumes used for polynomial fits, shape (n_volumes_fit,).
-        helmholtz_energy_fit (dict): Fitted Helmholtz energy data.
-        entropy_fit (dict): Fitted entropy data.
-        heat_capacity_fit (dict): Fitted heat capacity data.
-        helmholtz_energy_poly_coeffs (np.ndarray): Polynomial coefficients for Helmholtz energy fits.
-        entropy_poly_coeffs (np.ndarray): Polynomial coefficients for entropy fits.
-        heat_capacity_poly_coeffs (np.ndarray): Polynomial coefficients for heat capacity fits.
+        helmholtz_energies_fit (dict): Fitted Helmholtz energy data.
+        entropies_fit (dict): Fitted entropy data.
+        heat_capacities_fit (dict): Fitted heat capacity data.
+        helmholtz_energies_poly_coeffs (np.ndarray): Polynomial coefficients for Helmholtz energy fits.
+        entropies_poly_coeffs (np.ndarray): Polynomial coefficients for entropy fits.
+        heat_capacities_poly_coeffs (np.ndarray): Polynomial coefficients for heat capacity fits.
         _harmonic_phonon (HarmonicPhononYphon): Cached instance for calculations and plotting.
         _helmholtz_energy_to_db (dict): Helmholtz energy data formatted for database export.
         _internal_energy_to_db (dict): Internal energy data formatted for database export.
@@ -72,18 +72,18 @@ class YphonPhononData:
         self.number_of_atoms: int = None
         self.volumes: np.ndarray = None
         self.temperatures: np.ndarray = None
-        self.helmholtz_energy: np.ndarray = None
-        self.internal_energy: np.ndarray = None
-        self.entropy: np.ndarray = None
-        self.heat_capacity: np.ndarray = None
+        self.helmholtz_energies: np.ndarray = None
+        self.internal_energies: np.ndarray = None
+        self.entropies: np.ndarray = None
+        self.heat_capacities: np.ndarray = None
 
         self.volumes_fit: np.ndarray = None
-        self.helmholtz_energy_fit: np.ndarray = None
-        self.entropy_fit: np.ndarray = None
-        self.heat_capacity_fit: np.ndarray = None
-        self.helmholtz_energy_poly_coeffs: np.ndarray = None
-        self.entropy_poly_coeffs: np.ndarray = None
-        self.heat_capacity_poly_coeffs: np.ndarray = None
+        self.helmholtz_energies_fit: np.ndarray = None
+        self.entropies_fit: np.ndarray = None
+        self.heat_capacities_fit: np.ndarray = None
+        self.helmholtz_energies_poly_coeffs: np.ndarray = None
+        self.entropies_poly_coeffs: np.ndarray = None
+        self.heat_capacities_poly_coeffs: np.ndarray = None
         self._harmonic_phonon = None  # cache the instance
 
     def process_phonon_dos(self):
@@ -183,26 +183,26 @@ class YphonPhononData:
         self.volumes = self._volumes_per_atom * self.number_of_atoms
         self.temperatures = temperatures
         hp.calculate_harmonic(temperatures)
-        self.helmholtz_energy = hp.helmholtz_energy
-        self.internal_energy = hp.internal_energy
-        self.entropy = hp.entropy
-        self.heat_capacity = hp.heat_capacity
+        self.helmholtz_energies = hp.helmholtz_energies
+        self.internal_energies = hp.internal_energies
+        self.entropies = hp.entropies
+        self.heat_capacities = hp.heat_capacities
         hp.fit_harmonic(order=order)
         self.volumes_fit = hp.volumes_fit
-        self.helmholtz_energy_fit = hp.helmholtz_energy_fit
-        self.entropy_fit = hp.entropy_fit
-        self.heat_capacity_fit = hp.heat_capacity_fit
-        self.helmholtz_energy_poly_coeffs = hp.helmholtz_energy_poly_coeffs
-        self.entropy_poly_coeffs = hp.entropy_poly_coeffs
-        self.heat_capacity_poly_coeffs = hp.heat_capacity_poly_coeffs
+        self.helmholtz_energies_fit = hp.helmholtz_energies_fit
+        self.entropies_fit = hp.entropies_fit
+        self.heat_capacities_fit = hp.heat_capacities_fit
+        self.helmholtz_energies_poly_coeffs = hp.helmholtz_energies_poly_coeffs
+        self.entropies_poly_coeffs = hp.entropies_poly_coeffs
+        self.heat_capacities_poly_coeffs = hp.heat_capacities_poly_coeffs
 
-        self._helmholtz_energy_to_db = {f"{temp}K": self.helmholtz_energy[i] for i, temp in enumerate(self.temperatures)}
-        self._internal_energy_to_db = {f"{temp}K": self.internal_energy[i] for i, temp in enumerate(self.temperatures)}
-        self._entropy_to_db = {f"{temp}K": self.entropy[i] for i, temp in enumerate(self.temperatures)}
-        self._heat_capacity_to_db = {f"{temp}K": self.heat_capacity[i] for i, temp in enumerate(self.temperatures)}
-        self._helmholtz_energy_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.helmholtz_energy_poly_coeffs)}}
-        self._entropy_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.entropy_poly_coeffs)}}
-        self._heat_capacity_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.heat_capacity_poly_coeffs)}}
+        self._helmholtz_energy_to_db = {f"{temp}K": self.helmholtz_energies[i] for i, temp in enumerate(self.temperatures)}
+        self._internal_energy_to_db = {f"{temp}K": self.internal_energies[i] for i, temp in enumerate(self.temperatures)}
+        self._entropy_to_db = {f"{temp}K": self.entropies[i] for i, temp in enumerate(self.temperatures)}
+        self._heat_capacity_to_db = {f"{temp}K": self.heat_capacities[i] for i, temp in enumerate(self.temperatures)}
+        self._helmholtz_energy_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.helmholtz_energies_poly_coeffs)}}
+        self._entropy_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.entropies_poly_coeffs)}}
+        self._heat_capacity_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.heat_capacities_poly_coeffs)}}
 
     def plot_scaled_dos(self, number_of_atoms: int, plot: bool = True) -> go.Figure:
         """
