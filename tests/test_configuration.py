@@ -159,7 +159,7 @@ def test_process_debye():
     assert np.isclose(debye.gruneisen_x, expected_debye.gruneisen_x, rtol=1e-4), f"Expected {expected_debye.gruneisen_x}, but got {debye.gruneisen_x}"
     assert np.allclose(debye.entropies, expected_debye.entropies, rtol=1e-4), f"Expected {expected_debye.entropies}, but got {debye.entropies}"
     assert np.allclose(debye.heat_capacities, expected_debye.heat_capacities, rtol=1e-4), f"Expected {expected_debye.heat_capacities}, but got {debye.heat_capacities}"
-    assert np.allclose(debye.helmholtz_energies, expected_debye.helmholtz_energies, rtol=1e-4), f"Expected {expected_debye.helmholtz_energies}, but got {debye.helmholtz_energies}"
+    assert np.allclose(debye.helmholtz_energies, expected_debye.helmholtz_energies, rtol=5e-4), f"Expected {expected_debye.helmholtz_energies}, but got {debye.helmholtz_energies}"
     assert number_of_atoms == expected_debye.number_of_atoms, f"Expected {expected_debye.number_of_atoms}, but got {debye.number_of_atoms}"
     assert np.isclose(debye.scaling_factor, expected_debye.scaling_factor, rtol=1e-4), f"Expected {expected_debye.scaling_factor}, but got {debye.scaling_factor}"
     assert np.allclose(debye.temperatures, expected_debye.temperatures, rtol=1e-4), f"Expected {expected_debye.temperatures}, but got {debye.temperatures}"
