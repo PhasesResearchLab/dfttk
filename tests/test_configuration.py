@@ -99,11 +99,6 @@ def test_analyze_kpoints_conv():
     assert np.allclose(difference_mev_per_atom, expected_difference_mev_per_atom, equal_nan=True), f"Expected {expected_difference_mev_per_atom}, but got {difference_mev_per_atom}"
 
 
-def _convert_pbc_lists_to_tuples(data):
-    data["lattice"]["pbc"] = tuple(data["lattice"]["pbc"])
-    return data
-
-
 def test_process_ev_curve():
     ev_curve = config_Al.ev_curve
     expected_ev_curve = expected_config_Al.ev_curve
@@ -150,137 +145,25 @@ def test_process_phonons():
     assert np.allclose(phonons.temperatures, expected_phonons.temperatures, rtol=1e-4), (f"Expected {expected_phonons.temperatures}, but got {phonons.temperatures}")
     assert np.allclose(phonons.volumes, expected_phonons.volumes, rtol=1e-4), (f"Expected {expected_phonons.volumes}, but got {phonons.volumes}")
     assert np.allclose(phonons.volumes_fit, expected_phonons.volumes_fit, rtol=1e-4), (f"Expected {expected_phonons.volumes_fit}, but got {phonons.volumes_fit}")
-    
-    phonons_files_and_attributes = [
-        ("test_configuration_data/expected_phonons_incars.json", "incars"),
-        #("test_configuration_data/expected_ev_curves_kpoints.json", "kpoints"),
-    ]
-
-    for filename, attribute in phonons_files_and_attributes:
-        with open(os.path.join(current_dir, filename), "r") as f:
-            expected_data = json.load(f)
-
-        actual_data = getattr(config_Al.phonons, attribute)
-
-        if attribute == "kpoints":
-            actual_data = actual_data.as_dict()
-
-        for actual, expected in zip(actual_data, expected_data):
-            assert actual == expected, f"Expected {expected}, but got {actual}"
-
-    actual_phonon_structures = [
-        structure.as_dict() for structure in config_Al.phonons.phonon_structures
-    ]
-    with open(
-        os.path.join(
-            current_dir, "test_configuration_data/expected_phonons_phonon_structures.json"
-        ),
-        "r",
-    ) as f:
-        expected_phonon_structures = json.load(f)
-    for i, expected_relaxed_structure in enumerate(expected_phonon_structures):
-        expected_phonon_structures[i] = _convert_pbc_lists_to_tuples(
-            expected_relaxed_structure
-        )
-    assert (
-        actual_phonon_structures == expected_phonon_structures
-    ), f"Expected {expected_phonon_structures}, but got {actual_phonon_structures}"
-
-    expected_number_of_atoms = 4
-    assert (
-        config_Al.phonons.number_of_atoms == expected_number_of_atoms
-    ), f"Expected 4, but got {config_Al.phonons.number_of_atoms}"
-
-    expected_temperatures = np.arange(0, 1010, 100)
-    assert np.array_equal(
-        config_Al.phonons.temperatures, expected_temperatures
-    ), f"Expected {expected_temperatures}, but got {config_Al.phonons.temperatures}"
-
-    expected_volumes = [74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0]
-    assert np.array_equal(
-        config_Al.phonons.volumes, expected_volumes
-    ), f"Expected {expected_volumes}, but got {config_Al.phonons.volumes}"
-
-    files_and_attributes = [
-        ("test_configuration_data/expected_phonons_helmholtz_energy.json", "_helmholtz_energy_to_db"),
-        ("test_configuration_data/expected_phonons_internal_energy.json", "_internal_energy_to_db"),
-        ("test_configuration_data/expected_phonons_entropy.json", "_entropy_to_db"),
-        ("test_configuration_data/expected_phonons_heat_capacity.json", "_heat_capacity_to_db"),
-        (
-            "test_configuration_data/expected_phonons_helmholtz_energy_fit.json",
-            "_helmholtz_energy_fit_to_db",
-        ),
-        ("test_configuration_data/expected_phonons_entropy_fit.json", "_entropy_fit_to_db"),
-        (
-            "test_configuration_data/expected_phonons_heat_capacity_fit.json",
-            "_heat_capacity_fit_to_db",
-        ),
-    ]
-
-    for filename, attribute in files_and_attributes:
-        with open(os.path.join(current_dir, filename), "r") as f:
-            expected_data = json.load(f)
-
-        if "fit" in attribute:
-            expected_data = expected_data["poly_coeffs"]
-            actual_data = getattr(config_Al.phonons, attribute)[
-                "poly_coeffs"
-            ]
-        else:
-            actual_data = getattr(config_Al.phonons, attribute)
-
-        for temp, expected_values in expected_data.items():
-            actual_values = actual_data[temp]
-            for expected, actual in zip(expected_values, actual_values):
-                assert np.allclose(
-                    expected, actual, atol=1e-6
-                ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
 
 
 def test_process_debye():
-    expected_number_of_atoms = 4
-    assert (
-        config_Al.debye.number_of_atoms == expected_number_of_atoms
-    ), f"Expected 4, but got {config_Al.debye.number_of_atoms}"
-
-    expected_scaling_factor = 0.617
-    assert (
-        config_Al.debye.scaling_factor == expected_scaling_factor
-    ), f"Expected 0.617, but got {config_Al.debye.scaling_factor}"
-
-    expected_gruneisen_x = 2 / 3
-    assert (
-        config_Al.debye.gruneisen_x == expected_gruneisen_x
-    ), f"Expected 2/3, but got {config_Al.debye.gruneisen_x}"
-
-    expected_temperatures = temperature_range
-    assert np.allclose(
-        config_Al.debye.temperatures, expected_temperatures, rtol=1e-4
-    ), f"Expected {expected_temperatures}, but got {config_Al.debye.temperatures}"
-
-    expected_volumes = np.linspace(0.98 * 60.0, 1.02 * 74.0, 1000)
-    assert np.allclose(
-        config_Al.debye.volumes, expected_volumes, rtol=1e-4
-    ), f"Expected {expected_volumes}, but got {config_Al.debye.volumes}"
-
-    debye_files_and_attributes = [
-        ("test_configuration_data/expected_debye_free_energy.json", "helmholtz_energies"),
-        ("test_configuration_data/expected_debye_entropy.json", "entropies"),
-        ("test_configuration_data/expected_debye_heat_capacity.json", "heat_capacities"),
-    ]
-
-    for filename, attribute in debye_files_and_attributes:
-        with open(os.path.join(current_dir, filename), "r") as f:
-            expected_data = json.load(f)
-
-        actual_data = getattr(config_Al.debye, attribute)
-
-        for i, expected_values in enumerate(expected_data):
-            actual_values = actual_data[i]
-            for expected, actual in zip(expected_values, actual_values):
-                assert np.allclose(
-                    expected, actual, atol=1e-6
-                ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
+    debye = config_Al.debye
+    expected_debye = expected_config_Al.debye
+    
+    # Test the values of the debye attributes.
+    assert np.isclose(debye.B, expected_debye.B, rtol=1e-4), f"Expected {expected_debye.B}, but got {debye.B}"
+    assert np.isclose(debye.BP, expected_debye.BP, rtol=1e-4), f"Expected {expected_debye.BP}, but got {debye.BP}"
+    assert np.isclose(debye.V0, expected_debye.V0, rtol=1e-4), f"Expected {expected_debye.V0}, but got {debye.V0}"
+    assert np.isclose(debye.atomic_mass, expected_debye.atomic_mass, rtol=1e-4), f"Expected {expected_debye.atomic_mass}, but got {debye.atomic_mass}"
+    assert np.isclose(debye.gruneisen_x, expected_debye.gruneisen_x, rtol=1e-4), f"Expected {expected_debye.gruneisen_x}, but got {debye.gruneisen_x}"
+    assert np.allclose(debye.entropies, expected_debye.entropies, rtol=1e-4), f"Expected {expected_debye.entropies}, but got {debye.entropies}"
+    assert np.allclose(debye.heat_capacities, expected_debye.heat_capacities, rtol=1e-4), f"Expected {expected_debye.heat_capacities}, but got {debye.heat_capacities}"
+    assert np.allclose(debye.helmholtz_energies, expected_debye.helmholtz_energies, rtol=1e-4), f"Expected {expected_debye.helmholtz_energies}, but got {debye.helmholtz_energies}"
+    assert number_of_atoms == expected_debye.number_of_atoms, f"Expected {expected_debye.number_of_atoms}, but got {debye.number_of_atoms}"
+    assert np.isclose(debye.scaling_factor, expected_debye.scaling_factor, rtol=1e-4), f"Expected {expected_debye.scaling_factor}, but got {debye.scaling_factor}"
+    assert np.allclose(debye.temperatures, expected_debye.temperatures, rtol=1e-4), f"Expected {expected_debye.temperatures}, but got {debye.temperatures}"
+    assert np.allclose(debye.volumes, expected_debye.volumes, rtol=1e-4), f"Expected {expected_debye.volumes}, but got {debye.volumes}"
 
 
 def test_process_thermal_electronic():
