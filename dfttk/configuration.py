@@ -10,36 +10,30 @@ thermal electronic contributions, and quasi-harmonic analysis using VASP and DFT
 
 # Standard Library Imports
 import os
-import subprocess
-from datetime import datetime
-from collections import OrderedDict
 import re
+import subprocess
+from collections import OrderedDict
+from datetime import datetime
 
 # Third-Party Library Imports
 import numpy as np
 import pandas as pd
-from pymongo import MongoClient
 from bson import ObjectId
-import plotly.graph_objects as go
 from custodian.vasp.handlers import VaspErrorHandler
+from pymongo import MongoClient
+import plotly.graph_objects as go
 
-# DFTTK Module Imports
+# DFTTK Imports
 import dfttk.vasp_input as vasp_input
-from dfttk.workflows import SingleJobWorkflow
-from dfttk.aggregate_extraction import (
-    calculate_encut_conv,
-    calculate_kpoint_conv,
-)
-import dfttk.eos.functions as eos_functions
-from dfttk.eos.fit import (
-    assign_colors_to_configs,
-    assign_marker_symbols_to_configs,
-)
-from dfttk.eos.ev_curve_data import EvCurveData
+from dfttk.aggregate_extraction import calculate_encut_conv, calculate_kpoint_conv
 from dfttk.debye.debye_gruneisen import DebyeGruneisen
+import dfttk.eos.functions as eos_functions
+from dfttk.eos.ev_curve_data import EvCurveData
+from dfttk.eos.fit import assign_colors_to_configs, assign_marker_symbols_to_configs
 from dfttk.phonon.yphon_phonon_data import YphonPhononData
-from dfttk.thermal_electronic.thermal_electronic_data import ThermalElectronicData
 from dfttk.quasi_harmonic import QuasiHarmonic
+from dfttk.thermal_electronic.thermal_electronic_data import ThermalElectronicData
+from dfttk.workflows import SingleJobWorkflow
 
 
 class MetaData:
@@ -83,14 +77,16 @@ class Configuration:
     Args:
         path (str): Path to the working directory.
         name (str): Name for this configuration.
-        alias (str, optional): Alias for the configuration, used for easier identification.
-        multiplicity (int, optional): Configuration multiplicity.
+        vasp_cmd (list[str]): The command and arguments to run VASP, e.g., ['mpirun', 'vasp_std'].
+        alias (str, optional): Alias for the configuration, used for easier identification. Defaults to None.
+        multiplicity (int, optional): Configuration multiplicity. Defaults to None.
     """
 
     def __init__(
         self,
         path: str,
         name: str,
+        vasp_cmd: list[str],
         alias: str = None,
         multiplicity: int = None,
     ):
@@ -98,9 +94,7 @@ class Configuration:
         self.name = name
         self.alias = alias
         self.multiplicity = multiplicity
-
-        # VASP command to use for calculations
-        self.vasp_cmd: list[str] | None = None
+        self.vasp_cmd = vasp_cmd
 
         # Settings for different workflows
         self.ev_curve_settings_data: dict = {}
@@ -115,15 +109,6 @@ class Configuration:
         self.qha = None
         self.experiments = None
         self.metadata = None
-
-    def set_vasp_cmd(self, vasp_cmd: list[str]) -> None:
-        """
-        Set the VASP command to be used for calculations.
-
-        Args:
-            vasp_cmd (list[str]): The command and arguments to run VASP, e.g., ['mpirun', 'vasp_std'].
-        """
-        self.vasp_cmd = vasp_cmd
 
     def add_metadata(
         self,
@@ -147,6 +132,7 @@ class Configuration:
             affiliation (str, optional): Database affiliation. Defaults to "DFTTK".
             comment (str, optional): Additional comments. Defaults to None.
         """
+        
         self.metadata = MetaData(
             vasp_version,
             mpdd_id,
