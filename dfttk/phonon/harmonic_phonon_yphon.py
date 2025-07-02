@@ -222,6 +222,7 @@ class HarmonicPhononYphon:
     def calculate_harmonic(
         self,
         temperatures: np.ndarray,
+        selected_volumes: np.ndarray = None,
     ) -> None:
         """
         Calculate vibrational thermodynamic properties (Helmholtz energy, internal energy, entropies, heat capacity)
@@ -229,6 +230,7 @@ class HarmonicPhononYphon:
 
         Args:
             temperatures (np.ndarray): 1D array of temperatures in Kelvin.
+            selected_volumes (np.ndarray, optional): 1D array of volumes to calculate properties for.
 
         Raises:
             RuntimeError: If scaled phonon DOS data or volumes_per_atom is not set (call scale_dos() before calculate_harmonic()).
@@ -237,8 +239,15 @@ class HarmonicPhononYphon:
             raise RuntimeError("Scaled phonon DOS data not calculated. Call scale_dos() before calculate_harmonic().")
 
         self.temperatures = temperatures
-        frequency_array = [self.scaled_phonon_dos[self.scaled_phonon_dos["volume_per_atom"] == volume_per_atom]["frequency_hz"].values for volume_per_atom in self.volumes_per_atom]
-        dos_array = [self.scaled_phonon_dos[self.scaled_phonon_dos["volume_per_atom"] == volume_per_atom]["dos_1_per_hz"].values for volume_per_atom in self.volumes_per_atom]
+
+        # Use selected_volumes if provided, otherwise use all volumes
+        if selected_volumes is not None:
+            self.volumes = selected_volumes
+            self.volumes_per_atom = self.volumes / self.number_of_atoms
+
+        frequency_array = [self.scaled_phonon_dos[self.scaled_phonon_dos["volume_per_atom"] == v]["frequency_hz"].values for v in self.volumes_per_atom]
+        dos_array = [self.scaled_phonon_dos[self.scaled_phonon_dos["volume_per_atom"] == v]["dos_1_per_hz"].values for v in self.volumes_per_atom]
+
         frequency_array = self.pad_arrays(frequency_array, pad_type="increasing")
         dos_array = self.pad_arrays(dos_array, pad_value=0, pad_type="constant")
 
