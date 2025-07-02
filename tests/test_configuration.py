@@ -26,7 +26,6 @@ config_Al = Configuration(config_Al_path, "config_Al", vasp_cmd)
 config_Al.process_ev_curve()
 
 number_of_atoms = 4
-# TODO: rewrite some of the json files to include floats. Eg. 0.0K
 temperature_range = np.arange(0, 1010, 100)
 
 config_Al.process_phonons(number_of_atoms, temperature_range)
@@ -103,7 +102,7 @@ def test_process_ev_curve():
     ev_curve = config_Al.ev_curve
     expected_ev_curve = expected_config_Al.ev_curve
 
-    # Test the values of the ev_curve attributes. 
+    # Test the values of the ev_curve attributes 
     assert ev_curve.atomic_masses == expected_ev_curve.atomic_masses, (f"Expected {expected_ev_curve.atomic_masses}, but got {ev_curve.atomic_masses}")
     assert ev_curve.average_mass == expected_ev_curve.average_mass, (f"Expected {expected_ev_curve.average_mass}, but got {ev_curve.average_mass}")
     assert np.allclose(ev_curve.energies, expected_ev_curve.energies, equal_nan=True), (f"Expected {expected_ev_curve.energies}, but got {ev_curve.energies}")
@@ -127,18 +126,18 @@ def test_process_phonons():
     phonons = config_Al.phonons
     expected_phonons = expected_config_Al.phonons
 
-    # Test the values of the phonons attributes.
-    assert np.allclose(phonons.entropy, expected_phonons.entropy, rtol=1e-4), (f"Expected {expected_phonons.entropy}, but got {phonons.entropy}")
-    assert np.allclose(phonons.entropy_fit, expected_phonons.entropy_fit, rtol=1e-4), (f"Expected {expected_phonons.entropy_fit}, but got {phonons.entropy_fit}")
-    assert np.allclose(phonons.entropy_poly_coeffs, expected_phonons.entropy_poly_coeffs, rtol=1e-4), (f"Expected {expected_phonons.entropy_poly_coeffs}, but got {phonons.entropy_poly_coeffs}")
-    assert np.allclose(phonons.helmholtz_energy, expected_phonons.helmholtz_energy, rtol=1e-4), (f"Expected {expected_phonons.helmholtz_energy}, but got {phonons.helmholtz_energy}")
-    assert np.allclose(phonons.helmholtz_energy_fit, expected_phonons.helmholtz_energy_fit, rtol=1e-4), (f"Expected {expected_phonons.helmholtz_energy_fit}, but got {phonons.helmholtz_energy_fit}")
-    assert np.allclose(phonons.helmholtz_energy_poly_coeffs, expected_phonons.helmholtz_energy_poly_coeffs, rtol=1e-4), (f"Expected {expected_phonons.helmholtz_energy_poly_coeffs}, but got {phonons.helmholtz_energy_poly_coeffs}")
-    assert np.allclose(phonons.heat_capacity, expected_phonons.heat_capacity, rtol=1e-4), (f"Expected {expected_phonons.heat_capacity}, but got {phonons.heat_capacity}")
-    assert np.allclose(phonons.heat_capacity_fit, expected_phonons.heat_capacity_fit, rtol=1e-4), (f"Expected {expected_phonons.heat_capacity_fit}, but got {phonons.heat_capacity_fit}")
-    assert np.allclose(phonons.heat_capacity_poly_coeffs, expected_phonons.heat_capacity_poly_coeffs, rtol=1e-4), (f"Expected {expected_phonons.heat_capacity_poly_coeffs}, but got {phonons.heat_capacity_poly_coeffs}")
+    # Test the values of the phonons attributes
+    assert np.allclose(phonons.entropies, expected_phonons.entropies, rtol=1e-4), (f"Expected {expected_phonons.entropies}, but got {phonons.entropies}")
+    assert np.allclose(phonons.entropies_fit, expected_phonons.entropies_fit, rtol=1e-4), (f"Expected {expected_phonons.entropies_fit}, but got {phonons.entropies_fit}")
+    assert np.allclose(phonons.entropies_poly_coeffs, expected_phonons.entropies_poly_coeffs, rtol=1e-4), (f"Expected {expected_phonons.entropies_poly_coeffs}, but got {phonons.entropies_poly_coeffs}")
+    assert np.allclose(phonons.helmholtz_energies, expected_phonons.helmholtz_energies, rtol=1e-4), (f"Expected {expected_phonons.helmholtz_energies}, but got {phonons.helmholtz_energies}")
+    assert np.allclose(phonons.helmholtz_energies_fit, expected_phonons.helmholtz_energies_fit, rtol=1e-4), (f"Expected {expected_phonons.helmholtz_energies_fit}, but got {phonons.helmholtz_energies_fit}")
+    assert np.allclose(phonons.helmholtz_energies_poly_coeffs, expected_phonons.helmholtz_energies_poly_coeffs, rtol=1e-4), (f"Expected {expected_phonons.helmholtz_energies_poly_coeffs}, but got {phonons.helmholtz_energies_poly_coeffs}")
+    assert np.allclose(phonons.heat_capacities, expected_phonons.heat_capacities, rtol=1e-4), (f"Expected {expected_phonons.heat_capacities}, but got {phonons.heat_capacities}")
+    assert np.allclose(phonons.heat_capacities_fit, expected_phonons.heat_capacities_fit, rtol=1e-4), (f"Expected {expected_phonons.heat_capacities_fit}, but got {phonons.heat_capacities_fit}")
+    assert np.allclose(phonons.heat_capacities_poly_coeffs, expected_phonons.heat_capacities_poly_coeffs, rtol=1e-4), (f"Expected {expected_phonons.heat_capacities_poly_coeffs}, but got {phonons.heat_capacities_poly_coeffs}")
     assert phonons.incars == expected_phonons.incars, (f"Expected {expected_phonons.incars}, but got {phonons.incars}")
-    assert np.allclose(phonons.internal_energy, expected_phonons.internal_energy, rtol=1e-4), (f"Expected {expected_phonons.internal_energy}, but got {phonons.internal_energy}")
+    assert np.allclose(phonons.internal_energies, expected_phonons.internal_energies, rtol=1e-4), (f"Expected {expected_phonons.internal_energies}, but got {phonons.internal_energies}")
     assert phonons.kpoints == expected_phonons.kpoints, (f"Expected {expected_phonons.kpoints}, but got {phonons.kpoints}")
     assert phonons.number_of_atoms == expected_phonons.number_of_atoms, (f"Expected {expected_phonons.number_of_atoms}, but got {phonons.number_of_atoms}")
     assert phonons.phonon_structures == expected_phonons.phonon_structures, (f"Expected {expected_phonons.phonon_structures}, but got {phonons.phonon_structures}")
@@ -151,7 +150,7 @@ def test_process_debye():
     debye = config_Al.debye
     expected_debye = expected_config_Al.debye
     
-    # Test the values of the debye attributes.
+    # Test the values of the debye attributes
     assert np.isclose(debye.B, expected_debye.B, rtol=1e-4), f"Expected {expected_debye.B}, but got {debye.B}"
     assert np.isclose(debye.BP, expected_debye.BP, rtol=1e-4), f"Expected {expected_debye.BP}, but got {debye.BP}"
     assert np.isclose(debye.V0, expected_debye.V0, rtol=1e-4), f"Expected {expected_debye.V0}, but got {debye.V0}"
