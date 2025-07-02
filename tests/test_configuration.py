@@ -40,7 +40,7 @@ config_Al.process_qha("phonons", volume_range, P=0)
 config_Al.process_qha("phonons_thermal_electronic", volume_range, P=0)
 
 # Load the expected results
-with open("test_configuration_data/config_Al.pkl", "rb") as f:
+with open(os.path.join(current_dir, "test_configuration_data/config_Al.pkl"), "rb") as f:
     expected_config_Al = pickle.load(f)
 
 def test_analyze_encut_conv():
@@ -104,19 +104,6 @@ def _convert_pbc_lists_to_tuples(data):
     return data
 
 
-def _assert_selected_keys_almost_equal(dict1, dict2, keys, atol=1e-4):
-    for key in keys:
-        if key in dict1 and key in dict2:
-            if isinstance(dict1[key], float) and isinstance(dict2[key], float):
-                assert np.isclose(
-                    dict1[key], dict2[key], atol=atol
-                ), f"Expected {dict2[key]} for key '{key}', but got {dict1[key]}"
-            else:
-                assert (
-                    dict1[key] == dict2[key]
-                ), f"Expected {dict2[key]} for key '{key}', but got {dict1[key]}"
-
-
 def test_process_ev_curve():
     ev_curve = config_Al.ev_curve
     expected_ev_curve = expected_config_Al.ev_curve
@@ -141,6 +128,28 @@ def test_process_ev_curve():
 
 
 def test_process_phonons():
+    phonons = config_Al.phonons
+    expected_phonons = expected_config_Al.phonons
+
+    # Test the values of the phonons attributes.
+    assert np.allclose(phonons.entropy, expected_phonons.entropy, rtol=1e-4), (f"Expected {expected_phonons.entropy}, but got {phonons.entropy}")
+    assert np.allclose(phonons.entropy_fit, expected_phonons.entropy_fit, rtol=1e-4), (f"Expected {expected_phonons.entropy_fit}, but got {phonons.entropy_fit}")
+    assert np.allclose(phonons.entropy_poly_coeffs, expected_phonons.entropy_poly_coeffs, rtol=1e-4), (f"Expected {expected_phonons.entropy_poly_coeffs}, but got {phonons.entropy_poly_coeffs}")
+    assert np.allclose(phonons.helmholtz_energy, expected_phonons.helmholtz_energy, rtol=1e-4), (f"Expected {expected_phonons.helmholtz_energy}, but got {phonons.helmholtz_energy}")
+    assert np.allclose(phonons.helmholtz_energy_fit, expected_phonons.helmholtz_energy_fit, rtol=1e-4), (f"Expected {expected_phonons.helmholtz_energy_fit}, but got {phonons.helmholtz_energy_fit}")
+    assert np.allclose(phonons.helmholtz_energy_poly_coeffs, expected_phonons.helmholtz_energy_poly_coeffs, rtol=1e-4), (f"Expected {expected_phonons.helmholtz_energy_poly_coeffs}, but got {phonons.helmholtz_energy_poly_coeffs}")
+    assert np.allclose(phonons.heat_capacity, expected_phonons.heat_capacity, rtol=1e-4), (f"Expected {expected_phonons.heat_capacity}, but got {phonons.heat_capacity}")
+    assert np.allclose(phonons.heat_capacity_fit, expected_phonons.heat_capacity_fit, rtol=1e-4), (f"Expected {expected_phonons.heat_capacity_fit}, but got {phonons.heat_capacity_fit}")
+    assert np.allclose(phonons.heat_capacity_poly_coeffs, expected_phonons.heat_capacity_poly_coeffs, rtol=1e-4), (f"Expected {expected_phonons.heat_capacity_poly_coeffs}, but got {phonons.heat_capacity_poly_coeffs}")
+    assert phonons.incars == expected_phonons.incars, (f"Expected {expected_phonons.incars}, but got {phonons.incars}")
+    assert np.allclose(phonons.internal_energy, expected_phonons.internal_energy, rtol=1e-4), (f"Expected {expected_phonons.internal_energy}, but got {phonons.internal_energy}")
+    assert phonons.kpoints == expected_phonons.kpoints, (f"Expected {expected_phonons.kpoints}, but got {phonons.kpoints}")
+    assert phonons.number_of_atoms == expected_phonons.number_of_atoms, (f"Expected {expected_phonons.number_of_atoms}, but got {phonons.number_of_atoms}")
+    assert phonons.phonon_structures == expected_phonons.phonon_structures, (f"Expected {expected_phonons.phonon_structures}, but got {phonons.phonon_structures}")
+    assert np.allclose(phonons.temperatures, expected_phonons.temperatures, rtol=1e-4), (f"Expected {expected_phonons.temperatures}, but got {phonons.temperatures}")
+    assert np.allclose(phonons.volumes, expected_phonons.volumes, rtol=1e-4), (f"Expected {expected_phonons.volumes}, but got {phonons.volumes}")
+    assert np.allclose(phonons.volumes_fit, expected_phonons.volumes_fit, rtol=1e-4), (f"Expected {expected_phonons.volumes_fit}, but got {phonons.volumes_fit}")
+    
     phonons_files_and_attributes = [
         ("test_configuration_data/expected_phonons_incars.json", "incars"),
         #("test_configuration_data/expected_ev_curves_kpoints.json", "kpoints"),
