@@ -237,11 +237,11 @@ class EvCurveData:
             volume_max (float, optional): Maximum volume for fitted EOS. Defaults to None.
             num_volumes (int, optional): Number of volumes for fitted EOS. Defaults to 1000.
         """
-        self.fitter = EOSFitter(self.name, self.number_of_atoms, self.volumes, self.energies)
-        self.fitter.fit(eos_name=eos_name, volume_min=volume_min, volume_max=volume_max, num_volumes=num_volumes)
+        self._fitter = EOSFitter(self.name, self.number_of_atoms, self.volumes, self.energies)
+        self._fitter.fit(eos_name=eos_name, volume_min=volume_min, volume_max=volume_max, num_volumes=num_volumes)
 
-        eos_constants = self.fitter.eos_constants
-        eos_parameters = self.fitter.eos_parameters
+        eos_constants = self._fitter.eos_constants
+        eos_parameters = self._fitter.eos_parameters
 
         self.eos_parameters = {
             "eos_name": eos_name,
@@ -272,9 +272,9 @@ class EvCurveData:
         Returns:
             go.Figure: Plotly figure object containing the energy-volume plot.
         """
-        if not hasattr(self, "fitter") or self.fitter is None:
+        if not hasattr(self, "_fitter") or self._fitter is None:
             raise RuntimeError("You must call fit_energy_volume_data() before plotting.")
-        fig = self.fitter.plot(
+        fig = self._fitter.plot(
             highlight_minimum=highlight_minimum,
             per_atom=per_atom,
             title=title,
