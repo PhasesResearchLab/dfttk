@@ -55,7 +55,7 @@ class DebyeGruneisen:
 
         # Compute prefactor using physical constants
         A = (6 * np.pi**2) ** (1 / 3) * HBAR / BOLTZMANN_CONSTANT
-        
+
         # Convert units for bulk modulus, volume, and atomic mass
         B = self.B * 1e12  # GPa to g/(ms^2)
         V0 = self.V0 * 1e-30  # Å^3 to m^3
@@ -79,7 +79,7 @@ class DebyeGruneisen:
         Returns:
             np.ndarray: Array of calculated Debye integrals of order 3 for each upper limit in x_array.
         """
-        
+
         debye_integrals = np.zeros_like(x_array, dtype=float)
         for i, x in enumerate(x_array):
             factor = 3.0 / x**3
@@ -96,7 +96,7 @@ class DebyeGruneisen:
         Returns:
             np.ndarray: Array of vibrational entropy values in eV/K/number_of_atoms for each temperature.
         """
-        
+
         # Masks for zero and nonzero temperatures
         zero_temp_mask = self.temperatures == 0
         non_zero_temp_mask = self.temperatures > 0
@@ -125,7 +125,7 @@ class DebyeGruneisen:
         Returns:
             np.ndarray: Array of vibrational Helmholtz energy values in eV/number_of_atoms for each temperature.
         """
-        
+
         zero_temp_mask = self.temperatures == 0
         non_zero_temp_mask = self.temperatures > 0
 
@@ -154,7 +154,7 @@ class DebyeGruneisen:
         Returns:
             np.ndarray: Array of vibrational heat capacity values in eV/K/number_of_atoms for each temperature.
         """
-        
+
         non_zero_temp_mask = self.temperatures > 0
         x_array = np.zeros_like(self.temperatures)
         debye_integrals = np.zeros_like(x_array, dtype=float)
@@ -209,7 +209,7 @@ class DebyeGruneisen:
                 - self.entropies (np.ndarray) entropies in eV/K/number_of_atoms.
                 - self.heat_capacity (np.ndarray) heat capacities in eV/K/number_of_atoms.
         """
-        
+
         self.number_of_atoms = number_of_atoms
         self.volumes = volumes
         self.temperatures = temperatures.astype(float)
@@ -267,7 +267,12 @@ class DebyeGruneisen:
             raise RuntimeError("DebyeGruneisen.process() must be called before plot().")
 
         # Map property names to data arrays and y-axis labels
-        properties = {"helmholtz_energy": (self.helmholtz_energies.T, f"F<sub>vib</sub> (eV/{self.number_of_atoms} atoms)"), "entropy": (self.entropies.T, f"S<sub>vib</sub> (eV/K/{self.number_of_atoms} atoms)"), "heat_capacity": (self.heat_capacities.T, f"C<sub>v,vib</sub> (eV/K/{self.number_of_atoms} atoms)")}
+        unit = "atom" if self.number_of_atoms == 1 else f"{self.number_of_atoms} atoms"
+        properties = {
+            "helmholtz_energy": (self.helmholtz_energies.T, f"F<sub>vib</sub> (eV/{unit})"),
+            "entropy": (self.entropies.T, f"S<sub>vib</sub> (eV/K/{unit})"),
+            "heat_capacity": (self.heat_capacities.T, f"C<sub>v,vib</sub> (eV/K/{unit})"),
+        }
 
         if property not in properties:
             raise ValueError("property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'")
@@ -325,6 +330,9 @@ class DebyeGruneisen:
                     name=f"{self.temperatures[i]} K",
                 )
             )
-        plot_format(fig_debye_v, "Volume (\u212B<sup>3</sup>)", y_label)
+        if self.number_of_atoms == 1:
+            plot_format(fig_debye_v, f"Volume (\u212B<sup>3</sup>/atom)", y_label)
+        else:
+            plot_format(fig_debye_v, f"Volume (\u212B<sup>3</sup>/{self.number_of_atoms} atoms)", y_label)
 
         return fig_debye_t, fig_debye_v
