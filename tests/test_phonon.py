@@ -24,7 +24,7 @@ number_of_atoms = 4
 temperatures = np.arange(0, 1010, 100)
 RTOL = 1e-5  # Relative tolerance for all np.allclose comparisons
 
-# TODO: working on tests for selected volumes!
+
 # Tests for HarmonicPhononYphon
 def test_load_dos_raises_on_no_vdos_or_volph_files(tmp_path):
     """Raise FileNotFoundError if no vdos_ or volph_ files are found."""
@@ -100,7 +100,7 @@ def test_plot_scale_dos_smoke():
     """Smoke test for plot_scaled_dos: should run without error and not actually show the plot."""
     hp = HarmonicPhononYphon()
     hp.load_dos(yphon_results_path)
-    #hp.scale_dos(number_of_atoms=number_of_atoms, plot=True)
+    hp.scale_dos(number_of_atoms=number_of_atoms, plot=True)
 
 
 def test_plot_dos_smoke():
@@ -163,7 +163,7 @@ def test_harmonicphononyphon_subset():
     hp = HarmonicPhononYphon()
     hp.load_dos(yphon_results_path)
     hp.scale_dos(number_of_atoms=number_of_atoms)
-    selected_volumes = np.array([60., 62., 66., 68., 72., 74.])
+    selected_volumes = np.array([60.0, 62.0, 66.0, 68.0, 72.0, 74.0])
     hp.calculate_harmonic(temperatures=temperatures, selected_volumes=selected_volumes)
     hp.fit_harmonic(order=2)
     pd.testing.assert_frame_equal(hp.phonon_dos, expected.phonon_dos)
@@ -182,6 +182,7 @@ def test_harmonicphononyphon_subset():
     assert np.allclose(hp.helmholtz_energies_poly_coeffs, expected.helmholtz_energies_poly_coeffs, rtol=RTOL)
     assert np.allclose(hp.entropies_poly_coeffs, expected.entropies_poly_coeffs, rtol=RTOL)
     assert np.allclose(hp.heat_capacities_poly_coeffs, expected.heat_capacities_poly_coeffs, rtol=RTOL)
+
 
 # Tests for YphonPhononData
 def test_yphonphonondata():
@@ -210,12 +211,40 @@ def test_yphonphonondata():
     assert np.allclose(pd_obj.heat_capacities_poly_coeffs, expected.heat_capacities_poly_coeffs, rtol=RTOL)
 
 
+def test_yphonphonondata_subset():
+    """Check YphonPhononData produces expected results for a subset of selected volumes."""
+    with open(os.path.join(current_dir, "test_phonon_data/yphon_phonon_data_subset.pkl"), "rb") as f:
+        expected = pickle.load(f)
+    pd_obj = YphonPhononData(config_Al_path)
+    selected_phonon_volumes = np.array([592.0, 544.0, 512.0])
+    pd_obj.get_vasp_input(selected_phonon_volumes=selected_phonon_volumes)
+    selected_volumes = selected_phonon_volumes / 32 * number_of_atoms
+    pd_obj.get_harmonic_data(number_of_atoms=number_of_atoms, temperatures=temperatures, order=2, selected_volumes=selected_volumes)
+    assert pd_obj.incars == expected.incars
+    assert pd_obj.kpoints == expected.kpoints
+    assert pd_obj.phonon_structures == expected.phonon_structures
+    assert pd_obj.number_of_atoms == expected.number_of_atoms
+    assert np.allclose(pd_obj.volumes, expected.volumes, rtol=RTOL)
+    assert np.allclose(pd_obj.temperatures, expected.temperatures, rtol=RTOL)
+    assert np.allclose(pd_obj.helmholtz_energies, expected.helmholtz_energies, rtol=RTOL)
+    assert np.allclose(pd_obj.internal_energies, expected.internal_energies, rtol=RTOL)
+    assert np.allclose(pd_obj.entropies, expected.entropies, rtol=RTOL)
+    assert np.allclose(pd_obj.heat_capacities, expected.heat_capacities, rtol=RTOL)
+    assert np.allclose(pd_obj.volumes_fit, expected.volumes_fit, rtol=RTOL)
+    assert np.allclose(pd_obj.helmholtz_energies_fit, expected.helmholtz_energies_fit, rtol=RTOL)
+    assert np.allclose(pd_obj.entropies_fit, expected.entropies_fit, rtol=RTOL)
+    assert np.allclose(pd_obj.heat_capacities_fit, expected.heat_capacities_fit, rtol=RTOL)
+    assert np.allclose(pd_obj.helmholtz_energies_poly_coeffs, expected.helmholtz_energies_poly_coeffs, rtol=RTOL)
+    assert np.allclose(pd_obj.entropies_poly_coeffs, expected.entropies_poly_coeffs, rtol=RTOL)
+    assert np.allclose(pd_obj.heat_capacities_poly_coeffs, expected.heat_capacities_poly_coeffs, rtol=RTOL)
+
+
 def test_yphonphonondata_plot_smoke():
     """Smoke tests for plotting methods of YphonPhononData."""
     pd_obj = YphonPhononData(config_Al_path)
     pd_obj.get_vasp_input()
     pd_obj.get_harmonic_data(number_of_atoms=number_of_atoms, temperatures=temperatures, order=2)
-    #fig_scaled = pd_obj.plot_scaled_dos(number_of_atoms=number_of_atoms, plot=True)
+    fig_scaled = pd_obj.plot_scaled_dos(number_of_atoms=number_of_atoms, plot=True)
     fig_multi = pd_obj.plot_multiple_dos()
     assert isinstance(fig_multi, go.Figure)
     for prop in ["helmholtz_energy", "entropy", "heat_capacity"]:
@@ -231,8 +260,8 @@ def test_yphonphonondata_plot_smoke():
 def test_run_time_errors_yphonphonondata():
     """Raise RuntimeError for missing data in YphonPhononData workflow."""
     pd_obj = YphonPhononData(config_Al_path)
-    #with pytest.raises(RuntimeError, match=re.escape("Call get_harmonic_data() before plotting.")):
-        #pd_obj.plot_scaled_dos(number_of_atoms=number_of_atoms, plot=True)
+    with pytest.raises(RuntimeError, match=re.escape("Call get_harmonic_data() before plotting.")):
+        pd_obj.plot_scaled_dos(number_of_atoms=number_of_atoms, plot=True)
     with pytest.raises(RuntimeError, match=re.escape("Call get_harmonic_data() before plotting.")):
         pd_obj.plot_multiple_dos()
     with pytest.raises(RuntimeError, match=re.escape("Call get_harmonic_data() before plotting.")):

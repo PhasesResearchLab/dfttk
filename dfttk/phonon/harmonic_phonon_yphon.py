@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 import scipy.constants
 import plotly.graph_objects as go
-from typing import Optional
 
 # DFTTK imports
 from dfttk.plotly_format import plot_format
@@ -174,12 +173,15 @@ class HarmonicPhononYphon:
                 scaled_freq = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom]["frequency_hz"]
                 scaled_dos = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom]["dos_1_per_hz"]
 
-                fig.add_trace(go.Scatter(x=freq / 1e12, y=dos * 1e12, mode="lines", name=f"Original - {original_atoms[i]} atoms", showlegend=True))
-                fig.add_trace(go.Scatter(x=scaled_freq / 1e12, y=scaled_dos * 1e12, mode="lines", name=f"Scaled - {number_of_atoms} atoms", showlegend=True))
+                orig_unit = "atom" if original_atoms[i] == 1 else f"{original_atoms[i]} atoms"
+                scaled_unit = "atom" if number_of_atoms == 1 else "atoms"
+
+                fig.add_trace(go.Scatter(x=freq / 1e12, y=dos * 1e12, mode="lines", name=f"Original - {original_atoms[i]} {orig_unit}", showlegend=True))
+                fig.add_trace(go.Scatter(x=scaled_freq / 1e12, y=scaled_dos * 1e12, mode="lines", name=f"Scaled - {number_of_atoms} {scaled_unit}", showlegend=True))
                 plot_format(fig, "Frequency (THz)", "DOS (1/THz)")
                 fig.update_layout(
                     title=dict(
-                        text=f"Original volume: {volume_per_atom * original_atoms[i]} Å³/{original_atoms[i]} atoms" f"<br> Scaled volume: {volume_per_atom * number_of_atoms} Å³/{number_of_atoms} atoms" f"<br> (Area: {area_count[i][1]:.1f}% positive, {area_count[i][2]:.1f}% negative)",
+                        text=f"Original volume: {volume_per_atom * original_atoms[i]} Å³/{orig_unit}" f"<br> Scaled volume: {volume_per_atom * number_of_atoms} Å³/{scaled_unit}" f"<br> (Area: {area_count[i][1]:.1f}% positive, {area_count[i][2]:.1f}% negative)",
                         font=dict(size=20, color="rgb(0,0,0)"),
                     ),
                     margin=dict(t=130),
@@ -391,10 +393,11 @@ class HarmonicPhononYphon:
         if self.helmholtz_energies is None or self.entropies is None or self.heat_capacities is None or self.temperatures is None:
             raise RuntimeError("Thermodynamic properties not calculated. Call calculate_harmonic() before fit_harmonic().")
 
+        unit = "atom" if self.number_of_atoms == 1 else f"{self.number_of_atoms} atoms"
         valid_properties = {
-            "helmholtz_energy": ("helmholtz_energies", f"F<sub>vib</sub> (eV/{self.number_of_atoms} atoms)"),
-            "entropy": ("entropies", f"S<sub>vib</sub> (eV/K/{self.number_of_atoms} atoms)"),
-            "heat_capacity": ("heat_capacities", f"C<sub>vib</sub> (eV/K/{self.number_of_atoms} atoms)"),
+            "helmholtz_energy": ("helmholtz_energies", f"F<sub>vib</sub> (eV/{unit})"),
+            "entropy": ("entropies", f"S<sub>vib</sub> (eV/K/{unit})"),
+            "heat_capacity": ("heat_capacities", f"C<sub>vib</sub> (eV/K/{unit})"),
         }
 
         if property not in valid_properties:
@@ -443,10 +446,11 @@ class HarmonicPhononYphon:
         if self.volumes_fit is None or self.helmholtz_energies_fit is None or self.entropies_fit is None or self.heat_capacities_fit is None or self.temperatures is None:
             raise RuntimeError("Fitted thermodynamic properties not calculated. Call fit_harmonic() before plot_fit_harmonic().")
 
+        unit = "atom" if self.number_of_atoms == 1 else f"{self.number_of_atoms} atoms"
         valid_properties = {
-            "helmholtz_energy": ("helmholtz_energies", "helmholtz_energies_fit", f"F<sub>vib</sub> (eV/{self.number_of_atoms} atoms)"),
-            "entropy": ("entropies", "entropies_fit", f"S<sub>vib</sub> (eV/K/{self.number_of_atoms} atoms)"),
-            "heat_capacity": ("heat_capacities", "heat_capacities_fit", f"C<sub>vib</sub> (eV/K/{self.number_of_atoms} atoms)"),
+            "helmholtz_energy": ("helmholtz_energies", "helmholtz_energies_fit", f"F<sub>vib</sub> (eV/{unit})"),
+            "entropy": ("entropies", "entropies_fit", f"S<sub>vib</sub> (eV/K/{unit})"),
+            "heat_capacity": ("heat_capacities", "heat_capacities_fit", f"C<sub>vib</sub> (eV/K/{unit})"),
         }
 
         if property not in valid_properties:

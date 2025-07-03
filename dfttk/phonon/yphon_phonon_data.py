@@ -46,13 +46,6 @@ class YphonPhononData:
         entropies_poly_coeffs (np.ndarray): Polynomial coefficients for entropy fits.
         heat_capacities_poly_coeffs (np.ndarray): Polynomial coefficients for heat capacity fits.
         _harmonic_phonon (HarmonicPhononYphon): Cached instance for calculations and plotting.
-        _helmholtz_energy_to_db (dict): Helmholtz energy data formatted for database export.
-        _internal_energy_to_db (dict): Internal energy data formatted for database export.
-        _entropy_to_db (dict): Entropy data formatted for database export.
-        _heat_capacity_to_db (dict): Heat capacity data formatted for database export.
-        _helmholtz_energy_fit_to_db (dict): Fitted Helmholtz energy data for database export.
-        _entropy_fit_to_db (dict): Fitted entropy data for database export.
-        _heat_capacity_fit_to_db (dict): Fitted heat capacity data for database export.
     """
 
     def __init__(self, path: str):
@@ -84,7 +77,7 @@ class YphonPhononData:
         self.helmholtz_energies_poly_coeffs: np.ndarray = None
         self.entropies_poly_coeffs: np.ndarray = None
         self.heat_capacities_poly_coeffs: np.ndarray = None
-        self._harmonic_phonon = None  # cache the instance
+        self._harmonic_phonon = None
 
     def process_phonon_dos(self):
         """
@@ -101,19 +94,20 @@ class YphonPhononData:
         """
         return natsorted([f for f in os.listdir(self.path) if f.startswith("phonon_")])
 
-    def get_vasp_input(self, volumes: list[float] = None):
+    def get_vasp_input(self, selected_phonon_volumes: np.ndarray = None) -> None:
         """
         Load VASP files (INCAR, KPOINTS, POTCAR, CONTCAR) for each phonon folder.
 
         Args:
-            volumes (list[float], optional): If provided, only load structures with these volumes.
+            selected_phonon_volumes (np.ndarray, optional): If provided, only load structures with these phonon volumes.
         """
         phonon_folders = self._get_phonon_folders()
         incar_keys = ["1relax", "2phonons"]
         kpoints_keys = ["1relax", "2phonons"]
 
-        if volumes is not None:
-            volumes_set = {round(volume, 2) for volume in volumes}
+        if selected_phonon_volumes is not None:
+            # Filter phonon folders based on selected volumes
+            volumes_set = {round(volume, 2) for volume in selected_phonon_volumes}
             phonon_folders = [
                 phonon_folder
                 for phonon_folder in phonon_folders
@@ -156,7 +150,9 @@ class YphonPhononData:
         self._volumes_per_atom = np.array(volumes_per_atom)
 
         try:
-            self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
+            first_phonon_folder = phonon_folders[0]
+            potcar_path = os.path.join(self.path, first_phonon_folder, "POTCAR")
+            self.potcar = Potcar.from_file(potcar_path)
         except FileNotFoundError:
             self.potcar = None
 
@@ -164,7 +160,8 @@ class YphonPhononData:
         self,
         number_of_atoms: int,
         temperatures: np.ndarray,
-        order: int,
+        order: int = 2,
+        selected_volumes: np.ndarray = None,
     ) -> None:
         """
         Load, scale, and process YPHON phonon DOS data and compute thermodynamic properties.
@@ -172,7 +169,8 @@ class YphonPhononData:
         Args:
             number_of_atoms (int): Number of atoms to scale the phonon DOS to.
             temperatures (np.ndarray): Array of temperatures (K) for property calculation.
-            order (int): Polynomial order for fitting thermodynamic properties.
+            order (int): Polynomial order for fitting thermodynamic properties. Defaults to 2.
+            selectedd_volumes (np.ndarray, optional): If provided, only calculate properties using these volumes. The volumes are volumes per atom multiplied by the number of atoms.
         """
         yphon_results_path = os.path.join(self.path, "YPHON_results")
         self._harmonic_phonon = HarmonicPhononYphon()
@@ -182,7 +180,7 @@ class YphonPhononData:
         self.number_of_atoms = number_of_atoms
         self.volumes = self._volumes_per_atom * self.number_of_atoms
         self.temperatures = temperatures
-        hp.calculate_harmonic(temperatures)
+        hp.calculate_harmonic(temperatures=temperatures, selected_volumes=selected_volumes)
         self.helmholtz_energies = hp.helmholtz_energies
         self.internal_energies = hp.internal_energies
         self.entropies = hp.entropies
@@ -195,14 +193,6 @@ class YphonPhononData:
         self.helmholtz_energies_poly_coeffs = hp.helmholtz_energies_poly_coeffs
         self.entropies_poly_coeffs = hp.entropies_poly_coeffs
         self.heat_capacities_poly_coeffs = hp.heat_capacities_poly_coeffs
-
-        self._helmholtz_energy_to_db = {f"{temp}K": self.helmholtz_energies[i] for i, temp in enumerate(self.temperatures)}
-        self._internal_energy_to_db = {f"{temp}K": self.internal_energies[i] for i, temp in enumerate(self.temperatures)}
-        self._entropy_to_db = {f"{temp}K": self.entropies[i] for i, temp in enumerate(self.temperatures)}
-        self._heat_capacity_to_db = {f"{temp}K": self.heat_capacities[i] for i, temp in enumerate(self.temperatures)}
-        self._helmholtz_energy_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.helmholtz_energies_poly_coeffs)}}
-        self._entropy_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.entropies_poly_coeffs)}}
-        self._heat_capacity_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.heat_capacities_poly_coeffs)}}
 
     def plot_scaled_dos(self, number_of_atoms: int, plot: bool = True) -> go.Figure:
         """
