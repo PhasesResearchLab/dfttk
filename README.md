@@ -56,10 +56,8 @@ For a complete description of **DFTTK** and its capabilities, please visit the [
 If you use **DFTTK** in your work, please cite the following publication:
 
 > **N. Hew et al.**,  
-> *Density Functional Theory ToolKit (DFTTK) to automate first-principles thermodynamics via the quasiharmonic approximation*,  
-> **Computational Materials Science**, Volume 258, 2025, 114072, ISSN 0927-0256.  
-> [https://doi.org/10.1016/j.commatsci.2025.114072](https://doi.org/10.1016/j.commatsci.2025.114072)  
-> ([View on ScienceDirect](https://www.sciencedirect.com/science/article/pii/S092702562500415X))
+> *Density Functional Theory ToolKit (DFTTK) to automate first-principles thermodynamics via the quasiharmonic approximation*, **Computational Materials Science**, Volume 258, 2025, 114072, ISSN 0927-0256.  
+> [https://doi.org/10.1016/j.commatsci.2025.114072](https://doi.org/10.1016/j.commatsci.2025.114072) ([View on ScienceDirect](https://www.sciencedirect.com/science/article/pii/S092702562500415X))
 
 
 
