@@ -6,8 +6,6 @@
 [![GitHub Actions](https://github.com/PhasesResearchLab/dfttk/actions/workflows/test.yaml/badge.svg)](https://github.com/PhasesResearchLab/dfttk/actions/workflows/test.yaml)
 [![Documentation Status](https://readthedocs.org/projects/dfttk/badge/?version=main)](https://www.dfttk.org/en/main/?badge=main)
 
----
-
 ## 📝 Overview
 
 The **Density Functional Theory Toolkit (DFTTK)** is a Python package designed to automate VASP jobs and manage relevant results in MongoDB. VASP workflows leverage [Custodian](https://github.com/materialsproject/custodian), and data storage is handled via [PyMongo](https://github.com/mongodb/mongo-python-driver).
