@@ -592,7 +592,7 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
         """
         self.phonons = YphonPhononData(self.path)
         self.phonons.process_phonon_dos()
-    #TODO: have tests for selected_volumes
+
     def process_phonons(
         self,
         scale_atoms: int,
@@ -850,7 +850,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         else:
             return d
 
-    def to_mongodb(self, connection_string: str, db_name: str, collection_name: str) -> dict:
+    def to_mongodb(self, connection_string: str, db_name: str, collection_name: str, insert: bool = True) -> dict:
         """
         Connect to a MongoDB database collection for storing configuration data.
 
@@ -858,6 +858,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             connection_string (str): The MongoDB connection string.
             db_name (str): The name of the MongoDB database to use.
             collection_name (str): The name of the collection within the database.
+            insert (bool, optional): Whether to insert/update the document in MongoDB. Defaults to True.
 
         This method initializes the MongoDB client, selects the specified database and collection,
         and prepares the object for subsequent data insertion or updates.
@@ -931,7 +932,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                         {key: kp.as_dict() for key, kp in kpoints_dict.items()}
                         for kpoints_dict in self.ev_curve.kpoints
                     ],
-                    "potcar": self.ev_curve.potcar.as_dict(),
+                    "potcar": self.ev_curve.potcar.as_dict() if self.ev_curve.potcar is not None else None,
                 },
                 "output": {
                     "scaleAtoms": number_of_atoms,
@@ -983,9 +984,9 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             max_temperature = max(temperatures)
             num_temperatures = len(temperatures)
 
-            helmholtz_energy = convert_poly1d(self.phonons._helmholtz_energy_fit_to_db)
-            entropy = convert_poly1d(self.phonons._entropy_fit_to_db)
-            heat_capacity = convert_poly1d(self.phonons._heat_capacity_fit_to_db)
+            helmholtz_energy = convert_poly1d(self.phonons._helmholtz_energies_fit_to_db)
+            entropy = convert_poly1d(self.phonons._entropies_fit_to_db)
+            heat_capacity = convert_poly1d(self.phonons._heat_capacities_fit_to_db)
 
             key_mapping = {"poly_coeffs": "polyCoeffs"}
             helmholtz_energy = self.replace_keys(helmholtz_energy, key_mapping)
@@ -999,7 +1000,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                         {key: kp.as_dict() for key, kp in kpoints_dict.items()}
                         for kpoints_dict in self.phonons.kpoints
                     ],
-                    "potcar": self.phonons.potcar.as_dict(),
+                    "potcar": self.phonons.potcar.as_dict() if self.phonons.potcar is not None else None,
                 },
                 "output": {
                     "phononStructures": [
@@ -1042,7 +1043,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                         {key: kp.as_dict() for key, kp in kpoints_dict.items()}
                         for kpoints_dict in self.thermal_electronic.kpoints
                     ],
-                    "potcar": self.thermal_electronic.potcar.as_dict(),
+                    "potcar": self.thermal_electronic.potcar.as_dict() if self.thermal_electronic.potcar is not None else None,
                 },
                 "output": {
                     "elecStructures": [
@@ -1122,24 +1123,25 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         if getattr(self, "experiments", None) is not None:
             document["experiments"] = self.experiments
 
-        # Use configuration.name as the unique identifier for upsert
-        unique_field = "configuration.name"
-        unique_value = document["configuration"]["name"]
+        if insert:
+            # Use configuration.name as the unique identifier for upsert
+            unique_field = "configuration.name"
+            unique_value = document["configuration"]["name"]
 
-        existing_doc = self.collection.find_one({unique_field: unique_value})
+            existing_doc = self.collection.find_one({unique_field: unique_value})
 
-        if existing_doc:
-            # Preserve the original "created" field while updating the rest
-            document["metadata"]["created"] = existing_doc["metadata"]["created"]
-            self.collection.update_one({"_id": existing_doc["_id"]}, {"$set": document})
-        else:
-            # Add the "created" timestamp for new documents
-            document["metadata"]["created"] = datetime.utcnow()
-            self.collection.insert_one(document)
+            if existing_doc:
+                # Preserve the original "created" field while updating the rest
+                document["metadata"]["created"] = existing_doc["metadata"]["created"]
+                self.collection.update_one({"_id": existing_doc["_id"]}, {"$set": document})
+            else:
+                # Add the "created" timestamp for new documents
+                document["metadata"]["created"] = datetime.utcnow()
+                self.collection.insert_one(document)
 
-        # Close the MongoDB connection
-        self.cluster.close()
-        
+            # Close the MongoDB connection
+            self.cluster.close()
+
         return document
 
 

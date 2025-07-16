@@ -4,18 +4,20 @@ Tests for the Configuration class.
 
 # Standard library imports
 import os
-import json
+import bson
 import pickle
 
 # Third-party library imports
 import numpy as np
 import pandas as pd
+from pymatgen.core import Structure
+from pymatgen.io.vasp.inputs import Kpoints
 
 # DFTTK imports
 from dfttk.configuration import Configuration
 
-# TODO: write tests for a magnetic example
-# TODO: think of other tests for Configuration class
+# TODO: write tests for a magnetic example. Include smoke test for plot_multiple_ev.
+# TODO: think of other tests for Configuration class.
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 conv_test_path = os.path.join(current_dir, "vasp_data/Al/conv_test")
@@ -42,7 +44,8 @@ config_Al.process_qha("phonons_thermal_electronic", volume_range, P=0)
 # Load the expected results
 with open(os.path.join(current_dir, "test_configuration_data/config_Al.pkl"), "rb") as f:
     expected_config_Al = pickle.load(f)
-
+with open(os.path.join(current_dir, "test_configuration_data/config_Al_document.bson"), "rb") as f:
+    expected_document = bson.BSON.decode(f.read())
 
 def test_analyze_encut_conv():
     encut_conv_df, fig = config_Al_conv.analyze_encut_conv(plot=False)
@@ -212,3 +215,69 @@ def test_process_qha():
         assert np.allclose(qha.methods[method]["0.00_GPa"]["CTE"], expected_qha.methods[method]["0.00_GPa"]["CTE"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['CTE']}, but got {qha.methods[method]['0.00_GPa']['CTE']}"
         assert np.allclose(qha.methods[method]["0.00_GPa"]["LCTE"], expected_qha.methods[method]["0.00_GPa"]["LCTE"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['LCTE']}, but got {qha.methods[method]['0.00_GPa']['LCTE']}"
         assert np.allclose(qha.methods[method]["0.00_GPa"]["Cp"], expected_qha.methods[method]["0.00_GPa"]["Cp"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['Cp']}, but got {qha.methods[method]['0.00_GPa']['Cp']}"
+
+def test_to_mongodb():
+    connection_string = "mongodb+srv://admin:og7MRdgE2wY2KWiw@dfttk.3cdhgac.mongodb.net/?retryWrites=true&w=majority&appName=DFTTK"
+    db_name = "DFTTK"
+    collection_name = "community"
+    document = config_Al.to_mongodb(connection_string, db_name, collection_name, insert=False)
+
+    # Compare metadata
+    assert document['metadata']['vaspVersion'] == expected_document['metadata']['vaspVersion']
+    assert document['metadata']['parentDatabase'] == expected_document['metadata']['parentDatabase']
+    assert document['metadata']['parentDatabaseId'] == expected_document['metadata']['parentDatabaseId']
+    assert document['metadata']['parentDatabaseURL'] == expected_document['metadata']['parentDatabaseURL']
+    assert document['metadata']['affiliation'] == expected_document['metadata']['affiliation']
+    assert document['metadata']['comment'] == expected_document['metadata']['comment']
+    assert type(document['metadata']['created']) == type(expected_document['metadata']['created'])
+    assert type(document['metadata']['lastModified']) == type(expected_document['metadata']['lastModified'])
+    
+    # Compare configuration
+    assert document['configuration']['name'] == expected_document['configuration']['name']
+    assert document['configuration']['alias'] == expected_document['configuration']['alias']
+    assert document['configuration']['multiplicity'] == expected_document['configuration']['multiplicity']
+    assert document['configuration']['reducedFormula'] == expected_document['configuration']['reducedFormula']
+    assert document['configuration']['nComponents'] == expected_document['configuration']['nComponents']
+    assert document['configuration']['numberOfAtoms'] == expected_document['configuration']['numberOfAtoms']
+    
+    # Compare evCurve
+    ## input
+    initial_poscar = document['evCurve']['input']['initialPoscar']
+    initial_structure = Structure.from_dict(initial_poscar)
+    expected_initial_poscar = expected_document['evCurve']['input']['initialPoscar']
+    expected_initial_structure = Structure.from_dict(expected_initial_poscar)
+    assert initial_structure == expected_initial_structure, f"Expected {expected_initial_structure}, but got {initial_structure}"
+    
+    assert document['evCurve']['input']['incars'] == expected_document['evCurve']['input']['incars'], f"Expected {expected_document['evCurve']['input']['incars']}, but got {document['evCurve']['input']['incars']}"
+    
+    kpoints_objects = document['evCurve']['input']['kpoints']
+    expected_kpoints_objects = expected_document['evCurve']['input']['kpoints']
+    for kpoints, expected_kpoints in zip(kpoints_objects, expected_kpoints_objects):
+        kpoints_1relax = Kpoints.from_dict(kpoints['1relax'])
+        kpoints_2relax = Kpoints.from_dict(kpoints['2relax'])
+        kpoints_3static = Kpoints.from_dict(kpoints['3static'])
+        expected_kpoints_1relax = Kpoints.from_dict(expected_kpoints['1relax'])
+        expected_kpoints_2relax = Kpoints.from_dict(expected_kpoints['2relax'])
+        expected_kpoints_3static = Kpoints.from_dict(expected_kpoints['3static'])
+        assert kpoints_1relax == expected_kpoints_1relax, f"Expected {expected_kpoints_1relax}, but got {kpoints_1relax}"
+        assert kpoints_2relax == expected_kpoints_2relax, f"Expected {expected_kpoints_2relax}, but got {kpoints_2relax}"
+        assert kpoints_3static == expected_kpoints_3static, f"Expected {expected_kpoints_3static}, but got {kpoints_3static}"
+    
+    assert document['evCurve']['input']['potcar'] == expected_document['evCurve']['input']['potcar'], f"Expected {expected_document['evCurve']['input']['potcar']}, but got {document['evCurve']['input']['potcar']}"
+    
+    ## output
+    assert document['evCurve']['output']['scaleAtoms'] == expected_document['evCurve']['output']['scaleAtoms']
+    assert document['evCurve']['output']['volumes'] == expected_document['evCurve']['output']['volumes']
+    assert document['evCurve']['output']['energies'] == expected_document['evCurve']['output']['energies']
+
+    relaxed_structures = document['evCurve']['output']['relaxedStructures']
+    expected_relaxed_structures = expected_document['evCurve']['output']['relaxedStructures']
+    for relaxed_structure, expected_relaxed_structure in zip(relaxed_structures, expected_relaxed_structures):
+        structure = Structure.from_dict(relaxed_structure)
+        expected_structure = Structure.from_dict(expected_relaxed_structure)
+        assert structure == expected_structure, f"Expected {expected_structure}, but got {structure}"
+
+    assert document['evCurve']['output']['totalMagneticMoments'] == expected_document['evCurve']['output']['totalMagneticMoments'], f"Expected {expected_document['evCurve']['output']['totalMagneticMoments']}, but got {document['evCurve']['output']['totalMagneticMoments']}"
+    assert document['evCurve']['output']['magneticOrderings'] == expected_document['evCurve']['output']['magneticOrderings'], f"Expected {expected_document['evCurve']['output']['magneticOrderings']}, but got {document['evCurve']['output']['magneticOrderings']}"
+    assert document['evCurve']['output']['magData'] == expected_document['evCurve']['output']['magData'], f"Expected {expected_document['evCurve']['output']['magData']}, but got {document['evCurve']['output']['magData']}"
+    assert document['evCurve']['output']['eosParameters'] == expected_document['evCurve']['output']['eosParameters'], f"Expected {expected_document['evCurve']['output']['eosParameters']}, but got {document['evCurve']['output']['eosParameters']}"
