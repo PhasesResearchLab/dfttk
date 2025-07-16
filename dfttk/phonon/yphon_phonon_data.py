@@ -46,6 +46,9 @@ class YphonPhononData:
         entropies_poly_coeffs (np.ndarray): Polynomial coefficients for entropy fits.
         heat_capacities_poly_coeffs (np.ndarray): Polynomial coefficients for heat capacity fits.
         _harmonic_phonon (HarmonicPhononYphon): Cached instance for calculations and plotting.
+        _helmholtz_energies_fit_to_db (dict): Fitted Helmholtz energy data for database export.
+        _entropies_fit_to_db (dict): Fitted entropy data for database export.
+        _heat_capacities_fit_to_db (dict): Fitted heat capacity data for database export.
     """
 
     def __init__(self, path: str):
@@ -193,6 +196,10 @@ class YphonPhononData:
         self.helmholtz_energies_poly_coeffs = hp.helmholtz_energies_poly_coeffs
         self.entropies_poly_coeffs = hp.entropies_poly_coeffs
         self.heat_capacities_poly_coeffs = hp.heat_capacities_poly_coeffs
+
+        self._helmholtz_energies_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.helmholtz_energies_poly_coeffs)}}
+        self._entropies_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.entropies_poly_coeffs)}}
+        self._heat_capacities_fit_to_db = {"poly_coeffs": {f"{temp}K": coeff for temp, coeff in zip(self.temperatures, self.heat_capacities_poly_coeffs)}}
 
     def plot_scaled_dos(self, number_of_atoms: int, plot: bool = True) -> go.Figure:
         """
