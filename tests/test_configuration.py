@@ -9,12 +9,13 @@ import pickle
 
 # Third-party library imports
 import numpy as np
+import pandas as pd
 
 # DFTTK imports
 from dfttk.configuration import Configuration
 
-#TODO: write tests for a magnetic example
-#TODO: think of other tests for Configuration class
+# TODO: write tests for a magnetic example
+# TODO: think of other tests for Configuration class
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 conv_test_path = os.path.join(current_dir, "vasp_data/Al/conv_test")
@@ -41,6 +42,7 @@ config_Al.process_qha("phonons_thermal_electronic", volume_range, P=0)
 # Load the expected results
 with open(os.path.join(current_dir, "test_configuration_data/config_Al.pkl"), "rb") as f:
     expected_config_Al = pickle.load(f)
+
 
 def test_analyze_encut_conv():
     encut_conv_df, fig = config_Al_conv.analyze_encut_conv(plot=False)
@@ -102,24 +104,24 @@ def test_process_ev_curve():
     ev_curve = config_Al.ev_curve
     expected_ev_curve = expected_config_Al.ev_curve
 
-    # Test the values of the ev_curve attributes 
-    assert ev_curve.atomic_masses == expected_ev_curve.atomic_masses, (f"Expected {expected_ev_curve.atomic_masses}, but got {ev_curve.atomic_masses}")
-    assert ev_curve.average_mass == expected_ev_curve.average_mass, (f"Expected {expected_ev_curve.average_mass}, but got {ev_curve.average_mass}")
-    assert np.allclose(ev_curve.energies, expected_ev_curve.energies, equal_nan=True), (f"Expected {expected_ev_curve.energies}, but got {ev_curve.energies}")
-    assert ev_curve.eos_parameters['eos_name'] == expected_ev_curve.eos_parameters['eos_name'], (f"Expected {expected_ev_curve.eos_parameters['eos_name']}, but got {ev_curve.eos_parameters['eos_name']}")
+    # Test the values of the ev_curve attributes
+    assert ev_curve.atomic_masses == expected_ev_curve.atomic_masses, f"Expected {expected_ev_curve.atomic_masses}, but got {ev_curve.atomic_masses}"
+    assert ev_curve.average_mass == expected_ev_curve.average_mass, f"Expected {expected_ev_curve.average_mass}, but got {ev_curve.average_mass}"
+    assert np.allclose(ev_curve.energies, expected_ev_curve.energies, equal_nan=True), f"Expected {expected_ev_curve.energies}, but got {ev_curve.energies}"
+    assert ev_curve.eos_parameters["eos_name"] == expected_ev_curve.eos_parameters["eos_name"], f"Expected {expected_ev_curve.eos_parameters['eos_name']}, but got {ev_curve.eos_parameters['eos_name']}"
     for key in expected_ev_curve.eos_parameters:
-        if key != 'eos_name':
+        if key != "eos_name":
             # Increased tolerance to rtol=5e-4 for EOS parameter comparison
-            assert np.isclose(ev_curve.eos_parameters[key], expected_ev_curve.eos_parameters[key], rtol=5e-4), (f"Expected {expected_ev_curve.eos_parameters[key]}, but got {ev_curve.eos_parameters[key]}")
-    assert ev_curve.incars == expected_ev_curve.incars, (f"Expected {expected_ev_curve.incars}, but got {ev_curve.incars}")
-    assert ev_curve.initial_poscar == expected_ev_curve.initial_poscar, (f"Expected {expected_ev_curve.initial_poscar}, but got {ev_curve.initial_poscar}")
-    assert ev_curve.kpoints == expected_ev_curve.kpoints, (f"Expected {expected_ev_curve.kpoints}, but got {ev_curve.kpoints}")
-    assert ev_curve.mag_data == expected_ev_curve.mag_data, (f"Expected {expected_ev_curve.mag_data}, but got {ev_curve.mag_data}")
-    assert ev_curve.magnetic_ordering == expected_ev_curve.magnetic_ordering, (f"Expected {expected_ev_curve.magnetic_ordering}, but got {ev_curve.magnetic_ordering}")
-    assert ev_curve.number_of_atoms == expected_ev_curve.number_of_atoms, (f"Expected {expected_ev_curve.number_of_atoms}, but got {ev_curve.number_of_atoms}")
-    assert ev_curve.relaxed_structures == expected_ev_curve.relaxed_structures, (f"Expected {expected_ev_curve.relaxed_structures}, but got {ev_curve.relaxed_structures}")
-    assert ev_curve.total_magnetic_moment == expected_ev_curve.total_magnetic_moment, (f"Expected {expected_ev_curve.total_magnetic_moment}, but got {ev_curve.total_magnetic_moment}")
-    assert np.allclose(ev_curve.volumes, expected_ev_curve.volumes, rtol=1e-4), (f"Expected {expected_ev_curve.volumes}, but got {ev_curve.volumes}")
+            assert np.isclose(ev_curve.eos_parameters[key], expected_ev_curve.eos_parameters[key], rtol=5e-4), f"Expected {expected_ev_curve.eos_parameters[key]}, but got {ev_curve.eos_parameters[key]}"
+    assert ev_curve.incars == expected_ev_curve.incars, f"Expected {expected_ev_curve.incars}, but got {ev_curve.incars}"
+    assert ev_curve.initial_poscar == expected_ev_curve.initial_poscar, f"Expected {expected_ev_curve.initial_poscar}, but got {ev_curve.initial_poscar}"
+    assert ev_curve.kpoints == expected_ev_curve.kpoints, f"Expected {expected_ev_curve.kpoints}, but got {ev_curve.kpoints}"
+    assert ev_curve.mag_data == expected_ev_curve.mag_data, f"Expected {expected_ev_curve.mag_data}, but got {ev_curve.mag_data}"
+    assert ev_curve.magnetic_ordering == expected_ev_curve.magnetic_ordering, f"Expected {expected_ev_curve.magnetic_ordering}, but got {ev_curve.magnetic_ordering}"
+    assert ev_curve.number_of_atoms == expected_ev_curve.number_of_atoms, f"Expected {expected_ev_curve.number_of_atoms}, but got {ev_curve.number_of_atoms}"
+    assert ev_curve.relaxed_structures == expected_ev_curve.relaxed_structures, f"Expected {expected_ev_curve.relaxed_structures}, but got {ev_curve.relaxed_structures}"
+    assert ev_curve.total_magnetic_moment == expected_ev_curve.total_magnetic_moment, f"Expected {expected_ev_curve.total_magnetic_moment}, but got {ev_curve.total_magnetic_moment}"
+    assert np.allclose(ev_curve.volumes, expected_ev_curve.volumes, rtol=1e-4), f"Expected {expected_ev_curve.volumes}, but got {ev_curve.volumes}"
 
 
 def test_process_phonons():
@@ -127,29 +129,29 @@ def test_process_phonons():
     expected_phonons = expected_config_Al.phonons
 
     # Test the values of the phonons attributes
-    assert np.allclose(phonons.entropies, expected_phonons.entropies, rtol=1e-4), (f"Expected {expected_phonons.entropies}, but got {phonons.entropies}")
-    assert np.allclose(phonons.entropies_fit, expected_phonons.entropies_fit, rtol=1e-4), (f"Expected {expected_phonons.entropies_fit}, but got {phonons.entropies_fit}")
-    assert np.allclose(phonons.entropies_poly_coeffs, expected_phonons.entropies_poly_coeffs, rtol=1e-4), (f"Expected {expected_phonons.entropies_poly_coeffs}, but got {phonons.entropies_poly_coeffs}")
-    assert np.allclose(phonons.helmholtz_energies, expected_phonons.helmholtz_energies, rtol=1e-4), (f"Expected {expected_phonons.helmholtz_energies}, but got {phonons.helmholtz_energies}")
-    assert np.allclose(phonons.helmholtz_energies_fit, expected_phonons.helmholtz_energies_fit, rtol=1e-4), (f"Expected {expected_phonons.helmholtz_energies_fit}, but got {phonons.helmholtz_energies_fit}")
-    assert np.allclose(phonons.helmholtz_energies_poly_coeffs, expected_phonons.helmholtz_energies_poly_coeffs, rtol=1e-4), (f"Expected {expected_phonons.helmholtz_energies_poly_coeffs}, but got {phonons.helmholtz_energies_poly_coeffs}")
-    assert np.allclose(phonons.heat_capacities, expected_phonons.heat_capacities, rtol=1e-4), (f"Expected {expected_phonons.heat_capacities}, but got {phonons.heat_capacities}")
-    assert np.allclose(phonons.heat_capacities_fit, expected_phonons.heat_capacities_fit, rtol=1e-4), (f"Expected {expected_phonons.heat_capacities_fit}, but got {phonons.heat_capacities_fit}")
-    assert np.allclose(phonons.heat_capacities_poly_coeffs, expected_phonons.heat_capacities_poly_coeffs, rtol=1e-4), (f"Expected {expected_phonons.heat_capacities_poly_coeffs}, but got {phonons.heat_capacities_poly_coeffs}")
-    assert phonons.incars == expected_phonons.incars, (f"Expected {expected_phonons.incars}, but got {phonons.incars}")
-    assert np.allclose(phonons.internal_energies, expected_phonons.internal_energies, rtol=1e-4), (f"Expected {expected_phonons.internal_energies}, but got {phonons.internal_energies}")
-    assert phonons.kpoints == expected_phonons.kpoints, (f"Expected {expected_phonons.kpoints}, but got {phonons.kpoints}")
-    assert phonons.number_of_atoms == expected_phonons.number_of_atoms, (f"Expected {expected_phonons.number_of_atoms}, but got {phonons.number_of_atoms}")
-    assert phonons.phonon_structures == expected_phonons.phonon_structures, (f"Expected {expected_phonons.phonon_structures}, but got {phonons.phonon_structures}")
-    assert np.allclose(phonons.temperatures, expected_phonons.temperatures, rtol=1e-4), (f"Expected {expected_phonons.temperatures}, but got {phonons.temperatures}")
-    assert np.allclose(phonons.volumes, expected_phonons.volumes, rtol=1e-4), (f"Expected {expected_phonons.volumes}, but got {phonons.volumes}")
-    assert np.allclose(phonons.volumes_fit, expected_phonons.volumes_fit, rtol=1e-4), (f"Expected {expected_phonons.volumes_fit}, but got {phonons.volumes_fit}")
+    assert np.allclose(phonons.entropies, expected_phonons.entropies, rtol=1e-4), f"Expected {expected_phonons.entropies}, but got {phonons.entropies}"
+    assert np.allclose(phonons.entropies_fit, expected_phonons.entropies_fit, rtol=1e-4), f"Expected {expected_phonons.entropies_fit}, but got {phonons.entropies_fit}"
+    assert np.allclose(phonons.entropies_poly_coeffs, expected_phonons.entropies_poly_coeffs, rtol=1e-4), f"Expected {expected_phonons.entropies_poly_coeffs}, but got {phonons.entropies_poly_coeffs}"
+    assert np.allclose(phonons.helmholtz_energies, expected_phonons.helmholtz_energies, rtol=1e-4), f"Expected {expected_phonons.helmholtz_energies}, but got {phonons.helmholtz_energies}"
+    assert np.allclose(phonons.helmholtz_energies_fit, expected_phonons.helmholtz_energies_fit, rtol=1e-4), f"Expected {expected_phonons.helmholtz_energies_fit}, but got {phonons.helmholtz_energies_fit}"
+    assert np.allclose(phonons.helmholtz_energies_poly_coeffs, expected_phonons.helmholtz_energies_poly_coeffs, rtol=1e-4), f"Expected {expected_phonons.helmholtz_energies_poly_coeffs}, but got {phonons.helmholtz_energies_poly_coeffs}"
+    assert np.allclose(phonons.heat_capacities, expected_phonons.heat_capacities, rtol=1e-4), f"Expected {expected_phonons.heat_capacities}, but got {phonons.heat_capacities}"
+    assert np.allclose(phonons.heat_capacities_fit, expected_phonons.heat_capacities_fit, rtol=1e-4), f"Expected {expected_phonons.heat_capacities_fit}, but got {phonons.heat_capacities_fit}"
+    assert np.allclose(phonons.heat_capacities_poly_coeffs, expected_phonons.heat_capacities_poly_coeffs, rtol=1e-4), f"Expected {expected_phonons.heat_capacities_poly_coeffs}, but got {phonons.heat_capacities_poly_coeffs}"
+    assert phonons.incars == expected_phonons.incars, f"Expected {expected_phonons.incars}, but got {phonons.incars}"
+    assert np.allclose(phonons.internal_energies, expected_phonons.internal_energies, rtol=1e-4), f"Expected {expected_phonons.internal_energies}, but got {phonons.internal_energies}"
+    assert phonons.kpoints == expected_phonons.kpoints, f"Expected {expected_phonons.kpoints}, but got {phonons.kpoints}"
+    assert phonons.number_of_atoms == expected_phonons.number_of_atoms, f"Expected {expected_phonons.number_of_atoms}, but got {phonons.number_of_atoms}"
+    assert phonons.phonon_structures == expected_phonons.phonon_structures, f"Expected {expected_phonons.phonon_structures}, but got {phonons.phonon_structures}"
+    assert np.allclose(phonons.temperatures, expected_phonons.temperatures, rtol=1e-4), f"Expected {expected_phonons.temperatures}, but got {phonons.temperatures}"
+    assert np.allclose(phonons.volumes, expected_phonons.volumes, rtol=1e-4), f"Expected {expected_phonons.volumes}, but got {phonons.volumes}"
+    assert np.allclose(phonons.volumes_fit, expected_phonons.volumes_fit, rtol=1e-4), f"Expected {expected_phonons.volumes_fit}, but got {phonons.volumes_fit}"
 
 
 def test_process_debye():
     debye = config_Al.debye
     expected_debye = expected_config_Al.debye
-    
+
     # Test the values of the debye attributes
     assert np.isclose(debye.B, expected_debye.B, rtol=1e-4), f"Expected {expected_debye.B}, but got {debye.B}"
     assert np.isclose(debye.BP, expected_debye.BP, rtol=1e-4), f"Expected {expected_debye.BP}, but got {debye.BP}"
@@ -159,107 +161,43 @@ def test_process_debye():
     assert np.allclose(debye.entropies, expected_debye.entropies, rtol=1e-4), f"Expected {expected_debye.entropies}, but got {debye.entropies}"
     assert np.allclose(debye.heat_capacities, expected_debye.heat_capacities, rtol=1e-4), f"Expected {expected_debye.heat_capacities}, but got {debye.heat_capacities}"
     assert np.allclose(debye.helmholtz_energies, expected_debye.helmholtz_energies, rtol=2e-3, atol=1e-6), f"Expected {expected_debye.helmholtz_energies}, but got {debye.helmholtz_energies}"
-    assert number_of_atoms == expected_debye.number_of_atoms, f"Expected {expected_debye.number_of_atoms}, but got {debye.number_of_atoms}"
+    assert debye.number_of_atoms == expected_debye.number_of_atoms, f"Expected {expected_debye.number_of_atoms}, but got {debye.number_of_atoms}"
     assert np.isclose(debye.scaling_factor, expected_debye.scaling_factor, rtol=1e-4), f"Expected {expected_debye.scaling_factor}, but got {debye.scaling_factor}"
     assert np.allclose(debye.temperatures, expected_debye.temperatures, rtol=1e-4), f"Expected {expected_debye.temperatures}, but got {debye.temperatures}"
     assert np.allclose(debye.volumes, expected_debye.volumes, rtol=1e-4), f"Expected {expected_debye.volumes}, but got {debye.volumes}"
 
 
 def test_process_thermal_electronic():
-    thermal_electronic_files_and_attributes = [
-        ("test_configuration_data/expected_thermal_electronic_incars.json", "incars"),
-        #("test_configuration_data/expected_thermal_electronic_kpoints.json", "kpoints"),
-    ]
-    for filename, attribute in thermal_electronic_files_and_attributes:
-        with open(os.path.join(current_dir, filename), "r") as f:
-            expected_data = json.load(f)
+    thermal_electronic = config_Al.thermal_electronic
+    expected_thermal_electronic = expected_config_Al.thermal_electronic
 
-        actual_data = getattr(config_Al.thermal_electronic, attribute)
-
-        if attribute == "kpoints":
-            actual_data = actual_data.as_dict()
-
-        for actual, expected in zip(actual_data, expected_data):
-            assert actual == expected, f"Expected {expected}, but got {actual}"
-
-    expected_number_of_atoms = 4
-    assert (
-        config_Al.thermal_electronic.number_of_atoms == expected_number_of_atoms
-    ), f"Expected 4, but got {config_Al.thermal_electronic.number_of_atoms}"
-
-    expected_volumes = [60.0, 62.0, 64.0, 66.0, 68.0, 70.0, 72.0, 74.0]
-    assert np.array_equal(
-        config_Al.thermal_electronic.volumes, expected_volumes
-    ), f"Expected {expected_volumes}, but got {config_Al.thermal_electronic.volumes}"
-
-    expected_temperatures = list(range(0, 1010, 100))
-    assert np.array_equal(
-        config_Al.thermal_electronic.temperatures, expected_temperatures
-    ), f"Expected {expected_temperatures}, but got {config_Al.thermal_electronic.temperatures}"
-
-    files_and_attributes = [
-        (
-            "test_configuration_data/expected_thermal_electronic_helmholtz_energy.json",
-            "helmholtz_energy",
-        ),
-        (
-            "test_configuration_data/expected_thermal_electronic_internal_energy.json",
-            "internal_energy",
-        ),
-        ("test_configuration_data/expected_thermal_electronic_entropy.json", "entropy"),
-        (
-            "test_configuration_data/expected_thermal_electronic_heat_capacity.json",
-            "heat_capacity",
-        ),
-        (
-            "test_configuration_data/expected_thermal_electronic_helmholtz_energy_fit.json",
-            "helmholtz_energy_fit",
-        ),
-        (
-            "test_configuration_data/expected_thermal_electronic_entropy_fit.json",
-            "entropy_fit",
-        ),
-        (
-            "test_configuration_data/expected_thermal_electronic_heat_capacity_fit.json",
-            "heat_capacity_fit",
-        ),
-    ]
-
-    for filename, attribute in files_and_attributes:
-        with open(os.path.join(current_dir, filename), "r") as f:
-            expected_data = json.load(f)
-
-        if "fit" in attribute:
-            expected_data = expected_data["polynomial_coefficients"]
-            actual_data = getattr(config_Al.thermal_electronic, attribute)[
-                "polynomial_coefficients"
-            ]
-        else:
-            actual_data = getattr(config_Al.thermal_electronic, attribute)
-
-        for temp, expected_values in expected_data.items():
-            actual_values = actual_data[temp]
-            for expected, actual in zip(expected_values, actual_values):
-                assert np.allclose(
-                    expected, actual, atol=1e-6
-                ), f"Expected {expected}, but got {actual} with tolerance 1e-6"
+    # Test the values of the thermal_electronic attributes
+    # Current s_el_poly, entropy, entropy_fit, heat_capacity, heat_capacity_fit, helmholtz_energy, helmholtz_energy_fit, and internal_energy are not tested
+    assert thermal_electronic.number_of_atoms == expected_thermal_electronic.number_of_atoms, f"Expected {expected_thermal_electronic.number_of_atoms}, but got {thermal_electronic.number_of_atoms}"
+    assert np.allclose(thermal_electronic.s_el, expected_thermal_electronic.s_el, rtol=1e-4), f"Expected {expected_thermal_electronic.s_el}, but got {thermal_electronic.s_el}"
+    assert np.allclose(np.vstack(thermal_electronic.s_el_fit), np.vstack(expected_thermal_electronic.s_el_fit), rtol=1e-4), f"Expected {expected_thermal_electronic.s_el_fit}, but got {thermal_electronic.s_el_fit}"
+    assert thermal_electronic.structures == expected_thermal_electronic.structures, f"Expected {expected_thermal_electronic.structures}, but got {thermal_electronic.structures}"
+    assert np.allclose(thermal_electronic.temperatures, expected_thermal_electronic.temperatures, rtol=1e-4), f"Expected {expected_thermal_electronic.temperatures}, but got {thermal_electronic.temperatures}"
+    assert np.allclose(thermal_electronic.volume_fit, expected_thermal_electronic.volume_fit, rtol=1e-4), f"Expected {expected_thermal_electronic.volume_fit}, but got {thermal_electronic.volume_fit}"
+    assert np.allclose(thermal_electronic.cv_el, expected_thermal_electronic.cv_el, rtol=1e-4), f"Expected {expected_thermal_electronic.cv_el}, but got {thermal_electronic.cv_el}"
+    assert np.allclose(np.vstack(thermal_electronic.cv_el_fit), np.vstack(expected_thermal_electronic.cv_el_fit), rtol=1e-4), f"Expected {expected_thermal_electronic.cv_el_fit}, but got {thermal_electronic.cv_el_fit}"
+    assert np.allclose(thermal_electronic.e_el, expected_thermal_electronic.e_el, rtol=1e-4), f"Expected {expected_thermal_electronic.e_el}, but got {thermal_electronic.e_el}"
+    pd.testing.assert_frame_equal(thermal_electronic.electron_dos_data, expected_thermal_electronic.electron_dos_data)
+    assert np.allclose(thermal_electronic.f_el, expected_thermal_electronic.f_el, rtol=1e-4), f"Expected {expected_thermal_electronic.f_el}, but got {thermal_electronic.f_el}"
+    assert np.allclose(thermal_electronic.f_el_fit, expected_thermal_electronic.f_el_fit, rtol=1e-4), f"Expected {expected_thermal_electronic.f_el_fit}, but got {thermal_electronic.f_el_fit}"
+    assert thermal_electronic.incars == expected_thermal_electronic.incars, f"Expected {expected_thermal_electronic.incars}, but got {thermal_electronic.incars}"
+    assert thermal_electronic.kpoints == expected_thermal_electronic.kpoints, f"Expected {expected_thermal_electronic.kpoints}, but got {thermal_electronic.kpoints}"
 
 
 def test_process_qha():
     expected_number_of_atoms = 4
-    assert (
-        config_Al.qha.number_of_atoms == expected_number_of_atoms
-    ), f"Expected {expected_number_of_atoms}, but got {config_Al.qha.number_of_atoms}"
+    assert config_Al.qha.number_of_atoms == expected_number_of_atoms, f"Expected {expected_number_of_atoms}, but got {config_Al.qha.number_of_atoms}"
 
     expected_temperatures = list(range(0, 1010, 100))
-    assert np.array_equal(
-        config_Al.qha.temperatures, expected_temperatures
-    ), f"Expected {expected_temperatures}, but got {config_Al.qha.temperatures}"
+    assert np.array_equal(config_Al.qha.temperatures, expected_temperatures), f"Expected {expected_temperatures}, but got {config_Al.qha.temperatures}"
 
     expected_volumes = np.linspace(0.98 * 60, 1.02 * 74, 1000)
-    assert np.allclose(
-        config_Al.qha.volumes, expected_volumes, atol=1e-6
-    ), f"Expected {expected_volumes}, but got {config_Al.qha.volumes}"
+    assert np.allclose(config_Al.qha.volumes, expected_volumes, atol=1e-6), f"Expected {expected_volumes}, but got {config_Al.qha.volumes}"
 
     files_and_attributes = [
         ("test_configuration_data/expected_qha_debye.json", "debye"),
@@ -282,12 +220,8 @@ def test_process_qha():
         properties = ["helmholtz_energy_pv", "entropy", "heat_capacity"]
         for property in properties:
             if property == "helmholtz_energy_pv":
-                expected_property_data = expected_data["0.00_GPa"][property][
-                    "eos_constants"
-                ]
-                actual_property_data = methods_copy[attribute]["0.00_GPa"][property][
-                    "eos_constants"
-                ]
+                expected_property_data = expected_data["0.00_GPa"][property]["eos_constants"]
+                actual_property_data = methods_copy[attribute]["0.00_GPa"][property]["eos_constants"]
                 expected_property_data.pop("eos_name", None)
                 actual_property_data.pop("eos_name", None)
             else:
@@ -297,14 +231,8 @@ def test_process_qha():
             for temp, expected_values in expected_property_data.items():
                 actual_values = actual_property_data[temp]
                 if property == "helmholtz_energy_pv":
-                    for expected, actual in zip(
-                        expected_values.values(), actual_values.values()
-                    ):
-                        assert np.allclose(
-                            expected, actual, rtol=2e-2
-                        ), f"Expected {expected}, but got {actual} with tolerance 2e-2"
+                    for expected, actual in zip(expected_values.values(), actual_values.values()):
+                        assert np.allclose(expected, actual, rtol=2e-2), f"Expected {expected}, but got {actual} with tolerance 2e-2"
                 else:
                     for expected, actual in zip(expected_values, actual_values):
-                        assert np.allclose(
-                            expected, actual, rtol=2e-2
-                        ), f"Expected {expected}, but got {actual} with tolerance 2e-2"
+                        assert np.allclose(expected, actual, rtol=2e-2), f"Expected {expected}, but got {actual} with tolerance 2e-2"
