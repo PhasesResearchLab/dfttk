@@ -190,49 +190,26 @@ def test_process_thermal_electronic():
 
 
 def test_process_qha():
-    expected_number_of_atoms = 4
-    assert config_Al.qha.number_of_atoms == expected_number_of_atoms, f"Expected {expected_number_of_atoms}, but got {config_Al.qha.number_of_atoms}"
+    qha = config_Al.qha
+    expected_qha = expected_config_Al.qha
 
-    expected_temperatures = list(range(0, 1010, 100))
-    assert np.array_equal(config_Al.qha.temperatures, expected_temperatures), f"Expected {expected_temperatures}, but got {config_Al.qha.temperatures}"
+    # Test the values of the qha attributes
+    assert qha.number_of_atoms == expected_qha.number_of_atoms, f"Expected {expected_qha.number_of_atoms}, but got {qha.number_of_atoms}"
+    assert np.allclose(qha.temperatures, expected_qha.temperatures, rtol=1e-4), f"Expected {expected_qha.temperatures}, but got {qha.temperatures}"
+    assert np.allclose(qha.volumes, expected_qha.volumes, rtol=1e-4), f"Expected {expected_qha.volumes}, but got {qha.volumes}"
 
-    expected_volumes = np.linspace(0.98 * 60, 1.02 * 74, 1000)
-    assert np.allclose(config_Al.qha.volumes, expected_volumes, atol=1e-6), f"Expected {expected_volumes}, but got {config_Al.qha.volumes}"
-
-    files_and_attributes = [
-        ("test_configuration_data/expected_qha_debye.json", "debye"),
-        (
-            "test_configuration_data/expected_qha_debye_thermal_electronic.json",
-            "debye_thermal_electronic",
-        ),
-        ("test_configuration_data/expected_qha_phonons.json", "phonons"),
-        (
-            "test_configuration_data/expected_qha_phonons_thermal_electronic.json",
-            "phonons_thermal_electronic",
-        ),
-    ]
-
-    methods_copy = config_Al.qha.methods
-    for filename, attribute in files_and_attributes:
-        with open(os.path.join(current_dir, filename), "r") as f:
-            expected_data = json.load(f)
-
-        properties = ["helmholtz_energy_pv", "entropy", "heat_capacity"]
-        for property in properties:
-            if property == "helmholtz_energy_pv":
-                expected_property_data = expected_data["0.00_GPa"][property]["eos_constants"]
-                actual_property_data = methods_copy[attribute]["0.00_GPa"][property]["eos_constants"]
-                expected_property_data.pop("eos_name", None)
-                actual_property_data.pop("eos_name", None)
-            else:
-                expected_property_data = expected_data[property]["poly_coeffs"]
-                actual_property_data = methods_copy[attribute][property]["poly_coeffs"]
-
-            for temp, expected_values in expected_property_data.items():
-                actual_values = actual_property_data[temp]
-                if property == "helmholtz_energy_pv":
-                    for expected, actual in zip(expected_values.values(), actual_values.values()):
-                        assert np.allclose(expected, actual, rtol=2e-2), f"Expected {expected}, but got {actual} with tolerance 2e-2"
-                else:
-                    for expected, actual in zip(expected_values, actual_values):
-                        assert np.allclose(expected, actual, rtol=2e-2), f"Expected {expected}, but got {actual} with tolerance 2e-2"
+    methods = ["debye", "debye_thermal_electronic", "phonons", "phonons_thermal_electronic"]
+    for method in methods:
+        assert np.allclose(qha.methods[method]["helmholtz_energy"]["values"], expected_qha.methods[method]["helmholtz_energy"]["values"], rtol=1e-4), f"Expected {expected_qha.methods[method]['helmholtz_energy']['values']}, but got {qha.methods[method]['helmholtz_energy']['values']}"
+        assert np.allclose(qha.methods[method]["entropy"]["values"], expected_qha.methods[method]["entropy"]["values"], rtol=1e-4), f"Expected {expected_qha.methods[method]['entropy']['values']}, but got {qha.methods[method]['entropy']['values']}"
+        assert np.allclose(qha.methods[method]["heat_capacity"]["values"], expected_qha.methods[method]["heat_capacity"]["values"], rtol=1e-4), f"Expected {expected_qha.methods[method]['heat_capacity']['values']}, but got {qha.methods[method]['heat_capacity']['values']}"
+        assert np.allclose(qha.methods[method]["0.00_GPa"]["helmholtz_energy_pv"]["values"], expected_qha.methods[method]["0.00_GPa"]["helmholtz_energy_pv"]["values"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['helmholtz_energy_pv']['values']}, but got {qha.methods[method]['0.00_GPa']['helmholtz_energy_pv']['values']}"
+        assert np.allclose(qha.methods[method]["0.00_GPa"]["V0"], expected_qha.methods[method]["0.00_GPa"]["V0"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['V0']}, but got {qha.methods[method]['0.00_GPa']['V0']}"
+        assert np.allclose(qha.methods[method]["0.00_GPa"]["G0"], expected_qha.methods[method]["0.00_GPa"]["G0"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['G0']}, but got {qha.methods[method]['0.00_GPa']['G0']}"
+        assert np.allclose(qha.methods[method]["0.00_GPa"]["S0"], expected_qha.methods[method]["0.00_GPa"]["S0"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['S0']}, but got {qha.methods[method]['0.00_GPa']['S0']}"
+        assert np.allclose(qha.methods[method]["0.00_GPa"]["H0"], expected_qha.methods[method]["0.00_GPa"]["H0"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['H0']}, but got {qha.methods[method]['0.00_GPa']['H0']}"
+        assert np.allclose(qha.methods[method]["0.00_GPa"]["B"], expected_qha.methods[method]["0.00_GPa"]["B"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['B']}, but got {qha.methods[method]['0.00_GPa']['B']}"
+        assert np.allclose(qha.methods[method]["0.00_GPa"]["BP"], expected_qha.methods[method]["0.00_GPa"]["BP"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['BP']}, but got {qha.methods[method]['0.00_GPa']['BP']}"
+        assert np.allclose(qha.methods[method]["0.00_GPa"]["CTE"], expected_qha.methods[method]["0.00_GPa"]["CTE"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['CTE']}, but got {qha.methods[method]['0.00_GPa']['CTE']}"
+        assert np.allclose(qha.methods[method]["0.00_GPa"]["LCTE"], expected_qha.methods[method]["0.00_GPa"]["LCTE"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['LCTE']}, but got {qha.methods[method]['0.00_GPa']['LCTE']}"
+        assert np.allclose(qha.methods[method]["0.00_GPa"]["Cp"], expected_qha.methods[method]["0.00_GPa"]["Cp"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['Cp']}, but got {qha.methods[method]['0.00_GPa']['Cp']}"
