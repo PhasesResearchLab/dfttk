@@ -287,3 +287,11 @@ def test_to_mongodb():
     assert np.isclose(document['evCurve']['output']['eosParameters']['B'], expected_document['evCurve']['output']['eosParameters']['B'], rtol=1e-4), f"Expected {expected_document['evCurve']['output']['eosParameters']['B']}, but got {document['evCurve']['output']['eosParameters']['B']}"
     assert np.isclose(document['evCurve']['output']['eosParameters']['BP'], expected_document['evCurve']['output']['eosParameters']['BP'], rtol=1e-4), f"Expected {expected_document['evCurve']['output']['eosParameters']['BP']}, but got {document['evCurve']['output']['eosParameters']['BP']}"
     assert np.isclose(document['evCurve']['output']['eosParameters']['B2P'], expected_document['evCurve']['output']['eosParameters']['B2P'], rtol=1e-4), f"Expected {expected_document['evCurve']['output']['eosParameters']['B2P']}, but got {document['evCurve']['output']['eosParameters']['B2P']}"
+    
+    # Compare debye
+    assert np.isclose(document['debye']['atomicMass'], expected_document['debye']['atomicMass'], rtol=1e-4), f"Expected {expected_document['debye']['atomicMass']}, but got {document['debye']['atomicMass']}"
+    assert np.isclose(document['debye']['V0'], expected_document['debye']['V0'], rtol=1e-4), f"Expected {expected_document['debye']['V0']}, but got {document['debye']['V0']}"
+    assert np.isclose(document['debye']['B'], expected_document['debye']['B'], rtol=1e-4), f"Expected {expected_document['debye']['B']}, but got {document['debye']['B']}"
+    assert np.isclose(document['debye']['BP'], expected_document['debye']['BP'], rtol=1e-4), f"Expected {expected_document['debye']['BP']}, but got {document['debye']['BP']}"
+    assert np.isclose(document['debye']['scalingFactor'], expected_document['debye']['scalingFactor'], rtol=1e-4), f"Expected {expected_document['debye']['scalingFactor']}, but got {document['debye']['scalingFactor']}"
+    assert np.isclose(document['debye']['gruneisenX'], expected_document['debye']['gruneisenX'], rtol=1e-4), f"Expected {expected_document['debye']['gruneisenX']}, but got {document['debye']['gruneisenX']}"
