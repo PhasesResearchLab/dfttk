@@ -47,6 +47,7 @@ with open(os.path.join(current_dir, "test_configuration_data/config_Al.pkl"), "r
 with open(os.path.join(current_dir, "test_configuration_data/config_Al_document.bson"), "rb") as f:
     expected_document = bson.BSON.decode(f.read())
 
+
 def test_analyze_encut_conv():
     encut_conv_df, fig = config_Al_conv.analyze_encut_conv(plot=False)
 
@@ -216,6 +217,7 @@ def test_process_qha():
         assert np.allclose(qha.methods[method]["0.00_GPa"]["LCTE"], expected_qha.methods[method]["0.00_GPa"]["LCTE"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['LCTE']}, but got {qha.methods[method]['0.00_GPa']['LCTE']}"
         assert np.allclose(qha.methods[method]["0.00_GPa"]["Cp"], expected_qha.methods[method]["0.00_GPa"]["Cp"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['Cp']}, but got {qha.methods[method]['0.00_GPa']['Cp']}"
 
+
 def test_to_mongodb():
     connection_string = "mongodb+srv://admin:og7MRdgE2wY2KWiw@dfttk.3cdhgac.mongodb.net/?retryWrites=true&w=majority&appName=DFTTK"
     db_name = "DFTTK"
@@ -223,75 +225,233 @@ def test_to_mongodb():
     document = config_Al.to_mongodb(connection_string, db_name, collection_name, insert=False)
 
     # Compare metadata
-    assert document['metadata']['vaspVersion'] == expected_document['metadata']['vaspVersion']
-    assert document['metadata']['parentDatabase'] == expected_document['metadata']['parentDatabase']
-    assert document['metadata']['parentDatabaseId'] == expected_document['metadata']['parentDatabaseId']
-    assert document['metadata']['parentDatabaseURL'] == expected_document['metadata']['parentDatabaseURL']
-    assert document['metadata']['affiliation'] == expected_document['metadata']['affiliation']
-    assert document['metadata']['comment'] == expected_document['metadata']['comment']
-    assert type(document['metadata']['created']) == type(expected_document['metadata']['created'])
-    assert type(document['metadata']['lastModified']) == type(expected_document['metadata']['lastModified'])
-    
+    assert document["metadata"]["vaspVersion"] == expected_document["metadata"]["vaspVersion"]
+    assert document["metadata"]["parentDatabase"] == expected_document["metadata"]["parentDatabase"]
+    assert document["metadata"]["parentDatabaseId"] == expected_document["metadata"]["parentDatabaseId"]
+    assert document["metadata"]["parentDatabaseURL"] == expected_document["metadata"]["parentDatabaseURL"]
+    assert document["metadata"]["affiliation"] == expected_document["metadata"]["affiliation"]
+    assert document["metadata"]["comment"] == expected_document["metadata"]["comment"]
+    assert type(document["metadata"]["created"]) == type(expected_document["metadata"]["created"])
+    assert type(document["metadata"]["lastModified"]) == type(expected_document["metadata"]["lastModified"])
+
     # Compare configuration
-    assert document['configuration']['name'] == expected_document['configuration']['name']
-    assert document['configuration']['alias'] == expected_document['configuration']['alias']
-    assert document['configuration']['multiplicity'] == expected_document['configuration']['multiplicity']
-    assert document['configuration']['reducedFormula'] == expected_document['configuration']['reducedFormula']
-    assert document['configuration']['nComponents'] == expected_document['configuration']['nComponents']
-    assert document['configuration']['numberOfAtoms'] == expected_document['configuration']['numberOfAtoms']
-    
+    assert document["configuration"]["name"] == expected_document["configuration"]["name"]
+    assert document["configuration"]["alias"] == expected_document["configuration"]["alias"]
+    assert document["configuration"]["multiplicity"] == expected_document["configuration"]["multiplicity"]
+    assert document["configuration"]["reducedFormula"] == expected_document["configuration"]["reducedFormula"]
+    assert document["configuration"]["nComponents"] == expected_document["configuration"]["nComponents"]
+    assert document["configuration"]["numberOfAtoms"] == expected_document["configuration"]["numberOfAtoms"]
+
     # Compare evCurve
     ## input
-    initial_poscar = document['evCurve']['input']['initialPoscar']
+    initial_poscar = document["evCurve"]["input"]["initialPoscar"]
     initial_structure = Structure.from_dict(initial_poscar)
-    expected_initial_poscar = expected_document['evCurve']['input']['initialPoscar']
+    expected_initial_poscar = expected_document["evCurve"]["input"]["initialPoscar"]
     expected_initial_structure = Structure.from_dict(expected_initial_poscar)
     assert initial_structure == expected_initial_structure, f"Expected {expected_initial_structure}, but got {initial_structure}"
-    
-    assert document['evCurve']['input']['incars'] == expected_document['evCurve']['input']['incars'], f"Expected {expected_document['evCurve']['input']['incars']}, but got {document['evCurve']['input']['incars']}"
-    
-    kpoints_objects = document['evCurve']['input']['kpoints']
-    expected_kpoints_objects = expected_document['evCurve']['input']['kpoints']
+
+    assert document["evCurve"]["input"]["incars"] == expected_document["evCurve"]["input"]["incars"], f"Expected {expected_document['evCurve']['input']['incars']}, but got {document['evCurve']['input']['incars']}"
+
+    kpoints_objects = document["evCurve"]["input"]["kpoints"]
+    expected_kpoints_objects = expected_document["evCurve"]["input"]["kpoints"]
     for kpoints, expected_kpoints in zip(kpoints_objects, expected_kpoints_objects):
-        kpoints_1relax = Kpoints.from_dict(kpoints['1relax'])
-        kpoints_2relax = Kpoints.from_dict(kpoints['2relax'])
-        kpoints_3static = Kpoints.from_dict(kpoints['3static'])
-        expected_kpoints_1relax = Kpoints.from_dict(expected_kpoints['1relax'])
-        expected_kpoints_2relax = Kpoints.from_dict(expected_kpoints['2relax'])
-        expected_kpoints_3static = Kpoints.from_dict(expected_kpoints['3static'])
+        kpoints_1relax = Kpoints.from_dict(kpoints["1relax"])
+        kpoints_2relax = Kpoints.from_dict(kpoints["2relax"])
+        kpoints_3static = Kpoints.from_dict(kpoints["3static"])
+        expected_kpoints_1relax = Kpoints.from_dict(expected_kpoints["1relax"])
+        expected_kpoints_2relax = Kpoints.from_dict(expected_kpoints["2relax"])
+        expected_kpoints_3static = Kpoints.from_dict(expected_kpoints["3static"])
         assert kpoints_1relax == expected_kpoints_1relax, f"Expected {expected_kpoints_1relax}, but got {kpoints_1relax}"
         assert kpoints_2relax == expected_kpoints_2relax, f"Expected {expected_kpoints_2relax}, but got {kpoints_2relax}"
         assert kpoints_3static == expected_kpoints_3static, f"Expected {expected_kpoints_3static}, but got {kpoints_3static}"
-    
-    assert document['evCurve']['input']['potcar'] == expected_document['evCurve']['input']['potcar'], f"Expected {expected_document['evCurve']['input']['potcar']}, but got {document['evCurve']['input']['potcar']}"
-    
-    ## output
-    assert document['evCurve']['output']['scaleAtoms'] == expected_document['evCurve']['output']['scaleAtoms']
-    assert document['evCurve']['output']['volumes'] == expected_document['evCurve']['output']['volumes']
-    assert document['evCurve']['output']['energies'] == expected_document['evCurve']['output']['energies']
 
-    relaxed_structures = document['evCurve']['output']['relaxedStructures']
-    expected_relaxed_structures = expected_document['evCurve']['output']['relaxedStructures']
+    assert document["evCurve"]["input"]["potcar"] == expected_document["evCurve"]["input"]["potcar"], f"Expected {expected_document['evCurve']['input']['potcar']}, but got {document['evCurve']['input']['potcar']}"
+
+    ## output
+    assert document["evCurve"]["output"]["scaleAtoms"] == expected_document["evCurve"]["output"]["scaleAtoms"]
+    assert document["evCurve"]["output"]["volumes"] == expected_document["evCurve"]["output"]["volumes"]
+    assert document["evCurve"]["output"]["energies"] == expected_document["evCurve"]["output"]["energies"]
+
+    relaxed_structures = document["evCurve"]["output"]["relaxedStructures"]
+    expected_relaxed_structures = expected_document["evCurve"]["output"]["relaxedStructures"]
     for relaxed_structure, expected_relaxed_structure in zip(relaxed_structures, expected_relaxed_structures):
         structure = Structure.from_dict(relaxed_structure)
         expected_structure = Structure.from_dict(expected_relaxed_structure)
         assert structure == expected_structure, f"Expected {expected_structure}, but got {structure}"
 
-    assert document['evCurve']['output']['totalMagneticMoments'] == expected_document['evCurve']['output']['totalMagneticMoments'], f"Expected {expected_document['evCurve']['output']['totalMagneticMoments']}, but got {document['evCurve']['output']['totalMagneticMoments']}"
-    assert document['evCurve']['output']['magneticOrderings'] == expected_document['evCurve']['output']['magneticOrderings'], f"Expected {expected_document['evCurve']['output']['magneticOrderings']}, but got {document['evCurve']['output']['magneticOrderings']}"
-    assert document['evCurve']['output']['magData'] == expected_document['evCurve']['output']['magData'], f"Expected {expected_document['evCurve']['output']['magData']}, but got {document['evCurve']['output']['magData']}"
-    assert document['evCurve']['output']['eosParameters']['eosName'] == expected_document['evCurve']['output']['eosParameters']['eosName'], f"Expected {expected_document['evCurve']['output']['eosParameters']['eosName']}, but got {document['evCurve']['output']['eosParameters']['eosName']}"
-    # Only compare the eos parameters, not eos constants
-    assert np.isclose(document['evCurve']['output']['eosParameters']['V0'], expected_document['evCurve']['output']['eosParameters']['V0'], rtol=1e-4), f"Expected {expected_document['evCurve']['output']['eosParameters']['V0']}, but got {document['evCurve']['output']['eosParameters']['V0']}"
-    assert np.isclose(document['evCurve']['output']['eosParameters']['E0'], expected_document['evCurve']['output']['eosParameters']['E0'], rtol=1e-4), f"Expected {expected_document['evCurve']['output']['eosParameters']['E0']}, but got {document['evCurve']['output']['eosParameters']['E0']}"
-    assert np.isclose(document['evCurve']['output']['eosParameters']['B'], expected_document['evCurve']['output']['eosParameters']['B'], rtol=1e-4), f"Expected {expected_document['evCurve']['output']['eosParameters']['B']}, but got {document['evCurve']['output']['eosParameters']['B']}"
-    assert np.isclose(document['evCurve']['output']['eosParameters']['BP'], expected_document['evCurve']['output']['eosParameters']['BP'], rtol=1e-4), f"Expected {expected_document['evCurve']['output']['eosParameters']['BP']}, but got {document['evCurve']['output']['eosParameters']['BP']}"
-    assert np.isclose(document['evCurve']['output']['eosParameters']['B2P'], expected_document['evCurve']['output']['eosParameters']['B2P'], rtol=1e-4), f"Expected {expected_document['evCurve']['output']['eosParameters']['B2P']}, but got {document['evCurve']['output']['eosParameters']['B2P']}"
-    
+    assert document["evCurve"]["output"]["totalMagneticMoments"] == expected_document["evCurve"]["output"]["totalMagneticMoments"], f"Expected {expected_document['evCurve']['output']['totalMagneticMoments']}, but got {document['evCurve']['output']['totalMagneticMoments']}"
+    assert document["evCurve"]["output"]["magneticOrderings"] == expected_document["evCurve"]["output"]["magneticOrderings"], f"Expected {expected_document['evCurve']['output']['magneticOrderings']}, but got {document['evCurve']['output']['magneticOrderings']}"
+    assert document["evCurve"]["output"]["magData"] == expected_document["evCurve"]["output"]["magData"], f"Expected {expected_document['evCurve']['output']['magData']}, but got {document['evCurve']['output']['magData']}"
+    assert document["evCurve"]["output"]["eosParameters"]["eosName"] == expected_document["evCurve"]["output"]["eosParameters"]["eosName"], f"Expected {expected_document['evCurve']['output']['eosParameters']['eosName']}, but got {document['evCurve']['output']['eosParameters']['eosName']}"
+    # Only compare the eos parameters values, not eos constants values
+    assert np.isclose(document["evCurve"]["output"]["eosParameters"]["V0"], expected_document["evCurve"]["output"]["eosParameters"]["V0"], rtol=1e-4), f"Expected {expected_document['evCurve']['output']['eosParameters']['V0']}, but got {document['evCurve']['output']['eosParameters']['V0']}"
+    assert np.isclose(document["evCurve"]["output"]["eosParameters"]["E0"], expected_document["evCurve"]["output"]["eosParameters"]["E0"], rtol=1e-4), f"Expected {expected_document['evCurve']['output']['eosParameters']['E0']}, but got {document['evCurve']['output']['eosParameters']['E0']}"
+    assert np.isclose(document["evCurve"]["output"]["eosParameters"]["B"], expected_document["evCurve"]["output"]["eosParameters"]["B"], rtol=1e-4), f"Expected {expected_document['evCurve']['output']['eosParameters']['B']}, but got {document['evCurve']['output']['eosParameters']['B']}"
+    assert np.isclose(document["evCurve"]["output"]["eosParameters"]["BP"], expected_document["evCurve"]["output"]["eosParameters"]["BP"], rtol=1e-4), f"Expected {expected_document['evCurve']['output']['eosParameters']['BP']}, but got {document['evCurve']['output']['eosParameters']['BP']}"
+    assert np.isclose(document["evCurve"]["output"]["eosParameters"]["B2P"], expected_document["evCurve"]["output"]["eosParameters"]["B2P"], rtol=1e-4), f"Expected {expected_document['evCurve']['output']['eosParameters']['B2P']}, but got {document['evCurve']['output']['eosParameters']['B2P']}"
+    # But check that the eos constants keys are still there
+    assert "a" in document["evCurve"]["output"]["eosParameters"], "Key 'a' not found in eosParameters"
+    assert "b" in document["evCurve"]["output"]["eosParameters"], "Key 'b' not found in eosParameters"
+    assert "c" in document["evCurve"]["output"]["eosParameters"], "Key 'c' not found in eosParameters"
+    assert "d" in document["evCurve"]["output"]["eosParameters"], "Key 'd' not found in eosParameters"
+    assert "e" in document["evCurve"]["output"]["eosParameters"], "Key 'e' not found in eosParameters"
+
     # Compare debye
-    assert np.isclose(document['debye']['atomicMass'], expected_document['debye']['atomicMass'], rtol=1e-4), f"Expected {expected_document['debye']['atomicMass']}, but got {document['debye']['atomicMass']}"
-    assert np.isclose(document['debye']['V0'], expected_document['debye']['V0'], rtol=1e-4), f"Expected {expected_document['debye']['V0']}, but got {document['debye']['V0']}"
-    assert np.isclose(document['debye']['B'], expected_document['debye']['B'], rtol=1e-4), f"Expected {expected_document['debye']['B']}, but got {document['debye']['B']}"
-    assert np.isclose(document['debye']['BP'], expected_document['debye']['BP'], rtol=1e-4), f"Expected {expected_document['debye']['BP']}, but got {document['debye']['BP']}"
-    assert np.isclose(document['debye']['scalingFactor'], expected_document['debye']['scalingFactor'], rtol=1e-4), f"Expected {expected_document['debye']['scalingFactor']}, but got {document['debye']['scalingFactor']}"
-    assert np.isclose(document['debye']['gruneisenX'], expected_document['debye']['gruneisenX'], rtol=1e-4), f"Expected {expected_document['debye']['gruneisenX']}, but got {document['debye']['gruneisenX']}"
+    assert np.isclose(document["debye"]["atomicMass"], expected_document["debye"]["atomicMass"], rtol=1e-4), f"Expected {expected_document['debye']['atomicMass']}, but got {document['debye']['atomicMass']}"
+    assert np.isclose(document["debye"]["V0"], expected_document["debye"]["V0"], rtol=1e-4), f"Expected {expected_document['debye']['V0']}, but got {document['debye']['V0']}"
+    assert np.isclose(document["debye"]["B"], expected_document["debye"]["B"], rtol=1e-4), f"Expected {expected_document['debye']['B']}, but got {document['debye']['B']}"
+    assert np.isclose(document["debye"]["BP"], expected_document["debye"]["BP"], rtol=1e-4), f"Expected {expected_document['debye']['BP']}, but got {document['debye']['BP']}"
+    assert np.isclose(document["debye"]["scalingFactor"], expected_document["debye"]["scalingFactor"], rtol=1e-4), f"Expected {expected_document['debye']['scalingFactor']}, but got {document['debye']['scalingFactor']}"
+    assert np.isclose(document["debye"]["gruneisenX"], expected_document["debye"]["gruneisenX"], rtol=1e-4), f"Expected {expected_document['debye']['gruneisenX']}, but got {document['debye']['gruneisenX']}"
+
+    # Compare phonons
+    ## input
+    assert document["phonons"]["input"]["incars"] == expected_document["phonons"]["input"]["incars"], f"Expected {expected_document['phonons']['input']['incars']}, but got {document['phonons']['input']['incars']}"
+
+    kpoints_objects = document["phonons"]["input"]["kpoints"]
+    expected_kpoints_objects = expected_document["phonons"]["input"]["kpoints"]
+    for kpoints, expected_kpoints in zip(kpoints_objects, expected_kpoints_objects):
+        kpoints_1relax = Kpoints.from_dict(kpoints["1relax"])
+        kpoints_2phonons = Kpoints.from_dict(kpoints["2phonons"])
+        expected_kpoints_1relax = Kpoints.from_dict(expected_kpoints["1relax"])
+        expected_kpoints_2phonons = Kpoints.from_dict(expected_kpoints["2phonons"])
+        assert kpoints_1relax == expected_kpoints_1relax, f"Expected {expected_kpoints_1relax}, but got {kpoints_1relax}"
+        assert kpoints_2phonons == expected_kpoints_2phonons, f"Expected {expected_kpoints_2phonons}, but got {kpoints_2phonons}"
+
+    assert document["phonons"]["input"]["potcar"] == expected_document["phonons"]["input"]["potcar"], f"Expected {expected_document['phonons']['input']['potcar']}, but got {document['phonons']['input']['potcar']}"
+
+    ## output
+    assert document["phonons"]["output"]["scaleAtoms"] == expected_document["phonons"]["output"]["scaleAtoms"]
+    assert document["phonons"]["output"]["volumes"] == expected_document["phonons"]["output"]["volumes"]
+    assert document["phonons"]["output"]["temperatures"] == expected_document["phonons"]["output"]["temperatures"]
+
+    phonon_structures = document["phonons"]["output"]["phononStructures"]
+    expected_phonon_structures = expected_document["phonons"]["output"]["phononStructures"]
+    for phonon_structure, expected_phonon_structure in zip(phonon_structures, expected_phonon_structures):
+        structure = Structure.from_dict(phonon_structure)
+        expected_structure = Structure.from_dict(expected_phonon_structure)
+        assert structure == expected_structure, f"Expected {expected_structure}, but got {structure}"
+
+    for property in ["helmholtzEnergy", "entropy", "heatCapacity"]:
+        # Compare temperatures (keys) and polynomial coefficients
+        doc_poly = document["phonons"]["output"][property]["polyCoeffs"]
+        exp_poly = expected_document["phonons"]["output"][property]["polyCoeffs"]
+
+        # 1. Compare temperature keys
+        doc_temps = set(doc_poly.keys())
+        exp_temps = set(exp_poly.keys())
+        assert doc_temps == exp_temps, f"Temperature keys differ: {doc_temps ^ exp_temps}"
+
+        # 2. Compare polynomial coefficients for each temperature
+        for temperature in doc_temps:
+            doc_coeffs = np.array(doc_poly[temperature])
+            exp_coeffs = np.array(exp_poly[temperature])
+            assert np.allclose(doc_coeffs, exp_coeffs, rtol=1e-4), f"Mismatch at temperature {temperature}: {doc_coeffs} != {exp_coeffs}"
+
+    # Compare thermalElectronic
+    ## input
+    assert document["thermalElectronic"]["input"]["incars"] == expected_document["thermalElectronic"]["input"]["incars"], f"Expected {expected_document['thermalElectronic']['input']['incars']}, but got {document['thermalElectronic']['input']['incars']}"
+
+    kpoints_objects = document["thermalElectronic"]["input"]["kpoints"]
+    expected_kpoints_objects = expected_document["thermalElectronic"]["input"]["kpoints"]
+    for kpoints, expected_kpoints in zip(kpoints_objects, expected_kpoints_objects):
+        kpoints_elec_dos = Kpoints.from_dict(kpoints["elecDos"])
+        expected_kpoints_elec_dos = Kpoints.from_dict(expected_kpoints["elecDos"])  # Change this
+        assert kpoints_elec_dos == expected_kpoints_elec_dos, f"Expected {expected_kpoints_elec_dos}, but got {kpoints_elec_dos}"
+
+    assert document["thermalElectronic"]["input"]["potcar"] == expected_document["thermalElectronic"]["input"]["potcar"], f"Expected {expected_document['thermalElectronic']['input']['potcar']}, but got {document['thermalElectronic']['input']['potcar']}"
+
+    ## output
+    assert document["thermalElectronic"]["output"]["scaleAtoms"] == expected_document["thermalElectronic"]["output"]["scaleAtoms"]
+    assert document["thermalElectronic"]["output"]["volumes"] == expected_document["thermalElectronic"]["output"]["volumes"]
+    assert document["thermalElectronic"]["output"]["temperatures"] == expected_document["thermalElectronic"]["output"]["temperatures"]
+
+    elec_structures = document["thermalElectronic"]["output"]["elecStructures"]
+    expected_elec_structures = expected_document["thermalElectronic"]["output"]["elecStructures"]
+    for elec_structure, expected_elec_structure in zip(elec_structures, expected_elec_structures):
+        structure = Structure.from_dict(elec_structure)
+        expected_structure = Structure.from_dict(expected_elec_structure)
+        assert structure == expected_structure, f"Expected {expected_structure}, but got {structure}"
+
+    for property in ["helmholtzEnergy", "entropy", "heatCapacity"]:
+        # Compare temperatures (keys) and polynomial coefficients
+        doc_poly = document["thermalElectronic"]["output"][property]["polyCoeffs"]
+        exp_poly = expected_document["thermalElectronic"]["output"][property]["polyCoeffs"]
+
+        # 1. Compare temperature keys
+        doc_temps = set(doc_poly.keys())
+        exp_temps = set(exp_poly.keys())
+        assert doc_temps == exp_temps, f"Temperature keys differ: {doc_temps ^ exp_temps}"
+
+        # 2. Compare polynomial coefficients for each temperature
+        for temperature in doc_temps:
+            doc_coeffs = np.array(doc_poly[temperature])
+            exp_coeffs = np.array(exp_poly[temperature])
+            assert np.allclose(doc_coeffs, exp_coeffs, rtol=1e-4), f"Mismatch at temperature {temperature}: {doc_coeffs} != {exp_coeffs}"
+
+    # Compare qha
+    assert document["qha"]["scaleAtoms"] == expected_document["qha"]["scaleAtoms"]
+    assert document["qha"]["volumes"] == expected_document["qha"]["volumes"]
+    assert document["qha"]["temperatures"] == expected_document["qha"]["temperatures"]
+
+    ## Compare the keys of helmholtzEnergy but not the values of the eosConstants
+    for method in ["debye", "debyeThermalElectronic", "phonons", "phononsThermalElectronic"]:
+        doc_qha = document["qha"]["methods"][method]["helmholtzEnergy"]["eosConstants"]
+        exp_qha = expected_document["qha"]["methods"][method]["helmholtzEnergy"]["eosConstants"]
+
+        # 1. Compare keys
+        doc_keys = set(doc_qha.keys())
+        exp_keys = set(exp_qha.keys())
+        assert doc_keys == exp_keys, f"Keys differ: {doc_keys ^ exp_keys}"
+
+        # 2. Compare the value for eosName. For the actual eos constants, we only compare the keys to see if they are the same.
+        for key in doc_keys:
+            if key == "eosName":
+                assert doc_qha[key] == exp_qha[key], f"Expected {exp_qha[key]}, but got {doc_qha[key]}"
+            else:
+                assert doc_qha[key].keys() == exp_qha[key].keys(), f"Expected {exp_qha[key].keys()}, but got {doc_qha[key].keys()}"
+
+        ## Compare the polyCoeffs of entropy and heatCapacity
+        for property in ["entropy", "heatCapacity"]:
+            doc_qha = document["qha"]["methods"][method][property]["polyCoeffs"]
+            exp_qha = expected_document["qha"]["methods"][method][property]["polyCoeffs"]
+
+            # 1. Compare keys
+            doc_keys = set(doc_qha.keys())
+            exp_keys = set(exp_qha.keys())
+            assert doc_keys == exp_keys, f"Keys differ: {doc_keys ^ exp_keys}"
+
+            # 2. Compare the polynomial coefficients for each temperature
+            for temperature in doc_keys:
+                doc_coeffs = np.array(doc_qha[temperature])
+                exp_coeffs = np.array(exp_qha[temperature])
+                assert np.allclose(doc_coeffs, exp_coeffs, rtol=1e-4), f"Mismatch at temperature {temperature}: {doc_coeffs} != {exp_coeffs}"
+
+        ## Compare the pressure properties
+        doc_qha = document["qha"]["methods"][method]["0.00_GPa"]
+        exp_qha = expected_document["qha"]["methods"][method]["0.00_GPa"]
+
+        # For helmholtz_energy_pv
+        # 1. Compare keys
+        doc_keys = set(doc_qha["helmholtz_energy_pv"]["eosConstants"].keys())
+        exp_keys = set(exp_qha["helmholtz_energy_pv"]["eosConstants"].keys())
+        assert doc_keys == exp_keys, f"Keys differ: {doc_keys ^ exp_keys}"
+
+        # 2. Compare the value for eosName. For the actual eos constants, we only compare the keys to see if they are the same.
+        for key in doc_keys:
+            if key == "eosName":
+                assert doc_qha["helmholtz_energy_pv"]["eosConstants"][key] == exp_qha["helmholtz_energy_pv"]["eosConstants"][key], f"Expected {exp_qha['helmholtz_energy_pv']['eosConstants'][key]}, but got {doc_qha['helmholtz_energy_pv']['eosConstants'][key]}"
+            else:
+                assert doc_qha["helmholtz_energy_pv"]["eosConstants"][key].keys() == exp_qha["helmholtz_energy_pv"]["eosConstants"][key].keys(), f"Expected {exp_qha['helmholtz_energy_pv']['eosConstants'][key].keys()}, but got {doc_qha['helmholtz_energy_pv']['eosConstants'][key].keys()}"
+
+        # Compare the other pressure properties - V0, G0, S0, H0, B, BP, CTE, LCTE, Cp
+        # 1. Compare keys
+        doc_keys = set(doc_qha.keys())
+        exp_keys = set(exp_qha.keys())
+        assert doc_keys == exp_keys, f"Keys differ: {doc_keys ^ exp_keys}"
+
+        for key in doc_keys:
+            if key in ["V0", "G0", "S0", "H0", "B", "BP", "CTE", "LCTE", "Cp"]:
+                array = np.array(doc_qha[key])
+                expected_array = np.array(exp_qha[key])
+                assert np.allclose(array, expected_array, rtol=1e-4), f"Expected {expected_array}, but got {array}"

@@ -1031,18 +1031,18 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             entropy = convert_poly1d(self.thermal_electronic.entropy_fit)
             heat_capacity = convert_poly1d(self.thermal_electronic.heat_capacity_fit)
 
-            key_mapping = {"polynomial_coefficients": "polyCoeffs"}
+            key_mapping = {"polynomial_coefficients": "polyCoeffs", "elec_dos": "elecDos"}
             helmholtz_energy = self.replace_keys(helmholtz_energy, key_mapping)
             entropy = self.replace_keys(entropy, key_mapping)
             heat_capacity = self.replace_keys(heat_capacity, key_mapping)
+            kpoints = [{key: kp.as_dict() for key, kp in kpoints_dict.items()}
+                        for kpoints_dict in self.thermal_electronic.kpoints]
+            kpoints = self.replace_keys(kpoints, key_mapping)
 
             document["thermalElectronic"] = {
                 "input": {
                     "incars": self.thermal_electronic.incars,
-                    "kpoints": [
-                        {key: kp.as_dict() for key, kp in kpoints_dict.items()}
-                        for kpoints_dict in self.thermal_electronic.kpoints
-                    ],
+                    "kpoints": kpoints,
                     "potcar": self.thermal_electronic.potcar.as_dict() if self.thermal_electronic.potcar is not None else None,
                 },
                 "output": {
@@ -1073,6 +1073,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 "helmholtz_energy": "helmholtzEnergy",
                 "heat_capacity": "heatCapacity",
                 "eos_parameters": "eosParameters",
+                "eos_constants": "eosConstants",
                 "eos_name": "eosName",
                 "poly_coeffs": "polyCoeffs",
             }
