@@ -595,9 +595,9 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
 
     def process_phonons(
         self,
-        scale_atoms: int,
+        number_of_atoms: int,
         temperatures: np.ndarray,
-        volumes: list[float] = None,
+        selected_volumes: list[float] = None,
         order: int = 2,
     ):
         """
@@ -607,15 +607,15 @@ workflows.phonons_parallel(os.getcwd(), phonon_volumes, kppa, 'job.sh', scaling_
         and processes harmonic phonon data for the specified number of atoms, temperatures, and order of fitting.
 
         Args:
-            scale_atoms (int): Number of atoms to scale for the phonon calculation.
+            number_of_atoms (int): Number of atoms to scale for the phonon calculation.
             temperatures (np.ndarray): Array of temperatures to evaluate.
-            volumes (list[float], optional): List of volumes to process. Defaults to None.
+            selected_volumes (list[float], optional): List of volumes to process. Defaults to None.
             order (int, optional): Order of polynomial fitting. Defaults to 2.
         """
         self.phonons = YphonPhononData(self.path)
-        self.phonons.get_vasp_input(volumes)
+        self.phonons.get_vasp_input(selected_volumes)
         self.phonons.get_harmonic_data(
-            scale_atoms,
+            number_of_atoms,
             temperatures,
             order=order,
         )
@@ -699,7 +699,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
     def process_thermal_electronic(
         self,
         temperature_range: np.ndarray,
-        volumes: list[float] = None,
+        selected_volumes: list[float] = None,
         order: int = 1,
     ):
         """
@@ -710,16 +710,16 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
 
         Args:
             temperature_range (np.ndarray): Array of temperatures to evaluate.
-            volumes (list[float], optional): List of volumes to process. Defaults to None.
+            selected_volumes (list[float], optional): List of volumes to process. Defaults to None.
             order (int, optional): Order of polynomial fitting. Defaults to 1.
         """
         self.thermal_electronic = ThermalElectronicData(self.path)
-        self.thermal_electronic.get_vasp_input(volumes)
+        self.thermal_electronic.get_vasp_input(selected_volumes)
         self.thermal_electronic.get_thermal_electronic_data(
             temperature_range,
             order=order,
         )
-
+    # TODO: delete redundant code
     def process_qha(
         self,
         method: str,
@@ -763,56 +763,34 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         elif eos == "mBM5" or eos == "BM5" or eos == "LOG5":
             energy_eos = equation_functions[eos](volume_range, a, b, c, d, e)
 
-        phonons_f_vib_fit = []
-        phonons_s_vib_fit = []
-        phonons_cv_vib_fit = []
-        debye_f_vib = []
-        debye_s_vib = []
-        debye_cv_vib = []
-        f_el_fit = []
-        s_el_fit = []
-        cv_el_fit = []
-
         if self.qha is None:
             self.qha = QuasiHarmonic(self.ev_curve.number_of_atoms, volume_range, temperatures=self.phonons.temperatures)
 
         if method == "debye":
-            debye_f_vib = self.debye.helmholtz_energies
-            debye_s_vib = self.debye.entropies
-            debye_cv_vib = self.debye.heat_capacities
-            f_vib_fit = debye_f_vib
-            s_vib_fit = debye_s_vib
-            cv_vib_fit = debye_cv_vib
+            f_vib_fit = self.debye.helmholtz_energies
+            s_vib_fit = self.debye.entropies
+            cv_vib_fit = self.debye.heat_capacities
             f_el_fit = None
             s_el_fit = None
             cv_el_fit = None
         elif method == "debye_thermal_electronic":
-            debye_f_vib = self.debye.helmholtz_energies
-            debye_s_vib = self.debye.entropies
-            debye_cv_vib = self.debye.heat_capacities
-            f_vib_fit = debye_f_vib
-            s_vib_fit = debye_s_vib
-            cv_vib_fit = debye_cv_vib
+            f_vib_fit = self.debye.helmholtz_energies
+            s_vib_fit = self.debye.entropies
+            cv_vib_fit = self.debye.heat_capacities
             f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
             s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
             cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
         elif method == "phonons":
-            phonons_f_vib_fit = self.phonons.helmholtz_energies_fit
-            phonons_s_vib_fit = self.phonons.entropies_fit
-            phonons_cv_vib_fit = self.phonons.heat_capacities_fit
-            f_vib_fit = phonons_f_vib_fit
-            s_vib_fit = phonons_s_vib_fit
-            cv_vib_fit = phonons_cv_vib_fit
+            f_vib_fit = self.phonons.helmholtz_energies_fit
+            s_vib_fit = self.phonons.entropies_fit
+            cv_vib_fit = self.phonons.heat_capacities_fit
             f_el_fit = None
             s_el_fit = None
             cv_el_fit = None
         elif method == "phonons_thermal_electronic":
-            phonons_f_vib_fit = self.phonons.helmholtz_energies_fit
-            phonons_s_vib_fit = self.phonons.entropies_fit
-            phonons_cv_vib_fit = self.phonons.heat_capacities_fit
-            f_vib_fit = phonons_f_vib_fit
-            s_vib_fit = phonons_s_vib_fit
-            cv_vib_fit = phonons_cv_vib_fit
+            f_vib_fit = self.phonons.helmholtz_energies_fit
+            s_vib_fit = self.phonons.entropies_fit
+            cv_vib_fit = self.phonons.heat_capacities_fit
             f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
             s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
             cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
