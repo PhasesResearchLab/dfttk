@@ -720,6 +720,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             order=order,
         )
     # TODO: delete redundant code
+    # TODO: add some more tests for these
     def process_qha(
         self,
         method: str,
@@ -758,42 +759,81 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             "LOG4": eos_functions.LOG4_equation,
             "LOG5": eos_functions.LOG5_equation,
         }
+        # Get the EOS energy at 0 K corresponding to the volume range
         if eos == "mBM4" or eos == "BM4" or eos == "LOG4":
             energy_eos = equation_functions[eos](volume_range, a, b, c, d)
         elif eos == "mBM5" or eos == "BM5" or eos == "LOG5":
             energy_eos = equation_functions[eos](volume_range, a, b, c, d, e)
 
         if self.qha is None:
-            self.qha = QuasiHarmonic(self.ev_curve.number_of_atoms, volume_range, temperatures=self.phonons.temperatures)
+            if method in ("debye", "debye_thermal_electronic"):
+                if not hasattr(self, "debye"):
+                    raise AttributeError("Debye-Grüneisen model not processed. Call process_debye() first.")
+                if method == "debye":
+                    self.debye.temperatures = np.array([int(t) if isinstance(t, float) and t.is_integer() else t for t in self.debye.temperatures]) # temp fix
+                    self.qha = QuasiHarmonic(self.ev_curve.number_of_atoms, volume_range, temperatures=self.debye.temperatures)
+                elif method == "debye_thermal_electronic":
+                    if not hasattr(self, "thermal_electronic"):
+                        raise AttributeError("Thermal electronic data not processed. Call process_thermal_electronic() first.")
+                    if self.debye.temperatures != self.thermal_electronic.temperatures:
+                        raise ValueError("Debye and thermal electronic temperatures do not match.")
+                    self.debye.temperatures = np.array([int(t) if isinstance(t, float) and t.is_integer() else t for t in self.debye.temperatures]) # temp fix
+                    self.qha = QuasiHarmonic(self.ev_curve.number_of_atoms, volume_range, temperatures=self.debye.temperatures)
+            elif method in ("phonons", "phonons_thermal_electronic"): 
+                if not hasattr(self, "phonons"):
+                    raise AttributeError("Phonon data not processed. Call process_phonons() first.")
+                if method == "phonons":
+                    self.qha = QuasiHarmonic(self.ev_curve.number_of_atoms, volume_range, temperatures=self.phonons.temperatures)
+                elif method == "phonons_thermal_electronic":
+                    if not hasattr(self, "thermal_electronic"):
+                        raise AttributeError("Thermal electronic data not processed. Call process_thermal_electronic() first.")
+                    if self.phonons.temperatures != self.thermal_electronic.temperatures:
+                        raise ValueError("Phonon and thermal electronic temperatures do not match.")
+                    self.qha = QuasiHarmonic(self.ev_curve.number_of_atoms, volume_range, temperatures=self.phonons.temperatures)
 
-        if method == "debye":
-            f_vib_fit = self.debye.helmholtz_energies
-            s_vib_fit = self.debye.entropies
-            cv_vib_fit = self.debye.heat_capacities
-            f_el_fit = None
-            s_el_fit = None
-            cv_el_fit = None
-        elif method == "debye_thermal_electronic":
-            f_vib_fit = self.debye.helmholtz_energies
-            s_vib_fit = self.debye.entropies
-            cv_vib_fit = self.debye.heat_capacities
-            f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
-            s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
-            cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
-        elif method == "phonons":
-            f_vib_fit = self.phonons.helmholtz_energies_fit
-            s_vib_fit = self.phonons.entropies_fit
-            cv_vib_fit = self.phonons.heat_capacities_fit
-            f_el_fit = None
-            s_el_fit = None
-            cv_el_fit = None
-        elif method == "phonons_thermal_electronic":
-            f_vib_fit = self.phonons.helmholtz_energies_fit
-            s_vib_fit = self.phonons.entropies_fit
-            cv_vib_fit = self.phonons.heat_capacities_fit
-            f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
-            s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
-            cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
+        if method in ("debye", "debye_thermal_electronic"):
+            if np.array_equal(self.debye.volumes, volume_range):
+                f_vib_fit = self.debye.helmholtz_energies
+                s_vib_fit = self.debye.entropies
+                cv_vib_fit = self.debye.heat_capacities
+            else:
+                new_debye = DebyeGruneisen()
+                new_debye.process(
+                    number_of_atoms=self.ev_curve.number_of_atoms,
+                    volumes=volume_range,
+                    temperatures=self.debye.temperatures,
+                    atomic_mass=self.ev_curve.average_mass,
+                    V0=self.ev_curve.eos_parameters["V0"],
+                    B=self.ev_curve.eos_parameters["B"],
+                    BP=self.ev_curve.eos_parameters["BP"],
+                    scaling_factor=self.debye.scaling_factor,
+                    gruneisen_x=self.debye.gruneisen_x,
+                )
+                f_vib_fit = new_debye.helmholtz_energies
+                s_vib_fit = new_debye.entropies
+                cv_vib_fit = new_debye.heat_capacities
+            if method == "debye":
+                f_el_fit = None
+                s_el_fit = None
+                cv_el_fit = None
+            elif method == "debye_thermal_electronic":
+                f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
+                s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
+                cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
+                
+        elif method in ("phonons", "phonons_thermal_electronic"): # Continue here!
+            if np.array_equal(self.phonons.volumes_fit, volume_range):
+                f_vib_fit = self.phonons.helmholtz_energies_fit
+                s_vib_fit = self.phonons.entropies_fit
+                cv_vib_fit = self.phonons.heat_capacities_fit
+            if method == "phonons":
+                f_el_fit = None
+                s_el_fit = None
+                cv_el_fit = None
+            elif method == "phonons_thermal_electronic":
+                f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
+                s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
+                cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
         else:
             raise ValueError(f"Unknown option: {method}")
 
