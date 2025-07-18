@@ -4,8 +4,10 @@ Tests for the Configuration class.
 
 # Standard library imports
 import os
+import re
 import bson
 import pickle
+import pytest
 
 # Third-party library imports
 import numpy as np
@@ -17,7 +19,7 @@ from pymatgen.io.vasp.inputs import Kpoints
 from dfttk.configuration import Configuration
 
 # TODO: write tests for a magnetic example. Include smoke test for plot_multiple_ev.
-# TODO: think of other tests for Configuration class.
+# TODO: add tests for runs
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 conv_test_path = os.path.join(current_dir, "vasp_data/Al/conv_test")
@@ -29,11 +31,11 @@ config_Al = Configuration(config_Al_path, "config_Al", vasp_cmd)
 config_Al.process_ev_curve()
 
 number_of_atoms = 4
-temperature_range = np.arange(0, 1010, 100)
+temperatures = np.arange(0, 1010, 100)
 
-config_Al.process_phonons(number_of_atoms, temperature_range)
-config_Al.process_debye(scaling_factor=0.617, gruneisen_x=2 / 3, temperatures=temperature_range)
-config_Al.process_thermal_electronic(temperature_range, order=1)
+config_Al.process_phonons(number_of_atoms, temperatures)
+config_Al.process_debye(scaling_factor=0.617, gruneisen_x=2 / 3, temperatures=temperatures)
+config_Al.process_thermal_electronic(temperatures, order=1)
 
 volume_range = np.linspace(0.98 * 60, 1.02 * 74, 1000)
 config_Al.process_qha("debye", volume_range, P=0)
@@ -49,6 +51,7 @@ with open(os.path.join(current_dir, "test_configuration_data/config_Al_document.
 
 
 def test_analyze_encut_conv():
+    """Test ENCUT convergence analysis and output values."""
     encut_conv_df, fig = config_Al_conv.analyze_encut_conv(plot=False)
 
     encut = encut_conv_df["encut"].values
@@ -77,6 +80,7 @@ def test_analyze_encut_conv():
 
 
 def test_analyze_kpoints_conv():
+    """Test k-point convergence analysis and output values."""
     kpoints_conv_df, fig = config_Al_conv.analyze_kpoints_conv(plot=False)
 
     encut = kpoints_conv_df["encut"].values[0]
@@ -105,6 +109,7 @@ def test_analyze_kpoints_conv():
 
 
 def test_process_ev_curve():
+    """Test processing of the energy-volume curve and its attributes."""
     ev_curve = config_Al.ev_curve
     expected_ev_curve = expected_config_Al.ev_curve
 
@@ -128,6 +133,7 @@ def test_process_ev_curve():
 
 
 def test_process_phonons():
+    """Test processing of phonon data and its attributes."""
     phonons = config_Al.phonons
     expected_phonons = expected_config_Al.phonons
 
@@ -152,6 +158,7 @@ def test_process_phonons():
 
 
 def test_process_debye():
+    """Test processing of Debye-Grüneisen model and its attributes."""
     debye = config_Al.debye
     expected_debye = expected_config_Al.debye
 
@@ -171,6 +178,7 @@ def test_process_debye():
 
 
 def test_process_thermal_electronic():
+    """Test processing of thermal electronic data and its attributes."""
     thermal_electronic = config_Al.thermal_electronic
     expected_thermal_electronic = expected_config_Al.thermal_electronic
 
@@ -193,6 +201,7 @@ def test_process_thermal_electronic():
 
 
 def test_process_qha():
+    """Test QHA processing and the resulting attributes for all methods."""
     qha = config_Al.qha
     expected_qha = expected_config_Al.qha
 
@@ -218,7 +227,43 @@ def test_process_qha():
         assert np.allclose(qha.methods[method]["0.00_GPa"]["Cp"], expected_qha.methods[method]["0.00_GPa"]["Cp"], rtol=1e-4), f"Expected {expected_qha.methods[method]['0.00_GPa']['Cp']}, but got {qha.methods[method]['0.00_GPa']['Cp']}"
 
 
+def test_process_qha_errors():
+    """Test error handling in process_qha for missing or mismatched data."""
+    config_Al_test = Configuration(config_Al_path, "config_Al", vasp_cmd)
+    with pytest.raises(AttributeError, match=re.escape("Energy-volume curve not processed. Call process_ev_curve() first.")):
+        config_Al_test.process_qha("debye", volume_range, P=0)
+
+    config_Al_test.process_ev_curve()
+    with pytest.raises(AttributeError, match=re.escape("Debye-Grüneisen model not processed. Call process_debye() first.")):
+        config_Al_test.process_qha("debye", volume_range, P=0)
+
+    config_Al_test.process_debye(scaling_factor=0.617, gruneisen_x=2 / 3, temperatures=temperatures)
+    with pytest.raises(AttributeError, match=re.escape("Thermal electronic data not processed. Call process_thermal_electronic() first.")):
+        config_Al_test.process_qha("debye_thermal_electronic", volume_range, P=0)
+
+    new_temperatures = np.arange(0, 1010, 99)
+    config_Al_test.process_thermal_electronic(new_temperatures, order=1)
+    with pytest.raises(ValueError, match=re.escape("Debye and thermal electronic temperatures do not match.")):
+        config_Al_test.process_qha("debye_thermal_electronic", volume_range, P=0)
+
+    with pytest.raises(AttributeError, match=re.escape("Phonon data not processed. Call process_phonons() first.")):
+        config_Al_test.process_qha("phonons", volume_range, P=0)
+
+    config_Al_test.process_phonons(number_of_atoms, temperatures)
+    config_Al_test.thermal_electronic = None
+    with pytest.raises(AttributeError, match=re.escape("Thermal electronic data not processed. Call process_thermal_electronic() first.")):
+        config_Al_test.process_qha("phonons_thermal_electronic", volume_range, P=0)
+
+    config_Al_test.process_thermal_electronic(new_temperatures, order=1)
+    with pytest.raises(ValueError, match=re.escape("Phonons and thermal electronic temperatures do not match.")):
+        config_Al_test.process_qha("phonons_thermal_electronic", volume_range, P=0)
+
+    with pytest.raises(ValueError, match=re.escape("Unknown option:")):
+        config_Al_test.process_qha("invalid_method", volume_range, P=0)
+
+
 def test_to_mongodb():
+    """Test MongoDB document generation."""
     connection_string = "mongodb+srv://admin:og7MRdgE2wY2KWiw@dfttk.3cdhgac.mongodb.net/?retryWrites=true&w=majority&appName=DFTTK"
     db_name = "DFTTK"
     collection_name = "community"

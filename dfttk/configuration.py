@@ -719,30 +719,43 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             temperature_range,
             order=order,
         )
-    # TODO: delete redundant code
-    # TODO: add some more tests for these
+
     def process_qha(
         self,
         method: str,
         volume_range: np.ndarray,
-        P: float = 0,
+        P: float = 0.00,
     ):
         """
         Perform quasi-harmonic approximation (QHA) calculations for a range of volumes.
-
-        This method calculates thermodynamic quantities (Helmholtz free energy, entropy, 
-        and heat capacity) as functions of volume and temperature, and determines 
+        This method calculates thermodynamic quantities (Helmholtz free energy, entropy,
+        and heat capacity) as functions of volume and temperature, and determines
         pressure-related properties using the specified QHA method.
 
         Args:
-            method (str): The method to use for QHA. Options are "debye", "debye_thermal_electronic",
-                "phonons", or "phonons_thermal_electronic".
+            method (str): The method to use for QHA. Options are:
+                - "debye"
+                - "debye_thermal_electronic"
+                - "phonons"
+                - "phonons_thermal_electronic"
             volume_range (np.ndarray): Array of volumes to evaluate.
-            P (float, optional): Pressure in GPa. Defaults to 0.
+            P (float, optional): Pressure in GPa. Defaults to 0.00.
 
         Raises:
-            ValueError: If an unknown method is provided.
+            AttributeError: If required data is missing, including:
+                - If the energy-volume curve is not processed.
+                - If the Debye-Grüneisen model is not processed (for "debye" or "debye_thermal_electronic").
+                - If the phonons data is not processed (for "phonons" or "phonons_thermal_electronic").
+                - If the thermal electronic data is not processed (for "debye_thermal_electronic" or "phonons_thermal_electronic").
+            ValueError: If the temperature arrays for Debye/phonons and thermal electronic do not match
+                (for "debye_thermal_electronic" or "phonons_thermal_electronic"), or if an unknown method is provided.
         """
+
+        # If ev_curve is not processed, raise an error
+        if self.ev_curve is None:
+            raise AttributeError("Energy-volume curve not processed. Call process_ev_curve() first.")
+        
+         # Get the EOS energy at 0 K corresponding to the volume range
         eos = self.ev_curve.eos_parameters["eos_name"]
         a = self.ev_curve.eos_parameters["a"]
         b = self.ev_curve.eos_parameters["b"]
@@ -750,7 +763,6 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         d = self.ev_curve.eos_parameters["d"]
         e = self.ev_curve.eos_parameters["e"]
 
-        # Get the EOS energy at 0 K corresponding to the volume range
         equation_functions = {
             "mBM4": eos_functions.mBM4_equation,
             "mBM5": eos_functions.mBM5_equation,
@@ -759,43 +771,54 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             "LOG4": eos_functions.LOG4_equation,
             "LOG5": eos_functions.LOG5_equation,
         }
-        # Get the EOS energy at 0 K corresponding to the volume range
+
         if eos == "mBM4" or eos == "BM4" or eos == "LOG4":
             energy_eos = equation_functions[eos](volume_range, a, b, c, d)
         elif eos == "mBM5" or eos == "BM5" or eos == "LOG5":
             energy_eos = equation_functions[eos](volume_range, a, b, c, d, e)
 
+        # For first time, initialize the QuasiHarmonic object
         if self.qha is None:
             if method in ("debye", "debye_thermal_electronic"):
-                if not hasattr(self, "debye"):
+                
+                # If Debye-Grüneisen model is not processed, raise an error
+                if self.debye is None:
                     raise AttributeError("Debye-Grüneisen model not processed. Call process_debye() first.")
                 if method == "debye":
                     self.debye.temperatures = np.array([int(t) if isinstance(t, float) and t.is_integer() else t for t in self.debye.temperatures]) # temp fix
                     self.qha = QuasiHarmonic(self.ev_curve.number_of_atoms, volume_range, temperatures=self.debye.temperatures)
                 elif method == "debye_thermal_electronic":
-                    if not hasattr(self, "thermal_electronic"):
+                    # If thermal electronic data is not processed, raise an error
+                    if self.thermal_electronic is None:
                         raise AttributeError("Thermal electronic data not processed. Call process_thermal_electronic() first.")
-                    if self.debye.temperatures != self.thermal_electronic.temperatures:
+                    # If the temperatures of debye and thermal electronic do not match, raise an error
+                    if not np.array_equal(self.debye.temperatures, self.thermal_electronic.temperatures):
                         raise ValueError("Debye and thermal electronic temperatures do not match.")
                     self.debye.temperatures = np.array([int(t) if isinstance(t, float) and t.is_integer() else t for t in self.debye.temperatures]) # temp fix
                     self.qha = QuasiHarmonic(self.ev_curve.number_of_atoms, volume_range, temperatures=self.debye.temperatures)
             elif method in ("phonons", "phonons_thermal_electronic"): 
-                if not hasattr(self, "phonons"):
+                # If phonons data is not processed, raise an error
+                if self.phonons is None:
                     raise AttributeError("Phonon data not processed. Call process_phonons() first.")
                 if method == "phonons":
                     self.qha = QuasiHarmonic(self.ev_curve.number_of_atoms, volume_range, temperatures=self.phonons.temperatures)
                 elif method == "phonons_thermal_electronic":
-                    if not hasattr(self, "thermal_electronic"):
+                    # If thermal electronic data is not processed, raise an error
+                    if self.thermal_electronic is None:
                         raise AttributeError("Thermal electronic data not processed. Call process_thermal_electronic() first.")
-                    if self.phonons.temperatures != self.thermal_electronic.temperatures:
-                        raise ValueError("Phonon and thermal electronic temperatures do not match.")
+                    # If the temperatures of phonons and thermal electronic do not match, raise an error
+                    if not np.array_equal(self.phonons.temperatures, self.thermal_electronic.temperatures):
+                        raise ValueError("Phonons and thermal electronic temperatures do not match.")
                     self.qha = QuasiHarmonic(self.ev_curve.number_of_atoms, volume_range, temperatures=self.phonons.temperatures)
 
+        # TODO: make tests for uneven volume ranges
         if method in ("debye", "debye_thermal_electronic"):
+            # If debye is processed with the same volume range, use the precomputed values
             if np.array_equal(self.debye.volumes, volume_range):
                 f_vib_fit = self.debye.helmholtz_energies
                 s_vib_fit = self.debye.entropies
                 cv_vib_fit = self.debye.heat_capacities
+            # If debye is not processed with the same volume range, compute the new values    
             else:
                 new_debye = DebyeGruneisen()
                 new_debye.process(
@@ -817,23 +840,43 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 s_el_fit = None
                 cv_el_fit = None
             elif method == "debye_thermal_electronic":
-                f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
-                s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
-                cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
+                # If thermal electronic data is processed with the same volume range, use the precomputed values
+                if np.array_equal(self.thermal_electronic.volume_fit, volume_range):
+                    f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
+                    s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
+                    cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
+                # If thermal electronic data is not processed with the same volume range, compute the new values
+                else:
+                    f_el_fit = np.array([coeff_row(volume_range) for coeff_row in self.thermal_electronic.f_el_poly])
+                    s_el_fit = np.array([coeff_row(volume_range) for coeff_row in self.thermal_electronic.s_el_poly])
+                    cv_el_fit = np.array([coeff_row(volume_range) for coeff_row in self.thermal_electronic.cv_el_poly])
                 
-        elif method in ("phonons", "phonons_thermal_electronic"): # Continue here!
+        elif method in ("phonons", "phonons_thermal_electronic"): 
+            # If phonons are processed with the same volume range, use the precomputed values
             if np.array_equal(self.phonons.volumes_fit, volume_range):
                 f_vib_fit = self.phonons.helmholtz_energies_fit
                 s_vib_fit = self.phonons.entropies_fit
                 cv_vib_fit = self.phonons.heat_capacities_fit
+            # If phonons are not processed with the same volume range, compute the new values
+            else:
+                f_vib_fit = np.array([np.polyval(coeff_row, volume_range) for coeff_row in self.phonons.helmholtz_energies_poly_coeffs])
+                s_vib_fit = np.array([np.polyval(coeff_row, volume_range) for coeff_row in self.phonons.entropies_poly_coeffs])
+                cv_vib_fit = np.array([np.polyval(coeff_row, volume_range) for coeff_row in self.phonons.heat_capacities_poly_coeffs])
             if method == "phonons":
                 f_el_fit = None
                 s_el_fit = None
                 cv_el_fit = None
             elif method == "phonons_thermal_electronic":
-                f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
-                s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
-                cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
+                # If thermal electronic data is processed with the same volume range, use the precomputed values
+                if np.array_equal(self.thermal_electronic.volume_fit, volume_range):
+                    f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
+                    s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
+                    cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
+                # If thermal electronic data is not processed with the same volume range, compute the new values
+                else:
+                    f_el_fit = np.array([coeff_row(volume_range) for coeff_row in self.thermal_electronic.f_el_poly])
+                    s_el_fit = np.array([coeff_row(volume_range) for coeff_row in self.thermal_electronic.s_el_poly])
+                    cv_el_fit = np.array([coeff_row(volume_range) for coeff_row in self.thermal_electronic.cv_el_poly])
         else:
             raise ValueError(f"Unknown option: {method}")
 
@@ -849,11 +892,8 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             P=P,
             eos_name=eos,
         )
-
-    def add_experiments(self, experiments: dict):
-        self.experiments = experiments
         
-    def replace_keys(self, d, key_mapping):
+    def _replace_keys(self, d, key_mapping):
         if isinstance(d, dict):
             new_dict = {}
             for k, v in d.items():
@@ -861,10 +901,10 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                     new_key = "p" + k.replace("_GPa", "GPa")
                 else:
                     new_key = key_mapping.get(k, k)
-                new_dict[new_key] = self.replace_keys(v, key_mapping)
+                new_dict[new_key] = self._replace_keys(v, key_mapping)
             return new_dict
         elif isinstance(d, list):
-            return [self.replace_keys(i, key_mapping) for i in d]
+            return [self._replace_keys(i, key_mapping) for i in d]
         else:
             return d
 
@@ -1007,9 +1047,9 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             heat_capacity = convert_poly1d(self.phonons._heat_capacities_fit_to_db)
 
             key_mapping = {"poly_coeffs": "polyCoeffs"}
-            helmholtz_energy = self.replace_keys(helmholtz_energy, key_mapping)
-            entropy = self.replace_keys(entropy, key_mapping)
-            heat_capacity = self.replace_keys(heat_capacity, key_mapping)
+            helmholtz_energy = self._replace_keys(helmholtz_energy, key_mapping)
+            entropy = self._replace_keys(entropy, key_mapping)
+            heat_capacity = self._replace_keys(heat_capacity, key_mapping)
 
             document["phonons"] = {
                 "input": {
@@ -1050,12 +1090,12 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             heat_capacity = convert_poly1d(self.thermal_electronic.heat_capacity_fit)
 
             key_mapping = {"polynomial_coefficients": "polyCoeffs", "elec_dos": "elecDos"}
-            helmholtz_energy = self.replace_keys(helmholtz_energy, key_mapping)
-            entropy = self.replace_keys(entropy, key_mapping)
-            heat_capacity = self.replace_keys(heat_capacity, key_mapping)
+            helmholtz_energy = self._replace_keys(helmholtz_energy, key_mapping)
+            entropy = self._replace_keys(entropy, key_mapping)
+            heat_capacity = self._replace_keys(heat_capacity, key_mapping)
             kpoints = [{key: kp.as_dict() for key, kp in kpoints_dict.items()}
                         for kpoints_dict in self.thermal_electronic.kpoints]
-            kpoints = self.replace_keys(kpoints, key_mapping)
+            kpoints = self._replace_keys(kpoints, key_mapping)
 
             document["thermalElectronic"] = {
                 "input": {
@@ -1112,7 +1152,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 for key, value in properties.items():
                     methods_copy[method][key] = remove_values_and_convert_arrays(value)
             
-            methods_copy = self.replace_keys(methods_copy, key_mapping)
+            methods_copy = self._replace_keys(methods_copy, key_mapping)
 
             volumes = self.qha.volumes
             min_volume = min(volumes)
@@ -1163,6 +1203,8 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
 
         return document
 
+    def add_experiments(self, experiments: dict):
+        self.experiments = experiments
 
 def plot_multiple_ev(
     config_objects: dict[str, Configuration],
