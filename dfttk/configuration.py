@@ -910,16 +910,14 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
 
     def to_mongodb(self, connection_string: str, db_name: str, collection_name: str, insert: bool = True) -> dict:
         """
-        Connect to a MongoDB database collection for storing configuration data.
+        This method initializes the MongoDB client, selects the specified database and collection,
+        and prepares the object for subsequent data insertion or updates.
 
         Args:
             connection_string (str): The MongoDB connection string.
             db_name (str): The name of the MongoDB database to use.
             collection_name (str): The name of the collection within the database.
             insert (bool, optional): Whether to insert/update the document in MongoDB. Defaults to True.
-
-        This method initializes the MongoDB client, selects the specified database and collection,
-        and prepares the object for subsequent data insertion or updates.
         
         Returns:
             dict: A dictionary representation of the configuration object, ready for insertion into MongoDB.
