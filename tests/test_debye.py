@@ -12,7 +12,7 @@ from dfttk.debye.debye_gruneisen import DebyeGruneisen
 # Test parameters
 number_of_atoms = 4
 volumes = np.linspace(0.98 * 60, 1.02 * 74, 10)
-temperatures = np.arange(0, 1010, 100, dtype=float)
+temperatures = np.arange(0, 1010, 100)
 atomic_mass = 26.981
 V0 = 66.10191547034127
 B = 77.92792067011315

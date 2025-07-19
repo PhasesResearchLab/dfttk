@@ -16,9 +16,6 @@ from dfttk.eos.functions import *
 from dfttk.eos.fit import EOSFitter
 from dfttk.eos.ev_curve_data import EvCurveData
 
-# Conversion factor for pressure units
-EV_PER_CUBIC_ANGSTROM_TO_GPA = 160.21766208  # 1 eV/Å^3  = 160.21766208 GPa
-
 number_of_atoms = 4
 volumes = np.array([74.0, 72.0, 70.0, 68.0, 66.0, 64.0, 62.0, 60.0])
 energies = np.array([-14.787067, -14.863567, -14.92244, -14.960229, -14.973035, -14.955434, -14.902786, -14.808673])
@@ -567,7 +564,7 @@ def test_EvCurveData_non_magnetic():
     # Compare all relevant attributes
     assert ev_data.incars == expected_ev_data.incars, f"Expected {expected_ev_data.incars}, but got {ev_data.incars}"
     assert ev_data.kpoints == expected_ev_data.kpoints, f"Expected {expected_ev_data.kpoints}, but got {ev_data.kpoints}"
-    assert ev_data.starting_poscar == expected_ev_data.starting_poscar, f"Expected {expected_ev_data.starting_poscar}, but got {ev_data.starting_poscar}"
+    assert ev_data.initial_poscar == expected_ev_data.initial_poscar, f"Expected {expected_ev_data.initial_poscar}, but got {ev_data.initial_poscar}"
     assert ev_data.relaxed_structures == expected_ev_data.relaxed_structures, f"Expected {expected_ev_data.relaxed_structures}, but got {ev_data.relaxed_structures}"
     assert ev_data.number_of_atoms == expected_ev_data.number_of_atoms, f"Expected {expected_ev_data.number_of_atoms}, but got {ev_data.number_of_atoms}"
     assert np.allclose(ev_data.volumes, expected_ev_data.volumes, rtol=1e-5), f"Expected {expected_ev_data.volumes}, but got {ev_data.volumes}"
@@ -600,7 +597,7 @@ def test_EvCurveData_non_magnetic():
     # Compare all relevant attributes for the subset
     assert ev_data_subset.incars == expected_ev_data_subset.incars, f"Expected {expected_ev_data_subset.incars}, but got {ev_data_subset.incars}"
     assert ev_data_subset.kpoints == expected_ev_data_subset.kpoints, f"Expected {expected_ev_data_subset.kpoints}, but got {ev_data_subset.kpoints}"
-    assert ev_data_subset.starting_poscar == expected_ev_data_subset.starting_poscar, f"Expected {expected_ev_data_subset.starting_poscar}, but got {ev_data_subset.starting_poscar}"
+    assert ev_data_subset.initial_poscar == expected_ev_data_subset.initial_poscar, f"Expected {expected_ev_data_subset.initial_poscar}, but got {ev_data_subset.initial_poscar}"
     assert ev_data_subset.relaxed_structures == expected_ev_data_subset.relaxed_structures, f"Expected {expected_ev_data_subset.relaxed_structures}, but got {ev_data_subset.relaxed_structures}"
     assert ev_data_subset.number_of_atoms == expected_ev_data_subset.number_of_atoms, f"Expected {expected_ev_data_subset.number_of_atoms}, but got {ev_data_subset.number_of_atoms}"
     assert np.allclose(ev_data_subset.volumes, expected_ev_data_subset.volumes, rtol=1e-5), f"Expected {expected_ev_data_subset.volumes}, but got {ev_data_subset.volumes}"
@@ -619,7 +616,3 @@ def test_EvCurveData_non_magnetic():
                 expected_ev_data_subset.eos_parameters[key],
                 rtol=3e-2,
             ), f"Expected {expected_ev_data_subset.eos_parameters[key]} for '{key}', but got {ev_data_subset.eos_parameters[key]}"
-
-if __name__ == "__main__":
-    # Run all tests in this file
-    pytest.main()

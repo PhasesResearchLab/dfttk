@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 import scipy.constants
 import plotly.graph_objects as go
-from typing import Optional
 
 # DFTTK imports
 from dfttk.plotly_format import plot_format
@@ -31,15 +30,15 @@ class HarmonicPhononYphon:
         number_of_atoms (int): Number of atoms used for scaling the DOS and thermodynamic properties.
         volumes_per_atom (np.ndarray): Unique volumes per atom corresponding to the phonon DOS data.
         volumes (np.ndarray): Total volumes (per supercell) after scaling by number_of_atoms.
-        helmholtz_energy (np.ndarray): Vibrational Helmholtz free energy (eV/atom); shape (temperatures, volumes).
-        entropy (np.ndarray): Vibrational entropy (eV/K/atom); shape (temperatures, volumes).
-        heat_capacity (np.ndarray): Vibrational heat capacity at constant volume (eV/K/atom); shape (temperatures, volumes).
-        helmholtz_energy_fit (np.ndarray): Fitted Helmholtz energy (eV/atom); shape (temperatures, volumes_fit).
-        entropy_fit (np.ndarray): Fitted entropy (eV/K/atom); shape (temperatures, volumes_fit).
-        heat_capacity_fit (np.ndarray): Fitted heat capacity (eV/K/atom); shape (temperatures, volumes_fit).
-        helmholtz_energy_poly_coeffs (np.ndarray): Polynomial coefficients for Helmholtz energy fit.
-        entropy_poly_coeffs (np.ndarray): Polynomial coefficients for entropy fit.
-        heat_capacity_poly_coeffs (np.ndarray): Polynomial coefficients for heat capacity fit.
+        helmholtz_energies (np.ndarray): Vibrational Helmholtz free energy (eV/atom); shape (temperatures, volumes).
+        entropies (np.ndarray): Vibrational entropies (eV/K/atom); shape (temperatures, volumes).
+        heat_capacities (np.ndarray): Vibrational heat capacity at constant volume (eV/K/atom); shape (temperatures, volumes).
+        helmholtz_energies_fit (np.ndarray): Fitted Helmholtz energy (eV/atom); shape (temperatures, volumes_fit).
+        entropies_fit (np.ndarray): Fitted entropies (eV/K/atom); shape (temperatures, volumes_fit).
+        heat_capacities_fit (np.ndarray): Fitted heat capacity (eV/K/atom); shape (temperatures, volumes_fit).
+        helmholtz_energies_poly_coeffs (np.ndarray): Polynomial coefficients for Helmholtz energy fit.
+        entropies_poly_coeffs (np.ndarray): Polynomial coefficients for entropies fit.
+        heat_capacities_poly_coeffs (np.ndarray): Polynomial coefficients for heat capacity fit.
     """
 
     def __init__(self):
@@ -50,17 +49,17 @@ class HarmonicPhononYphon:
         self.volumes_per_atom: np.ndarray = None
         self.volumes: np.ndarray = None
         self.temperatures: np.ndarray = None
-        self.helmholtz_energy: np.ndarray = None
-        self.entropy: np.ndarray = None
-        self.heat_capacity: np.ndarray = None
+        self.helmholtz_energies: np.ndarray = None
+        self.entropies: np.ndarray = None
+        self.heat_capacities: np.ndarray = None
 
         self.volumes_fit: np.ndarray = None
-        self.helmholtz_energy_fit: np.ndarray = None
-        self.entropy_fit: np.ndarray = None
-        self.heat_capacity_fit: np.ndarray = None
-        self.helmholtz_energy_poly_coeffs: np.ndarray = None
-        self.entropy_poly_coeffs: np.ndarray = None
-        self.heat_capacity_poly_coeffs: np.ndarray = None
+        self.helmholtz_energies_fit: np.ndarray = None
+        self.entropies_fit: np.ndarray = None
+        self.heat_capacities_fit: np.ndarray = None
+        self.helmholtz_energies_poly_coeffs: np.ndarray = None
+        self.entropies_poly_coeffs: np.ndarray = None
+        self.heat_capacities_poly_coeffs: np.ndarray = None
 
     def load_dos(self, path: str) -> None:
         """
@@ -174,12 +173,15 @@ class HarmonicPhononYphon:
                 scaled_freq = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom]["frequency_hz"]
                 scaled_dos = vdos_data_scaled[vdos_data_scaled["volume_per_atom"] == volume_per_atom]["dos_1_per_hz"]
 
-                fig.add_trace(go.Scatter(x=freq / 1e12, y=dos * 1e12, mode="lines", name=f"Original - {original_atoms[i]} atoms", showlegend=True))
-                fig.add_trace(go.Scatter(x=scaled_freq / 1e12, y=scaled_dos * 1e12, mode="lines", name=f"Scaled - {number_of_atoms} atoms", showlegend=True))
+                orig_unit = "atom" if original_atoms[i] == 1 else f"{original_atoms[i]} atoms"
+                scaled_unit = "atom" if number_of_atoms == 1 else "atoms"
+
+                fig.add_trace(go.Scatter(x=freq / 1e12, y=dos * 1e12, mode="lines", name=f"Original - {original_atoms[i]} {orig_unit}", showlegend=True))
+                fig.add_trace(go.Scatter(x=scaled_freq / 1e12, y=scaled_dos * 1e12, mode="lines", name=f"Scaled - {number_of_atoms} {scaled_unit}", showlegend=True))
                 plot_format(fig, "Frequency (THz)", "DOS (1/THz)")
                 fig.update_layout(
                     title=dict(
-                        text=f"Original volume: {volume_per_atom * original_atoms[i]} Å³/{original_atoms[i]} atoms" f"<br> Scaled volume: {volume_per_atom * number_of_atoms} Å³/{number_of_atoms} atoms" f"<br> (Area: {area_count[i][1]:.1f}% positive, {area_count[i][2]:.1f}% negative)",
+                        text=f"Original volume: {volume_per_atom * original_atoms[i]} Å³/{orig_unit}" f"<br> Scaled volume: {volume_per_atom * number_of_atoms} Å³/{scaled_unit}" f"<br> (Area: {area_count[i][1]:.1f}% positive, {area_count[i][2]:.1f}% negative)",
                         font=dict(size=20, color="rgb(0,0,0)"),
                     ),
                     margin=dict(t=130),
@@ -222,13 +224,15 @@ class HarmonicPhononYphon:
     def calculate_harmonic(
         self,
         temperatures: np.ndarray,
+        selected_volumes: np.ndarray = None,
     ) -> None:
         """
-        Calculate vibrational thermodynamic properties (Helmholtz energy, internal energy, entropy, heat capacity)
+        Calculate vibrational thermodynamic properties (Helmholtz energy, internal energy, entropies, heat capacity)
         at the specified temperatures using the scaled phonon DOS and the harmonic approximation.
 
         Args:
             temperatures (np.ndarray): 1D array of temperatures in Kelvin.
+            selected_volumes (np.ndarray, optional): 1D array of volumes to calculate properties for.
 
         Raises:
             RuntimeError: If scaled phonon DOS data or volumes_per_atom is not set (call scale_dos() before calculate_harmonic()).
@@ -237,8 +241,15 @@ class HarmonicPhononYphon:
             raise RuntimeError("Scaled phonon DOS data not calculated. Call scale_dos() before calculate_harmonic().")
 
         self.temperatures = temperatures
-        frequency_array = [self.scaled_phonon_dos[self.scaled_phonon_dos["volume_per_atom"] == volume_per_atom]["frequency_hz"].values for volume_per_atom in self.volumes_per_atom]
-        dos_array = [self.scaled_phonon_dos[self.scaled_phonon_dos["volume_per_atom"] == volume_per_atom]["dos_1_per_hz"].values for volume_per_atom in self.volumes_per_atom]
+
+        # Use selected_volumes if provided, otherwise use all volumes
+        if selected_volumes is not None:
+            self.volumes = selected_volumes
+            self.volumes_per_atom = self.volumes / self.number_of_atoms
+
+        frequency_array = [self.scaled_phonon_dos[self.scaled_phonon_dos["volume_per_atom"] == v]["frequency_hz"].values for v in self.volumes_per_atom]
+        dos_array = [self.scaled_phonon_dos[self.scaled_phonon_dos["volume_per_atom"] == v]["dos_1_per_hz"].values for v in self.volumes_per_atom]
+
         frequency_array = self.pad_arrays(frequency_array, pad_type="increasing")
         dos_array = self.pad_arrays(dos_array, pad_value=0, pad_type="constant")
 
@@ -246,10 +257,10 @@ class HarmonicPhononYphon:
         num_temps = len(temperatures)
 
         # Preallocate output arrays
-        helmholtz_energy = np.zeros((num_temps, num_volumes))
+        helmholtz_energies = np.zeros((num_temps, num_volumes))
         internal_energy = np.zeros((num_temps, num_volumes))
-        entropy = np.zeros((num_temps, num_volumes))
-        heat_capacity = np.zeros((num_temps, num_volumes))
+        entropies = np.zeros((num_temps, num_volumes))
+        heat_capacities = np.zeros((num_temps, num_volumes))
 
         # Precompute midpoints and differences for all volumes
         freq_mid = (frequency_array[1:, :] + frequency_array[:-1, :]) / 2
@@ -265,10 +276,10 @@ class HarmonicPhononYphon:
                 if T == 0:
                     integrand = PLANCK_CONSTANT / 2 * f_mid * d_mid * df
                     F = np.sum(integrand)
-                    helmholtz_energy[j, i] = F
+                    helmholtz_energies[j, i] = F
                     internal_energy[j, i] = F
-                    entropy[j, i] = 0
-                    heat_capacity[j, i] = 0
+                    entropies[j, i] = 0
+                    heat_capacities[j, i] = 0
                 else:
                     ratio = (PLANCK_CONSTANT * f_mid) / (2 * BOLTZMANN_CONSTANT * T)
                     sinh_ratio = np.sinh(ratio)
@@ -276,24 +287,24 @@ class HarmonicPhononYphon:
                     # Helmholtz free energy
                     integrand_F = log_term * d_mid * df
                     F = BOLTZMANN_CONSTANT * T * np.sum(integrand_F)
-                    helmholtz_energy[j, i] = F
+                    helmholtz_energies[j, i] = F
                     # Internal energy
                     integrand_E = f_mid * np.cosh(ratio) / sinh_ratio * d_mid * df
                     E = PLANCK_CONSTANT / 2 * np.sum(integrand_E)
                     internal_energy[j, i] = E
-                    # Entropy
+                    # entropies
                     integrand_S = (ratio * np.cosh(ratio) / sinh_ratio - log_term) * d_mid * df
                     S = BOLTZMANN_CONSTANT * np.sum(integrand_S)
-                    entropy[j, i] = S
+                    entropies[j, i] = S
                     # Heat capacity
                     integrand_C = (ratio**2) * (1 / sinh_ratio) ** 2 * d_mid * df
                     Cv = BOLTZMANN_CONSTANT * np.sum(integrand_C)
-                    heat_capacity[j, i] = Cv
+                    heat_capacities[j, i] = Cv
 
-        self.helmholtz_energy = helmholtz_energy
-        self.internal_energy = internal_energy
-        self.entropy = entropy
-        self.heat_capacity = heat_capacity
+        self.helmholtz_energies = helmholtz_energies
+        self.internal_energies = internal_energy
+        self.entropies = entropies
+        self.heat_capacities = heat_capacities
 
     def fit_harmonic(
         self,
@@ -315,27 +326,27 @@ class HarmonicPhononYphon:
         Raises:
             RuntimeError: If required thermodynamic properties are not set (call calculate_harmonic() before fit_harmonic()).
         """
-        if self.helmholtz_energy is None or self.entropy is None or self.heat_capacity is None or self.temperatures is None:
+        if self.helmholtz_energies is None or self.entropies is None or self.heat_capacities is None or self.temperatures is None:
             raise RuntimeError("Thermodynamic properties not calculated. Call calculate_harmonic() before fit_harmonic().")
 
-        helmholtz_energy_fit_list = []
-        entropy_fit_list = []
-        heat_capacity_fit_list = []
-        helmholtz_energy_poly_coeffs_list = []
-        entropy_poly_coeffs_list = []
-        heat_capacity_poly_coeffs_list = []
+        helmholtz_energies_fit_list = []
+        entropies_fit_list = []
+        heat_capacities_fit_list = []
+        helmholtz_energies_poly_coeffs_list = []
+        entropies_poly_coeffs_list = []
+        heat_capacities_poly_coeffs_list = []
 
         for i in range(len(self.temperatures)):
-            helmholtz_energy_coefficients = np.polyfit(self.volumes, self.helmholtz_energy[i], order)
-            entropy_coefficients = np.polyfit(self.volumes, self.entropy[i], order)
-            heat_capacity_coefficients = np.polyfit(self.volumes, self.heat_capacity[i], order)
+            helmholtz_energies_coefficients = np.polyfit(self.volumes, self.helmholtz_energies[i], order)
+            entropies_coefficients = np.polyfit(self.volumes, self.entropies[i], order)
+            heat_capacities_coefficients = np.polyfit(self.volumes, self.heat_capacities[i], order)
 
-            helmholtz_energy_polynomial = np.poly1d(helmholtz_energy_coefficients)
-            entropy_polynomial = np.poly1d(entropy_coefficients)
-            heat_capacity_polynomial = np.poly1d(heat_capacity_coefficients)
-            helmholtz_energy_poly_coeffs_list.append(helmholtz_energy_coefficients)
-            entropy_poly_coeffs_list.append(entropy_coefficients)
-            heat_capacity_poly_coeffs_list.append(heat_capacity_coefficients)
+            helmholtz_energies_polynomial = np.poly1d(helmholtz_energies_coefficients)
+            entropies_polynomial = np.poly1d(entropies_coefficients)
+            heat_capacities_polynomial = np.poly1d(heat_capacities_coefficients)
+            helmholtz_energies_poly_coeffs_list.append(helmholtz_energies_coefficients)
+            entropies_poly_coeffs_list.append(entropies_coefficients)
+            heat_capacities_poly_coeffs_list.append(heat_capacities_coefficients)
 
             if min_volume is None:
                 min_volume = min(self.volumes) * 0.98
@@ -343,22 +354,22 @@ class HarmonicPhononYphon:
                 max_volume = max(self.volumes) * 1.02
             volumes_fit = np.linspace(min_volume, max_volume, num_volumes)
 
-            helmholtz_energy_fit = helmholtz_energy_polynomial(volumes_fit)
-            entropy_fit = entropy_polynomial(volumes_fit)
-            heat_capacity_fit = heat_capacity_polynomial(volumes_fit)
+            helmholtz_energies_fit = helmholtz_energies_polynomial(volumes_fit)
+            entropies_fit = entropies_polynomial(volumes_fit)
+            heat_capacities_fit = heat_capacities_polynomial(volumes_fit)
 
-            helmholtz_energy_fit_list.append(helmholtz_energy_fit)
-            entropy_fit_list.append(entropy_fit)
-            heat_capacity_fit_list.append(heat_capacity_fit)
+            helmholtz_energies_fit_list.append(helmholtz_energies_fit)
+            entropies_fit_list.append(entropies_fit)
+            heat_capacities_fit_list.append(heat_capacities_fit)
 
         self.volumes_fit = volumes_fit
-        self.helmholtz_energy_fit = np.array(helmholtz_energy_fit_list)
-        self.entropy_fit = np.array(entropy_fit_list)
-        self.heat_capacity_fit = np.array(heat_capacity_fit_list)
+        self.helmholtz_energies_fit = np.array(helmholtz_energies_fit_list)
+        self.entropies_fit = np.array(entropies_fit_list)
+        self.heat_capacities_fit = np.array(heat_capacities_fit_list)
 
-        self.helmholtz_energy_poly_coeffs = np.array(helmholtz_energy_poly_coeffs_list)
-        self.entropy_poly_coeffs = np.array(entropy_poly_coeffs_list)
-        self.heat_capacity_poly_coeffs = np.array(heat_capacity_poly_coeffs_list)
+        self.helmholtz_energies_poly_coeffs = np.array(helmholtz_energies_poly_coeffs_list)
+        self.entropies_poly_coeffs = np.array(entropies_poly_coeffs_list)
+        self.heat_capacities_poly_coeffs = np.array(heat_capacities_poly_coeffs_list)
 
     def plot_harmonic(
         self,
@@ -379,13 +390,14 @@ class HarmonicPhononYphon:
             RuntimeError: If required thermodynamic properties are not set (call calculate_harmonic() before fit_harmonic()).
             ValueError: If property is not one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
         """
-        if self.helmholtz_energy is None or self.entropy is None or self.heat_capacity is None or self.temperatures is None:
+        if self.helmholtz_energies is None or self.entropies is None or self.heat_capacities is None or self.temperatures is None:
             raise RuntimeError("Thermodynamic properties not calculated. Call calculate_harmonic() before fit_harmonic().")
 
+        unit = "atom" if self.number_of_atoms == 1 else f"{self.number_of_atoms} atoms"
         valid_properties = {
-            "helmholtz_energy": ("helmholtz_energy", f"F<sub>vib</sub> (eV/{self.number_of_atoms} atoms)"),
-            "entropy": ("entropy", f"S<sub>vib</sub> (eV/K/{self.number_of_atoms} atoms)"),
-            "heat_capacity": ("heat_capacity", f"C<sub>vib</sub> (eV/K/{self.number_of_atoms} atoms)"),
+            "helmholtz_energy": ("helmholtz_energies", f"F<sub>vib</sub> (eV/{unit})"),
+            "entropy": ("entropies", f"S<sub>vib</sub> (eV/K/{unit})"),
+            "heat_capacity": ("heat_capacities", f"C<sub>vib</sub> (eV/K/{unit})"),
         }
 
         if property not in valid_properties:
@@ -431,13 +443,14 @@ class HarmonicPhononYphon:
             RuntimeError: If fitted thermodynamic properties are not set (call fit_harmonic() before plot_fit_harmonic()).
             ValueError: If property is not one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
         """
-        if self.volumes_fit is None or self.helmholtz_energy_fit is None or self.entropy_fit is None or self.heat_capacity_fit is None or self.temperatures is None:
+        if self.volumes_fit is None or self.helmholtz_energies_fit is None or self.entropies_fit is None or self.heat_capacities_fit is None or self.temperatures is None:
             raise RuntimeError("Fitted thermodynamic properties not calculated. Call fit_harmonic() before plot_fit_harmonic().")
 
+        unit = "atom" if self.number_of_atoms == 1 else f"{self.number_of_atoms} atoms"
         valid_properties = {
-            "helmholtz_energy": ("helmholtz_energy", "helmholtz_energy_fit", f"F<sub>vib</sub> (eV/{self.number_of_atoms} atoms)"),
-            "entropy": ("entropy", "entropy_fit", f"S<sub>vib</sub> (eV/K/{self.number_of_atoms} atoms)"),
-            "heat_capacity": ("heat_capacity", "heat_capacity_fit", f"C<sub>vib</sub> (eV/K/{self.number_of_atoms} atoms)"),
+            "helmholtz_energy": ("helmholtz_energies", "helmholtz_energies_fit", f"F<sub>vib</sub> (eV/{unit})"),
+            "entropy": ("entropies", "entropies_fit", f"S<sub>vib</sub> (eV/K/{unit})"),
+            "heat_capacity": ("heat_capacities", "heat_capacities_fit", f"C<sub>vib</sub> (eV/K/{unit})"),
         }
 
         if property not in valid_properties:

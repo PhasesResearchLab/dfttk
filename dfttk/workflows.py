@@ -9,6 +9,7 @@ import shutil
 import sys
 import subprocess
 import logging
+import fnmatch
 
 # Related third party imports
 from natsort import natsorted
@@ -43,9 +44,7 @@ def move_folders(src_path: str, dest_path: str, folders: list[str]) -> None:
         subprocess.run(["mv", src, dest], check=True)
 
 
-def rename_error_folders(
-    path: str, error_folders_old: list[str], prev_error_folders_count: int
-) -> None:
+def rename_error_folders(path: str, error_folders_old: list[str], prev_error_folders_count: int) -> None:
     """Renames the error folders in the path. It is used to rename the error folders when restarting a job according
     to the number of error folders that were moved to a temporary folder from the previous run. For example, if the
     error folders in the temporary folder are error.1.tar and error.2.tar, the error folders in the path will be renamed
@@ -127,34 +126,18 @@ def custodian_errors_location(path: str) -> list[str]:
     """
 
     vol_folders_errors = []
-    vol_folders = [
-        d
-        for d in os.listdir(path)
-        if d.startswith("vol_") and os.path.isdir(os.path.join(path, d))
-    ]
+    vol_folders = [d for d in os.listdir(path) if d.startswith("vol_") and os.path.isdir(os.path.join(path, d))]
     for vol_folder in vol_folders:
-        error_folders = [
-            f
-            for f in os.listdir(os.path.join(path, vol_folder))
-            if f.startswith("error")
-        ]
+        error_folders = [f for f in os.listdir(os.path.join(path, vol_folder)) if f.startswith("error")]
         if len(error_folders) > 0:
             print(f"In {vol_folder} there are error folders: {error_folders}")
             vol_folders_errors.append(vol_folder)
 
     phonon_folders_errors = []
-    phonon_folders = [
-        d
-        for d in os.listdir(path)
-        if d.startswith("phonon") and os.path.isdir(os.path.join(path, d))
-    ]
+    phonon_folders = [d for d in os.listdir(path) if d.startswith("phonon") and os.path.isdir(os.path.join(path, d))]
     phonon_folders = natsorted(phonon_folders)
     for phonon_folder in phonon_folders:
-        error_folders = [
-            f
-            for f in os.listdir(os.path.join(path, phonon_folder))
-            if f.startswith("error")
-        ]
+        error_folders = [f for f in os.listdir(os.path.join(path, phonon_folder)) if f.startswith("error")]
         if len(error_folders) > 0:
             error_folders = natsorted(error_folders)
             print(f"In {phonon_folder} there are error folders: {error_folders}")
@@ -163,23 +146,29 @@ def custodian_errors_location(path: str) -> list[str]:
     return vol_folders_errors, phonon_folders_errors
 
 
-def NELM_reached(path: str) -> None:
+def NELM_reached(path: str, filename: str = "vasp.out*") -> None:
     """Prints the path of the calculations that have reached NELM.
 
     Args:
         path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
+        filename (str): only check files with this name or pattern (supports wildcards). If None, check all files.
     """
-
     start_dir = path
     target_line = "The electronic self-consistency was not achieved in the given"
     for dirpath, dirs, files in os.walk(start_dir):
-        for filename in files:
-            filepath = os.path.join(dirpath, filename)
-            with open(filepath, "r", errors="ignore") as file:
-                for line in file:
-                    if target_line in line:
-                        print(f"{filepath} has reached NELM.")
-                        break   
+        for file in files:
+            if filename is not None and not fnmatch.fnmatch(file, filename):
+                continue
+            filepath = os.path.join(dirpath, file)
+            try:
+                with open(filepath, "r", errors="ignore") as f:
+                    for line in f:
+                        if target_line in line:
+                            print(f"{filepath} has reached NELM.")
+                            break
+            except Exception:
+                continue
+
 
 class SingleJobWorkflow:
     def __init__(
@@ -220,19 +209,14 @@ workflow.run()
     def run(self) -> None:
         original_dir = os.getcwd()
         os.chdir(self.path)
-        step1 = VaspJob(
-            vasp_cmd=self.vasp_cmd,
-            final=True,
-            backup=False,
-            **self.vaspjob_kwargs
-        )
+        step1 = VaspJob(vasp_cmd=self.vasp_cmd, final=True, backup=False, **self.vaspjob_kwargs)
 
         handlers = [VaspErrorHandler(errors_subset_to_catch=self.error_msgs)]
         jobs = [step1]
         c = Custodian(handlers, jobs, max_errors=self.max_errors, **self.custodian_kwargs)
         c.run()
         os.chdir(original_dir)
-    
+
 
 def three_step_relaxation(
     path: str,
@@ -265,15 +249,11 @@ def three_step_relaxation(
     """
 
     if default_settings:
-        override_2relax = [
-            {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}}
-        ]
+        override_2relax = [{"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}}]
         override_3static = [
             {
                 "dict": "INCAR",
-                "action": {
-                    "_set": {"ALGO": "Normal", "IBRION": -1, "NSW": 0, "ISMEAR": -5}
-                },
+                "action": {"_set": {"ALGO": "Normal", "IBRION": -1, "NSW": 0, "ISMEAR": -5}},
             },
             {"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}},
         ]
@@ -376,48 +356,31 @@ def ev_curve_series(
     # 1) The volumes list must be greater than or equal to the number of volume folders.
     # 2) The volumes in the volume folders must match the volumes list in order.
     if restarting:
-        vol_folders = [
-            folder
-            for folder in os.listdir(path)
-            if os.path.isdir(folder) and folder.startswith("vol_")
-        ]
+        vol_folders = [folder for folder in os.listdir(path) if os.path.isdir(folder) and folder.startswith("vol_")]
         vol_folders = natsorted(vol_folders)
 
         volumes_started = []
         for vol_folder in vol_folders:
             try:
-                struct = Structure.from_file(
-                    os.path.join(path, vol_folder, "POSCAR.1relax")
-                )
+                struct = Structure.from_file(os.path.join(path, vol_folder, "POSCAR.1relax"))
                 volume_started = round(struct.volume, 6)
             except Exception as e:
                 print(f"possible error: {e}, trying POSCAR")
                 try:
-                    struct = Structure.from_file(
-                        os.path.join(path, vol_folder, "POSCAR")
-                    )
+                    struct = Structure.from_file(os.path.join(path, vol_folder, "POSCAR"))
                     volume_started = round(struct.volume, 6)
                 except Exception as e:
-                    print(
-                        f"Error: {e}. Failed to extract volumes from POSCAR files. Ensure that POSCAR.1relax or POSCAR exists in each volume folder."
-                    )
+                    print(f"Error: {e}. Failed to extract volumes from POSCAR files. Ensure that POSCAR.1relax or POSCAR exists in each volume folder.")
                     sys.exit(1)
 
             volumes_started.append(volume_started)
             rounded_volumes_supplied = [round(volume, 6) for volume in volumes]
 
         if not volumes_started == rounded_volumes_supplied[: len(volumes_started)]:
-            print(
-                f"Error: The completed volumes do not match the input volumes list from the beginning. \n"
-                f"Rounded input volumes: {rounded_volumes_supplied} \n"
-                f"Started volumes: {volumes_started} \n"
-                "Exiting."
-            )
+            print(f"Error: The completed volumes do not match the input volumes list from the beginning. \n" f"Rounded input volumes: {rounded_volumes_supplied} \n" f"Started volumes: {volumes_started} \n" "Exiting.")
             sys.exit(1)
         else:
-            print(
-                "The completed volumes match the input volumes list from the beginning. Continuing restart."
-            )
+            print("The completed volumes match the input volumes list from the beginning. Continuing restart.")
 
         j = len(vol_folders) - 1
         last_vol_folder_name = "vol_" + str(j)
@@ -425,23 +388,17 @@ def ev_curve_series(
 
         # If the job failed at the second step of three_step_relaxation, restart from step 3.
         files = os.listdir(last_vol_folder_path)
-        files_exist = any(file.endswith(".1relax") for file in files) and any(
-            file.endswith(".2relax") for file in files
-        )
+        files_exist = any(file.endswith(".1relax") for file in files) and any(file.endswith(".2relax") for file in files)
         files_missing = not any(file.endswith(".3static") for file in files)
 
         if files_exist and files_missing:
 
             custodian_json_path = os.path.join(last_vol_folder_path, "custodian.json")
-            custodian_old_json_path = os.path.join(
-                last_vol_folder_path, "custodian_old.json"
-            )
+            custodian_old_json_path = os.path.join(last_vol_folder_path, "custodian_old.json")
             if os.path.isfile(custodian_json_path):
                 os.rename(custodian_json_path, custodian_old_json_path)
 
-            error_folders = [
-                f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
-            ]
+            error_folders = [f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")]
             prev_error_folders_count = len(error_folders)
             error_temp_path = os.path.join(last_vol_folder_path, "error_temp")
             if not os.path.exists(error_temp_path):
@@ -449,9 +406,7 @@ def ev_curve_series(
 
             move_folders(last_vol_folder_path, error_temp_path, error_folders)
 
-            print(
-                f"Running three step relaxation for volume {str(volumes[j])} at step 3"
-            )
+            print(f"Running three step relaxation for volume {str(volumes[j])} at step 3")
             three_step_relaxation(
                 last_vol_folder_path,
                 vasp_cmd,
@@ -468,30 +423,22 @@ def ev_curve_series(
             process_error_folders(last_vol_folder_path, prev_error_folders_count)
             merge_custodian_json_files(last_vol_folder_path)
 
-            error_folders = [
-                f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
-            ]
+            error_folders = [f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")]
 
             last_vol_index = j + 1
 
         # If the job failed at the second step of three_step_relaxation, restart from step 2.
         files_exist = any(file.endswith(".1relax") for file in files)
-        files_missing = not any(
-            file.endswith(".3static") for file in files
-        ) and not any(file.endswith(".2relax") for file in files)
+        files_missing = not any(file.endswith(".3static") for file in files) and not any(file.endswith(".2relax") for file in files)
 
         if files_exist and files_missing:
 
             custodian_json_path = os.path.join(last_vol_folder_path, "custodian.json")
-            custodian_old_json_path = os.path.join(
-                last_vol_folder_path, "custodian_old.json"
-            )
+            custodian_old_json_path = os.path.join(last_vol_folder_path, "custodian_old.json")
             if os.path.isfile(custodian_json_path):
                 os.rename(custodian_json_path, custodian_old_json_path)
 
-            error_folders = [
-                f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
-            ]
+            error_folders = [f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")]
             prev_error_folders_count = len(error_folders)
             error_temp_path = os.path.join(last_vol_folder_path, "error_temp")
             if not os.path.exists(error_temp_path):
@@ -499,9 +446,7 @@ def ev_curve_series(
 
             move_folders(last_vol_folder_path, error_temp_path, error_folders)
 
-            print(
-                f"Running three step relaxation for volume {str(volumes[j])} at step 2"
-            )
+            print(f"Running three step relaxation for volume {str(volumes[j])} at step 2")
             three_step_relaxation(
                 last_vol_folder_path,
                 vasp_cmd,
@@ -518,18 +463,12 @@ def ev_curve_series(
             process_error_folders(last_vol_folder_path, prev_error_folders_count)
             merge_custodian_json_files(last_vol_folder_path)
 
-            error_folders = [
-                f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")
-            ]
+            error_folders = [f for f in os.listdir(last_vol_folder_path) if f.startswith("error.")]
 
             last_vol_index = j + 1
 
         # If the job failed at the first step of three_step_relaxation, delete the folder.
-        files_missing = (
-            not any(file.endswith(".3static") for file in files)
-            and not any(file.endswith(".2relax") for file in files)
-            and not any(file.endswith(".1relax") for file in files)
-        )
+        files_missing = not any(file.endswith(".3static") for file in files) and not any(file.endswith(".2relax") for file in files) and not any(file.endswith(".1relax") for file in files)
         if files_missing:
             shutil.rmtree(last_vol_folder_path)
             last_vol_index = j
@@ -627,9 +566,7 @@ def ev_curve_series(
             override_3static=override_3static,
         )
 
-        error_folders = [
-            f for f in os.listdir(vol_folder_path) if f.startswith("error.")
-        ]
+        error_folders = [f for f in os.listdir(vol_folder_path) if f.startswith("error.")]
 
     previous_vol_folder_path = os.path.join(path, "vol_" + str(i))
     paths_to_delete = []
@@ -740,13 +677,7 @@ def phonons_parallel(
     script_name = sys.argv[0]
     with open(script_name, "r") as file:
         script_contents = file.read()
-        script_contents = "\n".join(
-            [
-                line
-                for line in script_contents.split("\n")
-                if "workflows.phonons_parallel" not in line
-            ]
-        )
+        script_contents = "\n".join([line for line in script_contents.split("\n") if "workflows.phonons_parallel" not in line])
 
     with open(run_file, "r") as file:
         run_file_contents = file.read()
@@ -760,11 +691,7 @@ def phonons_parallel(
     new_run_file += "END_OF_PYTHON\n"
 
     # Copy files from the vol_* folders to the phonon_* folders
-    vol_folders = [
-        folder
-        for folder in os.listdir(path)
-        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol_")
-    ]
+    vol_folders = [folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol_")]
 
     ev_volumes_finished = []
     ev_folder_names = []
@@ -774,14 +701,10 @@ def phonons_parallel(
         ev_volumes_finished.append(round(structure.volume, 6))
         ev_folder_names.append(vol_folder)
 
-    ev_volumes_and_folders_finished = [
-        [a, b] for a, b in zip(ev_volumes_finished, ev_folder_names)
-    ]
+    ev_volumes_and_folders_finished = [[a, b] for a, b in zip(ev_volumes_finished, ev_folder_names)]
 
     for i in range(len(ev_volumes_and_folders_finished)):
-        ev_volumes_and_folders_finished[i][1] = ev_volumes_and_folders_finished[i][
-            1
-        ].replace("vol_", "")
+        ev_volumes_and_folders_finished[i][1] = ev_volumes_and_folders_finished[i][1].replace("vol_", "")
 
     phonon_volumes_and_folders = []
     for ev_volume_finished, folder in ev_volumes_and_folders_finished:
@@ -826,9 +749,7 @@ def phonons_parallel(
 
         except ValueError:
             # Swallow the ValueError and continue without outputting anything
-            structure = Structure.from_file(
-                os.path.join(path, f"phonon_{phonon_folder}", "POSCAR")
-            )
+            structure = Structure.from_file(os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"))
             scaled_structure = transformation.apply_transformation(structure)
             pass
         except Exception as e:
@@ -836,9 +757,7 @@ def phonons_parallel(
             print(f"An error occurred: {e}")
 
         # Write the POSCAR file for the scaled structure
-        scaled_structure.to_file(
-            os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR"
-        )
+        scaled_structure.to_file(os.path.join(path, f"phonon_{phonon_folder}", "POSCAR"), "POSCAR")
 
         # Write the KPOINTS file for the scaled structure
         kpoints = Kpoints.automatic_density(scaled_structure, kppa, force_gamma=True)
@@ -878,11 +797,7 @@ def process_phonon_dos_YPHON(path: str):
     )
 
     # Process the phonon dos in each phonon_folder
-    phonon_folders = [
-        folder
-        for folder in os.listdir(path)
-        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("phonon")
-    ]
+    phonon_folders = [folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("phonon")]
     for phonon_folder in phonon_folders:
         try:
             phonon_dos_folder = os.path.join(path, phonon_folder, "phonon_dos")
@@ -1018,13 +933,7 @@ def elec_dos_parallel(
     script_name = sys.argv[0]
     with open(script_name, "r") as file:
         script_contents = file.read()
-        script_contents = "\n".join(
-            [
-                line
-                for line in script_contents.split("\n")
-                if "workflows.elec_dos_parallel" not in line
-            ]
-        )
+        script_contents = "\n".join([line for line in script_contents.split("\n") if "workflows.elec_dos_parallel" not in line])
 
     with open(run_file, "r") as file:
         run_file_contents = file.read()
@@ -1039,11 +948,7 @@ def elec_dos_parallel(
     new_run_file += "END_OF_PYTHON\n"
 
     # Copy files to elec folders
-    vol_folders = [
-        folder
-        for folder in os.listdir(path)
-        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol_")
-    ]
+    vol_folders = [folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol_")]
     vol_folders = natsorted(vol_folders)
 
     ev_volumes_finished = []
@@ -1054,14 +959,10 @@ def elec_dos_parallel(
         ev_volumes_finished.append(round(struct.volume, 6))
         ev_folder_names.append(vol_folder)
 
-    ev_volumes_and_folders_finished = [
-        [a, b] for a, b in zip(ev_volumes_finished, ev_folder_names)
-    ]
+    ev_volumes_and_folders_finished = [[a, b] for a, b in zip(ev_volumes_finished, ev_folder_names)]
 
     for i in range(len(ev_volumes_and_folders_finished)):
-        ev_volumes_and_folders_finished[i][1] = ev_volumes_and_folders_finished[i][
-            1
-        ].replace("vol_", "")
+        ev_volumes_and_folders_finished[i][1] = ev_volumes_and_folders_finished[i][1].replace("vol_", "")
 
     elec_volumes_and_folders = []
     for ev_volume_finished, folder in ev_volumes_and_folders_finished:
@@ -1095,9 +996,7 @@ def elec_dos_parallel(
                 os.path.join(path, f"vol_{elec_folder}", "OUTCAR.3static"),
             )  # if magnetic data not in OUTCAR, will raise an exception.
             structure = transformation.apply_transformation(structure)
-            structure.to_file(
-                os.path.join(path, f"elec_{elec_folder}", "POSCAR"), "POSCAR"
-            )
+            structure.to_file(os.path.join(path, f"elec_{elec_folder}", "POSCAR"), "POSCAR")
             structure_magmoms = structure.site_properties["magmom"]
             numeric_strings = [str(value) for value in structure_magmoms]
             magmom_string = " ".join(numeric_strings)
@@ -1113,13 +1012,9 @@ def elec_dos_parallel(
                     else:
                         file.write(line)
         except Exception as e:
-            structure = Structure.from_file(
-                os.path.join(path, f"elec_{elec_folder}", "POSCAR")
-            )
+            structure = Structure.from_file(os.path.join(path, f"elec_{elec_folder}", "POSCAR"))
             structure = transformation.apply_transformation(structure)
-            structure.to_file(
-                os.path.join(path, f"elec_{elec_folder}", "POSCAR"), "POSCAR"
-            )
+            structure.to_file(os.path.join(path, f"elec_{elec_folder}", "POSCAR"), "POSCAR")
 
         kpoints = Kpoints.automatic_density(structure, kppa, force_gamma=True)
         kpoints.write_file(os.path.join(path, f"elec_{elec_folder}", "KPOINTS"))
@@ -1283,9 +1178,7 @@ def kpoints_conv_test(
             final=final,
             backup=backup,
             suffix=f".{kppa}",
-            settings_override=[
-                {"dict": "INCAR", "action": {"_set": {"IBRION": -1, "NSW": 0}}}
-            ],
+            settings_override=[{"dict": "INCAR", "action": {"_set": {"IBRION": -1, "NSW": 0}}}],
         )
         c = Custodian(handlers, [job], max_errors=max_errors)
         c.run()
