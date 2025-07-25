@@ -16,7 +16,7 @@ import plotly.graph_objects as go
 # Local application/library specific imports
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints
-from pymatgen.io.vasp.outputs import Oszicar
+from pymatgen.io.vasp.outputs import Oszicar, Outcar
 
 # DFTTK imports
 from dfttk.data_extraction import (
@@ -27,8 +27,6 @@ from dfttk.data_extraction import (
 from dfttk.magnetism import determine_magnetic_ordering
 
 
-# TODO: Incorporate other convergence criteria
-# See https://github.com/kavanase/vaspup2.0
 def extract_configuration_data(
     path: str,
     outcar_name: str = "OUTCAR.3static",
@@ -77,9 +75,7 @@ def extract_configuration_data(
         contcar_path = os.path.join(vol_dir, contcar_name)
 
         # Check if all required files exist
-        if not all(
-            os.path.isfile(p) for p in [outcar_path, oszicar_path, contcar_path]
-        ):
+        if not all(os.path.isfile(p) for p in [outcar_path, oszicar_path, contcar_path]):
             print(f"Warning: Required files do not exist in {vol_dir}. Skipping.")
             continue
 
@@ -102,18 +98,34 @@ def extract_configuration_data(
 
         # Collect magnetization data if specified
         if collect_mag_data == True:
-            mag_data = extract_tot_mag_data(outcar_path, contcar_path)
-            total_magnetic_moment = mag_data["tot"].sum()
-            magnetic_ordering = determine_magnetic_ordering(
-                mag_data,
-                magmom_tolerance=magmom_tolerance,
-                total_magnetic_moment_tolerance=total_magnetic_moment_tolerance,
-            )
-            mag_data_list.append(mag_data.to_numpy())
-            total_magnetic_moments = np.append(
-                total_magnetic_moments, total_magnetic_moment
-            )
+            try:
+                mag_data = extract_tot_mag_data(outcar_path, contcar_path)
+                total_magnetic_moment = mag_data["tot"].sum()
+            except:
+                mag_data = []
+                outcar = Outcar(outcar_path)
+                total_magnetic_moment = outcar.total_mag
+
+            try:
+                magnetic_ordering = determine_magnetic_ordering(
+                    mag_data,
+                    magmom_tolerance=magmom_tolerance,
+                    total_magnetic_moment_tolerance=total_magnetic_moment_tolerance,
+                )
+            except:
+                magnetic_ordering = []
+
+            if isinstance(mag_data, pd.DataFrame):
+                mag_data_list.append(mag_data.to_numpy())
+            else:
+                pass
+
+            total_magnetic_moments = np.append(total_magnetic_moments, total_magnetic_moment)
             magnetic_orderings = np.append(magnetic_orderings, magnetic_ordering)
+
+    # After the loop, add these checks:
+    if isinstance(total_magnetic_moments, np.ndarray) and np.all(total_magnetic_moments == None):
+        total_magnetic_moments = np.array([])
 
     # Convert mag_data_list to numpy array
     mag_data_array = np.array(mag_data_list)
@@ -141,11 +153,7 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
     """
 
     # Get list of OSZICAR files
-    OSZICAR_files = [
-        file
-        for file in os.listdir(path)
-        if os.path.isfile(os.path.join(path, file)) and file.startswith("OSZICAR")
-    ]
+    OSZICAR_files = [file for file in os.listdir(path) if os.path.isfile(os.path.join(path, file)) and file.startswith("OSZICAR")]
     conv_items = sorted([int(file.split(".")[1]) for file in OSZICAR_files])
 
     # Initialize lists to store data
@@ -172,23 +180,14 @@ def extract_convergence_data(path: str) -> pd.DataFrame:
         kpoint_grid_list.append([item for sublist in kpoints.kpts for item in sublist])
 
     # Calculate energy per atom
-    energy_per_atom_list = [
-        energy / num_atoms
-        for energy, num_atoms in zip(energy_list, number_of_atoms_list)
-    ]
+    energy_per_atom_list = [energy / num_atoms for energy, num_atoms in zip(energy_list, number_of_atoms_list)]
 
     # Calculate difference in energy per atom in meV
-    difference_meV_per_atom_list = [
-        (energy_per_atom_list[i] - energy_per_atom_list[i - 1]) * 1000
-        for i in range(1, len(energy_per_atom_list))
-    ]
+    difference_meV_per_atom_list = [(energy_per_atom_list[i] - energy_per_atom_list[i - 1]) * 1000 for i in range(1, len(energy_per_atom_list))]
     difference_meV_per_atom_list.insert(0, float("nan"))
 
     # Calculate kppa
-    kppa_list = [
-        np.prod(kpoint_grid) * num_atoms
-        for kpoint_grid, num_atoms in zip(kpoint_grid_list, number_of_atoms_list)
-    ]
+    kppa_list = [np.prod(kpoint_grid) * num_atoms for kpoint_grid, num_atoms in zip(kpoint_grid_list, number_of_atoms_list)]
 
     # Create DataFrame
     df = pd.DataFrame(
@@ -283,9 +282,7 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
     return fig
 
 
-def calculate_encut_conv(
-    path: str, plot: bool = True
-) -> tuple[pd.DataFrame, go.Figure]:
+def calculate_encut_conv(path: str, plot: bool = True) -> tuple[pd.DataFrame, go.Figure]:
     """Convenience function to calculate the energy convergence with respect to ENCUT and plots the results.
 
     Args:
@@ -340,9 +337,7 @@ def plot_kpoint_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
     return fig
 
 
-def calculate_kpoint_conv(
-    path: str, plot: bool = True
-) -> tuple[pd.DataFrame, go.Figure]:
+def calculate_kpoint_conv(path: str, plot: bool = True) -> tuple[pd.DataFrame, go.Figure]:
     """Convenience fuction to calculate the energy convergence with respect to k-point density and plots the results.
 
     Args:
