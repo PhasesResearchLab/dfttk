@@ -1000,7 +1000,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
 
             document["evCurve"] = {
                 "input": {
-                    "initialPoscar": self.ev_curve.initial_poscar.as_dict(),
+                    "initialPoscar": self.ev_curve.initial_poscar.as_dict() if self.ev_curve.initial_poscar is not None else None,
                     "incars": self.ev_curve.incars,
                     "kpoints": [
                         {key: kp.as_dict() for key, kp in kpoints_dict.items()}
