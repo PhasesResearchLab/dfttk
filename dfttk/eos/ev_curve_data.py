@@ -61,12 +61,18 @@ class EvCurveData:
 
         return natsorted([f for f in os.listdir(self.path) if f.startswith("vol_")])
 
-    def get_vasp_input(self, selected_volumes: list[float] = None) -> None:
+    def get_vasp_input(self, incar_keys: list[str] = ["1relax", "2relax", "3static"], incar_names: list[str] = ["INCAR.1relax", "INCAR.2relax", "INCAR.3static"], kpoints_keys: list[str] = ["1relax", "2relax", "3static"], kpoints_names: list[str] = ["KPOINTS.1relax", "KPOINTS.2relax", "KPOINTS.3static"], contcar_name: str = "CONTCAR.3static", selected_volumes: list[float] = None, read_initial_poscar: bool = True) -> None:
         """
         Get the VASP input files from the specified path and store them in the class attributes.
 
         Args:
+            incar_keys (list[str], optional): List of INCAR keys for dictionary keys. Defaults to ["1relax", "2relax", "3static"].
+            incar_names (list[str], optional): List of INCAR names to read. Defaults to ["INCAR.1relax", "INCAR.2relax", "INCAR.3static"].
+            kpoints_keys (list[str], optional): List of KPOINTS keys for dictionary keys. Defaults to ["1relax", "2relax", "3static"].
+            kpoints_names (list[str], optional): List of KPOINTS names to read. Defaults to ["KPOINTS.1relax", "KPOINTS.2relax", "KPOINTS.3static"].
+            contcar_name (str, optional): Name of the CONTCAR file. Defaults to "CONTCAR.3static".
             selected_volumes (list[float], optional): List of volumes to filter the folders. If None, all folders are considered.
+            read_initial_poscar (bool, optional): Whether to read the initial POSCAR file. Defaults to True.
         """
 
         # Get the list of volume folders
@@ -78,34 +84,37 @@ class EvCurveData:
             vol_folders = [
                 vol_folder
                 for vol_folder in vol_folders
-                if os.path.exists(os.path.join(self.path, vol_folder, "CONTCAR.3static"))
+                if os.path.exists(os.path.join(self.path, vol_folder, contcar_name))
                 and round(
-                    Structure.from_file(os.path.join(self.path, vol_folder, "CONTCAR.3static")).volume,
+                    Structure.from_file(os.path.join(self.path, vol_folder, contcar_name)).volume,
                     2,
                 )
                 in volumes_set
             ]
 
         # Read the INCAR files for each volume folder
-        incar_keys = ["1relax", "2relax", "3static"]
         for vol_folder in vol_folders:
-            incar_data = {key: Incar.from_file(os.path.join(self.path, vol_folder, f"INCAR.{key}")) for key in incar_keys}
+            incar_data = {}
+            for key, name in zip(incar_keys, incar_names):
+                incar_data[key] = Incar.from_file(os.path.join(self.path, vol_folder, name))
             self.incars.append(incar_data)
 
-        # Read the KPOINTS file
-        kpoints_keys = ["1relax", "2relax", "3static"]
+        # Read the KPOINTS files for each volume folder
         for vol_folder in vol_folders:
-            kpoints_data = {key: Kpoints.from_file(os.path.join(self.path, vol_folder, f"KPOINTS.{key}")) for key in kpoints_keys}
+            kpoints_data = {}
+            for key, name in zip(kpoints_keys, kpoints_names):
+                kpoints_data[key] = Kpoints.from_file(os.path.join(self.path, vol_folder, name))
             self.kpoints.append(kpoints_data)
 
         # Read the POTCAR file
         try:
-            self.potcar = Potcar.from_file(os.path.join(self.path, "POTCAR"))
+            self.potcar = Potcar.from_file(os.path.join(self.path, vol_folders[0], "POTCAR"))
         except FileNotFoundError:
             self.potcar = None
 
         # Read the starting POSCAR file
-        self.initial_poscar = Structure.from_file(os.path.join(self.path, "POSCAR"))
+        if read_initial_poscar:
+            self.initial_poscar = Structure.from_file(os.path.join(self.path, "POSCAR"))
 
     def get_energy_volume_data(
         self,
@@ -139,7 +148,7 @@ class EvCurveData:
             all_energies,
             self.atomic_masses,
             self.average_mass,
-            all_mag_data_list,
+            all_mag_data_array,
             all_total_magnetic_moments,
             all_magnetic_orderings,
         ) = extract_configuration_data(
@@ -157,9 +166,28 @@ class EvCurveData:
         self.volumes = all_volumes
         self.energies = all_energies
 
-        # Convert all_mag_data_list to a list of dicts (one per volume)
-        self.mag_data = []
-        for mag_data_per_volume in all_mag_data_list:
+        # Filter data by selected_volumes if provided
+        if selected_volumes is not None:
+            volumes_set = set(selected_volumes)
+            filtered_indices = [i for i, v in enumerate(all_volumes) if v in volumes_set]
+            self.volumes = np.array(all_volumes)[filtered_indices]
+            self.energies = np.array(all_energies)[filtered_indices]
+            self.mag_data = all_mag_data_array[filtered_indices] if len(all_mag_data_array) > 0 else []
+            self.total_magnetic_moment = np.array(all_total_magnetic_moments[filtered_indices]) if len(all_total_magnetic_moments) > 0 else []
+            self.magnetic_ordering = np.array(all_magnetic_orderings)[filtered_indices] if len(all_magnetic_orderings) > 0 else []
+
+        if selected_volumes is None:
+            self.total_magnetic_moment = all_total_magnetic_moments
+            self.magnetic_ordering = all_magnetic_orderings
+
+        # Convert all_mag_data_array to a list of dicts (one per volume)
+        if selected_volumes is None:
+            self.mag_data = []
+            mag_data_source = all_mag_data_array
+        else:
+            mag_data_source = self.mag_data
+            self.mag_data = []
+        for mag_data_per_volume in mag_data_source:
             element_dict = {}
             for atom in mag_data_per_volume:
                 # atom is typically (atom_index, magmom, element) or (atom_index, element, magmom)
@@ -177,19 +205,6 @@ class EvCurveData:
                         magmom = atom[1]
                 element_dict.setdefault(element, []).append(magmom)
             self.mag_data.append(element_dict)
-
-        self.total_magnetic_moment = all_total_magnetic_moments
-        self.magnetic_ordering = all_magnetic_orderings
-
-        # Filter data by selected_volumes if provided
-        if selected_volumes is not None:
-            volumes_set = set(selected_volumes)
-            filtered_indices = [i for i, v in enumerate(all_volumes) if v in volumes_set]
-            self.volumes = np.array(all_volumes)[filtered_indices]
-            self.energies = np.array(all_energies)[filtered_indices]
-            self.mag_data = [all_mag_data_list[i] for i in filtered_indices] if len(all_mag_data_list) > 0 else []
-            self.total_magnetic_moment = np.array(all_total_magnetic_moments)[filtered_indices] if all_total_magnetic_moments else []
-            self.magnetic_ordering = np.array(all_magnetic_orderings)[filtered_indices] if all_magnetic_orderings else []
 
         # Get the volume folders
         vol_folders = self._get_volume_folders()
@@ -210,16 +225,27 @@ class EvCurveData:
 
         if collect_mag_data:
             # Read the magnetic structures from the CONTCAR files
-            self.relaxed_structures = [
-                get_magnetic_structure(
-                    os.path.join(self.path, vol_folder, "CONTCAR.3static"),
-                    os.path.join(self.path, vol_folder, "OUTCAR.3static"),
-                )
-                for vol_folder in vol_folders
-            ]
+            try:
+                self.relaxed_structures = [
+                    get_magnetic_structure(
+                        os.path.join(self.path, vol_folder, contcar_name),
+                        os.path.join(self.path, vol_folder, outcar_name),
+                    )
+                    for vol_folder in vol_folders
+                ]
+            except:
+                # Read the relaxed structures from the CONTCAR files
+                self.relaxed_structures = [Structure.from_file(os.path.join(self.path, vol_folder, contcar_name)) for vol_folder in vol_folders]
         else:
             # Read the relaxed structures from the CONTCAR files
             self.relaxed_structures = [Structure.from_file(os.path.join(self.path, vol_folder, contcar_name)) for vol_folder in vol_folders]
+
+        # TODO: this might be a temporary fix for an empty magnetic_ordering issue. Revisit EOSFitter.
+        # Ensure empty arrays are converted to empty lists for compatibility
+        if isinstance(self.magnetic_ordering, np.ndarray) and self.magnetic_ordering.size == 0:
+            self.magnetic_ordering = []
+        if isinstance(self.total_magnetic_moment, np.ndarray) and self.total_magnetic_moment.size == 0:
+            self.total_magnetic_moment = []
 
     def fit_energy_volume_data(
         self,
@@ -236,7 +262,13 @@ class EvCurveData:
             volume_min (float, optional): Minimum volume for fitted EOS. Defaults to None.
             volume_max (float, optional): Maximum volume for fitted EOS. Defaults to None.
             num_volumes (int, optional): Number of volumes for fitted EOS. Defaults to 1000.
+
+        Raises:
+            RuntimeError: If energy-volume data has not been loaded. You must call get_energy_volume_data() first.
         """
+
+        if len(self.volumes) == 0 or len(self.energies) == 0:
+            raise RuntimeError("You must call get_energy_volume_data() before fit_energy_volume_data().")
         self._fitter = EOSFitter(self.name, self.number_of_atoms, self.volumes, self.energies)
         self._fitter.fit(eos_name=eos_name, volume_min=volume_min, volume_max=volume_max, num_volumes=num_volumes)
 

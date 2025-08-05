@@ -417,7 +417,12 @@ workflows.NELM_reached(os.getcwd())
 
     def process_ev_curve(
         self,
+        incar_keys: list[str] = ['1relax', '2relax', '3static'],
+        incar_names: list[str] = ["INCAR.1relax", "INCAR.2relax", "INCAR.3static"],
+        kpoints_keys: list[str] = ['1relax', '2relax', '3static'],
+        kpoints_names: list[str] = ["KPOINTS.1relax", "KPOINTS.2relax", "KPOINTS.3static"],
         selected_volumes: list[float] = None,
+        read_initial_poscar: bool = True,
         outcar_name: str = "OUTCAR.3static",
         oszicar_name: str = "OSZICAR.3static",
         contcar_name: str = "CONTCAR.3static",
@@ -437,7 +442,12 @@ workflows.NELM_reached(os.getcwd())
         and fits the energy-volume data to an equation of state.
 
         Args:
+            incar_keys (list[str], optional): List of INCAR keys for dictionary keys. Defaults to ["1relax", "2relax", "3static"].
+            incar_names (list[str], optional): List of INCAR names to read. Defaults to ["INCAR.1relax", "INCAR.2relax", "INCAR.3static"].
+            kpoints_keys (list[str], optional): List of KPOINTS keys for dictionary keys. Defaults to ["1relax", "2relax", "3static"].
+            kpoints_names (list[str], optional): List of KPOINTS names to read. Defaults to ["KPOINTS.1relax", "KPOINTS.2relax", "KPOINTS.3static"].
             selected_volumes (list[float], optional): List of volumes to process. Defaults to None.
+            read_initial_poscar (bool, optional): Whether to read the initial POSCAR file. Defaults to True.
             outcar_name (str, optional): Name of the OUTCAR file. Defaults to "OUTCAR.3static".
             oszicar_name (str, optional): Name of the OSZICAR file. Defaults to "OSZICAR.3static".
             contcar_name (str, optional): Name of the CONTCAR file. Defaults to "CONTCAR.3static".
@@ -454,7 +464,15 @@ workflows.NELM_reached(os.getcwd())
         self.ev_curve = EvCurveData(self.path, self.name)
 
         # Get VASP input
-        self.ev_curve.get_vasp_input(selected_volumes)
+        self.ev_curve.get_vasp_input(
+            incar_keys=incar_keys,
+            incar_names=incar_names,
+            kpoints_keys=kpoints_keys,
+            kpoints_names=kpoints_names,
+            contcar_name=contcar_name,
+            selected_volumes=selected_volumes,
+            read_initial_poscar=read_initial_poscar
+        )
 
         # Get energy-volume data
         self.ev_curve.get_energy_volume_data(
@@ -982,7 +1000,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
 
             document["evCurve"] = {
                 "input": {
-                    "initialPoscar": self.ev_curve.initial_poscar.as_dict(),
+                    "initialPoscar": self.ev_curve.initial_poscar.as_dict() if self.ev_curve.initial_poscar is not None else None,
                     "incars": self.ev_curve.incars,
                     "kpoints": [
                         {key: kp.as_dict() for key, kp in kpoints_dict.items()}
