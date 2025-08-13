@@ -146,31 +146,43 @@ def custodian_errors_location(path: str) -> list[str]:
     return vol_folders_errors, phonon_folders_errors
 
 
-def NELM_reached(path: str, filename: str = "vasp.out*") -> None:
+def NELM_reached(path: str, filename: str = "vasp.out.3static") -> list:
     """Prints the path of the calculations that have reached NELM.
 
     Args:
         path (str): path to the folder containing all the calculation folders. E.g. vol_1, phonon_1, etc.
         filename (str): only check files with this name or pattern (supports wildcards). If None, check all files.
+
+    Returns:
+        list: paths of the calculations that have reached NELM
     """
-    start_dir = path
+
     target_line = "The electronic self-consistency was not achieved in the given"
-    for dirpath, dirs, files in os.walk(start_dir):
+    NELM_reached_files = []
+    for dirpath, dirs, files in os.walk(path):
         for file in files:
             if filename is not None and not fnmatch.fnmatch(file, filename):
                 continue
             filepath = os.path.join(dirpath, file)
             try:
                 with open(filepath, "r", errors="ignore") as f:
-                    for line in f:
-                        if target_line in line:
-                            print(f"{filepath} has reached NELM.")
-                            break
+                    content = f.read()
+                    if target_line in content:
+                        print(f"{filepath} has reached NELM.")
+                        NELM_reached_files.append(filepath)
             except Exception:
                 continue
+    return NELM_reached_files
 
 
 class SingleJobWorkflow:
+    """
+    Workflow for running a single VASP job.
+
+    This class encapsulates the setup and execution of a single VASP calculation,
+    including python script generation and running the workflow.
+    """
+
     def __init__(
         self,
         path: str,
@@ -180,6 +192,17 @@ class SingleJobWorkflow:
         vaspjob_kwargs: dict = None,
         custodian_kwargs: dict = None,
     ):
+        """
+        Initialize the SingleJobWorkflow.
+
+        Args:
+            path (str): Directory where the calculation will be run.
+            vasp_cmd (list[str]): Command to run VASP (e.g., ["srun", "vasp_std"]).
+            error_msgs (list[str], optional): List of error messages to catch. Defaults to all known VaspErrorHandler messages.
+            max_errors (int, optional): Maximum number of errors before stopping. Defaults to 10.
+            vaspjob_kwargs (dict, optional): Additional keyword arguments for VaspJob.
+            custodian_kwargs (dict, optional): Additional keyword arguments for Custodian.
+        """
         self.path = path
         self.vasp_cmd = vasp_cmd
         self.error_msgs = error_msgs
@@ -188,6 +211,12 @@ class SingleJobWorkflow:
         self.custodian_kwargs = custodian_kwargs or {}
 
     def write_run_dfttk(self) -> None:
+        """
+        Write a Python script to run this workflow in the specified directory.
+
+        The script will instantiate this workflow and execute the run method.
+        """
+        # Prepare the script content for running the workflow
         run_dfttk_script = f"""
 import os
 from dfttk.workflows import SingleJobWorkflow
@@ -203,14 +232,22 @@ workflow = SingleJobWorkflow(
 workflow.run()
 """.strip()
 
+        # Write the script to the target directory
         with open(os.path.join(self.path, "run_dfttk.py"), "w") as file:
             file.write(run_dfttk_script)
 
     def run(self) -> None:
+        """
+        Run the VASP job in the specified directory using Custodian for error handling.
+
+        Changes to the working directory are handled internally and restored after execution.
+        """
         original_dir = os.getcwd()
         os.chdir(self.path)
+        # Set up the VaspJob with provided arguments
         step1 = VaspJob(vasp_cmd=self.vasp_cmd, final=True, backup=False, **self.vaspjob_kwargs)
 
+        # Set up error handlers and jobs for Custodian
         handlers = [VaspErrorHandler(errors_subset_to_catch=self.error_msgs)]
         jobs = [step1]
         c = Custodian(handlers, jobs, max_errors=self.max_errors, **self.custodian_kwargs)
@@ -230,8 +267,7 @@ def three_step_relaxation(
     max_errors: int = 10,
     restart: str = None,
 ) -> None:
-    """Runs a three-step relaxation - two consecutive relaxations followed by
-       one static.
+    """Runs a three-step relaxation - two consecutive relaxations followed by one static.
 
     Args:
         path (str): path to the folder containing the VASP input files
@@ -370,14 +406,21 @@ def ev_curve_series(
                     struct = Structure.from_file(os.path.join(path, vol_folder, "POSCAR"))
                     volume_started = round(struct.volume, 6)
                 except Exception as e:
-                    print(f"Error: {e}. Failed to extract volumes from POSCAR files. Ensure that POSCAR.1relax or POSCAR exists in each volume folder.")
+                    print(
+                        f"Error: {e}. Failed to extract volumes from POSCAR files. Ensure that POSCAR.1relax or POSCAR exists in each volume folder."
+                    )
                     sys.exit(1)
 
             volumes_started.append(volume_started)
             rounded_volumes_supplied = [round(volume, 6) for volume in volumes]
 
         if not volumes_started == rounded_volumes_supplied[: len(volumes_started)]:
-            print(f"Error: The completed volumes do not match the input volumes list from the beginning. \n" f"Rounded input volumes: {rounded_volumes_supplied} \n" f"Started volumes: {volumes_started} \n" "Exiting.")
+            print(
+                f"Error: The completed volumes do not match the input volumes list from the beginning. \n"
+                f"Rounded input volumes: {rounded_volumes_supplied} \n"
+                f"Started volumes: {volumes_started} \n"
+                "Exiting."
+            )
             sys.exit(1)
         else:
             print("The completed volumes match the input volumes list from the beginning. Continuing restart.")
@@ -388,7 +431,9 @@ def ev_curve_series(
 
         # If the job failed at the second step of three_step_relaxation, restart from step 3.
         files = os.listdir(last_vol_folder_path)
-        files_exist = any(file.endswith(".1relax") for file in files) and any(file.endswith(".2relax") for file in files)
+        files_exist = any(file.endswith(".1relax") for file in files) and any(
+            file.endswith(".2relax") for file in files
+        )
         files_missing = not any(file.endswith(".3static") for file in files)
 
         if files_exist and files_missing:
@@ -429,7 +474,9 @@ def ev_curve_series(
 
         # If the job failed at the second step of three_step_relaxation, restart from step 2.
         files_exist = any(file.endswith(".1relax") for file in files)
-        files_missing = not any(file.endswith(".3static") for file in files) and not any(file.endswith(".2relax") for file in files)
+        files_missing = not any(file.endswith(".3static") for file in files) and not any(
+            file.endswith(".2relax") for file in files
+        )
 
         if files_exist and files_missing:
 
@@ -468,7 +515,11 @@ def ev_curve_series(
             last_vol_index = j + 1
 
         # If the job failed at the first step of three_step_relaxation, delete the folder.
-        files_missing = not any(file.endswith(".3static") for file in files) and not any(file.endswith(".2relax") for file in files) and not any(file.endswith(".1relax") for file in files)
+        files_missing = (
+            not any(file.endswith(".3static") for file in files)
+            and not any(file.endswith(".2relax") for file in files)
+            and not any(file.endswith(".1relax") for file in files)
+        )
         if files_missing:
             shutil.rmtree(last_vol_folder_path)
             last_vol_index = j
@@ -677,7 +728,9 @@ def phonons_parallel(
     script_name = sys.argv[0]
     with open(script_name, "r") as file:
         script_contents = file.read()
-        script_contents = "\n".join([line for line in script_contents.split("\n") if "workflows.phonons_parallel" not in line])
+        script_contents = "\n".join(
+            [line for line in script_contents.split("\n") if "workflows.phonons_parallel" not in line]
+        )
 
     with open(run_file, "r") as file:
         run_file_contents = file.read()
@@ -691,7 +744,9 @@ def phonons_parallel(
     new_run_file += "END_OF_PYTHON\n"
 
     # Copy files from the vol_* folders to the phonon_* folders
-    vol_folders = [folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol_")]
+    vol_folders = [
+        folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol_")
+    ]
 
     ev_volumes_finished = []
     ev_folder_names = []
@@ -797,7 +852,11 @@ def process_phonon_dos_YPHON(path: str):
     )
 
     # Process the phonon dos in each phonon_folder
-    phonon_folders = [folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("phonon")]
+    phonon_folders = [
+        folder
+        for folder in os.listdir(path)
+        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("phonon")
+    ]
     for phonon_folder in phonon_folders:
         try:
             phonon_dos_folder = os.path.join(path, phonon_folder, "phonon_dos")
@@ -933,7 +992,9 @@ def elec_dos_parallel(
     script_name = sys.argv[0]
     with open(script_name, "r") as file:
         script_contents = file.read()
-        script_contents = "\n".join([line for line in script_contents.split("\n") if "workflows.elec_dos_parallel" not in line])
+        script_contents = "\n".join(
+            [line for line in script_contents.split("\n") if "workflows.elec_dos_parallel" not in line]
+        )
 
     with open(run_file, "r") as file:
         run_file_contents = file.read()
@@ -948,7 +1009,9 @@ def elec_dos_parallel(
     new_run_file += "END_OF_PYTHON\n"
 
     # Copy files to elec folders
-    vol_folders = [folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol_")]
+    vol_folders = [
+        folder for folder in os.listdir(path) if os.path.isdir(os.path.join(path, folder)) and folder.startswith("vol_")
+    ]
     vol_folders = natsorted(vol_folders)
 
     ev_volumes_finished = []
@@ -1125,18 +1188,7 @@ def kpoints_conv_test(
     path: str,
     vasp_cmd: list[str],
     handlers: list[str],
-    kppa_list: list[float] = [
-        1000,
-        2000,
-        3000,
-        4000,
-        5000,
-        6000,
-        7000,
-        8000,
-        9000,
-        10000,
-    ],
+    kppa_list: list[int] = list(range(1000, 10001, 1000)),
     force_gamma: bool = True,
     backup: bool = False,
     max_errors: int = 10,
@@ -1147,7 +1199,7 @@ def kpoints_conv_test(
         path (str): the path to the folder containing the VASP input files
         vasp_cmd (list[str]): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
         handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        kppa_list (list[float], optional): k-point densities. Defaults to [ 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, ].
+        kppa_list (list[float], optional): k-point densities. Defaults to [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000].
         force_gamma (bool, optional):If True, forces a gamma-centered mesh. Defaults to True.
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
@@ -1198,20 +1250,7 @@ def encut_conv_test(
     path: str,
     vasp_cmd: list[str],
     handlers: list[str],
-    encut_list: list[int] = [
-        270,
-        320,
-        370,
-        420,
-        470,
-        520,
-        570,
-        620,
-        670,
-        720,
-        770,
-        820,
-    ],
+    encut_list: list[int] = list(range(270, 821, 50)),
     backup: bool = False,
     max_errors: int = 10,
 ):
@@ -1222,7 +1261,7 @@ def encut_conv_test(
         vasp_cmd (list[str]): VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
         handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
         encut_list (list[int], optional): list of ENCUT values to run the calculations for.
-        Defaults to [270, 320 , 370, 420, 470, 520, 570, 620, 670, 720, 770, 820].
+        Defaults to [270, 320, 370, 420, 470, 520, 570, 620, 670, 720, 770, 820].
         backup (bool, optional):If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with .orig. Defaults to False.
         max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
     """
