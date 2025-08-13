@@ -1199,7 +1199,7 @@ def kpoints_conv_test(
         path (str): the path to the folder containing the VASP input files
         vasp_cmd (list[str]): the VASP commands to run VASP specific to your system. E.g. ["srun", "vasp_std"].
         handlers (list[str]): custodian handlers to catch errors. See class 'custodian.vasp.handlers.VaspErrorHandler'.
-        kppa_list (list[float], optional): k-point densities. Defaults to [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000].
+        kppa_list (list[int], optional): k-point densities. Defaults to [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000].
         force_gamma (bool, optional):If True, forces a gamma-centered mesh. Defaults to True.
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
