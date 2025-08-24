@@ -427,8 +427,8 @@ workflows.NELM_reached(os.getcwd())
         oszicar_name: str = "OSZICAR.3static",
         contcar_name: str = "CONTCAR.3static",
         collect_mag_data: bool = False,
-        magmom_tolerance: float = 0.01,
-        total_magnetic_moment_tolerance: float = 0.01,
+        magmom_tolerance: float = 0.05,
+        total_magnetic_moment_tolerance: float = 0.1,
         mass_average: str = "geometric",
         eos_name: str = "BM4",
         volume_min: float = None,
@@ -452,8 +452,8 @@ workflows.NELM_reached(os.getcwd())
             oszicar_name (str, optional): Name of the OSZICAR file. Defaults to "OSZICAR.3static".
             contcar_name (str, optional): Name of the CONTCAR file. Defaults to "CONTCAR.3static".
             collect_mag_data (bool, optional): Whether to collect magnetic data. Defaults to False.
-            magmom_tolerance (float, optional): Tolerance for magnetic moment. Defaults to 0.01.
-            total_magnetic_moment_tolerance (float, optional): Tolerance for total magnetic moment. Defaults to 0.01.
+            magmom_tolerance (float, optional): Tolerance for magnetic moment. Defaults to 0.05.
+            total_magnetic_moment_tolerance (float, optional): Tolerance for total magnetic moment. Defaults to 0.1.
             mass_average (str, optional): Method for mass averaging. Defaults to "geometric".
             eos_name (str, optional): Name of the equation of state to fit. Defaults to "BM4".
             volume_min (float, optional): Minimum volume for fitting. Defaults to None.
