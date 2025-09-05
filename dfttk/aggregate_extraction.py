@@ -220,8 +220,7 @@ def plot_format(fig: go.Figure, x_title: str, y_title: str):
         height=600,
         legend=dict(font=dict(size=20, color="black")),
         xaxis=dict(
-            title=x_title,
-            titlefont=dict(size=22, color="rgb(0,0,0)"),
+            title=dict(text=x_title, font=dict(size=22, color="rgb(0,0,0)")),
             showline=True,
             linecolor="black",
             linewidth=1,
@@ -233,8 +232,7 @@ def plot_format(fig: go.Figure, x_title: str, y_title: str):
             tickfont=dict(color="rgb(0,0,0)", size=20),
         ),
         yaxis=dict(
-            title=y_title,
-            titlefont=dict(size=22, color="rgb(0,0,0)"),
+            title=dict(text=y_title, font=dict(size=22, color="rgb(0,0,0)")),
             showline=True,
             linecolor="black",
             linewidth=1,
