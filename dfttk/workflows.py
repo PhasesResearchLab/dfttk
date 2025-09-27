@@ -261,7 +261,6 @@ def three_step_relaxation(
     handlers: list[str],
     copy_magmom: bool = True,
     backup: bool = False,
-    default_settings: bool = True,
     override_2relax: list = None,
     override_3static: list = None,
     max_errors: int = 10,
@@ -277,15 +276,16 @@ def three_step_relaxation(
         file of the next run. Defaults to False.
         backup (bool, optional): If True, appends the original POSCAR, POTCAR, INCAR, and KPOINTS files with
         .orig. Defaults to False.
-        default_settings (bool, optional): if True, uses the default settings for the relaxation and static steps. Defaults to True.
         override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
         override_3static (list, optional): override settings for the final static step. Defaults to None.
         max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
         restart (str, optional): if not None, restarts the calculation from the specified step. Defaults to None.
     """
 
-    if default_settings:
+    if override_2relax is None:
         override_2relax = [{"file": "CONTCAR", "action": {"_file_copy": {"dest": "POSCAR"}}}]
+
+    if override_3static is None:
         override_3static = [
             {
                 "dict": "INCAR",
@@ -347,7 +347,6 @@ def ev_curve_series(
     keep_wavecar: bool = False,
     keep_chgcar: bool = False,
     copy_magmom: bool = True,
-    default_settings: bool = True,
     override_2relax: list = None,
     override_3static: list = None,
     max_errors: int = 10,
@@ -364,7 +363,6 @@ def ev_curve_series(
         keep_chgcar (bool, optional): if True, does not delete CHGCAR.3static. Defaults to False.
         copy_magmom (bool, optional): If True, copies the magmom from an OUTCAR file of one run to the INCAR
         file of the next run. Defaults to False.
-        default_settings (bool, optional): Use the default settings for three_step_relaxation. Defaults to True.
         override_2relax (list, optional): override settings for the second relaxation step. Defaults to None.
         override_3static (list, optional): override settings for the final static step. Defaults to None.
         max_errors (int, optional): maximum number of errors before stopping the calculation. Defaults to 10.
@@ -458,7 +456,6 @@ def ev_curve_series(
                 handlers,
                 copy_magmom=copy_magmom,
                 backup=False,
-                default_settings=True,
                 override_2relax=override_2relax,
                 override_3static=override_3static,
                 max_errors=max_errors,
@@ -500,7 +497,6 @@ def ev_curve_series(
                 handlers,
                 copy_magmom=copy_magmom,
                 backup=False,
-                default_settings=True,
                 override_2relax=override_2relax,
                 override_3static=override_3static,
                 max_errors=max_errors,
@@ -612,7 +608,6 @@ def ev_curve_series(
             handlers,
             backup=False,
             copy_magmom=copy_magmom,
-            default_settings=default_settings,
             override_2relax=override_2relax,
             override_3static=override_3static,
         )
