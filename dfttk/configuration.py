@@ -306,7 +306,6 @@ class Configuration:
         keep_wavecar: bool = False,
         keep_chgcar: bool = False,
         copy_magmom: bool = False,
-        default_settings: bool = True,
         override_2relax: list = None,
         override_3static: list = None,
         max_errors: int = 10,
@@ -327,7 +326,6 @@ class Configuration:
             keep_wavecar (bool, optional): Keep WAVECAR file. Defaults to False.
             keep_chgcar (bool, optional): Keep CHGCAR file. Defaults to False.
             copy_magmom (bool, optional): Copy magmom from previous runs. Defaults to False.
-            default_settings (bool, optional): Use default settings. Defaults to True.
             override_2relax (list, optional): Override settings for 2nd relaxation. Defaults to None.
             override_3static (list, optional): Override settings for 3rd static run. Defaults to None.
             max_errors (int, optional): Maximum number of errors allowed. Defaults to 10.
@@ -345,7 +343,6 @@ class Configuration:
             "keep_wavecar": keep_wavecar,
             "keep_chgcar": keep_chgcar,
             "copy_magmom": copy_magmom,
-            "default_settings": default_settings,
             "override_2relax": override_2relax,
             "override_3static": override_3static,
             "max_errors": max_errors,
@@ -400,7 +397,6 @@ workflows.ev_curve_series(
     keep_wavecar={self.ev_curve_settings_data["keep_wavecar"]},
     keep_chgcar={self.ev_curve_settings_data["keep_chgcar"]},
     copy_magmom={self.ev_curve_settings_data["copy_magmom"]},
-    default_settings={self.ev_curve_settings_data["default_settings"]},
     override_2relax={self.ev_curve_settings_data["override_2relax"]},
     override_3static={self.ev_curve_settings_data["override_3static"]},
     max_errors={self.ev_curve_settings_data["max_errors"]}
