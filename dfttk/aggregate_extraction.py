@@ -221,8 +221,7 @@ def plot_format(fig: go.Figure, x_title: str, y_title: str):
         height=600,
         legend=dict(font=dict(size=20, color="black")),
         xaxis=dict(
-            title=x_title,
-            titlefont=dict(size=22, color="rgb(0,0,0)"),
+            title=dict(text=x_title, font=dict(size=22, color="rgb(0,0,0)")),
             showline=True,
             linecolor="black",
             linewidth=1,
@@ -234,8 +233,7 @@ def plot_format(fig: go.Figure, x_title: str, y_title: str):
             tickfont=dict(color="rgb(0,0,0)", size=20),
         ),
         yaxis=dict(
-            title=y_title,
-            titlefont=dict(size=22, color="rgb(0,0,0)"),
+            title=dict(text=y_title, font=dict(size=22, color="rgb(0,0,0)")),
             showline=True,
             linecolor="black",
             linewidth=1,
@@ -272,10 +270,10 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
 
     kpoints = df["kpoint_grid"].iloc[0]
     fig.update_layout(
-        title=dict(
-            text=f"k-points: {kpoints[0]} x {kpoints[1]} x {kpoints[2]}",
-            font=dict(size=24, color="rgb(0,0,0)"),
-        )
+        title={
+            "text": f"k-points: {kpoints[0]} x {kpoints[1]} x {kpoints[2]}",
+            "font": {"size": 24, "color": "rgb(0,0,0)"}
+        }
     )
     if show_fig == True:
         fig.show()
