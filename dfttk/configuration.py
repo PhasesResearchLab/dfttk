@@ -492,7 +492,7 @@ workflows.NELM_reached(os.getcwd())
         Args:
             scaling_factor (float, optional): Scaling factor for the Debye temperature. Defaults to 0.617.
             gruneisen_x (float, optional): Grüneisen parameter exponent. Defaults to 2/3.
-            temperatures (np.array, optional): Array of temperatures to evaluate.
+            temperatures (np.array): Array of temperatures to evaluate.
         """
 
         self.debye = DebyeGruneisen()
