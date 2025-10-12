@@ -269,10 +269,10 @@ def plot_encut_conv(df: pd.DataFrame, show_fig=True) -> go.Figure:
 
     kpoints = df["kpoint_grid"].iloc[0]
     fig.update_layout(
-        title=dict(
-            text=f"k-points: {kpoints[0]} x {kpoints[1]} x {kpoints[2]}",
-            font=dict(size=24, color="rgb(0,0,0)"),
-        )
+        title={
+            "text": f"k-points: {kpoints[0]} x {kpoints[1]} x {kpoints[2]}",
+            "font": {"size": 24, "color": "rgb(0,0,0)"}
+        }
     )
     if show_fig == True:
         fig.show()

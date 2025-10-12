@@ -308,20 +308,16 @@ class HarmonicPhononYphon:
 
     def fit_harmonic(
         self,
+        volumes_fit: np.ndarray,
         order: int = 2,
-        min_volume: float = None,
-        max_volume: float = None,
-        num_volumes: int = 1000,
     ) -> None:
         """
         Fit the Helmholtz energy, entropy, and heat capacity as a function of volume
         using polynomial regression for each temperature.
 
         Args:
+            volumes_fit (np.ndarray): 1D array of volumes to evaluate the fitted properties.
             order (int, optional): Polynomial order for fitting. Defaults to 2.
-            min_volume (float, optional): Minimum volume for fitting. Defaults to None.
-            max_volume (float, optional): Maximum volume for fitting. Defaults to None.
-            num_volumes (int, optional): Number of volumes for fitting. Defaults to 1000.
 
         Raises:
             RuntimeError: If required thermodynamic properties are not set (call calculate_harmonic() before fit_harmonic()).
@@ -347,12 +343,6 @@ class HarmonicPhononYphon:
             helmholtz_energies_poly_coeffs_list.append(helmholtz_energies_coefficients)
             entropies_poly_coeffs_list.append(entropies_coefficients)
             heat_capacities_poly_coeffs_list.append(heat_capacities_coefficients)
-
-            if min_volume is None:
-                min_volume = min(self.volumes) * 0.98
-            if max_volume is None:
-                max_volume = max(self.volumes) * 1.02
-            volumes_fit = np.linspace(min_volume, max_volume, num_volumes)
 
             helmholtz_energies_fit = helmholtz_energies_polynomial(volumes_fit)
             entropies_fit = entropies_polynomial(volumes_fit)

@@ -21,6 +21,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 config_Al_path = os.path.join(current_dir, "vasp_data/Al/config_Al")
 yphon_results_path = os.path.join(config_Al_path, "YPHON_results")
 number_of_atoms = 4
+volumes_fit = np.linspace(0.98 * 60, 1.02 * 74, 1000)
 temperatures = np.arange(0, 1010, 100)
 RTOL = 1e-5  # Relative tolerance for all np.allclose comparisons
 
@@ -66,7 +67,7 @@ def test_run_time_errors_harmonicphononyphon():
         hp.calculate_harmonic(temperatures=temperatures)
     hp.scale_dos(number_of_atoms=number_of_atoms)
     with pytest.raises(RuntimeError, match=re.escape("Thermodynamic properties not calculated. Call calculate_harmonic() before fit_harmonic().")):
-        hp.fit_harmonic(order=2)
+        hp.fit_harmonic(volumes_fit=volumes_fit, order=2)
     with pytest.raises(RuntimeError, match=re.escape("Thermodynamic properties not calculated. Call calculate_harmonic() before fit_harmonic().")):
         hp.plot_harmonic("helmholtz_energy")
     hp.calculate_harmonic(temperatures=temperatures)
@@ -80,7 +81,7 @@ def test_plot_harmonic_valueerror():
     hp.load_dos(yphon_results_path)
     hp.scale_dos(number_of_atoms=number_of_atoms)
     hp.calculate_harmonic(temperatures=temperatures)
-    hp.fit_harmonic(order=2)
+    hp.fit_harmonic(volumes_fit=volumes_fit, order=2)
     with pytest.raises(ValueError, match="property must be one of"):
         hp.plot_harmonic("not_a_property")
 
@@ -91,7 +92,7 @@ def test_plot_fit_harmonic_valueerror():
     hp.load_dos(yphon_results_path)
     hp.scale_dos(number_of_atoms=number_of_atoms)
     hp.calculate_harmonic(temperatures=temperatures)
-    hp.fit_harmonic(order=2)
+    hp.fit_harmonic(volumes_fit=volumes_fit, order=2)
     with pytest.raises(ValueError, match="property must be one of"):
         hp.plot_fit_harmonic("not_a_property")
 
@@ -118,7 +119,7 @@ def test_plot_harmonic_and_fit_smoke():
     hp.load_dos(yphon_results_path)
     hp.scale_dos(number_of_atoms=number_of_atoms)
     hp.calculate_harmonic(temperatures=temperatures)
-    hp.fit_harmonic(order=2)
+    hp.fit_harmonic(volumes_fit=volumes_fit, order=2)
     for prop in ["helmholtz_energy", "entropy", "heat_capacity"]:
         fig = hp.plot_harmonic(prop)
         assert isinstance(fig, go.Figure)
@@ -137,7 +138,7 @@ def test_harmonicphononyphon():
     hp.load_dos(yphon_results_path)
     hp.scale_dos(number_of_atoms=number_of_atoms)
     hp.calculate_harmonic(temperatures=temperatures)
-    hp.fit_harmonic(order=2)
+    hp.fit_harmonic(volumes_fit, order=2)
     pd.testing.assert_frame_equal(hp.phonon_dos, expected.phonon_dos)
     pd.testing.assert_frame_equal(hp.scaled_phonon_dos, expected.scaled_phonon_dos)
     assert hp.number_of_atoms == expected.number_of_atoms
@@ -165,7 +166,7 @@ def test_harmonicphononyphon_subset():
     hp.scale_dos(number_of_atoms=number_of_atoms)
     selected_volumes = np.array([60.0, 62.0, 66.0, 68.0, 72.0, 74.0])
     hp.calculate_harmonic(temperatures=temperatures, selected_volumes=selected_volumes)
-    hp.fit_harmonic(order=2)
+    hp.fit_harmonic(volumes_fit=volumes_fit, order=2)
     pd.testing.assert_frame_equal(hp.phonon_dos, expected.phonon_dos)
     pd.testing.assert_frame_equal(hp.scaled_phonon_dos, expected.scaled_phonon_dos)
     assert hp.number_of_atoms == expected.number_of_atoms
@@ -191,7 +192,7 @@ def test_yphonphonondata():
         expected = pickle.load(f)
     pd_obj = YphonPhononData(config_Al_path)
     pd_obj.get_vasp_input()
-    pd_obj.get_harmonic_data(number_of_atoms=number_of_atoms, temperatures=temperatures, order=2)
+    pd_obj.get_harmonic_data(number_of_atoms=number_of_atoms, volumes_fit=volumes_fit, temperatures=temperatures, order=2)
     assert pd_obj.incars == expected.incars
     assert pd_obj.kpoints == expected.kpoints
     assert pd_obj.phonon_structures == expected.phonon_structures
@@ -219,7 +220,8 @@ def test_yphonphonondata_subset():
     selected_phonon_volumes = np.array([592.0, 544.0, 512.0])
     pd_obj.get_vasp_input(selected_phonon_volumes=selected_phonon_volumes)
     selected_volumes = selected_phonon_volumes / 32 * number_of_atoms
-    pd_obj.get_harmonic_data(number_of_atoms=number_of_atoms, temperatures=temperatures, order=2, selected_volumes=selected_volumes)
+    selected_volumes_fit = np.linspace(0.98 * min(selected_volumes), 1.02 * max(selected_volumes), 1000)
+    pd_obj.get_harmonic_data(number_of_atoms=number_of_atoms, volumes_fit=selected_volumes_fit, temperatures=temperatures, order=2, selected_volumes=selected_volumes)
     assert pd_obj.incars == expected.incars
     assert pd_obj.kpoints == expected.kpoints
     assert pd_obj.phonon_structures == expected.phonon_structures
@@ -243,7 +245,7 @@ def test_yphonphonondata_plot_smoke():
     """Smoke tests for plotting methods of YphonPhononData."""
     pd_obj = YphonPhononData(config_Al_path)
     pd_obj.get_vasp_input()
-    pd_obj.get_harmonic_data(number_of_atoms=number_of_atoms, temperatures=temperatures, order=2)
+    pd_obj.get_harmonic_data(number_of_atoms=number_of_atoms, volumes_fit=volumes_fit, temperatures=temperatures, order=2)
     fig_scaled = pd_obj.plot_scaled_dos(number_of_atoms=number_of_atoms, plot=True)
     fig_multi = pd_obj.plot_multiple_dos()
     assert isinstance(fig_multi, go.Figure)
