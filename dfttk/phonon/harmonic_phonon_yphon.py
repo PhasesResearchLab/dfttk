@@ -316,8 +316,8 @@ class HarmonicPhononYphon:
         using polynomial regression for each temperature.
 
         Args:
-            order (int, optional): Polynomial order for fitting. Defaults to 2.
             volumes_fit (np.ndarray): 1D array of volumes to evaluate the fitted properties.
+            order (int, optional): Polynomial order for fitting. Defaults to 2.
 
         Raises:
             RuntimeError: If required thermodynamic properties are not set (call calculate_harmonic() before fit_harmonic()).
