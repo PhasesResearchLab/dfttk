@@ -25,8 +25,8 @@ config_Al_path = os.path.join(current_dir, "vasp_data/Al/config_Al")
 vasp_cmd = ["mpirun", "/opt/packages/VASP/VASP6/6.4.3/ONEAPI/vasp_std"]
 config_Al = Configuration(config_Al_path, "config_Al", vasp_cmd=vasp_cmd)
 config_Al.process_ev_curve()
-config_Al.process_debye(scaling_factor=0.617, gruneisen_x=2 / 3, temperatures=temperatures)
-config_Al.process_thermal_electronic(temperatures, order=1)
+config_Al.process_debye(volumes=volumes, temperatures=temperatures, scaling_factor=0.617, gruneisen_x=2 / 3)
+config_Al.process_thermal_electronic(volumes_fit=volumes, temperatures=temperatures, order=1)
 
 qha = QuasiHarmonic(number_of_atoms, volumes, temperatures)
 
