@@ -31,17 +31,17 @@ config_Al = Configuration(config_Al_path, "config_Al", vasp_cmd)
 config_Al.process_ev_curve()
 
 number_of_atoms = 4
+volumes = np.linspace(0.98 * 60, 1.02 * 74, 1000)
 temperatures = np.arange(0, 1010, 100)
 
-config_Al.process_phonons(number_of_atoms, temperatures)
-config_Al.process_debye(scaling_factor=0.617, gruneisen_x=2 / 3, temperatures=temperatures)
-config_Al.process_thermal_electronic(temperatures, order=1)
+config_Al.process_phonons(number_of_atoms, volumes_fit=volumes, temperatures=temperatures)
+config_Al.process_debye(volumes=volumes, temperatures=temperatures, scaling_factor=0.617, gruneisen_x=2 / 3)
+config_Al.process_thermal_electronic(volumes_fit=volumes, temperatures=temperatures, order=1)
 
-volume_range = np.linspace(0.98 * 60, 1.02 * 74, 1000)
-config_Al.process_qha("debye", volume_range, P=0)
-config_Al.process_qha("debye_thermal_electronic", volume_range, P=0)
-config_Al.process_qha("phonons", volume_range, P=0)
-config_Al.process_qha("phonons_thermal_electronic", volume_range, P=0)
+config_Al.process_qha("debye", P=0)
+config_Al.process_qha("debye_thermal_electronic", P=0)
+config_Al.process_qha("phonons", P=0)
+config_Al.process_qha("phonons_thermal_electronic", P=0)
 
 # Load the expected results
 with open(os.path.join(current_dir, "test_configuration_data/config_Al.pkl"), "rb") as f:
@@ -231,35 +231,44 @@ def test_process_qha_errors():
     """Test error handling in process_qha for missing or mismatched data."""
     config_Al_test = Configuration(config_Al_path, "config_Al", vasp_cmd)
     with pytest.raises(AttributeError, match=re.escape("Energy-volume curve not processed. Call process_ev_curve() first.")):
-        config_Al_test.process_qha("debye", volume_range, P=0)
+        config_Al_test.process_qha("debye", P=0)
 
     config_Al_test.process_ev_curve()
     with pytest.raises(AttributeError, match=re.escape("Debye-Grüneisen model not processed. Call process_debye() first.")):
-        config_Al_test.process_qha("debye", volume_range, P=0)
+        config_Al_test.process_qha("debye", P=0)
 
-    config_Al_test.process_debye(scaling_factor=0.617, gruneisen_x=2 / 3, temperatures=temperatures)
+    config_Al_test.process_debye(volumes=volumes, temperatures=temperatures, scaling_factor=0.617, gruneisen_x=2 / 3)
     with pytest.raises(AttributeError, match=re.escape("Thermal electronic data not processed. Call process_thermal_electronic() first.")):
-        config_Al_test.process_qha("debye_thermal_electronic", volume_range, P=0)
+        config_Al_test.process_qha("debye_thermal_electronic", P=0)
 
     new_temperatures = np.arange(0, 1010, 99)
-    config_Al_test.process_thermal_electronic(new_temperatures, order=1)
+    config_Al_test.process_thermal_electronic(volumes_fit=volumes, temperatures=new_temperatures, order=1)
     with pytest.raises(ValueError, match=re.escape("Debye and thermal electronic temperatures do not match.")):
-        config_Al_test.process_qha("debye_thermal_electronic", volume_range, P=0)
+        config_Al_test.process_qha("debye_thermal_electronic", P=0)
+    
+    new_volumes = np.linspace(0.98 * 60, 1.02 * 74, 500)
+    config_Al_test.process_thermal_electronic(volumes_fit=new_volumes, temperatures=temperatures, order=1)
+    with pytest.raises(ValueError, match=re.escape("Debye and thermal electronic volumes do not match.")):
+        config_Al_test.process_qha("debye_thermal_electronic", P=0)
 
     with pytest.raises(AttributeError, match=re.escape("Phonon data not processed. Call process_phonons() first.")):
-        config_Al_test.process_qha("phonons", volume_range, P=0)
+        config_Al_test.process_qha("phonons", P=0)
 
-    config_Al_test.process_phonons(number_of_atoms, temperatures)
+    config_Al_test.process_phonons(number_of_atoms, volumes_fit=volumes, temperatures=temperatures)
     config_Al_test.thermal_electronic = None
     with pytest.raises(AttributeError, match=re.escape("Thermal electronic data not processed. Call process_thermal_electronic() first.")):
-        config_Al_test.process_qha("phonons_thermal_electronic", volume_range, P=0)
+        config_Al_test.process_qha("phonons_thermal_electronic", P=0)
 
-    config_Al_test.process_thermal_electronic(new_temperatures, order=1)
+    config_Al_test.process_thermal_electronic(volumes_fit=volumes, temperatures=new_temperatures, order=1)
     with pytest.raises(ValueError, match=re.escape("Phonons and thermal electronic temperatures do not match.")):
-        config_Al_test.process_qha("phonons_thermal_electronic", volume_range, P=0)
+        config_Al_test.process_qha("phonons_thermal_electronic", P=0)
+    
+    config_Al_test.process_thermal_electronic(volumes_fit=new_volumes, temperatures=temperatures, order=1)
+    with pytest.raises(ValueError, match=re.escape("Phonons and thermal electronic volumes do not match.")):
+        config_Al_test.process_qha("phonons_thermal_electronic", P=0)
 
     with pytest.raises(ValueError, match=re.escape("Unknown option:")):
-        config_Al_test.process_qha("invalid_method", volume_range, P=0)
+        config_Al_test.process_qha("invalid_method", P=0)
 
 
 def test_to_mongodb():

@@ -103,7 +103,8 @@ class ThermalElectronicData:
 
     def get_thermal_electronic_data(
         self,
-        temperature_range: np.ndarray,
+        volumes_fit: np.ndarray,
+        temperatures: np.ndarray,
         order: int,
     ):
         self.structures = [
@@ -135,7 +136,7 @@ class ThermalElectronicData:
 
         f_el, e_el, s_el, cv_el = thermal_electronic(
             volumes,
-            temperature_range,
+            temperatures,
             energy_array,
             dos_array,
         )
@@ -144,11 +145,11 @@ class ThermalElectronicData:
         self.s_el = s_el
         self.cv_el = cv_el
         self.volumes = volumes
-        self.temperatures = temperature_range
+        self.temperatures = temperatures
 
         volume_fit, f_el_fit, s_el_fit, cv_el_fit, f_el_poly, s_el_poly, cv_el_poly = (
             fit_thermal_electronic(
-                self.volumes, self.temperatures, f_el, s_el, cv_el, order
+                self.volumes, volumes_fit, self.temperatures, f_el, s_el, cv_el, order
             )
         )
 
@@ -223,7 +224,7 @@ class ThermalElectronicData:
             temperatures=self.temperatures,
             property_name=property_to_plot,
             property=property_data,
-            volume_fit=self.volume_fit,
+            volumes_fit=self.volume_fit,
             property_fit=property_fit_data,
             selected_temperatures_plot=selected_temperatures_plot,
         )

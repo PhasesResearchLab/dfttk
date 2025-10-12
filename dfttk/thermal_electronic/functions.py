@@ -791,6 +791,7 @@ def thermal_electronic(
 
 def fit_thermal_electronic(
     volumes: np.ndarray,
+    volumes_fit: np.ndarray,
     temperatures: np.ndarray,
     helmholtz_energy: np.ndarray,
     entropy: np.ndarray,
@@ -801,6 +802,7 @@ def fit_thermal_electronic(
 
     Args:
         volumes (np.ndarray): volumes.
+        volumes_fit (np.ndarray): 1D array of volumes to fit the properties to.
         temperatures (np.ndarray): temperatures in K.
         helmholtz_energy (np.ndarray): helmholtz energies.
         entropy (np.ndarray): entropies.
@@ -833,18 +835,17 @@ def fit_thermal_electronic(
         entropy_polynomial_list.append(entropy_polynomial)
         heat_capacity_polynomial_list.append(heat_capacity_polynomial)
 
-        volume_fit = np.linspace(min(volumes) * 0.98, max(volumes) * 1.02, 1000)
-        helmholtz_energy_fit = helmholtz_energy_polynomial(volume_fit)
-        entropy_fit = entropy_polynomial(volume_fit)
-        heat_capacity_fit = heat_capacity_polynomial(volume_fit)
+        helmholtz_energy_fit = helmholtz_energy_polynomial(volumes_fit)
+        entropy_fit = entropy_polynomial(volumes_fit)
+        heat_capacity_fit = heat_capacity_polynomial(volumes_fit)
 
-        volume_fit_list.append(volume_fit)
+        volume_fit_list.append(volumes_fit)
         helmholtz_energy_fit_list.append(helmholtz_energy_fit)
         entropy_fit_list.append(entropy_fit)
         heat_capacity_fit_list.append(heat_capacity_fit)
 
     return (
-        volume_fit,
+        volumes_fit,
         helmholtz_energy_fit_list,
         entropy_fit_list,
         heat_capacity_fit_list,
@@ -898,7 +899,7 @@ def plot_thermal_electronic_properties_fit(
     temperatures: list,  # TODO: change to np.ndarray
     property_name: str,
     property: np.ndarray,
-    volume_fit: np.ndarray,
+    volumes_fit: np.ndarray,
     property_fit: list,
     selected_temperatures_plot: np.ndarray = None,
 ) -> go.Figure:
@@ -908,7 +909,7 @@ def plot_thermal_electronic_properties_fit(
         number_of_atoms (int): number of atoms the properties are per.
         volumes (list): volumes.
         property (np.ndarray): helmholtz energy, entropy, or heat capacity.
-        volume_fit (np.ndarray): fitted volumes.
+        volumes_fit (np.ndarray): fitted volumes.
         property_fit (list): fitted helmholtz energy, entropy, or heat capacity.
         selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
 
@@ -950,7 +951,7 @@ def plot_thermal_electronic_properties_fit(
         index = np.where(temperatures == temperature)[0][0]
         x = volumes
         y = property[index]
-        x_fit = volume_fit
+        x_fit = volumes_fit
         y_fit = property_fit[index]
 
         color = colors[i % len(colors)]

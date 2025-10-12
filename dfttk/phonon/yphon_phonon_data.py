@@ -162,6 +162,7 @@ class YphonPhononData:
     def get_harmonic_data(
         self,
         number_of_atoms: int,
+        volumes_fit: np.ndarray,
         temperatures: np.ndarray,
         order: int = 2,
         selected_volumes: np.ndarray = None,
@@ -171,9 +172,10 @@ class YphonPhononData:
 
         Args:
             number_of_atoms (int): Number of atoms to scale the phonon DOS to.
+            volumes_fit (np.ndarray): 1D array of volumes to evaluate the fitted properties.
             temperatures (np.ndarray): Array of temperatures (K) for property calculation.
             order (int): Polynomial order for fitting thermodynamic properties. Defaults to 2.
-            selectedd_volumes (np.ndarray, optional): If provided, only calculate properties using these volumes. The volumes are volumes per atom multiplied by the number of atoms.
+            selected_volumes (np.ndarray, optional): If provided, only calculate properties using these volumes. The volumes are volumes per atom multiplied by the number of atoms.
         """
         yphon_results_path = os.path.join(self.path, "YPHON_results")
         self._harmonic_phonon = HarmonicPhononYphon()
@@ -188,7 +190,7 @@ class YphonPhononData:
         self.internal_energies = hp.internal_energies
         self.entropies = hp.entropies
         self.heat_capacities = hp.heat_capacities
-        hp.fit_harmonic(order=order)
+        hp.fit_harmonic(order=order, volumes_fit=volumes_fit)
         self.volumes_fit = hp.volumes_fit
         self.helmholtz_energies_fit = hp.helmholtz_energies_fit
         self.entropies_fit = hp.entropies_fit
