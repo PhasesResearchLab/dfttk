@@ -26,7 +26,7 @@ import plotly.graph_objects as go
 # DFTTK Imports
 import dfttk.vasp_input as vasp_input
 from dfttk.aggregate_extraction import calculate_encut_conv, calculate_kpoint_conv
-from dfttk.debye.debye_gruneisen import DebyeGruneisen
+from dfttk.debye import DebyeGruneisen
 import dfttk.eos.functions as eos_functions
 from dfttk.eos.ev_curve_data import EvCurveData
 from dfttk.eos.fit import assign_colors_to_configs, assign_marker_symbols_to_configs
