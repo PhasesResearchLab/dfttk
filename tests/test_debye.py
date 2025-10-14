@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 # DFTTK imports
-from dfttk.debye.debye_gruneisen import DebyeGruneisen
+from dfttk.debye import DebyeGruneisen
 
 # Test parameters
 number_of_atoms = 4
