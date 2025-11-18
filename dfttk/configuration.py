@@ -718,7 +718,13 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         self,
         volumes_fit: np.ndarray,
         temperatures: np.ndarray,
+        incar_keys: list[str] = ["elec_dos"],
+        incar_names: list[str] = ["INCAR.elec_dos"],
+        kpoints_keys: list[str] = ["elec_dos"],
+        kpoints_names: list[str] = ["KPOINTS.elec_dos"],
+        contcar_name: str = "CONTCAR.elec_dos",
         selected_volumes: list[float] = None,
+        folder_prefix: str = "elec",
         order: int = 1,
     ):
         """
@@ -730,15 +736,31 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         Args:
             volumes_fit (np.ndarray): 1D array of volumes to evaluate the fitted properties.
             temperatures (np.ndarray): Array of temperatures to evaluate.
+            incar_keys (list[str], optional): List of INCAR keys for dictionary keys. Defaults to ["elec_dos"].
+            incar_names (list[str], optional): List of INCAR names to read. Defaults to ["INCAR.elec_dos"].
+            kpoints_keys (list[str], optional): List of KPOINTS keys for dictionary keys. Defaults to ["elec_dos"].
+            kpoints_names (list[str], optional): List of KPOINTS names to read. Defaults to ["KPOINTS.elec_dos"].
+            contcar_name (str, optional): Name of the CONTCAR file. Defaults to "CONTCAR.elec_dos".
             selected_volumes (list[float], optional): List of volumes to process. Defaults to None.
+            folder_prefix (str, optional): Prefix for the folders containing electronic DOS data. Defaults to "elec".
             order (int, optional): Order of polynomial fitting. Defaults to 1.
         """
         self.thermal_electronic = ThermalElectronicData(self.path)
-        self.thermal_electronic.get_vasp_input(selected_volumes)
+        self.thermal_electronic.get_vasp_data(
+            incar_keys=incar_keys,
+            incar_names=incar_names,
+            kpoints_keys=kpoints_keys,
+            kpoints_names=kpoints_names,
+            contcar_name=contcar_name,
+            selected_volumes=selected_volumes,
+            folder_prefix=folder_prefix,
+        )
         self.thermal_electronic.get_thermal_electronic_data(
             volumes_fit=volumes_fit,
             temperatures=temperatures,
             order=order,
+            selected_volumes=selected_volumes,
+            folder_prefix=folder_prefix,
         )
 
     def process_qha(
@@ -828,7 +850,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                     if not np.array_equal(self.debye.temperatures, self.thermal_electronic.temperatures):
                         raise ValueError("Debye and thermal electronic temperatures do not match.")
                     # If the volumes of debye and thermal electronic do not match, raise an error 
-                    if not np.array_equal(self.debye.volumes, self.thermal_electronic.volume_fit):
+                    if not np.array_equal(self.debye.volumes, self.thermal_electronic.volumes_fit):
                         raise ValueError("Debye and thermal electronic volumes do not match.")
                     self.debye.temperatures = np.array([int(t) if isinstance(t, float) and t.is_integer() else t for t in self.debye.temperatures]) # temp fix
                     self.qha = QuasiHarmonic(self.ev_curve.number_of_atoms, volume_range, temperatures=self.debye.temperatures)
@@ -845,7 +867,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                     if not np.array_equal(self.phonons.temperatures, self.thermal_electronic.temperatures):
                         raise ValueError("Phonons and thermal electronic temperatures do not match.")
                     # If the volumes of phonons and thermal electronic do not match, raise an error TODO: add test
-                    if not np.array_equal(self.phonons.volumes_fit, self.thermal_electronic.volume_fit):
+                    if not np.array_equal(self.phonons.volumes_fit, self.thermal_electronic.volumes_fit):
                         raise ValueError("Phonons and thermal electronic volumes do not match.")
                     self.qha = QuasiHarmonic(self.ev_curve.number_of_atoms, volume_range, temperatures=self.phonons.temperatures)
         
@@ -860,9 +882,9 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 cv_el_fit = None
                 
             elif method == "debye_thermal_electronic":
-                f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
-                s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
-                cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
+                f_el_fit = self.thermal_electronic.helmholtz_energies_fit
+                s_el_fit = self.thermal_electronic.entropies_fit
+                cv_el_fit = self.thermal_electronic.heat_capacities_fit
 
         elif method in ("phonons", "phonons_thermal_electronic"): 
             f_vib_fit = self.phonons.helmholtz_energies_fit
@@ -875,9 +897,9 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 cv_el_fit = None
                 
             elif method == "phonons_thermal_electronic":
-                f_el_fit = np.vstack(self.thermal_electronic.f_el_fit)
-                s_el_fit = np.vstack(self.thermal_electronic.s_el_fit)
-                cv_el_fit = np.vstack(self.thermal_electronic.cv_el_fit)
+                f_el_fit = self.thermal_electronic.helmholtz_energies_fit
+                s_el_fit = self.thermal_electronic.entropies_fit
+                cv_el_fit = self.thermal_electronic.heat_capacities_fit
 
         self.qha.process(
             method=method,
@@ -1081,12 +1103,12 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             num_temperatures = len(temperatures)
 
             helmholtz_energy = convert_poly1d(
-                self.thermal_electronic.helmholtz_energy_fit
+                self.thermal_electronic._helmholtz_energies_fit_to_db
             )
-            entropy = convert_poly1d(self.thermal_electronic.entropy_fit)
-            heat_capacity = convert_poly1d(self.thermal_electronic.heat_capacity_fit)
+            entropy = convert_poly1d(self.thermal_electronic._entropies_fit_to_db)
+            heat_capacity = convert_poly1d(self.thermal_electronic._heat_capacities_fit_to_db)
 
-            key_mapping = {"polynomial_coefficients": "polyCoeffs", "elec_dos": "elecDos"}
+            key_mapping = {"poly_coeffs": "polyCoeffs", "elec_dos": "elecDos"}
             helmholtz_energy = self._replace_keys(helmholtz_energy, key_mapping)
             entropy = self._replace_keys(entropy, key_mapping)
             heat_capacity = self._replace_keys(heat_capacity, key_mapping)

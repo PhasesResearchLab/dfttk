@@ -30,12 +30,14 @@ BOLTZMANN_CONSTANT = (
 )  # The Boltzmann constant in eV/K
 
 
-def read_total_electron_dos(path: str, plot: bool = False) -> pd.DataFrame:
-    """Reads the total electron DOS from vasprun.xml files.
+def read_total_electron_dos(path: str, selected_volumes: np.ndarray = None, plot: bool = False, folder_prefix: str = "elec") -> pd.DataFrame:
+    """Reads the total electron DOS data from the VASP calculations for different volumes.
 
     Args:
-        path (str): path to the directory containing the elec_folders.
+        path (str): path to the directory containing the specific folders containing the vasprun.xml files.
+        selected_volumes (np.ndarray, optional): list of selected volumes to keep the electron DOS data. Defaults to None.
         plot (bool, optional): plots the total electron DOS for different volumes. Defaults to False.
+        folder_prefix (str, optional): prefix of the folders containing the vasprun.xml files. Defaults to "elec".
 
     Returns:
         pd.DataFrame: dataframe containing the electron DOS data.
@@ -44,7 +46,7 @@ def read_total_electron_dos(path: str, plot: bool = False) -> pd.DataFrame:
     elec_folders = [
         folder
         for folder in os.listdir(path)
-        if os.path.isdir(os.path.join(path, folder)) and folder.startswith("elec")
+        if os.path.isdir(os.path.join(path, folder)) and folder.startswith(folder_prefix)
     ]
     elec_folders = natsorted(elec_folders)
 
@@ -127,6 +129,12 @@ def read_total_electron_dos(path: str, plot: bool = False) -> pd.DataFrame:
     electron_dos_data = electron_dos_data.sort_values(by="volume")
     electron_dos_data = electron_dos_data.reset_index(drop=True)
 
+    if selected_volumes is not None:
+        electron_dos_data = electron_dos_data[
+            electron_dos_data["volume"].isin(selected_volumes)
+        ]
+        electron_dos_data = electron_dos_data.reset_index(drop=True)
+        
     if plot:
         plot_total_electron_dos(electron_dos_data)
 
@@ -818,9 +826,9 @@ def fit_thermal_electronic(
     helmholtz_energy_fit_list = []
     entropy_fit_list = []
     heat_capacity_fit_list = []
-    helmholtz_energy_polynomial_list = []
-    entropy_polynomial_list = []
-    heat_capacity_polynomial_list = []
+    helmholtz_energies_poly_coeffs = []
+    entropies_poly_coeffs = []
+    heat_capacities_poly_coeffs = []
 
     for i in range(len(temperatures)):
         helmholtz_energy_coefficients = np.polyfit(volumes, helmholtz_energy[i], order)
@@ -831,9 +839,9 @@ def fit_thermal_electronic(
         entropy_polynomial = np.poly1d(entropy_coefficients)
         heat_capacity_polynomial = np.poly1d(heat_capacity_coefficients)
 
-        helmholtz_energy_polynomial_list.append(helmholtz_energy_polynomial)
-        entropy_polynomial_list.append(entropy_polynomial)
-        heat_capacity_polynomial_list.append(heat_capacity_polynomial)
+        helmholtz_energies_poly_coeffs.append(helmholtz_energy_coefficients)
+        entropies_poly_coeffs.append(entropy_coefficients)
+        heat_capacities_poly_coeffs.append(heat_capacity_coefficients)
 
         helmholtz_energy_fit = helmholtz_energy_polynomial(volumes_fit)
         entropy_fit = entropy_polynomial(volumes_fit)
@@ -844,14 +852,21 @@ def fit_thermal_electronic(
         entropy_fit_list.append(entropy_fit)
         heat_capacity_fit_list.append(heat_capacity_fit)
 
+    helmholtz_energies_poly_coeffs = np.array(helmholtz_energies_poly_coeffs)
+    entropies_poly_coeffs = np.array(entropies_poly_coeffs)
+    heat_capacities_poly_coeffs = np.array(heat_capacities_poly_coeffs)
+    helmholtz_energies_fit = np.array(helmholtz_energy_fit_list)
+    entropies_fit = np.array(entropy_fit_list)
+    heat_capacities_fit = np.array(heat_capacity_fit_list)
+
     return (
         volumes_fit,
-        helmholtz_energy_fit_list,
-        entropy_fit_list,
-        heat_capacity_fit_list,
-        helmholtz_energy_polynomial_list,
-        entropy_polynomial_list,
-        heat_capacity_polynomial_list,
+        helmholtz_energies_fit,
+        entropies_fit,
+        heat_capacities_fit,
+        helmholtz_energies_poly_coeffs,
+        entropies_poly_coeffs,
+        heat_capacities_poly_coeffs,
     )
 
 

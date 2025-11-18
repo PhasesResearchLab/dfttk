@@ -27,7 +27,7 @@ vasp_cmd = ["mpirun", "/opt/packages/VASP/VASP6/6.4.3/ONEAPI/vasp_std"]
 config_Al_conv = Configuration(conv_test_path, "config_Al", vasp_cmd)
 
 config_Al_path = os.path.join(current_dir, "vasp_data/Al/config_Al")
-config_Al = Configuration(config_Al_path, "config_Al", vasp_cmd)
+config_Al = Configuration(config_Al_path, "Al", vasp_cmd)
 config_Al.process_ev_curve()
 
 number_of_atoms = 4
@@ -183,19 +183,19 @@ def test_process_thermal_electronic():
     expected_thermal_electronic = expected_config_Al.thermal_electronic
 
     # Test the values of the thermal_electronic attributes
-    # Current s_el_poly, entropy, entropy_fit, heat_capacity, heat_capacity_fit, helmholtz_energy, helmholtz_energy_fit, and internal_energy are not tested
+    # helmholtz_energies_poly_coeffs, entropies_poly_coeffs, heat_capacities_poly_coeffs are not tested
     assert thermal_electronic.number_of_atoms == expected_thermal_electronic.number_of_atoms, f"Expected {expected_thermal_electronic.number_of_atoms}, but got {thermal_electronic.number_of_atoms}"
-    assert np.allclose(thermal_electronic.s_el, expected_thermal_electronic.s_el, rtol=1e-4), f"Expected {expected_thermal_electronic.s_el}, but got {thermal_electronic.s_el}"
-    assert np.allclose(np.vstack(thermal_electronic.s_el_fit), np.vstack(expected_thermal_electronic.s_el_fit), rtol=1e-4), f"Expected {expected_thermal_electronic.s_el_fit}, but got {thermal_electronic.s_el_fit}"
+    assert np.allclose(thermal_electronic.entropies, expected_thermal_electronic.entropies, rtol=1e-4), f"Expected {expected_thermal_electronic.entropies}, but got {thermal_electronic.entropies}"
+    assert np.allclose(np.vstack(thermal_electronic.entropies_fit), np.vstack(expected_thermal_electronic.entropies_fit), rtol=1e-4), f"Expected {expected_thermal_electronic.entropies_fit}, but got {thermal_electronic.entropies_fit}"
     assert thermal_electronic.structures == expected_thermal_electronic.structures, f"Expected {expected_thermal_electronic.structures}, but got {thermal_electronic.structures}"
     assert np.allclose(thermal_electronic.temperatures, expected_thermal_electronic.temperatures, rtol=1e-4), f"Expected {expected_thermal_electronic.temperatures}, but got {thermal_electronic.temperatures}"
-    assert np.allclose(thermal_electronic.volume_fit, expected_thermal_electronic.volume_fit, rtol=1e-4), f"Expected {expected_thermal_electronic.volume_fit}, but got {thermal_electronic.volume_fit}"
-    assert np.allclose(thermal_electronic.cv_el, expected_thermal_electronic.cv_el, rtol=1e-4), f"Expected {expected_thermal_electronic.cv_el}, but got {thermal_electronic.cv_el}"
-    assert np.allclose(np.vstack(thermal_electronic.cv_el_fit), np.vstack(expected_thermal_electronic.cv_el_fit), rtol=1e-4), f"Expected {expected_thermal_electronic.cv_el_fit}, but got {thermal_electronic.cv_el_fit}"
-    assert np.allclose(thermal_electronic.e_el, expected_thermal_electronic.e_el, rtol=1e-4), f"Expected {expected_thermal_electronic.e_el}, but got {thermal_electronic.e_el}"
+    assert np.allclose(thermal_electronic.volumes_fit, expected_thermal_electronic.volumes_fit, rtol=1e-4), f"Expected {expected_thermal_electronic.volumes_fit}, but got {thermal_electronic.volumes_fit}"
+    assert np.allclose(thermal_electronic.heat_capacities, expected_thermal_electronic.heat_capacities, rtol=1e-4), f"Expected {expected_thermal_electronic.heat_capacities}, but got {thermal_electronic.heat_capacities}"
+    assert np.allclose(np.vstack(thermal_electronic.heat_capacities_fit), np.vstack(expected_thermal_electronic.heat_capacities_fit), rtol=1e-4), f"Expected {expected_thermal_electronic.heat_capacities_fit}, but got {thermal_electronic.heat_capacities_fit}"
+    assert np.allclose(thermal_electronic.internal_energies, expected_thermal_electronic.internal_energies, rtol=1e-4), f"Expected {expected_thermal_electronic.internal_energies}, but got {thermal_electronic.internal_energies}"
     pd.testing.assert_frame_equal(thermal_electronic.electron_dos_data, expected_thermal_electronic.electron_dos_data)
-    assert np.allclose(thermal_electronic.f_el, expected_thermal_electronic.f_el, rtol=1e-4), f"Expected {expected_thermal_electronic.f_el}, but got {thermal_electronic.f_el}"
-    assert np.allclose(thermal_electronic.f_el_fit, expected_thermal_electronic.f_el_fit, rtol=1e-4), f"Expected {expected_thermal_electronic.f_el_fit}, but got {thermal_electronic.f_el_fit}"
+    assert np.allclose(thermal_electronic.helmholtz_energies, expected_thermal_electronic.helmholtz_energies, rtol=1e-4), f"Expected {expected_thermal_electronic.helmholtz_energies}, but got {thermal_electronic.helmholtz_energies}"
+    assert np.allclose(thermal_electronic.helmholtz_energies_fit, expected_thermal_electronic.helmholtz_energies_fit, rtol=1e-4), f"Expected {expected_thermal_electronic.helmholtz_energies_fit}, but got {thermal_electronic.helmholtz_energies_fit}"
     assert thermal_electronic.incars == expected_thermal_electronic.incars, f"Expected {expected_thermal_electronic.incars}, but got {thermal_electronic.incars}"
     assert thermal_electronic.kpoints == expected_thermal_electronic.kpoints, f"Expected {expected_thermal_electronic.kpoints}, but got {thermal_electronic.kpoints}"
 
@@ -426,7 +426,7 @@ def test_to_mongodb():
         structure = Structure.from_dict(elec_structure)
         expected_structure = Structure.from_dict(expected_elec_structure)
         assert structure == expected_structure, f"Expected {expected_structure}, but got {structure}"
-
+    # something wrong with the entropies
     for property in ["helmholtzEnergy", "entropy", "heatCapacity"]:
         # Compare temperatures (keys) and polynomial coefficients
         doc_poly = document["thermalElectronic"]["output"][property]["polyCoeffs"]
@@ -442,7 +442,7 @@ def test_to_mongodb():
             doc_coeffs = np.array(doc_poly[temperature])
             exp_coeffs = np.array(exp_poly[temperature])
             assert np.allclose(doc_coeffs, exp_coeffs, rtol=1e-4), f"Mismatch at temperature {temperature}: {doc_coeffs} != {exp_coeffs}"
-
+   
     # Compare qha
     assert document["qha"]["scaleAtoms"] == expected_document["qha"]["scaleAtoms"]
     assert document["qha"]["volumes"] == expected_document["qha"]["volumes"]

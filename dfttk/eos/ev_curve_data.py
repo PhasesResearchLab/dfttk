@@ -49,8 +49,24 @@ class EvCurveData:
         self.total_magnetic_moment = None
         self.magnetic_ordering = None
         self.mag_data = []
-        self.eos_parameters = {key: None for key in ["eos_name", "a", "b", "c", "d", "e", "V0", "E0", "B", "BP", "B2P"]}
+        self.eos_parameters = {
+            key: None
+            for key in [
+                "eos_name",
+                "a",
+                "b",
+                "c",
+                "d",
+                "e",
+                "V0",
+                "E0",
+                "B",
+                "BP",
+                "B2P",
+            ]
+        }
 
+    # TODO: modify this so you can select what folders to read.
     def _get_volume_folders(self) -> list[str]:
         """
         Get the list of vol_* folders in the specified path, sorted in natural order.
@@ -60,8 +76,21 @@ class EvCurveData:
         """
 
         return natsorted([f for f in os.listdir(self.path) if f.startswith("vol_")])
-
-    def get_vasp_input(self, incar_keys: list[str] = ["1relax", "2relax", "3static"], incar_names: list[str] = ["INCAR.1relax", "INCAR.2relax", "INCAR.3static"], kpoints_keys: list[str] = ["1relax", "2relax", "3static"], kpoints_names: list[str] = ["KPOINTS.1relax", "KPOINTS.2relax", "KPOINTS.3static"], contcar_name: str = "CONTCAR.3static", selected_volumes: list[float] = None, read_initial_poscar: bool = True) -> None:
+    # TODO: get_vasp_data is a better name.
+    def get_vasp_input(
+        self,
+        incar_keys: list[str] = ["1relax", "2relax", "3static"],
+        incar_names: list[str] = ["INCAR.1relax", "INCAR.2relax", "INCAR.3static"],
+        kpoints_keys: list[str] = ["1relax", "2relax", "3static"],
+        kpoints_names: list[str] = [
+            "KPOINTS.1relax",
+            "KPOINTS.2relax",
+            "KPOINTS.3static",
+        ],
+        contcar_name: str = "CONTCAR.3static",
+        selected_volumes: list[float] = None,
+        read_initial_poscar: bool = True,
+    ) -> None:
         """
         Get the VASP input files from the specified path and store them in the class attributes.
 
@@ -86,7 +115,9 @@ class EvCurveData:
                 for vol_folder in vol_folders
                 if os.path.exists(os.path.join(self.path, vol_folder, contcar_name))
                 and round(
-                    Structure.from_file(os.path.join(self.path, vol_folder, contcar_name)).volume,
+                    Structure.from_file(
+                        os.path.join(self.path, vol_folder, contcar_name)
+                    ).volume,
                     2,
                 )
                 in volumes_set
@@ -96,19 +127,25 @@ class EvCurveData:
         for vol_folder in vol_folders:
             incar_data = {}
             for key, name in zip(incar_keys, incar_names):
-                incar_data[key] = Incar.from_file(os.path.join(self.path, vol_folder, name))
+                incar_data[key] = Incar.from_file(
+                    os.path.join(self.path, vol_folder, name)
+                )
             self.incars.append(incar_data)
 
         # Read the KPOINTS files for each volume folder
         for vol_folder in vol_folders:
             kpoints_data = {}
             for key, name in zip(kpoints_keys, kpoints_names):
-                kpoints_data[key] = Kpoints.from_file(os.path.join(self.path, vol_folder, name))
+                kpoints_data[key] = Kpoints.from_file(
+                    os.path.join(self.path, vol_folder, name)
+                )
             self.kpoints.append(kpoints_data)
 
         # Read the POTCAR file
         try:
-            self.potcar = Potcar.from_file(os.path.join(self.path, vol_folders[0], "POTCAR"))
+            self.potcar = Potcar.from_file(
+                os.path.join(self.path, vol_folders[0], "POTCAR")
+            )
         except FileNotFoundError:
             self.potcar = None
 
@@ -169,12 +206,26 @@ class EvCurveData:
         # Filter data by selected_volumes if provided
         if selected_volumes is not None:
             volumes_set = set(selected_volumes)
-            filtered_indices = [i for i, v in enumerate(all_volumes) if v in volumes_set]
+            filtered_indices = [
+                i for i, v in enumerate(all_volumes) if v in volumes_set
+            ]
             self.volumes = np.array(all_volumes)[filtered_indices]
             self.energies = np.array(all_energies)[filtered_indices]
-            self.mag_data = all_mag_data_array[filtered_indices] if len(all_mag_data_array) > 0 else []
-            self.total_magnetic_moment = np.array(all_total_magnetic_moments[filtered_indices]) if len(all_total_magnetic_moments) > 0 else []
-            self.magnetic_ordering = np.array(all_magnetic_orderings)[filtered_indices] if len(all_magnetic_orderings) > 0 else []
+            self.mag_data = (
+                all_mag_data_array[filtered_indices]
+                if len(all_mag_data_array) > 0
+                else []
+            )
+            self.total_magnetic_moment = (
+                np.array(all_total_magnetic_moments[filtered_indices])
+                if len(all_total_magnetic_moments) > 0
+                else []
+            )
+            self.magnetic_ordering = (
+                np.array(all_magnetic_orderings)[filtered_indices]
+                if len(all_magnetic_orderings) > 0
+                else []
+            )
 
         if selected_volumes is None:
             self.total_magnetic_moment = all_total_magnetic_moments
@@ -217,7 +268,9 @@ class EvCurveData:
                 for vol_folder in vol_folders
                 if os.path.exists(os.path.join(self.path, vol_folder, contcar_name))
                 and round(
-                    Structure.from_file(os.path.join(self.path, vol_folder, contcar_name)).volume,
+                    Structure.from_file(
+                        os.path.join(self.path, vol_folder, contcar_name)
+                    ).volume,
                     2,
                 )
                 in volumes_set
@@ -235,16 +288,30 @@ class EvCurveData:
                 ]
             except:
                 # Read the relaxed structures from the CONTCAR files
-                self.relaxed_structures = [Structure.from_file(os.path.join(self.path, vol_folder, contcar_name)) for vol_folder in vol_folders]
+                self.relaxed_structures = [
+                    Structure.from_file(
+                        os.path.join(self.path, vol_folder, contcar_name)
+                    )
+                    for vol_folder in vol_folders
+                ]
         else:
             # Read the relaxed structures from the CONTCAR files
-            self.relaxed_structures = [Structure.from_file(os.path.join(self.path, vol_folder, contcar_name)) for vol_folder in vol_folders]
+            self.relaxed_structures = [
+                Structure.from_file(os.path.join(self.path, vol_folder, contcar_name))
+                for vol_folder in vol_folders
+            ]
 
         # TODO: this might be a temporary fix for an empty magnetic_ordering issue. Revisit EOSFitter.
         # Ensure empty arrays are converted to empty lists for compatibility
-        if isinstance(self.magnetic_ordering, np.ndarray) and self.magnetic_ordering.size == 0:
+        if (
+            isinstance(self.magnetic_ordering, np.ndarray)
+            and self.magnetic_ordering.size == 0
+        ):
             self.magnetic_ordering = []
-        if isinstance(self.total_magnetic_moment, np.ndarray) and self.total_magnetic_moment.size == 0:
+        if (
+            isinstance(self.total_magnetic_moment, np.ndarray)
+            and self.total_magnetic_moment.size == 0
+        ):
             self.total_magnetic_moment = []
 
     def fit_energy_volume_data(
@@ -268,9 +335,18 @@ class EvCurveData:
         """
 
         if len(self.volumes) == 0 or len(self.energies) == 0:
-            raise RuntimeError("You must call get_energy_volume_data() before fit_energy_volume_data().")
-        self._fitter = EOSFitter(self.name, self.number_of_atoms, self.volumes, self.energies)
-        self._fitter.fit(eos_name=eos_name, volume_min=volume_min, volume_max=volume_max, num_volumes=num_volumes)
+            raise RuntimeError(
+                "You must call get_energy_volume_data() before fit_energy_volume_data()."
+            )
+        self._fitter = EOSFitter(
+            self.name, self.number_of_atoms, self.volumes, self.energies
+        )
+        self._fitter.fit(
+            eos_name=eos_name,
+            volume_min=volume_min,
+            volume_max=volume_max,
+            num_volumes=num_volumes,
+        )
 
         eos_constants = self._fitter.eos_constants
         eos_parameters = self._fitter.eos_parameters
@@ -305,7 +381,9 @@ class EvCurveData:
             go.Figure: Plotly figure object containing the energy-volume plot.
         """
         if not hasattr(self, "_fitter") or self._fitter is None:
-            raise RuntimeError("You must call fit_energy_volume_data() before plotting.")
+            raise RuntimeError(
+                "You must call fit_energy_volume_data() before plotting."
+            )
         fig = self._fitter.plot(
             highlight_minimum=highlight_minimum,
             per_atom=per_atom,
