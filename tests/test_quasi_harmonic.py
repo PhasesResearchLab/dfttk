@@ -39,9 +39,9 @@ energy_eos = BM4_equation(volumes, a, b, c, d)
 vibrational_helmholtz_energy = config_Al.debye.helmholtz_energies
 vibrational_entropy = config_Al.debye.entropies
 vibrational_heat_capacity = config_Al.debye.heat_capacities
-electronic_helmholtz_energy = np.vstack(config_Al.thermal_electronic.helmholtz_energies_fit)
-electronic_entropy = np.vstack(config_Al.thermal_electronic.entropies_fit)
-electronic_heat_capacity = np.vstack(config_Al.thermal_electronic.heat_capacities_fit)
+electronic_helmholtz_energy = config_Al.thermal_electronic.helmholtz_energies_fit
+electronic_entropy = config_Al.thermal_electronic.entropies_fit
+electronic_heat_capacity = config_Al.thermal_electronic.heat_capacities_fit
 
 RTOL = 2.5e-5
 
