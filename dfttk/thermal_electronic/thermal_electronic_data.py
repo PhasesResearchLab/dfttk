@@ -219,19 +219,19 @@ class ThermalElectronicData:
             selected_volumes=selected_volumes, folder_prefix=folder_prefix
         )
         self.number_of_atoms = self.electron_dos_data["number_of_atoms"].unique()[0]
-        volumes = self.electron_dos_data["volume"].unique()
+        volumes = self.electron_dos_data["volumes"].unique()
         self.volumes = volumes
         self.temperatures = temperatures
 
         # Get the energy and DOS arrays for each volume
         energy_array = [
-            self.electron_dos_data[self.electron_dos_data["volume"] == volume][
+            self.electron_dos_data[self.electron_dos_data["volumes"] == volume][
                 "energy_minus_fermi_energy"
             ].values[0]
             for volume in volumes
         ]
         dos_array = [
-            self.electron_dos_data[self.electron_dos_data["volume"] == volume][
+            self.electron_dos_data[self.electron_dos_data["volumes"] == volume][
                 "total_dos"
             ].values[0]
             for volume in volumes
@@ -248,10 +248,10 @@ class ThermalElectronicData:
                 dos_array,
             )
         )
-        self.helmholtz_energies = np.vstack(helmholtz_energies)
-        self.internal_energies = np.vstack(internal_energies)
-        self.entropies = np.vstack(entropies)
-        self.heat_capacities = np.vstack(heat_capacities)
+        self.helmholtz_energies = helmholtz_energies
+        self.internal_energies = internal_energies
+        self.entropies = entropies
+        self.heat_capacities = heat_capacities
 
         # Fit the thermodynamic properties vs. volumes for fixed temperatures
         (
@@ -266,9 +266,9 @@ class ThermalElectronicData:
             volumes=self.volumes,
             volumes_fit=volumes_fit,
             temperatures=self.temperatures,
-            helmholtz_energy=helmholtz_energies,
-            entropy=entropies,
-            heat_capacity=heat_capacities,
+            helmholtz_energies=helmholtz_energies,
+            entropies=entropies,
+            heat_capacities=heat_capacities,
             order=order,
         )
 

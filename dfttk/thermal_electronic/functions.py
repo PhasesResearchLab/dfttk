@@ -1,5 +1,5 @@
 """
-Module for calculating the thermal electronic contributions to Helmholtz energy, entropy, and heat capacity.
+Module for calculating the electronic contributions to the Helmholtz free energy, entropy, and heat capacity.
 """
 
 # Standard Library Imports
@@ -30,111 +30,94 @@ BOLTZMANN_CONSTANT = (
 )  # The Boltzmann constant in eV/K
 
 
-def read_total_electron_dos(path: str, selected_volumes: np.ndarray = None, plot: bool = False, folder_prefix: str = "elec") -> pd.DataFrame:
+# TODO: refactor into the ThermalElectronic class
+def read_total_electron_dos(
+    path: str,  # TODO: Update methods in other modules that depend on these arguments!
+    folder_prefix: str = "elec",
+    contcar_name: str = "CONTCAR.elec_dos",
+    vasprun_name: str = "vasprun.xml.elec_dos",
+    selected_volumes: np.ndarray = None,
+    plot: bool = False,
+) -> pd.DataFrame:
     """Reads the total electron DOS data from the VASP calculations for different volumes.
 
     Args:
-        path (str): path to the directory containing the specific folders containing the vasprun.xml files.
+        path (str): path to the directory containing the specific folders containing the CONTCAR, vasprun.xml, and DOSCAR files.
+        folder_prefix (str, optional): prefix of the electronic folders. Defaults to "elec".
+        contcar_name (str, optional): name of the CONTCAR file. Defaults to "CONTCAR.elec_dos".
+        vasprun_name (str, optional): name of the vasprun.xml file. Defaults to "vasprun.xml.elec_dos".
         selected_volumes (np.ndarray, optional): list of selected volumes to keep the electron DOS data. Defaults to None.
         plot (bool, optional): plots the total electron DOS for different volumes. Defaults to False.
-        folder_prefix (str, optional): prefix of the folders containing the vasprun.xml files. Defaults to "elec".
 
     Returns:
         pd.DataFrame: dataframe containing the electron DOS data.
     """
 
+    # Get the list of electronic folders
     elec_folders = [
         folder
         for folder in os.listdir(path)
-        if os.path.isdir(os.path.join(path, folder)) and folder.startswith(folder_prefix)
+        if os.path.isdir(os.path.join(path, folder))
+        and folder.startswith(folder_prefix)
     ]
     elec_folders = natsorted(elec_folders)
 
+    # Initialize lists to store data
     volume_list = []
     num_atoms_list = []
-    energy_minus_fermi_energy_list = []
-    total_dos_list = []
     vasprun_energies_list = []
     vasprun_dos_list = []
 
+    # Iterate over electronic folders to get the relevant electronic DOS data
     for elec_folder in elec_folders:
-        struct = Structure.from_file(
-            os.path.join(path, elec_folder, "CONTCAR.elec_dos")
-        )
-        volume = round(struct.volume, 6)
 
-        vasprun_path = os.path.join(path, elec_folder, "vasprun.xml.elec_dos")
+        # Get the volume from CONTCAR
+        struct = Structure.from_file(os.path.join(path, elec_folder, contcar_name))
+        volume = round(struct.volume, 6)
+        volume_list.append(volume)
+
+        # Get the number of atoms from vasprun.xml
+        vasprun_path = os.path.join(path, elec_folder, vasprun_name)
         vasprun = Vasprun(vasprun_path)
-        num_atoms = vasprun.final_structure.num_sites
+        number_of_atoms = vasprun.final_structure.num_sites
+        num_atoms_list.append(number_of_atoms)
+
+        # Get the vasprun energies minus Fermi energy from vasprun.xml. For plotting.
         vasprun_energies = vasprun.complete_dos.energies - vasprun.efermi
         vasprun_energies_list.append(vasprun_energies)
+
+        # Get the vasprun DOS from vasprun.xml. For plotting.
         try:
+            # For spin polarized calculations
             vasprun_dos = (
                 vasprun.complete_dos.densities[Spin.up]
                 + vasprun.complete_dos.densities[Spin.down]
             )
         except:
+            # For non-spin polarized calculations
             vasprun_dos = vasprun.complete_dos.densities[Spin.up]
         vasprun_dos_list.append(vasprun_dos)
 
-        doscar_path = os.path.join(path, elec_folder, "DOSCAR.elec_dos")
-        (
-            energies,
-            dos_up,
-            dos_down,
-            integrated_dos_up,
-            integrated_dos_down,
-            fermi_energy,
-        ) = parse_doscar(vasprun_path, doscar_path)
-
-        min_energy = energies.min()
-        max_energy = energies.max()
-        npins = len(energies)
-
-        energy_step = (max_energy - min_energy) / (npins - 1)
-        new_energies = np.arange(min_energy, max_energy + energy_step, energy_step)
-
-        if len(new_energies) > npins:
-            new_energies = new_energies[:npins]
-        elif len(new_energies) < npins:
-            new_energies = np.append(new_energies, max_energy)
-
-        energy_minus_fermi_energy = new_energies - fermi_energy
-
-        try:
-            total_dos = integrated_dos_up + integrated_dos_down
-        except:
-            total_dos = integrated_dos_up
-
-        previous_dos = total_dos[:-1]
-        next_dos = total_dos[1:]
-        total_dos = (next_dos - previous_dos) / energy_step
-        total_dos = np.insert(total_dos, 0, 0)
-
-        volume_list.append(volume)
-        num_atoms_list.append(num_atoms)
-        energy_minus_fermi_energy_list.append(energy_minus_fermi_energy)
-        total_dos_list.append(total_dos)
-
+    # Create a dataframe to store the electron DOS data
     electron_dos_data = pd.DataFrame(
         {
-            "volume": volume_list,
+            "volumes": volume_list,
             "number_of_atoms": num_atoms_list,
-            "energy_minus_fermi_energy": energy_minus_fermi_energy_list,
-            "total_dos": total_dos_list,
-            "vasprun_energies": vasprun_energies_list,
-            "vasprun_dos": vasprun_dos_list,
+            "energy_minus_fermi_energy": vasprun_energies_list,
+            "total_dos": vasprun_dos_list,
         }
     )
-    electron_dos_data = electron_dos_data.sort_values(by="volume")
+    electron_dos_data = electron_dos_data.sort_values(by="volumes")
     electron_dos_data = electron_dos_data.reset_index(drop=True)
 
+    # Filter the dataframe to only include selected volumes
     if selected_volumes is not None:
         electron_dos_data = electron_dos_data[
-            electron_dos_data["volume"].isin(selected_volumes)
+            electron_dos_data["volumes"].isin(selected_volumes)
         ]
         electron_dos_data = electron_dos_data.reset_index(drop=True)
-        
+
+    # Plot the total electron DOS for different volumes
     if plot:
         plot_total_electron_dos(electron_dos_data)
 
@@ -155,10 +138,10 @@ def plot_total_electron_dos(electron_dos_data: pd.DataFrame):
     for i in range(len(electron_dos_data)):
         fig.add_trace(
             go.Scatter(
-                x=electron_dos_data["vasprun_energies"].iloc[i],
-                y=electron_dos_data["vasprun_dos"].iloc[i],
+                x=electron_dos_data["energy_minus_fermi_energy_plot"].iloc[i],
+                y=electron_dos_data["total_dos_plot"].iloc[i],
                 mode="lines",
-                name=f"{electron_dos_data['volume'].iloc[i]} Å<sup>3</sup>",
+                name=f"{electron_dos_data['volumes'].iloc[i]} Å<sup>3</sup>",
                 showlegend=True,
             )
         )
@@ -172,17 +155,17 @@ def plot_total_electron_dos(electron_dos_data: pd.DataFrame):
 
 
 def fit_electron_dos(
-    energy: np.ndarray,
+    energies: np.ndarray,
     dos: np.ndarray,
-    energy_range: list,
+    energy_range: np.ndarray,
     resolution: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Fits the electron DOS with a spline.
 
     Args:
-        energy (np.ndarray): energy values from the electron DOS.
+        energies (np.ndarray): energy values for the electron DOS.
         dos (np.ndarray): electron DOS values.
-        energy_range (list): energy range to fit the electron DOS.
+        energy_range (np.ndarray): energy range to fit the electron DOS.
         resolution (float): energy resolution for the spline.
 
     Returns:
@@ -190,8 +173,8 @@ def fit_electron_dos(
     """
 
     # Filter the energy and dos values within the energy range
-    filtered_indices = (energy >= energy_range[0]) & (energy <= energy_range[1])
-    filtered_energy = energy[filtered_indices]
+    filtered_indices = (energies >= energy_range[0]) & (energies <= energy_range[1])
+    filtered_energy = energies[filtered_indices]
     filtered_dos = dos[filtered_indices]
 
     # Fit the filtered energy and dos values with a spline
@@ -199,23 +182,25 @@ def fit_electron_dos(
     energy_fit = np.arange(energy_range[0], energy_range[1] + resolution, resolution)
     dos_fit = spline(energy_fit)
 
+    # Ensure that the DOS values are non-negative
     dos_fit[dos_fit < 0] = 0
 
     return energy_fit, dos_fit
 
 
 def fermi_dirac_distribution(
-    energy: np.ndarray,
+    energies: np.ndarray,
     chemical_potential: float,
     temperature: float,
     plot: bool = False,
 ) -> np.ndarray:
-    """Calculates the Fermi-Dirac distribution function.
+    """Calculates the Fermi-Dirac distribution function given by the formula:
+        f(E, mu, T) = 1 / (1 + exp((E - mu) / (k_B T)))
 
     Args:
-        energy (np.ndarray): energy values from the electron DOS.
+        energies (np.ndarray): energy values for the electron DOS.
         chemical_potential (float): chemical potential for a given volume and temperature.
-        temperature (float): temperature range.
+        temperature (float): temperature in K.
         plot (bool, optional): plots the Fermi-Dirac distribution function vs. energy for a
         given temperature and chemical potential. Defaults to False.
 
@@ -233,40 +218,40 @@ def fermi_dirac_distribution(
         raise ValueError("Temperature cannot be less than 0 K")
 
     if temperature == 0:
-        fermi_dist = np.where(energy < chemical_potential, 1, 0)
+        fermi_dist = np.where(energies <= chemical_potential, 1, 0)
 
     elif temperature > 0:
         # Note that expit(x) = 1/(1+exp(-x))
         fermi_dist = expit(
-            -(energy - chemical_potential) / (BOLTZMANN_CONSTANT * temperature)
+            -(energies - chemical_potential) / (BOLTZMANN_CONSTANT * temperature)
         )
 
     if plot:
         plot_fermi_dirac_distribution(
-            energy, chemical_potential, temperature, fermi_dist
+            energies, fermi_dist, chemical_potential, temperature
         )
 
     return fermi_dist
 
 
 def plot_fermi_dirac_distribution(
-    energy: np.ndarray,
+    energies: np.ndarray,
+    fermi_dist: np.ndarray,
     chemical_potential: float,
     temperature: float,
-    fermi_dist: np.ndarray,
 ) -> go.Figure:
     """Plots the Fermi-Dirac distribution function vs. energy for a given temperature and
     chemical potential.
 
     Args:
-        energy (np.ndarray): energy values from the electron DOS.
+        energy (np.ndarray): energy values for the electron DOS.
+        fermi_dist (np.ndarray):  Fermi-Dirac distribution function values.
         chemical_potential (float): chemical potential for a given volume and temperature.
         temperature (float): temperature in K.
-        fermi_dist (np.ndarray):  Fermi-Dirac distribution function values.
     """
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=energy, y=fermi_dist, mode="lines"))
+    fig.add_trace(go.Scatter(x=energies, y=fermi_dist, mode="lines"))
     fig.update_layout(
         title=dict(
             text=f"T = {temperature} K, &mu; = {chemical_potential} eV",
@@ -281,18 +266,19 @@ def plot_fermi_dirac_distribution(
 
 
 def calculate_num_electrons(
-    energy: np.ndarray,
+    energies: np.ndarray,
     dos: np.ndarray,
     chemical_potential: float,
     temperature: float,
 ) -> float:
-    """Calculates the number of electrons at a given electronic DOS, chemical potential, and temperature.
+    """Calculates the number of electrons for a given electronic DOS, chemical potential, and temperature using the formula:
+        N = ∫ DOS(E) * f(E, mu, T) dE
 
     Args:
-        energy (np.ndarray): energy values from the electron DOS.
+        energies (np.ndarray): energy values for the electron DOS.
         dos (np.ndarray): electron DOS values.
         chemical_potential (float): chemical potential for a given volume and temperature.
-        temperature (float): temperature.
+        temperature (float): temperature in K.
 
     Raises:
         ValueError: Temperature cannot be less than 0 K.
@@ -307,143 +293,176 @@ def calculate_num_electrons(
     if temperature < 0:
         raise ValueError("Temperature cannot be less than 0 K")
 
-    fermi_dist = fermi_dirac_distribution(energy, chemical_potential, temperature)
+    fermi_dist = fermi_dirac_distribution(energies, chemical_potential, temperature)
     integrand = dos * fermi_dist
-    num_electrons = np.trapz(integrand, energy)
+    num_electrons = np.trapz(integrand, energies)
 
     return num_electrons
 
 
 def calculate_chemical_potential(
-    energy: np.ndarray,
+    energies: np.ndarray,
     dos: np.ndarray,
     temperature: float,
-    min_chemical_potential: float = -0.05,
-    max_chemical_potential: float = 0.05,
+    chemical_potential_range: np.ndarray = np.array([-0.1, 0.1]),
 ) -> float:
-    """Calculates the chemical potential at a given electronic DOS, temperature, and volume.
+    """Calculates the chemical potential at a given electronic DOS, temperature, and volume
+    such that the number of electrons is equal to that at 0 K. This is done by adjusting the chemical potential.
 
     Args:
-        energy (np.ndarray): energy values from the electron DOS.
+        energies (np.ndarray): energy values for the electron DOS.
         dos (np.ndarray): electron DOS values.
         temperature (float): temperature in K.
-        min_chemical_potential (float, optional): starting search for the chemical potential. Defaults to -0.01.
-        max_chemical_potential (float, optional): end search for the chemical potential. Defaults to 0.01.
+        chemical_potential_range (np.ndarray, optional): range to search for the chemical potential. Defaults to np.array([-0.1, 0.1]).
 
     Returns:
         float: chemical potential at a given electronic DOS, temperature, and volume.
     """
 
     temperature = float(temperature)
-    num_electrons_0K = round(calculate_num_electrons(energy, dos, 0, 0))
-    num_electrons_guess = round(calculate_num_electrons(energy, dos, 0, temperature))
 
+    # Calculate the number of electrons at 0 K and at the given temperature with an initial guess of chemical potential = 0
+    num_electrons_0K = round(
+        calculate_num_electrons(
+            energies=energies, dos=dos, chemical_potential=0, temperature=0
+        )
+    )
+    num_electrons_guess = round(
+        calculate_num_electrons(
+            energies=energies, dos=dos, chemical_potential=0, temperature=temperature
+        )
+    )
+
+    # If the number of electrons at the guess chemical potential is equal to that at 0 K (with rounding), return the guess chemical potential
     if num_electrons_guess == num_electrons_0K:
         chemical_potential = 0
 
+    # Else use the bisection method to find the chemical potential that gives the correct number of electrons
     else:
 
         def electron_difference(chemical_potential):
             num_electrons = calculate_num_electrons(
-                energy, dos, chemical_potential, temperature
+                energies=energies,
+                dos=dos,
+                chemical_potential=chemical_potential,
+                temperature=temperature,
             )
             return num_electrons - num_electrons_0K
 
         try:
             chemical_potential = bisect(
-                electron_difference, min_chemical_potential, max_chemical_potential
+                electron_difference,
+                chemical_potential_range[0],
+                chemical_potential_range[1],
             )
         except ValueError as e:
             print(
-                f"Warning: The chemical potential could not be found within the range {min_chemical_potential} to {max_chemical_potential} eV."
-                "Consider increasing the range or checking the input data."
+                f"Warning: The chemical potential could not be found within the range {chemical_potential_range[0]} to {chemical_potential_range[1]} eV."
+                "Consider increasing the chemical_potential_range."
             )
-            chemical_potential = max_chemical_potential
+            chemical_potential = chemical_potential_range[1]
 
     return chemical_potential
 
 
-def calculate_internal_energy(
-    energy: np.ndarray,
+def calculate_internal_energies(
+    energies: np.ndarray,
     dos: np.ndarray,
-    temperature_range: np.ndarray,
-    chemical_potential_list: list,
-    resolution: float = 0.005,
+    temperatures: np.ndarray,
+    chemical_potentials: np.ndarray,
+    resolution: float = 0.001,
     plot: bool = False,
-    plot_temperatures: np.ndarray = None,
-) -> list:
-    """Calculates the thermal electronic contribution to the internal energy.
+    selected_temperatures: np.ndarray = None,
+) -> np.ndarray:
+    """Calculates the thermal electronic contribution to the internal energy for a given volume using the formula:
+        U_el(T, V) = ∫ DOS(E) * f(E, mu, T) * E dE - ∫_(E<mu) DOS(E) * E dE
 
     Args:
-        energy (np.ndarray): energy values from the electron DOS.
+        energies (np.ndarray): energy values from the electron DOS.
         dos (np.ndarray): electron DOS values.
-        temperature_range (np.ndarray): temperatures in K.
+        temperatures (np.ndarray): temperatures in K.
+        chemical_potentials (np.ndarray): chemical potentials for each temperature.
         resolution (float, optional): energy resolution for the spline. Defaults to 0.001.
         plot (bool, optional): plots the integrand vs energy of the internal energy equation. Defaults to False.
-        plot_temperatures (np.ndarray, optional): temperatures to plot the integrand vs energy of the internal energy equation. Defaults to None.
+        selected_temperatures (np.ndarray, optional): temperatures to plot the integrand vs energy of the internal energy equation. Defaults to None.
 
     Returns:
-        list: thermal electronic contribution to the internal energy.
+        np.ndarray: internal energy values.
     """
 
-    energy_fit, dos_fit = fit_electron_dos(
-        energy, dos, [np.min(energy), np.max(energy)], resolution
+    # Fit the whole energy range of the electron DOS with a spline with the given resolution
+    energies_fit, dos_fit = fit_electron_dos(
+        energies, dos, [np.min(energies), np.max(energies)], resolution
     )
+
+    # Initialize lists to store data
     integrand_1_list = []
-    filtered_energy_list = []
+    filtered_energies_list = []
     integrand_2_list = []
-    internal_energy_list = []
-    for i, temperature in enumerate(temperature_range):
-        chemical_potential = chemical_potential_list[i]
+    internal_energies_list = []
+
+    # Calculate the internal energy for each temperature
+    for i, temperature in enumerate(temperatures):
+
+        # Calculate the Fermi-Dirac distribution function at the given temperature and chemical potential
+        chemical_potential = chemical_potentials[i]
         fermi_dist = fermi_dirac_distribution(
-            energy_fit, chemical_potential, temperature
+            energies_fit, chemical_potential, temperature
         )
 
-        integrand_1 = dos_fit * fermi_dist * energy_fit
+        # Evaluate the first integral over the entire energy range
+        integrand_1 = dos_fit * fermi_dist * energies_fit
         integrand_1_list.append(integrand_1)
-        integral_1 = np.trapz(integrand_1, energy_fit)
+        integral_1 = np.trapz(integrand_1, energies_fit)
 
-        # Only integrate over energy levels less than the chemical potential
-        mask = energy_fit < chemical_potential
-        filtered_energy = energy_fit[mask]
-        filtered_energy_list.append(filtered_energy)
+        # Evaluate the second integral from -infinity to the chemical potential
+        mask = energies_fit < chemical_potential
+        filtered_energies = energies_fit[mask]
+        filtered_energies_list.append(filtered_energies)
         filtered_dos = dos_fit[mask]
 
-        integrand_2 = filtered_dos * filtered_energy
+        integrand_2 = filtered_dos * filtered_energies
         integrand_2_list.append(integrand_2)
-        integral_2 = np.trapz(integrand_2, filtered_energy)
+        integral_2 = np.trapz(integrand_2, filtered_energies)
 
-        internal_energy = integral_1 - integral_2
-        internal_energy_list.append(internal_energy)
+        internal_energies = integral_1 - integral_2
+        internal_energies_list.append(internal_energies)
 
+    # Convert lists to numpy arrays
+    integrand_1 = np.array(integrand_1_list)
+    filtered_energies = np.array(filtered_energies_list)
+    integrand_2 = np.array(integrand_2_list)
+    internal_energies = np.array(internal_energies_list)
+
+    # Plot the integrands if requested
     if plot:
-        for plot_temperature in plot_temperatures:
-            index = np.where(temperature_range == plot_temperature)[0][0]
+        for selected_temperature in selected_temperatures:
+            index = np.where(temperatures == selected_temperature)[0][0]
 
             plot_internal_energy_integral(
-                energy_fit,
-                integrand_1_list[index],
-                filtered_energy_list[index],
-                integrand_2_list[index],
-                plot_temperature,
+                energies_fit,
+                integrand_1[index],
+                filtered_energies[index],
+                integrand_2[index],
+                selected_temperature,
             )
 
-    return internal_energy_list
+    return internal_energies
 
 
 def plot_internal_energy_integral(
-    energy: np.ndarray,
+    energies: np.ndarray,
     integrand_1: np.ndarray,
-    filtered_energy: np.ndarray,
+    filtered_energies: np.ndarray,
     integrand_2: np.ndarray,
     plot_temperature: float,
 ) -> go.Figure:
-    """Plots the integrand vs energy of the internal energy equation.
+    """Plots the integrands vs energy of the internal energy equation.
 
     Args:
-        energy (np.ndarray): energy values from the electron DOS.
+        energies (np.ndarray): energy values for the electron DOS.
         integrand_1 (np.ndarray): integrand 1 from the internal energy equation.
-        filtered_energy (np.ndarray): filtered energy values from the electron DOS.
+        filtered_energies (np.ndarray): filtered energy values for the electron DOS (where E < mu).
         integrand_2 (np.ndarray): integrand 2 from the internal energy equation.
         plot_temperature (float): temperature in K.
 
@@ -454,7 +473,7 @@ def plot_internal_energy_integral(
     plot_temperature = float(plot_temperature)
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=energy, y=integrand_1, mode="markers"))
+    fig.add_trace(go.Scatter(x=energies, y=integrand_1, mode="markers"))
     fig.update_layout(
         title=dict(
             text=f"T = {plot_temperature} K",
@@ -468,7 +487,7 @@ def plot_internal_energy_integral(
     fig.show()
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=filtered_energy, y=integrand_2, mode="markers"))
+    fig.add_trace(go.Scatter(x=filtered_energies, y=integrand_2, mode="markers"))
     fig.update_layout(
         title=dict(
             text=f"T = {plot_temperature} K",
@@ -484,51 +503,63 @@ def plot_internal_energy_integral(
     return fig
 
 
-def calculate_entropy(
-    energy: np.ndarray,
+def calculate_entropies(
+    energies: np.ndarray,
     dos: np.ndarray,
-    temperature_range: np.ndarray,
-    chemical_potential_list: list,
-    energy_range: list = [-2, 2],
+    temperatures: np.ndarray,
+    chemical_potentials: np.ndarray,
+    energies_fit_range: np.ndarray = np.array([-2, 2]),
     resolution: float = 0.0001,
     plot: bool = False,
-    plot_temperatures: np.ndarray = None,
-) -> list:
-    """Calculates the thermal electronic contribution to the entropy.
+    selected_temperatures: np.ndarray = None,
+) -> np.ndarray:
+    """Calculates the thermal electronic contribution to the entropy for a given volume using the formula:
+        S_el(T, V) = -k_B ∫ DOS(E) * [f(E, mu, T) * ln(f(E, mu, T)) + (1 - f(E, mu, T)) * ln(1 - f(E, mu, T))] dE
 
     Args:
-        energy (np.ndarray): energy values from the electron DOS.
+        energies (np.ndarray): energy values for the electron DOS.
         dos (np.ndarray): electron DOS values.
-        temperature_range (np.ndarray): temperatures in K.
-        energy_range (list, optional): energy range to fit the electron DOS. Defaults to [-2, 2].
+        temperatures (np.ndarray): temperatures in K.
+        chemical_potentials (np.ndarray): chemical potentials for each temperature.
+        energies_fit_range (np.ndarray, optional): energy range to fit the electron DOS. Defaults to np.array([-2, 2]).
         resolution (float, optional): energy resolution for the spline. Defaults to 0.0001.
         plot (bool, optional): plots the integrand vs energy of the entropy equation. Defaults to False.
-        plot_temperatures (np.ndarray, optional): temperatures to plot the integrand vs energy of the entropy equation. Defaults to None.
+        selected_temperatures (np.ndarray, optional): temperatures to plot the integrand vs energy of the entropy equation. Defaults to None.
 
     Returns:
-        list: thermal electronic contribution to the entropy.
+        np.ndarray: entropy values.
     """
 
-    energy_fit, dos_fit = fit_electron_dos(energy, dos, energy_range, resolution)
+    # Fit the electron DOS within the specified energy range with a spline
+    energy_fit, dos_fit = fit_electron_dos(
+        energies, dos, energies_fit_range, resolution
+    )
 
+    # Initialize lists to store data
     integrand_list = []
-    entropy_list = []
-    for i, temperature in enumerate(temperature_range):
-        chemical_potential = chemical_potential_list[i]
+    entropies_list = []
 
+    # Calculate the entropy for each temperature
+    for i, temperature in enumerate(temperatures):
+        chemical_potential = chemical_potentials[i]
+
+        # Entropy is zero at 0 K
         if temperature == 0:
             entropy = 0
-            entropy_list.append(entropy)
+            entropies_list.append(entropy)
 
             integrand = np.zeros_like(energy_fit)
             integrand_list.append(integrand)
 
+        # Calculate the entropy at finite temperatures
         elif temperature > 0:
             fermi_dist = fermi_dirac_distribution(
                 energy_fit, chemical_potential, temperature
             )
 
+            # At finite temperatures, f is never exactly 0 or 1, but due to lack of numerical precision, we may encounter these values.
             # The limit of f ln f + (1-f) ln (1-f) as f approaches 0 or 1 is 0
+            # We use a mask to avoid log(0) issues
             mask = (fermi_dist == 0) | (fermi_dist == 1)
             integrand = np.zeros_like(fermi_dist)
             integrand[~mask] = dos_fit[~mask] * (
@@ -539,23 +570,28 @@ def calculate_entropy(
             integrand_list.append(integrand)
 
             entropy = -BOLTZMANN_CONSTANT * np.trapz(integrand, energy_fit)
-            entropy_list.append(entropy)
+            entropies_list.append(entropy)
 
+        # Convert lists to numpy arrays
+        integrand = np.array(integrand_list)
+        entropies = np.array(entropies_list)
+
+    # Plot the integrand if requested
     if plot:
-        for plot_temperature in plot_temperatures:
-            index = np.where(temperature_range == plot_temperature)[0][0]
-            plot_entropy_integral(energy_fit, integrand_list[index], plot_temperature)
+        for plot_temperature in selected_temperatures:
+            index = np.where(temperatures == plot_temperature)[0][0]
+            plot_entropy_integral(energy_fit, integrand[index], plot_temperature)
 
-    return entropy_list
+    return entropies
 
 
 def plot_entropy_integral(
-    energy: np.ndarray, integrand: np.ndarray, plot_temperature: float
+    energies: np.ndarray, integrand: np.ndarray, plot_temperature: float
 ) -> go.Figure:
     """Plots the integrand vs energy of the entropy equation.
 
     Args:
-        energy (np.ndarray): energy values from the electron DOS.
+        energies (np.ndarray): energy values for the electron DOS.
         integrand (np.ndarray): integrand from the entropy equation.
         plot_temperature (float): temperature in K.
 
@@ -567,7 +603,7 @@ def plot_entropy_integral(
 
     fig = go.Figure()
     fig.add_trace(
-        go.Scatter(x=energy, y=-BOLTZMANN_CONSTANT * integrand, mode="markers")
+        go.Scatter(x=energies, y=-BOLTZMANN_CONSTANT * integrand, mode="markers")
     )
     fig.update_layout(
         title=dict(
@@ -582,101 +618,108 @@ def plot_entropy_integral(
     return fig
 
 
-def calculate_heat_capacity(
-    energy: np.ndarray,
+def calculate_heat_capacities(
+    energies: np.ndarray,
     dos: np.ndarray,
-    temperature_range: np.ndarray,
-    chemical_potential_list: list,
-    energy_range: list = [-2, 2],
+    temperatures: np.ndarray,
+    chemical_potentials: np.ndarray,
+    energies_fit_range: np.ndarray = np.array([-2, 2]),
     resolution: float = 0.0001,
     plot=False,
-    plot_temperatures: np.ndarray = None,
-) -> list:
-    """Calculates the thermal electronic contribution to the heat capacity.
+    selected_temperatures: np.ndarray = None,
+) -> np.array:
+    """Calculates the thermal electronic contribution to the heat capacity for a given volume using the formula:
+    Cv_el(T, V) = ∫ DOS(E) * f(E, mu, T) * (1 - f(E, mu, T)) * (E - mu)**2 / (k_B T**2) dE
 
     Args:
-        energy (np.ndarray): energy values from the electron DOS.
+        energies (np.ndarray): energy values for the electron DOS.
         dos (np.ndarray): electron DOS values.
-        temperature_range (np.ndarray): temperatures in K.
-        energy_range (list, optional): energy range to fit the electron DOS. Defaults to [-2, 2].
+        temperatures (np.ndarray): temperatures in K.
+        chemical_potentials (np.ndarray): chemical potentials for each temperature.
+        energies_fit_range (np.ndarray, optional): energy range to fit the electron DOS. Defaults to np.array([-2, 2]).
         resolution (float, optional): energy resolution for the spline. Defaults to 0.0001.
         plot (bool, optional): plots the integrand vs energy of the heat capacity equation. Defaults to False.
-        plot_temperatures (np.ndarray, optional): temperatures to plot the integrand vs energy of the heat capacity equation. Defaults to None.
+        selected_temperatures (np.ndarray, optional): temperatures to plot the integrand vs energy of the heat capacity equation. Defaults to None.
 
     Returns:
-        list: thermal electronic contribution to the heat capacity.
+        np.array: heat capacity values.
     """
 
-    energy_fit, dos_fit = fit_electron_dos(energy, dos, energy_range, resolution)
+    # Fit the electron DOS within the specified energy range with a spline
+    energies_fit, dos_fit = fit_electron_dos(
+        energies, dos, energies_fit_range, resolution
+    )
 
+    # Initialize lists to store data
     integrand_list = []
-    heat_capacity_list = []
+    heat_capacities_list = []
 
-    for i, temperature in enumerate(temperature_range):
-        chemical_potential = chemical_potential_list[i]
+    # Calculate the heat capacity for each temperature
+    for i, temperature in enumerate(temperatures):
+        chemical_potential = chemical_potentials[i]
 
+        # Heat capacity is zero at 0 K
         if temperature == 0:
             heat_capacity = 0
-            heat_capacity_list.append(heat_capacity)
+            heat_capacities_list.append(heat_capacity)
 
-            integrand = np.zeros_like(energy_fit)
+            integrand = np.zeros_like(energies_fit)
             integrand_list.append(integrand)
 
+        # Calculate the heat capacity at finite temperatures
         elif temperature > 0:
             fermi_dist = fermi_dirac_distribution(
-                energy_fit, chemical_potential, temperature
+                energies_fit, chemical_potential, temperature
             )
 
-            # The limit of (1 / f - 1) * (f * (E - mu) / T) ** 2 as f approaches 0 or 1 is 0
-            mask = (fermi_dist == 0) | (fermi_dist == 1)
-            integrand = np.zeros_like(fermi_dist)
-            integrand[~mask] = dos_fit[~mask] * (
-                (1 / fermi_dist[~mask] - 1)
-                * (
-                    fermi_dist[~mask]
-                    * (energy_fit[~mask] - chemical_potential)
-                    / temperature
-                )
-                ** 2
+            integrand = (
+                dos_fit
+                * fermi_dist
+                * (1 - fermi_dist)
+                * ((energies_fit - chemical_potential) / temperature) ** 2
                 / BOLTZMANN_CONSTANT
             )
-            integrand[mask] = 0
             integrand_list.append(integrand)
 
-            heat_capacity = np.trapz(integrand, energy_fit)
-            heat_capacity_list.append(heat_capacity)
+            heat_capacities = np.trapz(integrand, energies_fit)
+            heat_capacities_list.append(heat_capacities)
 
+    # Convert lists to numpy arrays
+    integrand = np.array(integrand_list)
+    heat_capacities = np.array(heat_capacities_list)
+
+    # Plot the integrand if requested
     if plot:
-        for plot_temperature in plot_temperatures:
-            index = np.where(temperature_range == plot_temperature)[0][0]
+        for selected_temperature in selected_temperatures:
+            index = np.where(temperatures == selected_temperature)[0][0]
             plot_heat_capacity_integral(
-                energy_fit, integrand_list[index], plot_temperature
+                energies_fit, integrand[index], selected_temperature
             )
 
-    return heat_capacity_list
+    return heat_capacities
 
 
 def plot_heat_capacity_integral(
-    energy: np.ndarray, integrand: np.ndarray, plot_temperature: float
+    energies: np.ndarray, integrand: np.ndarray, selected_temperature: float
 ) -> go.Figure:
     """Plots the integrand vs energy of the heat capacity equation.
 
     Args:
-        energy (np.ndarray): energy values from the electron DOS.
+        energies (np.ndarray): energy values for the electron DOS.
         integrand (np.ndarray): integrand from the heat capacity equation.
-        plot_temperature (float): temperature in K.
+        selected_temperature (float): temperature in K.
 
     Returns:
         go.Figure: Plotly figure object.
     """
 
-    plot_temperature = float(plot_temperature)
+    selected_temperature = float(selected_temperature)
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=energy, y=integrand, mode="markers"))
+    fig.add_trace(go.Scatter(x=energies, y=integrand, mode="markers"))
     fig.update_layout(
         title=dict(
-            text=f"T = {plot_temperature} K",
+            text=f"T = {selected_temperature} K",
             font=dict(size=20, color="rgb(0,0,0)"),
         ),
         margin=dict(t=130),
@@ -689,38 +732,39 @@ def plot_heat_capacity_integral(
     return fig
 
 
-def calculate_helmholtz_energy(
-    internal_energy_list: list,
-    entropy_list: list,
-    temperature_range: np.ndarray,
-) -> list:
-    """Calculates the thermal electronic contribution to the Helmholtz energy.
+def calculate_helmholtz_energies(
+    internal_energies: np.ndarray,
+    entropies: np.ndarray,
+    temperatures: np.ndarray,
+) -> np.ndarray:
+    """Calculates the thermal electronic contribution to the Helmholtz free energy for a given volume using the formula:
+        F_el(T, V) = U_el(T, V) - T * S_el(T, V)
 
     Args:
-        internal_energy_list (list): internal energy.
-        entropy_list (list): entropy.
-        temperature_range (np.ndarray): temperatures in K.
+        internal_energies (np.ndarray): internal energy values.
+        entropies (np.ndarray): entropy values.
+        temperatures (np.ndarray): temperatures in K.
 
     Returns:
-        list: thermal electronic contribution to the Helmholtz energy.
+        np.ndarray: Helmholtz free energy values.
     """
 
-    helmholtz_energy = internal_energy_list - temperature_range * entropy_list
+    helmholtz_energies = internal_energies - temperatures * entropies
 
-    return helmholtz_energy.tolist()
+    return helmholtz_energies
 
 
 def thermal_electronic(
     volumes: np.ndarray,
-    temperature_range: np.ndarray,
+    temperatures: np.ndarray,
     energy_array: np.ndarray,
     dos_array: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Calculates the thermal electronic contributions to Helmholtz energy, internal energy, entropy, and heat capacity.
+    """Calculates the thermal electronic contributions to Helmholtz free energy, internal energy, entropy, and heat capacity.
 
     Args:
         volumes (np.ndarray): volumes.
-        temperature_range (np.ndarray): temperatures in K.
+        temperatures (np.ndarray): temperatures in K.
         energy_array (np.ndarray): a 2D array of energy values where each column corresponds to a volume.
         dos_array (np.ndarray): a 2D array of electron DOS values where each column corresponds to a volume.
 
@@ -729,71 +773,55 @@ def thermal_electronic(
         2D arrays of helmholtz energy, internal energy, entropy, heat capacity where each row corresponds to a temperature and each column corresponds to a volume.
     """
 
-    chemical_potential_list = []
-    internal_energy_list = []
-    entropy_list = []
-    heat_capacity_list = []
-    helmholtz_energy_list = []
+    # Initialize lists to store data
+    chemical_potentials_list = []
+    internal_energies_list = []
+    entropies_list = []
+    heat_capacities_list = []
+    helmholtz_energies_list = []
 
+    # Compute thermal electronic properties for each volume
     for i in range(len(volumes)):
-        energy = energy_array[:, i]
+        energies = energy_array[:, i]
         dos = dos_array[:, i]
-        energy_fit, dos_fit = fit_electron_dos(
-            energy, dos, [np.min(energy), np.max(energy)], 0.005
-        )
 
-        for temperature in temperature_range:
+        # For each volume, compute the thermal electronic properties at each temperature
+        for temperature in temperatures:
             chemical_potential = calculate_chemical_potential(
-                energy_fit, dos_fit, temperature
+                energies, dos, temperature
             )
-            chemical_potential_list.append(chemical_potential)
+            chemical_potentials_list.append(chemical_potential)
+        chemical_potential_array = np.array(chemical_potentials_list)
 
-        internal_energy = calculate_internal_energy(
-            energy, dos, temperature_range, chemical_potential_list
+        internal_energies = calculate_internal_energies(
+            energies, dos, temperatures, chemical_potential_array
         )
-        entropy = calculate_entropy(
-            energy, dos, temperature_range, chemical_potential_list
+        entropies = calculate_entropies(
+            energies, dos, temperatures, chemical_potential_array
         )
-        heat_capacity = calculate_heat_capacity(
-            energy, dos, temperature_range, chemical_potential_list
+        heat_capacities = calculate_heat_capacities(
+            energies, dos, temperatures, chemical_potential_array
         )
-        helmholtz_energy = calculate_helmholtz_energy(
-            internal_energy, entropy, temperature_range
+        helmholtz_energies = calculate_helmholtz_energies(
+            internal_energies, entropies, temperatures
         )
 
-        internal_energy_list.append(internal_energy)
-        entropy_list.append(entropy)
-        heat_capacity_list.append(heat_capacity)
-        helmholtz_energy_list.append(helmholtz_energy)
+        internal_energies_list.append(internal_energies)
+        entropies_list.append(entropies)
+        heat_capacities_list.append(heat_capacities)
+        helmholtz_energies_list.append(helmholtz_energies)
 
-    # Flatten the lists of lists using list comprehension
-    internal_energy_list = [
-        item for sublist in internal_energy_list for item in sublist
-    ]
-    entropy_list = [item for sublist in entropy_list for item in sublist]
-    heat_capacity_list = [item for sublist in heat_capacity_list for item in sublist]
-    helmholtz_energy_list = [
-        item for sublist in helmholtz_energy_list for item in sublist
-    ]
-
-    num_temps = len(temperature_range)
-    num_volumes = len(volumes)
-
-    helmholtz_energy = np.reshape(helmholtz_energy_list, (num_volumes, num_temps))
-    internal_energy = np.reshape(internal_energy_list, (num_volumes, num_temps))
-    entropy = np.reshape(entropy_list, (num_volumes, num_temps))
-    heat_capacity = np.reshape(heat_capacity_list, (num_volumes, num_temps))
-
-    helmholtz_energy = helmholtz_energy.T
-    internal_energy = internal_energy.T
-    entropy = entropy.T
-    heat_capacity = heat_capacity.T
+    # Convert lists to numpy arrays and transpose to have rows as temperatures and columns as volumes
+    helmholtz_energies = np.array(helmholtz_energies_list).T
+    internal_energies = np.array(internal_energies_list).T
+    entropies = np.array(entropies_list).T
+    heat_capacities = np.array(heat_capacities_list).T
 
     return (
-        helmholtz_energy,
-        internal_energy,
-        entropy,
-        heat_capacity,
+        helmholtz_energies,
+        internal_energies,
+        entropies,
+        heat_capacities,
     )
 
 
@@ -801,27 +829,30 @@ def fit_thermal_electronic(
     volumes: np.ndarray,
     volumes_fit: np.ndarray,
     temperatures: np.ndarray,
-    helmholtz_energy: np.ndarray,
-    entropy: np.ndarray,
-    heat_capacity: np.ndarray,
-    order: int,
-) -> tuple[np.array, list, list, list, list, list, list]:
-    """Fits the Helmholtz energy, entropy, and heat capacity vs. volume for various fixed temperatures.
+    helmholtz_energies: np.ndarray,
+    entropies: np.ndarray,
+    heat_capacities: np.ndarray,
+    order: int = 1,
+) -> tuple[
+    np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray
+]:
+    """Fits the Helmholtz free energy, entropy, and heat capacity vs. volume for various fixed temperatures.
 
     Args:
         volumes (np.ndarray): volumes.
         volumes_fit (np.ndarray): 1D array of volumes to fit the properties to.
         temperatures (np.ndarray): temperatures in K.
-        helmholtz_energy (np.ndarray): helmholtz energies.
-        entropy (np.ndarray): entropies.
-        heat_capacity (np.ndarray): heat capacities.
-        order (int): order of the polynomial fit.
+        helmholtz_energies (np.ndarray): helmholtz energy values
+        entropies (np.ndarray): entropy values
+        heat_capacities (np.ndarray): heat capacity values
+        order (int): order of the polynomial fit. Defaults to 1 (linear fit).
 
     Returns:
-        tuple[np.array, list, list, list, list, list, list]:
-        fitted volumes, fitted helmholtz energies, entropies, heat capacities, helmholtz energy polynomials, entropy polynomials, heat capacity polynomials.
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        fitted volumes, fitted helmholtz energies, fitted entropies, fitted heat capacities, helmholtz free energy polynomials, entropy polynomials, heat capacity polynomials.
     """
 
+    # Initialize lists to store data
     volume_fit_list = []
     helmholtz_energy_fit_list = []
     entropy_fit_list = []
@@ -830,19 +861,25 @@ def fit_thermal_electronic(
     entropies_poly_coeffs = []
     heat_capacities_poly_coeffs = []
 
+    # Fit the properties vs. volume for each temperature
     for i in range(len(temperatures)):
-        helmholtz_energy_coefficients = np.polyfit(volumes, helmholtz_energy[i], order)
-        entropy_coefficients = np.polyfit(volumes, entropy[i], order)
-        heat_capacity_coefficients = np.polyfit(volumes, heat_capacity[i], order)
 
-        helmholtz_energy_polynomial = np.poly1d(helmholtz_energy_coefficients)
-        entropy_polynomial = np.poly1d(entropy_coefficients)
-        heat_capacity_polynomial = np.poly1d(heat_capacity_coefficients)
+        # Fit Helmholtz free energy, entropy, and heat capacity vs. volume with a polynomial of the specified order
+        helmholtz_energy_coefficients = np.polyfit(
+            volumes, helmholtz_energies[i], order
+        )
+        entropy_coefficients = np.polyfit(volumes, entropies[i], order)
+        heat_capacity_coefficients = np.polyfit(volumes, heat_capacities[i], order)
 
         helmholtz_energies_poly_coeffs.append(helmholtz_energy_coefficients)
         entropies_poly_coeffs.append(entropy_coefficients)
         heat_capacities_poly_coeffs.append(heat_capacity_coefficients)
 
+        helmholtz_energy_polynomial = np.poly1d(helmholtz_energy_coefficients)
+        entropy_polynomial = np.poly1d(entropy_coefficients)
+        heat_capacity_polynomial = np.poly1d(heat_capacity_coefficients)
+
+        # Evaluate the polynomials at the specified fit volumes
         helmholtz_energy_fit = helmholtz_energy_polynomial(volumes_fit)
         entropy_fit = entropy_polynomial(volumes_fit)
         heat_capacity_fit = heat_capacity_polynomial(volumes_fit)
@@ -852,12 +889,13 @@ def fit_thermal_electronic(
         entropy_fit_list.append(entropy_fit)
         heat_capacity_fit_list.append(heat_capacity_fit)
 
-    helmholtz_energies_poly_coeffs = np.array(helmholtz_energies_poly_coeffs)
-    entropies_poly_coeffs = np.array(entropies_poly_coeffs)
-    heat_capacities_poly_coeffs = np.array(heat_capacities_poly_coeffs)
+    volumes_fit = np.array(volume_fit_list)
     helmholtz_energies_fit = np.array(helmholtz_energy_fit_list)
     entropies_fit = np.array(entropy_fit_list)
     heat_capacities_fit = np.array(heat_capacity_fit_list)
+    helmholtz_energies_poly_coeffs = np.array(helmholtz_energies_poly_coeffs)
+    entropies_poly_coeffs = np.array(entropies_poly_coeffs)
+    heat_capacities_poly_coeffs = np.array(heat_capacities_poly_coeffs)
 
     return (
         volumes_fit,
@@ -872,11 +910,26 @@ def fit_thermal_electronic(
 
 def plot_thermal_electronic(
     number_of_atoms: int,
-    volumes: list,  # TODO: change to np.ndarray
+    volumes: np.ndarray,
     temperatures: np.ndarray,
     property: np.ndarray,
     property_name: str,
 ) -> go.Figure:
+    """
+    Plots the Helmholtz free energy, entropy, or heat capacity vs. temperature for various fixed volumes.
+
+    Args:
+        number_of_atoms (int): number of atoms the properties are per.
+        volumes (np.ndarray): volumes.
+        temperatures (np.ndarray): temperatures.
+        property (np.ndarray): property values. Can be helmholtz energy, entropy, or heat capacity.
+        property_name (str): name of the property to plot.
+    Raises:
+        ValueError: property_name must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'
+
+    Returns:
+        go.Figure: Plotly figure object.
+    """
 
     valid_properties = {
         "helmholtz_energy": f"F<sub>el</sub> (eV/{number_of_atoms} atoms)",
@@ -910,23 +963,23 @@ def plot_thermal_electronic(
 
 def plot_thermal_electronic_properties_fit(
     number_of_atoms: int,
-    volumes: list,  # TODO: change to np.ndarray
-    temperatures: list,  # TODO: change to np.ndarray
+    volumes: np.ndarray,
+    temperatures: np.ndarray,
     property_name: str,
     property: np.ndarray,
     volumes_fit: np.ndarray,
-    property_fit: list,
-    selected_temperatures_plot: np.ndarray = None,
+    property_fit: np.ndarray,
+    selected_temperatures: np.ndarray = None,
 ) -> go.Figure:
-    """Plots the fitted Helmholtz energy, entropy, or heat capacity vs. volume for various fixed temperatures.
+    """Plots the fitted Helmholtz free energy, entropy, or heat capacity vs. volume for various fixed temperatures.
 
     Args:
         number_of_atoms (int): number of atoms the properties are per.
-        volumes (list): volumes.
+        volumes (np.ndarray): volumes.
         property (np.ndarray): helmholtz energy, entropy, or heat capacity.
         volumes_fit (np.ndarray): fitted volumes.
-        property_fit (list): fitted helmholtz energy, entropy, or heat capacity.
-        selected_temperatures_plot (np.ndarray, optional): selected temperatures to plot. Defaults to None.
+        property_fit (np.ndarray): fitted helmholtz energy, entropy, or heat capacity.
+        selected_temperatures (np.ndarray, optional): selected temperatures to plot. Defaults to None.
 
     Raises:
         ValueError: property_name must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'
@@ -940,9 +993,9 @@ def plot_thermal_electronic_properties_fit(
             "property_name must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'"
         )
 
-    if selected_temperatures_plot is None:
+    if selected_temperatures is None:
         indices = np.linspace(0, len(temperatures) - 1, 5, dtype=int)
-        selected_temperatures_plot = np.array([temperatures[j] for j in indices])
+        selected_temperatures = np.array([temperatures[j] for j in indices])
 
     fig = go.Figure()
     colors = [
@@ -962,7 +1015,7 @@ def plot_thermal_electronic_properties_fit(
         for color in colors
     ]
 
-    for i, temperature in enumerate(selected_temperatures_plot):
+    for i, temperature in enumerate(selected_temperatures):
         index = np.where(temperatures == temperature)[0][0]
         x = volumes
         y = property[index]

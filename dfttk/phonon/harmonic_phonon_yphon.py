@@ -258,7 +258,7 @@ class HarmonicPhononYphon:
 
         # Preallocate output arrays
         helmholtz_energies = np.zeros((num_temps, num_volumes))
-        internal_energy = np.zeros((num_temps, num_volumes))
+        internal_energies = np.zeros((num_temps, num_volumes))
         entropies = np.zeros((num_temps, num_volumes))
         heat_capacities = np.zeros((num_temps, num_volumes))
 
@@ -277,7 +277,7 @@ class HarmonicPhononYphon:
                     integrand = PLANCK_CONSTANT / 2 * f_mid * d_mid * df
                     F = np.sum(integrand)
                     helmholtz_energies[j, i] = F
-                    internal_energy[j, i] = F
+                    internal_energies[j, i] = F
                     entropies[j, i] = 0
                     heat_capacities[j, i] = 0
                 else:
@@ -291,8 +291,8 @@ class HarmonicPhononYphon:
                     # Internal energy
                     integrand_E = f_mid * np.cosh(ratio) / sinh_ratio * d_mid * df
                     E = PLANCK_CONSTANT / 2 * np.sum(integrand_E)
-                    internal_energy[j, i] = E
-                    # entropies
+                    internal_energies[j, i] = E
+                    # Entropy
                     integrand_S = (ratio * np.cosh(ratio) / sinh_ratio - log_term) * d_mid * df
                     S = BOLTZMANN_CONSTANT * np.sum(integrand_S)
                     entropies[j, i] = S
@@ -302,7 +302,7 @@ class HarmonicPhononYphon:
                     heat_capacities[j, i] = Cv
 
         self.helmholtz_energies = helmholtz_energies
-        self.internal_energies = internal_energy
+        self.internal_energies = internal_energies
         self.entropies = entropies
         self.heat_capacities = heat_capacities
 
