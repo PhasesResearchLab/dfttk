@@ -357,7 +357,7 @@ class ThermalElectronicData:
             property=property_data,
             volumes_fit=self.volumes_fit,
             property_fit=property_fit_data,
-            selected_temperatures_plot=selected_temperatures,
+            selected_temperatures=selected_temperatures,
         )
 
         return fig, fig_fit

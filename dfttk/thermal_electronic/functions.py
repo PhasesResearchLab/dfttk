@@ -23,7 +23,6 @@ from pymatgen.electronic_structure.core import Spin
 
 # DFTTK imports
 from dfttk.plotly_format import plot_format
-from dfttk.data_extraction import parse_doscar
 
 BOLTZMANN_CONSTANT = (
     scipy.constants.Boltzmann / scipy.constants.electron_volt
@@ -889,7 +888,7 @@ def fit_thermal_electronic(
         entropy_fit_list.append(entropy_fit)
         heat_capacity_fit_list.append(heat_capacity_fit)
 
-    volumes_fit = np.array(volume_fit_list)
+    volumes_fit = np.array(volumes_fit)
     helmholtz_energies_fit = np.array(helmholtz_energy_fit_list)
     entropies_fit = np.array(entropy_fit_list)
     heat_capacities_fit = np.array(heat_capacity_fit_list)
@@ -1014,7 +1013,7 @@ def plot_thermal_electronic_properties_fit(
         f"rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, {1})"
         for color in colors
     ]
-
+    print(volumes_fit.shape)
     for i, temperature in enumerate(selected_temperatures):
         index = np.where(temperatures == temperature)[0][0]
         x = volumes
