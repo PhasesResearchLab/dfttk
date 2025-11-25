@@ -25,8 +25,12 @@ config_Al_path = os.path.join(current_dir, "vasp_data/Al/config_Al")
 vasp_cmd = ["mpirun", "/opt/packages/VASP/VASP6/6.4.3/ONEAPI/vasp_std"]
 config_Al = Configuration(config_Al_path, "config_Al", vasp_cmd=vasp_cmd)
 config_Al.process_ev_curve()
-config_Al.process_debye(volumes=volumes, temperatures=temperatures, scaling_factor=0.617, gruneisen_x=2 / 3)
-config_Al.process_thermal_electronic(volumes_fit=volumes, temperatures=temperatures, order=1)
+config_Al.process_debye(
+    volumes=volumes, temperatures=temperatures, scaling_factor=0.617, gruneisen_x=2 / 3
+)
+config_Al.process_thermal_electronic(
+    volumes_fit=volumes, temperatures=temperatures, order=1
+)
 
 qha = QuasiHarmonic(number_of_atoms, volumes, temperatures)
 
@@ -36,12 +40,12 @@ c = config_Al.ev_curve.eos_parameters["c"]
 d = config_Al.ev_curve.eos_parameters["d"]
 
 energy_eos = BM4_equation(volumes, a, b, c, d)
-vibrational_helmholtz_energy = config_Al.debye.helmholtz_energies
-vibrational_entropy = config_Al.debye.entropies
-vibrational_heat_capacity = config_Al.debye.heat_capacities
-electronic_helmholtz_energy = config_Al.thermal_electronic.helmholtz_energies_fit
-electronic_entropy = config_Al.thermal_electronic.entropies_fit
-electronic_heat_capacity = config_Al.thermal_electronic.heat_capacities_fit
+vibrational_helmholtz_energies = config_Al.debye.helmholtz_energies
+vibrational_entropies = config_Al.debye.entropies
+vibrational_heat_capacities = config_Al.debye.heat_capacities
+electronic_helmholtz_energies = config_Al.thermal_electronic.helmholtz_energies_fit
+electronic_entropies = config_Al.thermal_electronic.entropies_fit
+electronic_heat_capacities = config_Al.thermal_electronic.heat_capacities_fit
 
 RTOL = 2.5e-5
 
@@ -51,22 +55,24 @@ def test_quasiharmonic_regression():
     qha.process(
         "debye",
         energy_eos,
-        vibrational_helmholtz_energy,
-        vibrational_entropy,
-        vibrational_heat_capacity,
+        vibrational_helmholtz_energies,
+        vibrational_entropies,
+        vibrational_heat_capacities,
     )
     qha.process(
         "debye_thermal_electronic",
         energy_eos,
-        vibrational_helmholtz_energy,
-        vibrational_entropy,
-        vibrational_heat_capacity,
-        electronic_helmholtz_energy,
-        electronic_entropy,
-        electronic_heat_capacity,
+        vibrational_helmholtz_energies,
+        vibrational_entropies,
+        vibrational_heat_capacities,
+        electronic_helmholtz_energies,
+        electronic_entropies,
+        electronic_heat_capacities,
     )
 
-    with open(os.path.join(current_dir, "test_quasi_harmonic_data/expected_qha.pkl"), "rb") as f:
+    with open(
+        os.path.join(current_dir, "test_quasi_harmonic_data/expected_qha.pkl"), "rb"
+    ) as f:
         expected_qha = pickle.load(f)
 
     assert qha.number_of_atoms == expected_qha.number_of_atoms
@@ -74,34 +80,119 @@ def test_quasiharmonic_regression():
     assert np.allclose(qha.temperatures, expected_qha.temperatures)
 
     # Debye
-    assert qha.methods["debye"]["helmholtz_energy"]["eos_constants"]["eos_name"] == expected_qha.methods["debye"]["helmholtz_energy"]["eos_constants"]["eos_name"]
-    assert np.allclose(qha.methods["debye"]["helmholtz_energy"]["values"], expected_qha.methods["debye"]["helmholtz_energy"]["values"], rtol=RTOL)
-    assert np.allclose(qha.methods["debye"]["entropy"]["values"], expected_qha.methods["debye"]["entropy"]["values"], rtol=RTOL)
-    assert np.allclose(qha.methods["debye"]["heat_capacity"]["values"], expected_qha.methods["debye"]["heat_capacity"]["values"], rtol=RTOL)
-    assert qha.methods["debye"]["0.00_GPa"]["helmholtz_energy_pv"]["eos_constants"]["eos_name"] == expected_qha.methods["debye"]["0.00_GPa"]["helmholtz_energy_pv"]["eos_constants"]["eos_name"]
-    assert np.allclose(qha.methods["debye"]["0.00_GPa"]["helmholtz_energy_pv"]["values"], expected_qha.methods["debye"]["0.00_GPa"]["helmholtz_energy_pv"]["values"], rtol=RTOL)
+    assert (
+        qha.methods["debye"]["helmholtz_energy"]["eos_constants"]["eos_name"]
+        == expected_qha.methods["debye"]["helmholtz_energy"]["eos_constants"][
+            "eos_name"
+        ]
+    )
+    assert np.allclose(
+        qha.methods["debye"]["helmholtz_energy"]["values"],
+        expected_qha.methods["debye"]["helmholtz_energy"]["values"],
+        rtol=RTOL,
+    )
+    assert np.allclose(
+        qha.methods["debye"]["entropy"]["values"],
+        expected_qha.methods["debye"]["entropy"]["values"],
+        rtol=RTOL,
+    )
+    assert np.allclose(
+        qha.methods["debye"]["heat_capacity"]["values"],
+        expected_qha.methods["debye"]["heat_capacity"]["values"],
+        rtol=RTOL,
+    )
+    assert (
+        qha.methods["debye"]["0.00_GPa"]["helmholtz_energy_pv"]["eos_constants"][
+            "eos_name"
+        ]
+        == expected_qha.methods["debye"]["0.00_GPa"]["helmholtz_energy_pv"][
+            "eos_constants"
+        ]["eos_name"]
+    )
+    assert np.allclose(
+        qha.methods["debye"]["0.00_GPa"]["helmholtz_energy_pv"]["values"],
+        expected_qha.methods["debye"]["0.00_GPa"]["helmholtz_energy_pv"]["values"],
+        rtol=RTOL,
+    )
     for prop in ("V0", "G0", "S0", "H0", "B", "BP", "CTE", "LCTE", "Cp"):
-        assert np.allclose(qha.methods["debye"]["0.00_GPa"][prop], expected_qha.methods["debye"]["0.00_GPa"][prop], rtol=RTOL)
+        assert np.allclose(
+            qha.methods["debye"]["0.00_GPa"][prop],
+            expected_qha.methods["debye"]["0.00_GPa"][prop],
+            rtol=RTOL,
+        )
 
     # Debye + thermal electronic
-    assert qha.methods["debye_thermal_electronic"]["helmholtz_energy"]["eos_constants"]["eos_name"] == expected_qha.methods["debye_thermal_electronic"]["helmholtz_energy"]["eos_constants"]["eos_name"]
-    assert np.allclose(qha.methods["debye_thermal_electronic"]["helmholtz_energy"]["values"], expected_qha.methods["debye_thermal_electronic"]["helmholtz_energy"]["values"], rtol=RTOL)
-    assert np.allclose(qha.methods["debye_thermal_electronic"]["entropy"]["values"], expected_qha.methods["debye_thermal_electronic"]["entropy"]["values"], rtol=RTOL)
-    assert np.allclose(qha.methods["debye_thermal_electronic"]["heat_capacity"]["values"], expected_qha.methods["debye_thermal_electronic"]["heat_capacity"]["values"], rtol=RTOL)
-    assert qha.methods["debye_thermal_electronic"]["0.00_GPa"]["helmholtz_energy_pv"]["eos_constants"]["eos_name"] == expected_qha.methods["debye_thermal_electronic"]["0.00_GPa"]["helmholtz_energy_pv"]["eos_constants"]["eos_name"]
-    assert np.allclose(qha.methods["debye_thermal_electronic"]["0.00_GPa"]["helmholtz_energy_pv"]["values"], expected_qha.methods["debye_thermal_electronic"]["0.00_GPa"]["helmholtz_energy_pv"]["values"], rtol=RTOL)
+    assert (
+        qha.methods["debye_thermal_electronic"]["helmholtz_energy"]["eos_constants"][
+            "eos_name"
+        ]
+        == expected_qha.methods["debye_thermal_electronic"]["helmholtz_energy"][
+            "eos_constants"
+        ]["eos_name"]
+    )
+    assert np.allclose(
+        qha.methods["debye_thermal_electronic"]["helmholtz_energy"]["values"],
+        expected_qha.methods["debye_thermal_electronic"]["helmholtz_energy"]["values"],
+        rtol=RTOL,
+    )
+    assert np.allclose(
+        qha.methods["debye_thermal_electronic"]["entropy"]["values"],
+        expected_qha.methods["debye_thermal_electronic"]["entropy"]["values"],
+        rtol=RTOL,
+    )
+    assert np.allclose(
+        qha.methods["debye_thermal_electronic"]["heat_capacity"]["values"],
+        expected_qha.methods["debye_thermal_electronic"]["heat_capacity"]["values"],
+        rtol=RTOL,
+    )
+    assert (
+        qha.methods["debye_thermal_electronic"]["0.00_GPa"]["helmholtz_energy_pv"][
+            "eos_constants"
+        ]["eos_name"]
+        == expected_qha.methods["debye_thermal_electronic"]["0.00_GPa"][
+            "helmholtz_energy_pv"
+        ]["eos_constants"]["eos_name"]
+    )
+    assert np.allclose(
+        qha.methods["debye_thermal_electronic"]["0.00_GPa"]["helmholtz_energy_pv"][
+            "values"
+        ],
+        expected_qha.methods["debye_thermal_electronic"]["0.00_GPa"][
+            "helmholtz_energy_pv"
+        ]["values"],
+        rtol=RTOL,
+    )
     for prop in ("V0", "G0", "S0", "H0", "B", "BP", "CTE", "LCTE", "Cp"):
-        assert np.allclose(qha.methods["debye_thermal_electronic"]["0.00_GPa"][prop], expected_qha.methods["debye_thermal_electronic"]["0.00_GPa"][prop], rtol=RTOL)
+        assert np.allclose(
+            qha.methods["debye_thermal_electronic"]["0.00_GPa"][prop],
+            expected_qha.methods["debye_thermal_electronic"]["0.00_GPa"][prop],
+            rtol=RTOL,
+        )
 
     # The temperature-dependent eos_constants and poly_coeffs are not checked due to large differences during GitHub testing
     # But as long as the other properties are correct, we can assume the temperature-dependent properties are also correct
 
 
+def test_quasiharmonic_process_invalid_method():
+    """Test ValueError is raised for an unknown method."""
+    qha = QuasiHarmonic(4, np.arange(10), np.arange(5))
+    with pytest.raises(
+        ValueError, match="Unknown method 'not_a_method'.*Valid options"
+    ):
+        qha.process(
+            "not_a_method",
+            np.zeros(10),
+            np.zeros((5, 10)),
+            np.zeros((5, 10)),
+            np.zeros((5, 10)),
+        )
+
+
 def test_quasiharmonic_process_shape_error():
     """Test ValueError is raised for incorrect input shapes."""
     qha = QuasiHarmonic(4, np.arange(10), np.arange(5))
-    # Wrong shape for energy_eos (should be (10,))
-    with pytest.raises(ValueError, match="energy_eos"):
+    # Wrong shape for energies (should be (10,))
+    with pytest.raises(ValueError, match="energies"):
         qha.process(
             "debye",
             np.arange(5),  # Incorrect shape
@@ -109,8 +200,8 @@ def test_quasiharmonic_process_shape_error():
             np.zeros((5, 10)),
             np.zeros((5, 10)),
         )
-    # Wrong shape for vibrational_helmholtz_energy (should be (5, 10))
-    with pytest.raises(ValueError, match="vibrational_helmholtz_energy"):
+    # Wrong shape for vibrational_helmholtz_energies (should be (5, 10))
+    with pytest.raises(ValueError, match="vibrational_helmholtz_energies"):
         qha.process(
             "debye",
             np.zeros(10),
@@ -124,14 +215,30 @@ def test_quasiharmonic_process_negative_pressure():
     """Test ValueError is raised for negative pressure."""
     qha = QuasiHarmonic(4, np.arange(10), np.arange(5))
     with pytest.raises(ValueError, match="Pressure P should be non-negative"):
-        qha.process("debye", np.zeros(10), np.zeros((5, 10)), np.zeros((5, 10)), np.zeros((5, 10)), P=-1.0)
+        qha.process(
+            "debye",
+            np.zeros(10),
+            np.zeros((5, 10)),
+            np.zeros((5, 10)),
+            np.zeros((5, 10)),
+            P=-1.0,
+        )
 
 
 def test_quasiharmonic_process_invalid_eos_name():
     """Test ValueError is raised for an unknown eos_name."""
     qha = QuasiHarmonic(4, np.arange(10), np.arange(5))
-    with pytest.raises(ValueError, match="Unknown EOS function 'not_an_eos'.*Valid options"):
-        qha.process("debye", np.zeros(10), np.zeros((5, 10)), np.zeros((5, 10)), np.zeros((5, 10)), eos_name="not_an_eos")
+    with pytest.raises(
+        ValueError, match="Unknown EOS function 'not_an_eos'.*Valid options"
+    ):
+        qha.process(
+            "debye",
+            np.zeros(10),
+            np.zeros((5, 10)),
+            np.zeros((5, 10)),
+            np.zeros((5, 10)),
+            eos_name="not_an_eos",
+        )
 
 
 def test_quasiharmonic_plot_requires_process():
@@ -152,7 +259,9 @@ def test_quasiharmonic_plot_invalid_plot_type():
         np.zeros((5, 10)),
         np.zeros((5, 10)),
     )
-    with pytest.raises(ValueError, match="Unknown plot_type 'not_a_plot'.*Valid options"):
+    with pytest.raises(
+        ValueError, match="Unknown plot_type 'not_a_plot'.*Valid options"
+    ):
         qha.plot("debye", 0.0, "not_a_plot")
 
 
@@ -182,8 +291,12 @@ def test_quasiharmonic_plot_smoke():
             # Test with and without selected_temperatures
             fig = qha.plot("debye", 0.0, plot_type)
             assert fig is not None
-            selected_temperatures = np.array([0, 2, 4, 5])  # Include some temperatures that are not in the original temperatures array
-            fig2 = qha.plot("debye", 0.0, plot_type, selected_temperatures=selected_temperatures)
+            selected_temperatures = np.array(
+                [0, 2, 4, 5]
+            )  # Include some temperatures that are not in the original temperatures array
+            fig2 = qha.plot(
+                "debye", 0.0, plot_type, selected_temperatures=selected_temperatures
+            )
             assert fig2 is not None
         else:
             fig = qha.plot("debye", 0.0, plot_type)
