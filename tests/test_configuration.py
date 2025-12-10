@@ -11,7 +11,6 @@ import pytest
 
 # Third-party library imports
 import numpy as np
-import pandas as pd
 from pymatgen.core import Structure
 from pymatgen.io.vasp.inputs import Kpoints
 
@@ -186,14 +185,13 @@ def test_process_thermal_electronic():
     # helmholtz_energies_poly_coeffs, entropies_poly_coeffs, heat_capacities_poly_coeffs are not tested
     assert thermal_electronic.number_of_atoms == expected_thermal_electronic.number_of_atoms, f"Expected {expected_thermal_electronic.number_of_atoms}, but got {thermal_electronic.number_of_atoms}"
     assert np.allclose(thermal_electronic.entropies, expected_thermal_electronic.entropies, rtol=1e-4), f"Expected {expected_thermal_electronic.entropies}, but got {thermal_electronic.entropies}"
-    assert np.allclose(np.vstack(thermal_electronic.entropies_fit), np.vstack(expected_thermal_electronic.entropies_fit), rtol=1e-4), f"Expected {expected_thermal_electronic.entropies_fit}, but got {thermal_electronic.entropies_fit}"
+    assert np.allclose(thermal_electronic.entropies_fit, expected_thermal_electronic.entropies_fit, rtol=1e-4), f"Expected {expected_thermal_electronic.entropies_fit}, but got {thermal_electronic.entropies_fit}"
     assert thermal_electronic.structures == expected_thermal_electronic.structures, f"Expected {expected_thermal_electronic.structures}, but got {thermal_electronic.structures}"
     assert np.allclose(thermal_electronic.temperatures, expected_thermal_electronic.temperatures, rtol=1e-4), f"Expected {expected_thermal_electronic.temperatures}, but got {thermal_electronic.temperatures}"
     assert np.allclose(thermal_electronic.volumes_fit, expected_thermal_electronic.volumes_fit, rtol=1e-4), f"Expected {expected_thermal_electronic.volumes_fit}, but got {thermal_electronic.volumes_fit}"
     assert np.allclose(thermal_electronic.heat_capacities, expected_thermal_electronic.heat_capacities, rtol=1e-4), f"Expected {expected_thermal_electronic.heat_capacities}, but got {thermal_electronic.heat_capacities}"
-    assert np.allclose(np.vstack(thermal_electronic.heat_capacities_fit), np.vstack(expected_thermal_electronic.heat_capacities_fit), rtol=1e-4), f"Expected {expected_thermal_electronic.heat_capacities_fit}, but got {thermal_electronic.heat_capacities_fit}"
+    assert np.allclose(thermal_electronic.heat_capacities_fit, expected_thermal_electronic.heat_capacities_fit, rtol=1e-4), f"Expected {expected_thermal_electronic.heat_capacities_fit}, but got {thermal_electronic.heat_capacities_fit}"
     assert np.allclose(thermal_electronic.internal_energies, expected_thermal_electronic.internal_energies, rtol=1e-4), f"Expected {expected_thermal_electronic.internal_energies}, but got {thermal_electronic.internal_energies}"
-    pd.testing.assert_frame_equal(thermal_electronic.electron_dos_data, expected_thermal_electronic.electron_dos_data)
     assert np.allclose(thermal_electronic.helmholtz_energies, expected_thermal_electronic.helmholtz_energies, rtol=1e-4), f"Expected {expected_thermal_electronic.helmholtz_energies}, but got {thermal_electronic.helmholtz_energies}"
     assert np.allclose(thermal_electronic.helmholtz_energies_fit, expected_thermal_electronic.helmholtz_energies_fit, rtol=1e-4), f"Expected {expected_thermal_electronic.helmholtz_energies_fit}, but got {thermal_electronic.helmholtz_energies_fit}"
     assert thermal_electronic.incars == expected_thermal_electronic.incars, f"Expected {expected_thermal_electronic.incars}, but got {thermal_electronic.incars}"

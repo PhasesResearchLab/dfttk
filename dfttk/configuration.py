@@ -1236,7 +1236,7 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                     "elecStructures": [
                         s.as_dict() for s in self.thermal_electronic.structures
                     ],
-                    "scaleAtoms": self.thermal_electronic.number_of_atoms.tolist(),
+                    "scaleAtoms": self.thermal_electronic.number_of_atoms,
                     "volumes": [
                         round(s.volume, 2) for s in self.thermal_electronic.structures
                     ],

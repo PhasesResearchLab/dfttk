@@ -18,15 +18,7 @@ from pymatgen.core import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 
 # DFTTK imports
-from dfttk.thermal_electronic.functions import (
-    thermal_electronic,
-    fit_thermal_electronic,
-    read_total_electron_dos,
-    plot_total_electron_dos,
-    plot_thermal_electronic,
-    plot_thermal_electronic_properties_fit,
-)
-
+from dfttk.thermal_electronic.functions import ThermalElectronic
 
 class ThermalElectronicData:
     """
@@ -55,7 +47,7 @@ class ThermalElectronicData:
         heat_capacities_poly_coeffs (np.ndarray): Polynomial coefficients for heat capacity fits.
         _helmholtz_energies_fit_to_db (dict): Fitted Helmholtz energy data for database export.
         _entropies_fit_to_db (dict): Fitted entropy data for database export.
-        _heat_capacities_fit_to_db (dict): Fitted heat capacity data for database export.d
+        _heat_capacities_fit_to_db (dict): Fitted heat capacity data for database export.
     """
 
     def __init__(self, path: str):
@@ -89,28 +81,10 @@ class ThermalElectronicData:
         self.helmholtz_energies_poly_coeffs: np.ndarray = None
         self.entropies_poly_coeffs: np.ndarray = None
         self.heat_capacities_poly_coeffs: np.ndarray = None
-
-    def get_total_electron_dos(
-        self,
-        selected_volumes: np.array = None,
-        plot: bool = False,
-        folder_prefix: str = "elec",
-    ) -> None:
-        """
-        Reads the total electron DOS from vasprun.xml files in the specified path and folders
-        and stores it in the electron_dos_data attribute as a pandas DataFrame.
-
-        Args:
-            selected_volumes (np.array, optional): list of selected volumes to keep the electron DOS data. Defaults to None.
-            plot (bool, optional): if True, plots the total electron DOS for different volumes. Defaults to False.
-            folder_prefix (str, optional): prefix of the folders containing the vasprun.xml files. Defaults to "elec".
-        """
-        self.electron_dos_data = read_total_electron_dos(
-            self.path,
-            selected_volumes=selected_volumes,
-            plot=plot,
-            folder_prefix=folder_prefix,
-        )
+        
+        self._helmholtz_energies_fit_to_db: dict = None
+        self._entropies_fit_to_db: dict = None
+        self._heat_capacities_fit_to_db: dict = None
 
     def _get_elec_folders(self, folder_prefix: str = "elec") -> list[str]:
         """
@@ -213,91 +187,56 @@ class ThermalElectronicData:
             selected_volumes (np.ndarray, optional): list of selected volumes to keep the electron DOS data. Defaults to None.
             folder_prefix (str, optional): prefix of the folders containing the vasprun.xml files. Defaults to "elec".
         """
+        # Initialize ThermalElectronic object
+        self.te = ThermalElectronic()
 
         # Load the total electron DOS data for all or selected volumes
-        self.get_total_electron_dos(
-            selected_volumes=selected_volumes, folder_prefix=folder_prefix
+        self.te.read_total_electron_dos(
+            path=self.path,
+            folder_prefix=folder_prefix,
+            selected_volumes=selected_volumes,
         )
-        self.number_of_atoms = self.electron_dos_data["number_of_atoms"].unique()[0]
-        volumes = self.electron_dos_data["volumes"].unique()
-        self.volumes = volumes
-        self.temperatures = temperatures
+        self.number_of_atoms = self.te.number_of_atoms
+        self.volumes = self.te.volumes
+        self.energies_list = self.te.energies_list
+        self.dos_list = self.te.dos_list
 
-        # Get the energy and DOS arrays for each volume
-        energy_array = [
-            self.electron_dos_data[self.electron_dos_data["volumes"] == volume][
-                "energy_minus_fermi_energy"
-            ].values[0]
-            for volume in volumes
-        ]
-        dos_array = [
-            self.electron_dos_data[self.electron_dos_data["volumes"] == volume][
-                "total_dos"
-            ].values[0]
-            for volume in volumes
-        ]
-        energy_array = np.column_stack(energy_array)
-        dos_array = np.column_stack(dos_array)
+        # Compute and fit the thermodynamic properties
+        self.te.process(temperatures=temperatures)
+        self.te.fit(volumes_fit=volumes_fit, order=order)
+        
+        self.temperatures = self.te.temperatures
+        self.helmholtz_energies = self.te.helmholtz_energies
+        self.internal_energies = self.te.internal_energies
+        self.entropies = self.te.entropies
+        self.heat_capacities = self.te.heat_capacities
 
-        # Compute the thermodynamic properties
-        helmholtz_energies, internal_energies, entropies, heat_capacities = (
-            thermal_electronic(
-                volumes,
-                temperatures,
-                energy_array,
-                dos_array,
-            )
-        )
-        self.helmholtz_energies = helmholtz_energies
-        self.internal_energies = internal_energies
-        self.entropies = entropies
-        self.heat_capacities = heat_capacities
-
-        # Fit the thermodynamic properties vs. volumes for fixed temperatures
-        (
-            volumes_fit,
-            helmholtz_energies_fit,
-            entropies_fit,
-            heat_capacities_fit,
-            helmholtz_energies_poly_coeffs,
-            entropies_poly_coeffs,
-            heat_capacities_poly_coeffs,
-        ) = fit_thermal_electronic(
-            volumes=self.volumes,
-            volumes_fit=volumes_fit,
-            temperatures=self.temperatures,
-            helmholtz_energies=helmholtz_energies,
-            entropies=entropies,
-            heat_capacities=heat_capacities,
-            order=order,
-        )
-
-        self.volumes_fit = volumes_fit
-        self.helmholtz_energies_fit = helmholtz_energies_fit
-        self.entropies_fit = entropies_fit
-        self.heat_capacities_fit = heat_capacities_fit
-        self.helmholtz_energies_poly_coeffs = helmholtz_energies_poly_coeffs
-        self.entropies_poly_coeffs = entropies_poly_coeffs
-        self.heat_capacities_poly_coeffs = heat_capacities_poly_coeffs
+        self.volumes_fit = self.te.volumes_fit
+        self.helmholtz_energies_fit = self.te.helmholtz_energies_fit
+        self.entropies_fit = self.te.entropies_fit
+        self.heat_capacities_fit = self.te.heat_capacities_fit
+        self.helmholtz_energies_poly_coeffs = self.te.helmholtz_energies_poly_coeffs
+        self.entropies_poly_coeffs = self.te.entropies_poly_coeffs
+        self.heat_capacities_poly_coeffs = self.te.heat_capacities_poly_coeffs
 
         self._helmholtz_energies_fit_to_db = {
             "poly_coeffs": {
                 f"{temp}K": coeff
                 for temp, coeff in zip(
-                    self.temperatures, helmholtz_energies_poly_coeffs
+                    self.temperatures, self.helmholtz_energies_poly_coeffs
                 )
             }
         }
         self._entropies_fit_to_db = {
             "poly_coeffs": {
                 f"{temp}K": coeff
-                for temp, coeff in zip(self.temperatures, entropies_poly_coeffs)
+                for temp, coeff in zip(self.temperatures, self.entropies_poly_coeffs)
             }
         }
         self._heat_capacities_fit_to_db = {
             "poly_coeffs": {
                 f"{temp}K": coeff
-                for temp, coeff in zip(self.temperatures, heat_capacities_poly_coeffs)
+                for temp, coeff in zip(self.temperatures, self.heat_capacities_poly_coeffs)
             }
         }
 
@@ -338,25 +277,12 @@ class ThermalElectronicData:
                 f"Attribute '{property_name}' and '{property_name}_fit' have not been calculated. Run get_thermal_electronic_data() in ThermalElectronicData or process_thermal_electronic() in Configuration."
             )
 
-        property_data = getattr(self, property_name)
-        property_fit_data = getattr(self, f"{property_name}_fit")
-
-        fig = plot_thermal_electronic(
-            number_of_atoms=self.number_of_atoms,
-            volumes=self.volumes,
-            temperatures=self.temperatures,
-            property=property_data,
-            property_name=property,
+        fig = self.te.plot_vs_temp(
+            property=property,
         )
 
-        fig_fit = plot_thermal_electronic_properties_fit(
-            number_of_atoms=self.number_of_atoms,
-            volumes=self.volumes,
-            temperatures=self.temperatures,
-            property_name=property,
-            property=property_data,
-            volumes_fit=self.volumes_fit,
-            property_fit=property_fit_data,
+        fig_fit = self.te.plot_vs_volume(
+            property=property,
             selected_temperatures=selected_temperatures,
         )
 
@@ -370,5 +296,5 @@ class ThermalElectronicData:
             go.Figure: The figure object for the plot.
         """
 
-        fig = plot_total_electron_dos(self.electron_dos_data)
+        fig = self.te.plot_total_dos()
         return fig
