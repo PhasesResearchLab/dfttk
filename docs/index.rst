@@ -39,4 +39,3 @@ What does DFTTK do?
    :hidden:
 
    installation
-   tutorials/index
