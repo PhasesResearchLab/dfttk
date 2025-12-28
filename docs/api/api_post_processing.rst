@@ -8,3 +8,4 @@ Post-processing
    dfttk.debye
    dfttk.phonon
    dfttk.thermal_electronic
+   dfttk.quasi_harmonic
