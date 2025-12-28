@@ -1,8 +1,8 @@
 API
 ===
 
-.. autosummary::
-   :toctree: generated
+.. toctree::
+   :maxdepth: 6
 
    dfttk.atat
    dfttk.eos
