@@ -21,12 +21,14 @@ extensions = ['sphinx.ext.linkcode',
               'sphinx.ext.duration',
               'sphinx.ext.coverage',
               'sphinx.ext.napoleon',
-              'sphinx.ext.autodoc',
+              "sphinx.ext.autodoc",
+              "sphinx.ext.autosummary",
               'sphinx_autodoc_typehints',
               'myst_nb',
               'sphinx_github_changelog',
               'sphinx_rtd_size'
               ]
+autosummary_generate = True
 
 # Jupyter Notebook configuration
 nb_execution_mode = "off"
