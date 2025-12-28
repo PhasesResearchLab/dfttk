@@ -6,7 +6,7 @@ dfttk.eos
    :undoc-members:
    :show-inheritance:
 
-Functions
+functions
 ---------
 
 .. automodule:: dfttk.eos.functions
@@ -14,7 +14,7 @@ Functions
    :undoc-members:
    :show-inheritance:
 
-Fit
+fit
 ---
 
 .. automodule:: dfttk.eos.fit
@@ -22,7 +22,7 @@ Fit
    :undoc-members:
    :show-inheritance:
 
-EV curve data
+ev_curve_data
 -------------
 
 .. automodule:: dfttk.eos.ev_curve_data
