@@ -2,7 +2,7 @@ Post-processing
 ===============
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 6
 
    dfttk.eos
    dfttk.debye
