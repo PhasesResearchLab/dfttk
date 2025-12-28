@@ -17,11 +17,16 @@ from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 yaml_dir = os.path.dirname(__file__)
 potcar_dict_path = os.path.join(yaml_dir, "settings/potcar_dict.yaml")
 magmom_dict_path = os.path.join(yaml_dir, "settings/magmom_dict.yaml")
-with open(potcar_dict_path, "r") as file:
-    POTCAR_DICT = yaml.safe_load(file)
 
-with open(magmom_dict_path, "r") as file:
-    MAGMOM_DICT = yaml.safe_load(file)
+if not os.environ.get("READTHEDOCS"):
+    with open(potcar_dict_path, "r") as file:
+        POTCAR_DICT = yaml.safe_load(file)
+
+    with open(magmom_dict_path, "r") as file:
+        MAGMOM_DICT = yaml.safe_load(file)
+else:
+    POTCAR_DICT = {}
+    MAGMOM_DICT = {}
 
 
 def base_set(
