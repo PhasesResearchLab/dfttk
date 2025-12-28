@@ -1,32 +1,29 @@
-dfttk
-=====
-
-eos
----
+dfttk.eos
+=========
 
 .. automodule:: dfttk.eos
    :members:
    :undoc-members:
    :show-inheritance:
 
-functions
---------------
+Functions
+---------
 
 .. automodule:: dfttk.eos.functions
    :members:
    :undoc-members:
    :show-inheritance:
 
-fit
---------------
+Fit
+---
 
 .. automodule:: dfttk.eos.fit
    :members:
    :undoc-members:
    :show-inheritance:
 
-ev_curve_data
---------------
+EV curve data
+-------------
 
 .. automodule:: dfttk.eos.ev_curve_data
    :members:
