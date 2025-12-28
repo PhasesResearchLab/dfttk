@@ -5,3 +5,4 @@ API
    :maxdepth: 6
 
    dfttk.eos
+   dfttk.debye
