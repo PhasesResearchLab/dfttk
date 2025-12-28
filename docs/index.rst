@@ -39,4 +39,4 @@ What does DFTTK do?
    :hidden:
 
    installation
-   api
+   api/api
