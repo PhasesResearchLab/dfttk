@@ -2,22 +2,8 @@ API
 ===
 
 .. toctree::
-   :maxdepth: 6
-   :caption: Input Preparation
+   :maxdepth: 2
 
-   dfttk.vasp_input
-
-.. toctree::
-   :maxdepth: 6
-   :caption: Running Calculations
-
-   dfttk.workflows
-
-.. toctree::
-   :maxdepth: 6
-   :caption: Post-processing
-
-   dfttk.eos
-   dfttk.debye
-   dfttk.phonon
-   dfttk.thermal_electronic
+   api_input_preparation
+   api_running_calculations
+   api_post_processing
