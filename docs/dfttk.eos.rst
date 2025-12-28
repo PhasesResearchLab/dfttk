@@ -1,3 +1,6 @@
+eos
+---
+
 .. automodule:: dfttk.eos
    :members:
    :undoc-members:
