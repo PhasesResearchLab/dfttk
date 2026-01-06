@@ -35,10 +35,10 @@ class ThermalElectronicData:
         number_of_atoms (int): Number of atoms corresponding to the structures used in the electron DOS calculations.
         volumes (np.ndarray): Array of volumes for each structure, shape (n_volumes,).
         temperatures (np.ndarray): Array of temperatures used for thermodynamic calculations, shape (n_temperatures,).
-        helmholtz_energies (np.ndarray): Helmholtz free energies (eV/atom), shape (n_temperatures, n_volumes).
-        internal_energies (np.ndarray): Internal energies (eV/atom), shape (n_temperatures, n_volumes).
-        entropies (np.ndarray): Entropies (eV/K/atom), shape (n_temperatures, n_volumes).
-        heat_capacities (np.ndarray): Heat capacities (eV/K/atom), shape (n_temperatures, n_volumes).
+        helmholtz_energies (np.ndarray): Helmholtz free energies (eV), shape (n_temperatures, n_volumes).
+        internal_energies (np.ndarray): Internal energies (eV), shape (n_temperatures, n_volumes).
+        entropies (np.ndarray): Entropies (eV/K), shape (n_temperatures, n_volumes).
+        heat_capacities (np.ndarray): Heat capacities (eV/K), shape (n_temperatures, n_volumes).
         volumes_fit (np.ndarray): Volumes used for polynomial fits, shape (n_volumes_fit,).
         helmholtz_energies_fit (np.ndarray): Fitted Helmholtz free energies (n_temperatures, n_volumes_fit).
         entropies_fit (np.ndarray): Fitted entropies (n_temperatures, n_volumes_fit).
