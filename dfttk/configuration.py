@@ -32,7 +32,7 @@ from dfttk.eos.ev_curve_data import EvCurveData
 from dfttk.eos.fit import assign_colors_to_configs, assign_marker_symbols_to_configs
 from dfttk.phonon.yphon_phonon_data import YphonPhononData
 from dfttk.quasi_harmonic import QuasiHarmonic
-from dfttk.thermal_electronic.thermal_electronic_data import ThermalElectronicData
+from dfttk.thermal_electronic import ThermalElectronicData
 from dfttk.workflows import SingleJobWorkflow
 
 

@@ -18,7 +18,8 @@ from pymatgen.core import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 
 # DFTTK imports
-from dfttk.thermal_electronic.thermal_electronic import ThermalElectronic
+from dfttk.thermal_electronic import ThermalElectronic
+
 
 class ThermalElectronicData:
     """
@@ -81,7 +82,7 @@ class ThermalElectronicData:
         self.helmholtz_energies_poly_coeffs: np.ndarray = None
         self.entropies_poly_coeffs: np.ndarray = None
         self.heat_capacities_poly_coeffs: np.ndarray = None
-        
+
         self._helmholtz_energies_fit_to_db: dict = None
         self._entropies_fit_to_db: dict = None
         self._heat_capacities_fit_to_db: dict = None
@@ -187,6 +188,7 @@ class ThermalElectronicData:
             selected_volumes (np.ndarray, optional): list of selected volumes to keep the electron DOS data. Defaults to None.
             folder_prefix (str, optional): prefix of the folders containing the vasprun.xml files. Defaults to "elec".
         """
+        
         # Initialize ThermalElectronic object
         self.te = ThermalElectronic()
 
@@ -204,7 +206,7 @@ class ThermalElectronicData:
         # Compute and fit the thermodynamic properties
         self.te.process(temperatures=temperatures)
         self.te.fit(volumes_fit=volumes_fit, order=order)
-        
+
         self.temperatures = self.te.temperatures
         self.helmholtz_energies = self.te.helmholtz_energies
         self.internal_energies = self.te.internal_energies
@@ -236,59 +238,35 @@ class ThermalElectronicData:
         self._heat_capacities_fit_to_db = {
             "poly_coeffs": {
                 f"{temp}K": coeff
-                for temp, coeff in zip(self.temperatures, self.heat_capacities_poly_coeffs)
+                for temp, coeff in zip(
+                    self.temperatures, self.heat_capacities_poly_coeffs
+                )
             }
         }
 
-    def plot(
-        self, property: str, selected_temperatures: np.ndarray = None
+    def plot_vt(
+        self, type: str, selected_temperatures: np.ndarray = None
     ) -> tuple[go.Figure, go.Figure]:
         """
-        Plot the thermodynamic properties and their polynomial fits.
+        Plot the thermodynamic properties vs. temperature or volume.
 
         Args:
-            property (str): Property to plot ('helmholtz_energy', 'entropy', or 'heat_capacity').
+            type (str): Property to plot ('helmholtz_energy_vs_temperature', 'entropy_vs_temperature', 'heat_capacity_vs_temperature',
+            'helmholtz_energy_vs_volume', 'entropy_vs_volume', 'heat_capacity_vs_volume').
             selected_temperatures (np.ndarray, optional): Temperatures to plot for the fit.
-
-        Raises:
-            ValueError: If the property is not one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
-            AttributeError: If the required attributes have not been calculated.
 
         Returns:
             tuple[go.Figure, go.Figure]: (property vs. temperature, property fit vs. volume)
         """
 
-        property_mapping = {
-            "helmholtz_energy": "helmholtz_energies",
-            "entropy": "entropies",
-            "heat_capacity": "heat_capacities",
-        }
-
-        if property not in property_mapping:
-            raise ValueError(f"Invalid property_to_plot: {property}")
-
-        property_name = property_mapping[property]
-        # Check if the required attribute is calculated (not None)
-        if (
-            getattr(self, property_name) is None
-            or getattr(self, f"{property_name}_fit") is None
-        ):
-            raise AttributeError(
-                f"Attribute '{property_name}' and '{property_name}_fit' have not been calculated. Run get_thermal_electronic_data() in ThermalElectronicData or process_thermal_electronic() in Configuration."
-            )
-        # TODO: have to fix this!
         fig = self.te.plot_vt(
-            property=property,
-        )
-
-        fig_fit = self.te.plot_vt(
-            property=property,
+            type=type,
             selected_temperatures=selected_temperatures,
         )
 
-        return fig, fig_fit
+        return fig
 
-    def plot_electron_dos(self) -> go.Figure:
+    def plot_total_dos(self) -> go.Figure:
         """
         Plots the total electron DOS for multiple volumes
 
