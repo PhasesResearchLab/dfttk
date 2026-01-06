@@ -12,7 +12,7 @@ import pytest
 import numpy as np
 
 # DFTTK imports
-from dfttk.thermal_electronic.functions import ThermalElectronic
+from dfttk.thermal_electronic import ThermalElectronic
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 config_Al_path = os.path.join(current_dir, "vasp_data/Al/config_Al")
@@ -77,9 +77,7 @@ def test_read_total_electron_dos():
 
 def test_set_total_electron_dos(cached_dos_data):
     thermal_electronic = ThermalElectronic()
-    thermal_electronic.set_total_electron_dos(
-        number_of_atoms=cached_dos_data["number_of_atoms"], volumes=cached_dos_data["volumes"], energies_list=cached_dos_data["energies_list"], dos_list=cached_dos_data["dos_list"]
-    )
+    thermal_electronic.set_total_electron_dos(number_of_atoms=cached_dos_data["number_of_atoms"], volumes=cached_dos_data["volumes"], energies_list=cached_dos_data["energies_list"], dos_list=cached_dos_data["dos_list"])
 
     assert thermal_electronic.path == None
     assert thermal_electronic.number_of_atoms == cached_dos_data["number_of_atoms"]
@@ -105,15 +103,11 @@ def test_process(cached_dos_data):
     thermal_electronic = ThermalElectronic()
 
     # Process without setting the DOS (should raise an error)
-    with pytest.raises(
-        ValueError, match=re.escape("DOS data not found. Please read or set the total electron DOS first using read_total_electron_dos() or set_total_electron_dos().")
-    ):
+    with pytest.raises(ValueError, match=re.escape("DOS data not found. Please read or set the total electron DOS first using read_total_electron_dos() or set_total_electron_dos().")):
         thermal_electronic.process(temperatures=temperatures)
 
     # Now set the DOS and process
-    thermal_electronic.set_total_electron_dos(
-        number_of_atoms=cached_dos_data["number_of_atoms"], volumes=cached_dos_data["volumes"], energies_list=cached_dos_data["energies_list"], dos_list=cached_dos_data["dos_list"]
-    )
+    thermal_electronic.set_total_electron_dos(number_of_atoms=cached_dos_data["number_of_atoms"], volumes=cached_dos_data["volumes"], energies_list=cached_dos_data["energies_list"], dos_list=cached_dos_data["dos_list"])
     thermal_electronic.process(temperatures=temperatures)
 
     assert np.all(thermal_electronic.temperatures == temperatures)
@@ -168,9 +162,7 @@ def test_fit(cached_dos_data):
 
     thermal_electronic = ThermalElectronic()
     # Use set_total_electron_dos with cached data
-    thermal_electronic.set_total_electron_dos(
-        number_of_atoms=cached_dos_data["number_of_atoms"], volumes=cached_dos_data["volumes"], energies_list=cached_dos_data["energies_list"], dos_list=cached_dos_data["dos_list"]
-    )
+    thermal_electronic.set_total_electron_dos(number_of_atoms=cached_dos_data["number_of_atoms"], volumes=cached_dos_data["volumes"], energies_list=cached_dos_data["energies_list"], dos_list=cached_dos_data["dos_list"])
 
     # Call fit without process (should raise an error)
     with pytest.raises(ValueError, match=re.escape("Thermodynamic properties not yet calculated. Please call process() first")):
@@ -224,62 +216,31 @@ def test_plot_total_dos(cached_dos_data):
     thermal_electronic = ThermalElectronic()
 
     # Should raise error if DOS not set
-    with pytest.raises(
-        ValueError, match=re.escape("DOS data not found. Please read or set the total electron DOS first using read_total_electron_dos() or set_total_electron_dos().")
-    ):
+    with pytest.raises(ValueError, match=re.escape("DOS data not found. Please read or set the total electron DOS first using read_total_electron_dos() or set_total_electron_dos().")):
         thermal_electronic.plot_total_dos()
 
     # Set DOS and plot (smoke test, check no error and fig is not None)
-    thermal_electronic.set_total_electron_dos(
-        number_of_atoms=cached_dos_data["number_of_atoms"], volumes=cached_dos_data["volumes"], energies_list=cached_dos_data["energies_list"], dos_list=cached_dos_data["dos_list"]
-    )
+    thermal_electronic.set_total_electron_dos(number_of_atoms=cached_dos_data["number_of_atoms"], volumes=cached_dos_data["volumes"], energies_list=cached_dos_data["energies_list"], dos_list=cached_dos_data["dos_list"])
     fig = thermal_electronic.plot_total_dos()
     assert fig is not None
 
 
-def test_plot_vs_temp(cached_dos_data):
+def test_plot_vt(cached_dos_data):
     thermal_electronic = ThermalElectronic()
 
     # Set DOS
-    thermal_electronic.set_total_electron_dos(
-        number_of_atoms=cached_dos_data["number_of_atoms"], volumes=cached_dos_data["volumes"], energies_list=cached_dos_data["energies_list"], dos_list=cached_dos_data["dos_list"]
-    )
+    thermal_electronic.set_total_electron_dos(number_of_atoms=cached_dos_data["number_of_atoms"], volumes=cached_dos_data["volumes"], energies_list=cached_dos_data["energies_list"], dos_list=cached_dos_data["dos_list"])
 
     # Try to plot without process (should raise an error)
     with pytest.raises(ValueError, match=re.escape("Thermodynamic properties not yet calculated. Please call process() first.")):
-        thermal_electronic.plot_vs_temp(property="helmholtz_energy")
+        thermal_electronic.plot_vt(type="helmholtz_energy_vs_temperature")
 
     # Now process and plot (smoke test)
     temperatures = np.array([0, 300, 600, 900])
     thermal_electronic.process(temperatures=temperatures)
 
-    for property in ["helmholtz_energy", "entropy", "heat_capacity"]:
-        fig = thermal_electronic.plot_vs_temp(property=property)
-        assert fig is not None
-
-    # Test invalid property (should raise an error)
-    with pytest.raises(ValueError, match=re.escape("property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'")):
-        thermal_electronic.plot_vs_temp(property="invalid_property")
-
-
-def test_plot_vs_volume(cached_dos_data):
-    thermal_electronic = ThermalElectronic()
-
-    # Set DOS
-    thermal_electronic.set_total_electron_dos(
-        number_of_atoms=cached_dos_data["number_of_atoms"], volumes=cached_dos_data["volumes"], energies_list=cached_dos_data["energies_list"], dos_list=cached_dos_data["dos_list"]
-    )
-
-    # Try to plot without process (should raise an error)
-    with pytest.raises(ValueError, match=re.escape("Thermodynamic properties not yet calculated. Please call process() first.")):
-        thermal_electronic.plot_vs_volume(property="helmholtz_energy")
-
-    # Now process and plot (smoke test)
-    temperatures = np.array([0, 300, 600, 900])
-    thermal_electronic.process(temperatures=temperatures)
-
-    for property in ["helmholtz_energy", "entropy", "heat_capacity"]:
-        fig = thermal_electronic.plot_vs_volume(property=property)
+    for type in ["helmholtz_energy_vs_temperature", "entropy_vs_temperature", "heat_capacity_vs_temperature", "helmholtz_energy_vs_volume", "entropy_vs_volume", "heat_capacity_vs_volume"]:
+        fig = thermal_electronic.plot_vt(type=type)
         assert fig is not None
 
     # Fit and plot fitted curves as well (smoke test)
@@ -287,17 +248,217 @@ def test_plot_vs_volume(cached_dos_data):
     order = 1
     thermal_electronic.fit(volumes_fit=volumes_fit, order=order)
 
-    for property in ["helmholtz_energy", "entropy", "heat_capacity"]:
-        fig = thermal_electronic.plot_vs_volume(property=property)
+    for type in ["helmholtz_energy_vs_volume", "entropy_vs_volume", "heat_capacity_vs_volume"]:
+        fig = thermal_electronic.plot_vt(type=type)
         assert fig is not None
 
     # Test plot for selected_temperatures
     selected_temperatures = np.array([300, 900])
 
-    for property in ["helmholtz_energy", "entropy", "heat_capacity"]:
-        fig = thermal_electronic.plot_vs_volume(property=property, selected_temperatures=selected_temperatures)
+    for type in ["helmholtz_energy_vs_volume", "entropy_vs_volume", "heat_capacity_vs_volume"]:
+        fig = thermal_electronic.plot_vt(type=type, selected_temperatures=selected_temperatures)
         assert fig is not None
 
     # Test invalid property (should raise an error)
-    with pytest.raises(ValueError, match=re.escape("property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'")):
-        thermal_electronic.plot_vs_volume(property="invalid_property")
+    with pytest.raises(ValueError, match=re.escape("type must be one of 'helmholtz_energy_vs_temperature', 'entropy_vs_temperature', 'heat_capacity_vs_temperature', 'helmholtz_energy_vs_volume', 'entropy_vs_volume', or 'heat_capacity_vs_volume'")):
+        thermal_electronic.plot_vt(type="invalid_property")
+
+
+def test_calculate_chemical_potential():
+    # Just test one DOS
+    energies = expected_energies_list[0]
+    dos = expected_dos_list[0]
+
+    thermal_electronic = ThermalElectronic()
+
+    # Test negative temperature (should raise an error)
+    temperature = -100
+    with pytest.raises(ValueError, match="Temperature cannot be less than 0 K"):
+        thermal_electronic.calculate_chemical_potential(energies, dos, temperature)
+
+    # Test 0 K
+    temperature = 0
+    mu_0K = thermal_electronic.calculate_chemical_potential(energies, dos, temperature)
+    expected_mu_0K = 0
+    assert np.isclose(mu_0K, expected_mu_0K)
+
+    # Test 1000 K
+    temperature = 1000
+    mu_1000K = thermal_electronic.calculate_chemical_potential(energies, dos, temperature)
+    expected_mu_1000K = 0
+    assert np.isclose(mu_1000K, expected_mu_1000K)
+
+    # Test warning when nelect is set and does not match (should raise a warning)
+    temperature = 300
+    thermal_electronic.nelect = 10  # Set an arbitrary number of electrons
+    with pytest.warns(UserWarning, match="Warning: The number of electrons at 0 K"):
+        thermal_electronic.calculate_chemical_potential(energies, dos, temperature)
+
+
+def test_fit_electron_dos():
+    energies = np.array([0, 1, 2, 3])
+    dos = np.array([0, 1, 4, 9])
+    energy_range = np.array([0, 3])
+    resolution = 1.0
+
+    energy_fit, dos_fit = ThermalElectronic.fit_electron_dos(energies, dos, energy_range, resolution)
+    assert np.allclose(energy_fit, [0, 1, 2, 3])
+    assert np.allclose(dos_fit, [0, 1, 4, 9])
+
+
+def test_fermi_dirac_distribution():
+    # Just test one energy set
+    energies = expected_energies_list[0][:: len(expected_energies_list[0]) // 5]  # Just take 5 evenly spaced energies
+
+    # Test negative temperature (should raise an error)
+    chemical_potential = 0
+    temperature = -100
+    with pytest.raises(ValueError, match="Temperature cannot be less than 0 K"):
+        ThermalElectronic.fermi_dirac_distribution(energies, chemical_potential, temperature)
+
+    # Test 0 K
+    chemical_potential = 0
+    temperature = 0
+
+    fermi_dist = ThermalElectronic.fermi_dirac_distribution(energies, chemical_potential, temperature)
+    expected_fermi_dist_0K = np.array([1, 0, 0, 0, 0, 0])
+    assert np.allclose(fermi_dist, expected_fermi_dist_0K)
+
+    # Test 1000 K
+    chemical_potential = 0.2
+    temperature = 1000
+
+    fermi_dist = ThermalElectronic.fermi_dirac_distribution(energies, chemical_potential, temperature)
+    expected_fermi_dist_1000K = np.array([1.00000000e000, 8.10361300e-015, 2.76554334e-111, 9.44900816e-208, 3.22469022e-304, 0.00000000e000])
+    assert np.allclose(fermi_dist, expected_fermi_dist_1000K)
+
+    # Test plotting (smoke test)
+    chemical_potential = 0
+    temperature = 1000
+    fermi_dist, fig = ThermalElectronic.fermi_dirac_distribution(energies, chemical_potential, temperature, plot=True)
+    assert fig is not None
+
+
+def test_calculate_num_electrons():
+    # Just test one DOS
+    energies = expected_energies_list[0]
+    dos = expected_dos_list[0]
+
+    # Test negative temperature (should raise an error)
+    chemical_potential = 0
+    temperature = -100
+    with pytest.raises(ValueError, match="Temperature cannot be less than 0 K"):
+        ThermalElectronic.calculate_num_electrons(energies, dos, chemical_potential, temperature)
+
+    # Test for a valid case
+    chemical_potential = 0
+    temperature = 1000
+    num_electrons = ThermalElectronic.calculate_num_electrons(energies, dos, chemical_potential, temperature)
+    expected_num_electrons = 12.013830026152638
+    assert np.isclose(num_electrons, expected_num_electrons)
+
+
+def test_calculate_internal_energies():
+    # Just test one DOS
+    energies = expected_energies_list[0]
+    dos = expected_dos_list[0]
+
+    thermal_electronic = ThermalElectronic()
+
+    # Test negative temperature (should raise an error)
+    temperatures = np.array([0, 300, 600, -900])
+    with pytest.raises(ValueError, match="Temperatures cannot be less than 0 K"):
+        thermal_electronic.calculate_internal_energies(energies, dos, temperatures)
+
+    # Test valid case
+    temperatures = np.array([0, 300, 600, 900])
+    internal_energies = thermal_electronic.calculate_internal_energies(energies, dos, temperatures)
+    assert np.allclose(internal_energies, np.array([-6.73648444e-08, 1.87288067e-03, 7.29105411e-03, 1.59001038e-02]))
+
+    # Test plotting (smoke test)
+    plot_temperature = 300
+    internal_energies, fig1, fig2 = thermal_electronic.calculate_internal_energies(energies, dos, temperatures, plot=True, plot_temperature=plot_temperature)
+    assert fig1 is not None
+    assert fig2 is not None
+
+    # Test plotting without specifying plot_temperature (should raise an error)
+    with pytest.raises(ValueError, match="plot_temperature must be provided if and only if plot is True."):
+        thermal_electronic.calculate_internal_energies(energies, dos, temperatures, plot=True)
+
+    # Test invalid plot_temperature (should raise an error)
+    invalid_plot_temperature = 5000
+    with pytest.raises(ValueError, match="plot_temperature must be one of the temperatures provided."):
+        thermal_electronic.calculate_internal_energies(energies, dos, temperatures, plot=True, plot_temperature=invalid_plot_temperature)
+
+
+def test_calculate_entropies():
+    # Just test one DOS
+    energies = expected_energies_list[0]
+    dos = expected_dos_list[0]
+
+    thermal_electronic = ThermalElectronic()
+
+    # Test negative temperature (should raise an error)
+    temperatures = np.array([0, 300, 600, -900])
+    with pytest.raises(ValueError, match="Temperatures cannot be less than 0 K"):
+        thermal_electronic.calculate_entropies(energies, dos, temperatures)
+
+    # Test valid case
+    temperatures = np.array([0, 300, 600, 900])
+    entropies = thermal_electronic.calculate_entropies(energies, dos, temperatures)
+    assert np.allclose(entropies, np.array([0.00000000e00, 1.24700087e-05, 2.45455118e-05, 3.60412725e-05]))
+
+    # Test plotting (smoke test)
+    plot_temperature = 300
+    entropies, fig = thermal_electronic.calculate_entropies(energies, dos, temperatures, plot=True, plot_temperature=plot_temperature)
+    assert fig is not None
+
+    # Test plotting without specifying plot_temperature (should raise an error)
+    with pytest.raises(ValueError, match="plot_temperature must be provided if and only if plot is True."):
+        thermal_electronic.calculate_entropies(energies, dos, temperatures, plot=True)
+
+    # Test invalid plot_temperature (should raise an error)
+    invalid_plot_temperature = 5000
+    with pytest.raises(ValueError, match="plot_temperature must be one of the temperatures provided."):
+        thermal_electronic.calculate_entropies(energies, dos, temperatures, plot=True, plot_temperature=invalid_plot_temperature)
+
+
+def test_calculate_heat_capacities():
+    # Just test one DOS
+    energies = expected_energies_list[0]
+    dos = expected_dos_list[0]
+
+    thermal_electronic = ThermalElectronic()
+
+    # Test negative temperature (should raise an error)
+    temperatures = np.array([0, 300, 600, -900])
+    with pytest.raises(ValueError, match="Temperatures cannot be less than 0 K"):
+        thermal_electronic.calculate_heat_capacities(energies, dos, temperatures)
+
+    # Test valid case
+    temperatures = np.array([0, 300, 600, 900])
+    heat_capacities = thermal_electronic.calculate_heat_capacities(energies, dos, temperatures)
+    assert np.allclose(heat_capacities, np.array([0.00000000e00, 1.23895008e-05, 2.35292884e-05, 3.37636167e-05]))
+
+    # Test plotting (smoke test)
+    plot_temperature = 300
+    heat_capacities, fig = thermal_electronic.calculate_heat_capacities(energies, dos, temperatures, plot=True, plot_temperature=plot_temperature)
+    assert fig is not None
+
+    # Test plotting without specifying plot_temperature (should raise an error)
+    with pytest.raises(ValueError, match="plot_temperature must be provided if and only if plot is True."):
+        thermal_electronic.calculate_heat_capacities(energies, dos, temperatures, plot=True)
+
+    # Test invalid plot_temperature (should raise an error)
+    invalid_plot_temperature = 5000
+    with pytest.raises(ValueError, match="plot_temperature must be one of the temperatures provided."):
+        thermal_electronic.calculate_heat_capacities(energies, dos, temperatures, plot=True, plot_temperature=invalid_plot_temperature)
+
+
+def test_calculate_helmholtz_energies():
+    internal_energies = np.array([1.0, 2.0, 3.0])
+    entropies = np.array([0.1, 0.2, 0.3])
+    temperatures = np.array([0, 300, 600])
+
+    helmholtz_energies = ThermalElectronic.calculate_helmholtz_energies(internal_energies, entropies, temperatures)
+    assert np.allclose(helmholtz_energies, np.array([1.0, -58.0, -177.0]))

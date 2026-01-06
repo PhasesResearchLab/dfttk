@@ -4,15 +4,15 @@ ThermalElectronic: A class for reading or setting electron DOS data, calculating
 Typical usage:
 1. Use `read_total_electron_dos()` to load electron DOS data from VASP calculations for multiple volumes,
    or `set_total_electron_dos()` to provide DOS data directly.
-2. Call `process()` to compute thermal electronic contributions (Helmholtz free energy, internal energy, entropy, heat capacity).
+2. Call `process()` and `fit()` to compute thermal electronic contributions (Helmholtz free energy, internal energy, entropy, heat capacity).
 3. Use plotting methods to visualize results.
 
-TODO: Other methods are available for calculating intermediate quantities such as chemical potential, internal energy, entropy, and heat capacity.
-You can also plot the Fermi-Dirac distribution and integrands used in the calculations for better understanding.
+Intermediate methods are also provided for calculating chemical potential, fitting DOS, computing Fermi-Dirac distribution, etc.
 """
 
 # Standard Library Imports
 import os
+import warnings
 import numpy as np
 
 # Related third party imports
@@ -265,14 +265,12 @@ class ThermalElectronic:
                 chemical_potentials_list.append(chemical_potential)
             chemical_potential_array = np.array(chemical_potentials_list)
 
-            internal_energies = ThermalElectronic.calculate_internal_energies(
-                energies, dos, temperatures, chemical_potential_array
+            internal_energies = self.calculate_internal_energies(
+                energies, dos, temperatures
             )
-            entropies = ThermalElectronic.calculate_entropies(
-                energies, dos, temperatures, chemical_potential_array
-            )
-            heat_capacities = ThermalElectronic.calculate_heat_capacities(
-                energies, dos, temperatures, chemical_potential_array
+            entropies = self.calculate_entropies(energies, dos, temperatures)
+            heat_capacities = self.calculate_heat_capacities(
+                energies, dos, temperatures
             )
             helmholtz_energies = ThermalElectronic.calculate_helmholtz_energies(
                 internal_energies, entropies, temperatures
@@ -399,16 +397,17 @@ class ThermalElectronic:
 
         return fig
 
-    def plot_vs_temp(self, property: str) -> go.Figure:
-        """
-        Plots the Helmholtz free energy, entropy, or heat capacity vs. temperature for various fixed volumes.
+    def plot_vt(self, type: str, selected_temperatures: np.ndarray = None) -> go.Figure:
+        """Plots thermal electronic properties vs. temperature or volume.
 
         Args:
-            property (str): name of the property to plot.
+            type (str): Must be one of 'helmholtz_energy_vs_temperature', 'entropy_vs_temperature', 'heat_capacity_vs_temperature',
+                'helmholtz_energy_vs_volume', 'entropy_vs_volume', or 'heat_capacity_vs_volume'.
+            selected_temperatures (np.ndarray, optional): Selected temperatures for volume plots. Defaults to None.
 
         Raises:
             ValueError: If thermodynamic properties have not been calculated.
-            ValueError: property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'
+            ValueError: If the type argument is not one of the allowed values.
 
         Returns:
             go.Figure: Plotly figure object.
@@ -420,135 +419,113 @@ class ThermalElectronic:
                 "Thermodynamic properties not yet calculated. Please call process() first."
             )
 
-        property_map = {
-            "helmholtz_energy": (self.helmholtz_energies, "F<sub>el</sub> (eV)"),
-            "entropy": (self.entropies, "S<sub>el</sub> (eV/K)"),
-            "heat_capacity": (self.heat_capacities, "C<sub>v,el</sub> (eV/K)"),
-        }
-
-        if property not in property_map:
-            raise ValueError(
-                "property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'"
-            )
-
-        property_values, y_title = property_map[property]
-
-        fig = go.Figure()
-        for i, volume in enumerate(self.volumes):
-            fig.add_trace(
-                go.Scatter(
-                    x=self.temperatures,
-                    y=property_values[:, i],
-                    mode="lines",
-                    name=f"{volume} Å³",
-                    showlegend=True,
-                )
-            )
-        plot_format(fig, "Temperature (K)", y_title)
-
-        return fig
-
-    def plot_vs_volume(
-        self,
-        property: str,
-        selected_temperatures: np.ndarray = None,
-    ) -> go.Figure:
-        """Plots the Helmholtz free energy, entropy, or heat capacity vs. volume for various fixed temperatures. Also plot the fitted curves if available.
-
-        Args:
-            property (str): name of the property to plot.
-            selected_temperatures (np.ndarray, optional): selected temperatures to plot. Defaults to None.
-
-        Raises:
-            ValueError: If thermodynamic properties have not been calculated.
-            ValueError: property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'
-
-        Returns:
-            go.Figure: Plotly figure object.
-        """
-
-        # If helmholtz_energies is None, raise an error
-        if self.helmholtz_energies is None:
-            raise ValueError(
-                "Thermodynamic properties not yet calculated. Please call process() first."
-            )
-
-        property_map = {
-            "helmholtz_energy": (
+        type_map = {
+            "helmholtz_energy_vs_temperature": (
+                self.helmholtz_energies,
+                "F<sub>el</sub> (eV)",
+            ),
+            "entropy_vs_temperature": (self.entropies, "S<sub>el</sub> (eV/K)"),
+            "heat_capacity_vs_temperature": (
+                self.heat_capacities,
+                "C<sub>v,el</sub> (eV/K)",
+            ),
+            "helmholtz_energy_vs_volume": (
                 self.helmholtz_energies,
                 self.helmholtz_energies_fit,
                 "F<sub>el</sub> (eV)",
             ),
-            "entropy": (self.entropies, self.entropies_fit, "S<sub>el</sub> (eV/K)"),
-            "heat_capacity": (
+            "entropy_vs_volume": (
+                self.entropies,
+                self.entropies_fit,
+                "S<sub>el</sub> (eV/K)",
+            ),
+            "heat_capacity_vs_volume": (
                 self.heat_capacities,
                 self.heat_capacities_fit,
                 "C<sub>v,el</sub> (eV/K)",
             ),
         }
 
-        if property not in property_map:
+        if type not in type_map:
             raise ValueError(
-                "property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'"
+                "type must be one of 'helmholtz_energy_vs_temperature', 'entropy_vs_temperature', 'heat_capacity_vs_temperature', "
+                "'helmholtz_energy_vs_volume', 'entropy_vs_volume', or 'heat_capacity_vs_volume'"
             )
 
-        property_values, property_values_fit, y_title = property_map[property]
+        if "vs_temperature" in type:
+            property_values, y_title = type_map[type]
 
-        if selected_temperatures is None:
-            if self.temperatures.size < 5:
-                selected_temperatures = self.temperatures
-            else:
-                indices = np.linspace(0, len(self.temperatures) - 1, 5, dtype=int)
-                selected_temperatures = self.temperatures[indices]
-
-        fig = go.Figure()
-        colors = [
-            "#636EFA",
-            "#EF553B",
-            "#00CC96",
-            "#AB63FA",
-            "#FFA15A",
-            "#19D3F3",
-            "#FF6692",
-            "#B6E880",
-            "#FF97FF",
-            "#FECB52",
-        ]
-        colors = [
-            f"rgba({int(c[1:3],16)},{int(c[3:5],16)},{int(c[5:7],16)},1)"
-            for c in colors
-        ]
-
-        for i, temperature in enumerate(selected_temperatures):
-            idx = np.where(self.temperatures == temperature)[0][0]
-            color = colors[i % len(colors)]
-            # Markers for calculated data
-            fig.add_trace(
-                go.Scatter(
-                    x=self.volumes,
-                    y=property_values[idx],
-                    mode="markers",
-                    line=dict(color=color),
-                    name=f"{temperature} K",
-                    legendgroup=f"{temperature} K",
-                    showlegend=True,
-                )
-            )
-            # Lines for fit, if available
-            if self.volumes_fit is not None and property_values_fit is not None:
+            fig = go.Figure()
+            for i, volume in enumerate(self.volumes):
                 fig.add_trace(
                     go.Scatter(
-                        x=self.volumes_fit,
-                        y=property_values_fit[idx],
+                        x=self.temperatures,
+                        y=property_values[:, i],
                         mode="lines",
-                        line=dict(color=color),
-                        name=f"{temperature} K fit",
-                        legendgroup=f"{temperature} K",
-                        showlegend=False,
+                        name=f"{volume} Å³",
+                        showlegend=True,
                     )
                 )
+            plot_format(fig, "Temperature (K)", y_title)
 
-        plot_format(fig, "Volume (Å³)", y_title)
+        elif "vs_volume" in type:
+            property_values, property_values_fit, y_title = type_map[type]
+
+            if selected_temperatures is None:
+                if self.temperatures.size < 5:
+                    selected_temperatures = self.temperatures
+                else:
+                    indices = np.linspace(0, len(self.temperatures) - 1, 5, dtype=int)
+                    selected_temperatures = self.temperatures[indices]
+
+            fig = go.Figure()
+            colors = [
+                "#636EFA",
+                "#EF553B",
+                "#00CC96",
+                "#AB63FA",
+                "#FFA15A",
+                "#19D3F3",
+                "#FF6692",
+                "#B6E880",
+                "#FF97FF",
+                "#FECB52",
+            ]
+            colors = [
+                f"rgba({int(c[1:3],16)},{int(c[3:5],16)},{int(c[5:7],16)},1)"
+                for c in colors
+            ]
+
+            for i, temperature in enumerate(selected_temperatures):
+                idx = np.where(self.temperatures == temperature)[0][0]
+                color = colors[i % len(colors)]
+                # Markers for calculated data
+                fig.add_trace(
+                    go.Scatter(
+                        x=self.volumes,
+                        y=property_values[idx],
+                        mode="markers",
+                        line=dict(color=color),
+                        name=f"{temperature} K",
+                        legendgroup=f"{temperature} K",
+                        showlegend=True,
+                    )
+                )
+                # Lines for fit, if available
+                if self.volumes_fit is not None and property_values_fit is not None:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=self.volumes_fit,
+                            y=property_values_fit[idx],
+                            mode="lines",
+                            line=dict(color=color),
+                            name=f"{temperature} K fit",
+                            legendgroup=f"{temperature} K",
+                            showlegend=False,
+                        )
+                    )
+
+            plot_format(fig, "Volume (Å³)", y_title)
         return fig
 
     def calculate_chemical_potential(
@@ -557,77 +534,77 @@ class ThermalElectronic:
         dos: np.ndarray,
         temperature: float,
         chemical_potential_range: np.ndarray = np.array([-0.1, 0.1]),
+        electron_tol: float = 0.5,
     ) -> float:
-        """Calculates the chemical potential at a given electronic DOS, temperature, and volume
-        such that the number of electrons is equal to that at 0 K. This is done by adjusting the chemical potential.
+        """
+        Calculates the chemical potential at a given electronic DOS, temperature, and volume
+        such that the number of electrons is equal to that at 0 K (within a specified tolerance).
+        Note that at the moment this method assumes that the energies are given with respect to the Fermi energy.
 
         Args:
             energies (np.ndarray): energy values for the electron DOS.
             dos (np.ndarray): electron DOS values.
             temperature (float): temperature in K.
-            chemical_potential_range (np.ndarray, optional): range to search for the chemical potential. Defaults to np.array([-0.1, 0.1]).
+            chemical_potential_range (np.ndarray, optional): range to search for the chemical potential.
+            electron_tol (float, optional): tolerance for electron number matching. Defaults to 0.5.
+
+        Raises:
+            ValueError: If temperature < 0 K.
+            ValueError: If the chemical potential cannot be found within the specified range.
 
         Returns:
             float: chemical potential at a given electronic DOS, temperature, and volume.
         """
-
+        if temperature < 0:
+            raise ValueError("Temperature cannot be less than 0 K")
         temperature = float(temperature)
 
-        # Calculate the number of electrons at 0 K
-        num_electrons_0K = round(
-            ThermalElectronic.calculate_num_electrons(
-                energies=energies, dos=dos, chemical_potential=0, temperature=0
-            )
+        num_electrons_0K = ThermalElectronic.calculate_num_electrons(
+            energies=energies, dos=dos, chemical_potential=0, temperature=0
         )
-        
+
         if self.nelect is not None:
-            if num_electrons_0K != self.nelect:
-                print(
-                    f"Warning: The number of electrons at 0 K ({num_electrons_0K}) does not match the expected number of electrons ({self.nelect})."
-                    " Consider increasing NEDOS."
+            if abs(num_electrons_0K - self.nelect) > electron_tol:
+                warnings.warn(
+                    f"Warning: The number of electrons at 0 K ({num_electrons_0K}) does not match the expected number of electrons ({self.nelect}) within the specified tolerance."
+                    " Consider increasing NEDOS.",
+                    UserWarning,
                 )
-        
-        # Calculate the number of electrons at the given temperature with an initial guess of chemical potential = 0
-        num_electrons_guess = round(
-            ThermalElectronic.calculate_num_electrons(
+
+        num_electrons_guess = ThermalElectronic.calculate_num_electrons(
+            energies=energies,
+            dos=dos,
+            chemical_potential=0,
+            temperature=temperature,
+        )
+
+        if abs(num_electrons_guess - num_electrons_0K) < electron_tol:
+            return 0
+
+        def electron_difference(chemical_potential):
+            num_electrons = ThermalElectronic.calculate_num_electrons(
                 energies=energies,
                 dos=dos,
-                chemical_potential=0,
+                chemical_potential=chemical_potential,
                 temperature=temperature,
             )
-        )
+            return num_electrons - num_electrons_0K
 
-        # If the number of electrons at the guess chemical potential is equal to that at 0 K (with rounding), return the guess chemical potential
-        if num_electrons_guess == num_electrons_0K:
-            chemical_potential = 0
-
-        # Else use the bisection method to find the chemical potential that gives the correct number of electrons
-        else:
-
-            def electron_difference(chemical_potential):
-                num_electrons = ThermalElectronic.calculate_num_electrons(
-                    energies=energies,
-                    dos=dos,
-                    chemical_potential=chemical_potential,
-                    temperature=temperature,
-                )
-                return num_electrons - num_electrons_0K
-
-            try:
-                chemical_potential = bisect(
-                    electron_difference,
-                    chemical_potential_range[0],
-                    chemical_potential_range[1],
-                )
-            except ValueError as e:
-                print(
-                    f"Warning: The chemical potential could not be found within the range {chemical_potential_range[0]} to {chemical_potential_range[1]} eV."
-                    "Consider increasing the chemical_potential_range."
-                )
-                chemical_potential = chemical_potential_range[1]
+        try:
+            chemical_potential = bisect(
+                electron_difference,
+                chemical_potential_range[0],
+                chemical_potential_range[1],
+            )
+        except ValueError as e:
+            print(
+                f"Warning: The chemical potential could not be found within the range {chemical_potential_range[0]} to {chemical_potential_range[1]} eV."
+                " Consider increasing the chemical_potential_range."
+            )
+            chemical_potential = chemical_potential_range[1]
 
         return chemical_potential
-    
+
     @staticmethod
     def fit_electron_dos(
         energies: np.ndarray,
@@ -667,7 +644,7 @@ class ThermalElectronic:
         chemical_potential: float,
         temperature: float,
         plot: bool = False,
-    ) -> np.ndarray:
+    ):
         """Calculates the Fermi-Dirac distribution function given by the formula:
             f(E, mu, T) = 1 / (1 + exp((E - mu) / (k_B T)))
 
@@ -682,7 +659,7 @@ class ThermalElectronic:
             ValueError: Temperature cannot be less than 0 K.
 
         Returns:
-            np.ndarray: Fermi-Dirac distribution function values.
+            np.ndarray or (np.ndarray, go.Figure): Fermi-Dirac distribution function values, and optionally the plotly figure if plot=True.
         """
 
         chemical_potential = float(chemical_potential)
@@ -693,18 +670,17 @@ class ThermalElectronic:
 
         if temperature == 0:
             fermi_dist = np.where(energies <= chemical_potential, 1, 0)
-
-        elif temperature > 0:
+        else:
             # Note that expit(x) = 1/(1+exp(-x))
             fermi_dist = expit(
                 -(energies - chemical_potential) / (BOLTZMANN_CONSTANT * temperature)
             )
 
         if plot:
-            ThermalElectronic.plot_fermi_dirac_distribution(
+            fig = ThermalElectronic.plot_fermi_dirac_distribution(
                 energies, fermi_dist, chemical_potential, temperature
             )
-
+            return fermi_dist, fig
         return fermi_dist
 
     @staticmethod
@@ -734,7 +710,6 @@ class ThermalElectronic:
             margin=dict(t=130),
         )
         plot_format(fig, xtitle="E - E<sub>F</sub> (eV)", ytitle="f (E, T, V) ")
-        fig.show()
 
         return fig
 
@@ -775,15 +750,14 @@ class ThermalElectronic:
 
         return num_electrons
 
-    @staticmethod
     def calculate_internal_energies(
+        self,
         energies: np.ndarray,
         dos: np.ndarray,
         temperatures: np.ndarray,
-        chemical_potentials: np.ndarray,
         resolution: float = 0.001,
         plot: bool = False,
-        selected_temperatures: np.ndarray = None,
+        plot_temperature: float = None,
     ) -> np.ndarray:
         """Calculates the thermal electronic contribution to the internal energy for a given volume using the formula:
             U_el(T, V) = ∫ DOS(E) * f(E, mu, T) * E dE - ∫_(E<mu) DOS(E) * E dE
@@ -792,14 +766,25 @@ class ThermalElectronic:
             energies (np.ndarray): energy values from the electron DOS.
             dos (np.ndarray): electron DOS values.
             temperatures (np.ndarray): temperatures in K.
-            chemical_potentials (np.ndarray): chemical potentials for each temperature.
             resolution (float, optional): energy resolution for the spline. Defaults to 0.001.
             plot (bool, optional): plots the integrand vs energy of the internal energy equation. Defaults to False.
-            selected_temperatures (np.ndarray, optional): temperatures to plot the integrand vs energy of the internal energy equation. Defaults to None.
+            plot_temperature (float, optional): temperature to plot the integrand vs energy of the internal energy equation. Defaults to None.
+
+        Raises:
+            ValueError: If there are negative temperatures.
+            ValueError: If plot_temperature is provided when plot=False or not provided when plot=True.
+            ValueError: If plot_temperature is not in temperatures when plot=True.
 
         Returns:
             np.ndarray: internal energy values.
         """
+        # If there are negative temperatures, raise an error
+        if np.any(temperatures < 0):
+            raise ValueError("Temperatures cannot be less than 0 K")
+
+        # Ensure temperatures is a numpy array
+        single_value = np.isscalar(temperatures)
+        temperatures = np.atleast_1d(temperatures)
 
         # Fit the whole energy range of the electron DOS with a spline with the given resolution
         energies_fit, dos_fit = ThermalElectronic.fit_electron_dos(
@@ -816,7 +801,9 @@ class ThermalElectronic:
         for i, temperature in enumerate(temperatures):
 
             # Calculate the Fermi-Dirac distribution function at the given temperature and chemical potential
-            chemical_potential = chemical_potentials[i]
+            chemical_potential = self.calculate_chemical_potential(
+                energies, dos, temperature
+            )
             fermi_dist = ThermalElectronic.fermi_dirac_distribution(
                 energies_fit, chemical_potential, temperature
             )
@@ -839,25 +826,43 @@ class ThermalElectronic:
             internal_energies = integral_1 - integral_2
             internal_energies_list.append(internal_energies)
 
-        # Convert lists to numpy arrays
-        integrand_1 = np.array(integrand_1_list)
-        filtered_energies = np.array(filtered_energies_list)
-        integrand_2 = np.array(integrand_2_list)
+        # Assign to new variables for clarity
+        integrand_1 = integrand_1_list
+        filtered_energies = filtered_energies_list
+        integrand_2 = integrand_2_list
+
+        # Convert internal_energies_list to a numpy array
         internal_energies = np.array(internal_energies_list)
 
         # Plot the integrands if requested
-        if plot:
-            for selected_temperature in selected_temperatures:
-                index = np.where(temperatures == selected_temperature)[0][0]
+        if (plot and plot_temperature is None) or (
+            not plot and plot_temperature is not None
+        ):
+            raise ValueError(
+                "plot_temperature must be provided if and only if plot is True."
+            )
 
-                ThermalElectronic.plot_internal_energy_integral(
-                    energies_fit,
-                    integrand_1[index],
-                    filtered_energies[index],
-                    integrand_2[index],
-                    selected_temperature,
+        if plot and plot_temperature is not None:
+            if plot_temperature not in temperatures:
+                raise ValueError(
+                    "plot_temperature must be one of the temperatures provided."
                 )
+            index = np.where(temperatures == plot_temperature)[0][0]
 
+            fig1, fig2 = ThermalElectronic.plot_internal_energy_integral(
+                energies_fit,
+                integrand_1[index],
+                filtered_energies[index],
+                integrand_2[index],
+                plot_temperature,
+            )
+            if single_value:
+                return internal_energies[0], fig1, fig2
+            else:
+                return internal_energies, fig1, fig2
+
+        if single_value:
+            return internal_energies[0]
         return internal_energies
 
     @staticmethod
@@ -883,9 +888,9 @@ class ThermalElectronic:
 
         plot_temperature = float(plot_temperature)
 
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=energies, y=integrand_1, mode="markers"))
-        fig.update_layout(
+        fig1 = go.Figure()
+        fig1.add_trace(go.Scatter(x=energies, y=integrand_1, mode="markers"))
+        fig1.update_layout(
             title=dict(
                 text=f"T = {plot_temperature} K",
                 font=dict(size=20, color="rgb(0,0,0)"),
@@ -893,13 +898,12 @@ class ThermalElectronic:
             margin=dict(t=130),
         )
         plot_format(
-            fig, xtitle="E - E<sub>F</sub> (eV)", ytitle="E<sub>el</sub> integrand 1"
+            fig1, xtitle="E - E<sub>F</sub> (eV)", ytitle="E<sub>el</sub> integrand 1"
         )
-        fig.show()
 
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=filtered_energies, y=integrand_2, mode="markers"))
-        fig.update_layout(
+        fig2 = go.Figure()
+        fig2.add_trace(go.Scatter(x=filtered_energies, y=integrand_2, mode="markers"))
+        fig2.update_layout(
             title=dict(
                 text=f"T = {plot_temperature} K",
                 font=dict(size=20, color="rgb(0,0,0)"),
@@ -907,22 +911,20 @@ class ThermalElectronic:
             margin=dict(t=130),
         )
         plot_format(
-            fig, xtitle="E - E<sub>F</sub> (eV)", ytitle="E<sub>el</sub> integrand 2"
+            fig2, xtitle="E - E<sub>F</sub> (eV)", ytitle="E<sub>el</sub> integrand 2"
         )
-        fig.show()
 
-        return fig
+        return fig1, fig2
 
-    @staticmethod
     def calculate_entropies(
+        self,
         energies: np.ndarray,
         dos: np.ndarray,
         temperatures: np.ndarray,
-        chemical_potentials: np.ndarray,
         energies_fit_range: np.ndarray = np.array([-2, 2]),
         resolution: float = 0.0001,
         plot: bool = False,
-        selected_temperatures: np.ndarray = None,
+        plot_temperature: float = None,
     ) -> np.ndarray:
         """Calculates the thermal electronic contribution to the entropy for a given volume using the formula:
             S_el(T, V) = -k_B ∫ DOS(E) * [f(E, mu, T) * ln(f(E, mu, T)) + (1 - f(E, mu, T)) * ln(1 - f(E, mu, T))] dE
@@ -931,18 +933,29 @@ class ThermalElectronic:
             energies (np.ndarray): energy values for the electron DOS.
             dos (np.ndarray): electron DOS values.
             temperatures (np.ndarray): temperatures in K.
-            chemical_potentials (np.ndarray): chemical potentials for each temperature.
             energies_fit_range (np.ndarray, optional): energy range to fit the electron DOS. Defaults to np.array([-2, 2]).
             resolution (float, optional): energy resolution for the spline. Defaults to 0.0001.
             plot (bool, optional): plots the integrand vs energy of the entropy equation. Defaults to False.
-            selected_temperatures (np.ndarray, optional): temperatures to plot the integrand vs energy of the entropy equation. Defaults to None.
+            plot_temperature (float, optional): temperature to plot the integrand vs energy of the entropy equation. Defaults to None.
+
+        Raises:
+            ValueError: If there are negative temperatures.
+            ValueError: If plot_temperature is provided when plot=False or not provided when plot=True.
+            ValueError: If plot_temperature is not in temperatures when plot=True.
 
         Returns:
             np.ndarray: entropy values.
         """
+        # If there are negative temperatures, raise an error
+        if np.any(temperatures < 0):
+            raise ValueError("Temperatures cannot be less than 0 K")
+
+        # Ensure temperatures is a numpy array
+        single_value = np.isscalar(temperatures)
+        temperatures = np.atleast_1d(temperatures)
 
         # Fit the electron DOS within the specified energy range with a spline
-        energy_fit, dos_fit = ThermalElectronic.fit_electron_dos(
+        energies_fit, dos_fit = ThermalElectronic.fit_electron_dos(
             energies, dos, energies_fit_range, resolution
         )
 
@@ -952,20 +965,23 @@ class ThermalElectronic:
 
         # Calculate the entropy for each temperature
         for i, temperature in enumerate(temperatures):
-            chemical_potential = chemical_potentials[i]
+            # Calculate the chemical potential
+            chemical_potential = self.calculate_chemical_potential(
+                energies, dos, temperature
+            )
 
             # Entropy is zero at 0 K
             if temperature == 0:
                 entropy = 0
                 entropies_list.append(entropy)
 
-                integrand = np.zeros_like(energy_fit)
+                integrand = np.zeros_like(energies_fit)
                 integrand_list.append(integrand)
 
             # Calculate the entropy at finite temperatures
             elif temperature > 0:
                 fermi_dist = ThermalElectronic.fermi_dirac_distribution(
-                    energy_fit, chemical_potential, temperature
+                    energies_fit, chemical_potential, temperature
                 )
 
                 # At finite temperatures, f is never exactly 0 or 1, but due to lack of numerical precision, we may encounter these values.
@@ -980,7 +996,7 @@ class ThermalElectronic:
                 integrand[mask] = 0
                 integrand_list.append(integrand)
 
-                entropy = -BOLTZMANN_CONSTANT * np.trapz(integrand, energy_fit)
+                entropy = -BOLTZMANN_CONSTANT * np.trapz(integrand, energies_fit)
                 entropies_list.append(entropy)
 
             # Convert lists to numpy arrays
@@ -988,14 +1004,31 @@ class ThermalElectronic:
             entropies = np.array(entropies_list)
 
         # Plot the integrand if requested
-        if plot:
-            for plot_temperature in selected_temperatures:
-                index = np.where(temperatures == plot_temperature)[0][0]
-                ThermalElectronic.plot_entropy_integral(
-                    energy_fit, integrand[index], plot_temperature
-                )
+        if (plot and plot_temperature is None) or (
+            not plot and plot_temperature is not None
+        ):
+            raise ValueError(
+                "plot_temperature must be provided if and only if plot is True."
+            )
 
-        return entropies
+        if plot and plot_temperature is not None:
+            if plot_temperature not in temperatures:
+                raise ValueError(
+                    "plot_temperature must be one of the temperatures provided."
+                )
+            index = np.where(temperatures == plot_temperature)[0][0]
+            fig = ThermalElectronic.plot_entropy_integral(
+                energies_fit, integrand[index], plot_temperature
+            )
+            if single_value:
+                return entropies[0], fig
+            else:
+                return entropies, fig
+
+        if single_value:
+            return entropies[0]
+        else:
+            return entropies
 
     @staticmethod
     def plot_entropy_integral(
@@ -1028,20 +1061,18 @@ class ThermalElectronic:
         plot_format(
             fig, xtitle="E - E<sub>F</sub> (eV)", ytitle="S<sub>el</sub> integrand"
         )
-        fig.show()
 
         return fig
 
-    @staticmethod
     def calculate_heat_capacities(
+        self,
         energies: np.ndarray,
         dos: np.ndarray,
         temperatures: np.ndarray,
-        chemical_potentials: np.ndarray,
         energies_fit_range: np.ndarray = np.array([-2, 2]),
         resolution: float = 0.0001,
         plot=False,
-        selected_temperatures: np.ndarray = None,
+        plot_temperature: float = None,
     ) -> np.array:
         """Calculates the thermal electronic contribution to the heat capacity for a given volume using the formula:
         Cv_el(T, V) = ∫ DOS(E) * f(E, mu, T) * (1 - f(E, mu, T)) * (E - mu)**2 / (k_B T**2) dE
@@ -1050,15 +1081,26 @@ class ThermalElectronic:
             energies (np.ndarray): energy values for the electron DOS.
             dos (np.ndarray): electron DOS values.
             temperatures (np.ndarray): temperatures in K.
-            chemical_potentials (np.ndarray): chemical potentials for each temperature.
             energies_fit_range (np.ndarray, optional): energy range to fit the electron DOS. Defaults to np.array([-2, 2]).
             resolution (float, optional): energy resolution for the spline. Defaults to 0.0001.
             plot (bool, optional): plots the integrand vs energy of the heat capacity equation. Defaults to False.
-            selected_temperatures (np.ndarray, optional): temperatures to plot the integrand vs energy of the heat capacity equation. Defaults to None.
+            plot_temperature (float, optional): temperature to plot the integrand vs energy of the heat capacity equation. Defaults to None.
+
+        Raises:
+            ValueError: If there are negative temperatures.
+            ValueError: If plot_temperature is provided when plot=False or not provided when plot=True.
+            ValueError: If plot_temperature is not in temperatures when plot=True.
 
         Returns:
             np.array: heat capacity values.
         """
+        # If there are negative temperatures, raise an error
+        if np.any(temperatures < 0):
+            raise ValueError("Temperatures cannot be less than 0 K")
+
+        # Ensure temperatures is a numpy array
+        single_value = np.isscalar(temperatures)
+        temperatures = np.atleast_1d(temperatures)
 
         # Fit the electron DOS within the specified energy range with a spline
         energies_fit, dos_fit = ThermalElectronic.fit_electron_dos(
@@ -1071,7 +1113,10 @@ class ThermalElectronic:
 
         # Calculate the heat capacity for each temperature
         for i, temperature in enumerate(temperatures):
-            chemical_potential = chemical_potentials[i]
+            # Calculate the chemical potential
+            chemical_potential = self.calculate_chemical_potential(
+                energies, dos, temperature
+            )
 
             # Heat capacity is zero at 0 K
             if temperature == 0:
@@ -1104,37 +1149,53 @@ class ThermalElectronic:
         heat_capacities = np.array(heat_capacities_list)
 
         # Plot the integrand if requested
-        if plot:
-            for selected_temperature in selected_temperatures:
-                index = np.where(temperatures == selected_temperature)[0][0]
-                ThermalElectronic.plot_heat_capacity_integral(
-                    energies_fit, integrand[index], selected_temperature
-                )
+        if (plot and plot_temperature is None) or (
+            not plot and plot_temperature is not None
+        ):
+            raise ValueError(
+                "plot_temperature must be provided if and only if plot is True."
+            )
 
-        return heat_capacities
+        if plot and plot_temperature is not None:
+            if plot_temperature not in temperatures:
+                raise ValueError(
+                    "plot_temperature must be one of the temperatures provided."
+                )
+            index = np.where(temperatures == plot_temperature)[0][0]
+            fig = ThermalElectronic.plot_heat_capacity_integral(
+                energies_fit, integrand[index], plot_temperature
+            )
+            if single_value:
+                return heat_capacities[0], fig
+            else:
+                return heat_capacities, fig
+        if single_value:
+            return heat_capacities[0]
+        else:
+            return heat_capacities
 
     @staticmethod
     def plot_heat_capacity_integral(
-        energies: np.ndarray, integrand: np.ndarray, selected_temperature: float
+        energies: np.ndarray, integrand: np.ndarray, plot_temperature: float
     ) -> go.Figure:
         """Plots the integrand vs energy of the heat capacity equation.
 
         Args:
             energies (np.ndarray): energy values for the electron DOS.
             integrand (np.ndarray): integrand from the heat capacity equation.
-            selected_temperature (float): temperature in K.
+            plot_temperature (float): temperature in K.
 
         Returns:
             go.Figure: Plotly figure object.
         """
 
-        selected_temperature = float(selected_temperature)
+        plot_temperature = float(plot_temperature)
 
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=energies, y=integrand, mode="markers"))
         fig.update_layout(
             title=dict(
-                text=f"T = {selected_temperature} K",
+                text=f"T = {plot_temperature} K",
                 font=dict(size=20, color="rgb(0,0,0)"),
             ),
             margin=dict(t=130),
@@ -1142,7 +1203,6 @@ class ThermalElectronic:
         plot_format(
             fig, xtitle="E - E<sub>F</sub> (eV)", ytitle="C<sub>v,el</sub> integrand"
         )
-        fig.show()
 
         return fig
 
