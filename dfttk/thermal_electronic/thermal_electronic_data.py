@@ -18,7 +18,7 @@ from pymatgen.core import Structure
 from pymatgen.io.vasp.inputs import Incar, Kpoints, Potcar
 
 # DFTTK imports
-from dfttk.thermal_electronic.functions import ThermalElectronic
+from dfttk.thermal_electronic.thermal_electronic import ThermalElectronic
 
 class ThermalElectronicData:
     """
@@ -276,12 +276,12 @@ class ThermalElectronicData:
             raise AttributeError(
                 f"Attribute '{property_name}' and '{property_name}_fit' have not been calculated. Run get_thermal_electronic_data() in ThermalElectronicData or process_thermal_electronic() in Configuration."
             )
-
-        fig = self.te.plot_vs_temp(
+        # TODO: have to fix this!
+        fig = self.te.plot_vt(
             property=property,
         )
 
-        fig_fit = self.te.plot_vs_volume(
+        fig_fit = self.te.plot_vt(
             property=property,
             selected_temperatures=selected_temperatures,
         )
