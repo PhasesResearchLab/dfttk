@@ -98,98 +98,100 @@ class ThermalElectronic:
 
         self.path = path
 
-        # Get the electronic folders
-        elec_folders = self._get_elec_folders(path=path, folder_prefix=folder_prefix)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # Get the electronic folders
+            elec_folders = self._get_elec_folders(path=path, folder_prefix=folder_prefix)
 
-        # Initialize lists to store data
-        volumes_list = []
-        num_atoms_list = []
-        nelect_list = []
-        energies_list = []
-        dos_list = []
+            # Initialize lists to store data
+            volumes_list = []
+            num_atoms_list = []
+            nelect_list = []
+            energies_list = []
+            dos_list = []
 
-        # Iterate over electronic folders to get the relevant electronic DOS data
-        for elec_folder in elec_folders:
+            # Iterate over electronic folders to get the relevant electronic DOS data
+            for elec_folder in elec_folders:
 
-            # Get the volumes, number of atoms, and number of electrons from vasprun.xml
-            vasprun_path = os.path.join(path, elec_folder, vasprun_name)
-            vasprun = Vasprun(vasprun_path)
-            volume = round(vasprun.final_structure.volume, 6)
-            volumes_list.append(volume)
-            number_of_atoms = vasprun.final_structure.num_sites
-            num_atoms_list.append(number_of_atoms)
-            nelect = vasprun.parameters["NELECT"]
-            nelect_list.append(nelect)
+                # Get the volumes, number of atoms, and number of electrons from vasprun.xml
+                vasprun_path = os.path.join(path, elec_folder, vasprun_name)
+                vasprun = Vasprun(vasprun_path)
+                volume = round(vasprun.final_structure.volume, 6)
+                volumes_list.append(volume)
+                number_of_atoms = vasprun.final_structure.num_sites
+                num_atoms_list.append(number_of_atoms)
+                nelect = vasprun.parameters["NELECT"]
+                nelect_list.append(nelect)
 
-            # Get the vasprun energies minus Fermi energy from vasprun.xml.
-            vasprun_energies = vasprun.complete_dos.energies - vasprun.efermi
-            energies_list.append(vasprun_energies)
+                # Get the vasprun energies minus Fermi energy from vasprun.xml.
+                vasprun_energies = vasprun.complete_dos.energies - vasprun.efermi
+                energies_list.append(vasprun_energies)
 
-            # Get the vasprun DOS from vasprun.xml.
-            try:
-                # For spin polarized calculations
-                vasprun_dos = (
-                    vasprun.complete_dos.densities[Spin.up]
-                    + vasprun.complete_dos.densities[Spin.down]
-                )
-            except:
-                # For non-spin polarized calculations
-                vasprun_dos = vasprun.complete_dos.densities[Spin.up]
-            dos_list.append(vasprun_dos)
+                # Get the vasprun DOS from vasprun.xml.
+                try:
+                    # For spin polarized calculations
+                    vasprun_dos = (
+                        vasprun.complete_dos.densities[Spin.up]
+                        + vasprun.complete_dos.densities[Spin.down]
+                    )
+                except:
+                    # For non-spin polarized calculations
+                    vasprun_dos = vasprun.complete_dos.densities[Spin.up]
+                dos_list.append(vasprun_dos)
 
-        # Get the sorted indices based on volumes_list
-        sorted_indices = np.argsort(volumes_list)
+            # Get the sorted indices based on volumes_list
+            sorted_indices = np.argsort(volumes_list)
 
-        # Sort all lists using the sorted indices
-        volumes_list = [volumes_list[i] for i in sorted_indices]
-        num_atoms_list = [num_atoms_list[i] for i in sorted_indices]
-        nelect_list = [nelect_list[i] for i in sorted_indices]
-        energies_list = [energies_list[i] for i in sorted_indices]
-        dos_list = [dos_list[i] for i in sorted_indices]
+            # Sort all lists using the sorted indices
+            volumes_list = [volumes_list[i] for i in sorted_indices]
+            num_atoms_list = [num_atoms_list[i] for i in sorted_indices]
+            nelect_list = [nelect_list[i] for i in sorted_indices]
+            energies_list = [energies_list[i] for i in sorted_indices]
+            dos_list = [dos_list[i] for i in sorted_indices]
 
-        # Filter values to only include selected volumes
-        if selected_volumes is not None:
-            # Check for missing volumes
-            missing = [v for v in selected_volumes if v not in volumes_list]
-            if missing:
-                raise ValueError(
-                    f"The following selected volumes were not found: {missing}"
-                )
+            # Filter values to only include selected volumes
+            if selected_volumes is not None:
+                # Check for missing volumes
+                missing = [v for v in selected_volumes if v not in volumes_list]
+                if missing:
+                    raise ValueError(
+                        f"The following selected volumes were not found: {missing}"
+                    )
 
-            filtered_volume_list = []
-            filtered_num_atoms_list = []
-            filtered_nelect_list = []
-            filtered_vasprun_energies_list = []
-            filtered_vasprun_dos_list = []
+                filtered_volume_list = []
+                filtered_num_atoms_list = []
+                filtered_nelect_list = []
+                filtered_vasprun_energies_list = []
+                filtered_vasprun_dos_list = []
 
-            for i in range(len(volumes_list)):
-                if volumes_list[i] in selected_volumes:
-                    filtered_volume_list.append(volumes_list[i])
-                    filtered_num_atoms_list.append(num_atoms_list[i])
-                    filtered_nelect_list.append(nelect_list[i])
-                    filtered_vasprun_energies_list.append(energies_list[i])
-                    filtered_vasprun_dos_list.append(dos_list[i])
+                for i in range(len(volumes_list)):
+                    if volumes_list[i] in selected_volumes:
+                        filtered_volume_list.append(volumes_list[i])
+                        filtered_num_atoms_list.append(num_atoms_list[i])
+                        filtered_nelect_list.append(nelect_list[i])
+                        filtered_vasprun_energies_list.append(energies_list[i])
+                        filtered_vasprun_dos_list.append(dos_list[i])
 
-            volumes_list = filtered_volume_list
-            num_atoms_list = filtered_num_atoms_list
-            energies_list = filtered_vasprun_energies_list
-            dos_list = filtered_vasprun_dos_list
+                volumes_list = filtered_volume_list
+                num_atoms_list = filtered_num_atoms_list
+                energies_list = filtered_vasprun_energies_list
+                dos_list = filtered_vasprun_dos_list
 
-        self.number_of_atoms = np.unique(num_atoms_list)
-        # If the number of atoms is not the same for all volumes, raise an error
-        if len(self.number_of_atoms) > 1:
-            raise ValueError("Number of atoms is not the same for all volumes.")
-        self.number_of_atoms = int(self.number_of_atoms[0])
+            self.number_of_atoms = np.unique(num_atoms_list)
+            # If the number of atoms is not the same for all volumes, raise an error
+            if len(self.number_of_atoms) > 1:
+                raise ValueError("Number of atoms is not the same for all volumes.")
+            self.number_of_atoms = int(self.number_of_atoms[0])
 
-        self.nelect = np.unique(nelect_list)
-        # If the number of electrons is not the same for all volumes, raise an error
-        if len(self.nelect) > 1:
-            raise ValueError("Number of electrons is not the same for all volumes.")
-        self.nelect = int(self.nelect[0])
+            self.nelect = np.unique(nelect_list)
+            # If the number of electrons is not the same for all volumes, raise an error
+            if len(self.nelect) > 1:
+                raise ValueError("Number of electrons is not the same for all volumes.")
+            self.nelect = int(self.nelect[0])
 
-        self.volumes = np.array(volumes_list)
-        self.energies_list = energies_list
-        self.dos_list = dos_list
+            self.volumes = np.array(volumes_list)
+            self.energies_list = energies_list
+            self.dos_list = dos_list
 
     def set_total_electron_dos(
         self,
