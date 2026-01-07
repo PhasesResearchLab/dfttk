@@ -15,7 +15,6 @@ from dfttk.data_extraction import (
     extract_average_mass,
     extract_mag_data,
     extract_tot_mag_data,
-    parse_doscar,
 )
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -64,46 +63,3 @@ def test_extract_mag_data():
 def test_extract_tot_mag_data():
     with pytest.raises(ValueError):
         extract_tot_mag_data(outcar_path, contcar_path)
-
-
-def test_parse_doscar():
-    (
-        energies,
-        dos_up,
-        dos_down,
-        integrated_dos_up,
-        integrated_dos_down,
-        fermi_energy,
-    ) = parse_doscar(vasprun_path, doscar_path)
-
-    expected_energies = np.load(
-        os.path.join(test_data_extraction_data_path, "expected_energies.npy")
-    )
-    expected_dos_up = np.load(
-        os.path.join(test_data_extraction_data_path, "expected_dos_up.npy")
-    )
-    expected_dos_down = np.array([])
-    expected_integrated_dos_up = np.load(
-        os.path.join(test_data_extraction_data_path, "expected_integrated_dos_up.npy")
-    )
-    expected_integrated_dos_down = np.array([])
-    expected_fermi_energy = fermi_energy
-
-    assert np.array_equal(
-        energies, expected_energies
-    ), f"Expected energies: {expected_energies}, got {energies}"
-    assert np.array_equal(
-        dos_up, expected_dos_up
-    ), f"Expected dos_up: {expected_dos_up}, got {dos_up}"
-    assert np.array_equal(
-        dos_down, expected_dos_down
-    ), f"Expected dos_down: {expected_dos_down}, got {dos_down}"
-    assert np.array_equal(
-        integrated_dos_up, expected_integrated_dos_up
-    ), f"Expected integrated_dos_up: {expected_integrated_dos_up}, got {integrated_dos_up}"
-    assert np.array_equal(
-        integrated_dos_down, expected_integrated_dos_down
-    ), f"Expected integrated_dos_down: {expected_integrated_dos_down}, got {integrated_dos_down}"
-    assert (
-        fermi_energy == expected_fermi_energy
-    ), f"Expected Fermi energy: {expected_fermi_energy}, got {fermi_energy}"

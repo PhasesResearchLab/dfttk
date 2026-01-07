@@ -39,9 +39,9 @@ class YphonPhononData:
         entropies (np.ndarray): Entropy (eV/K/atom), shape (n_temperatures, n_volumes).
         heat_capacities (np.ndarray): Heat capacity (eV/K/atom), shape (n_temperatures, n_volumes).
         volumes_fit (np.ndarray): Volumes used for polynomial fits, shape (n_volumes_fit,).
-        helmholtz_energies_fit (dict): Fitted Helmholtz energy data.
-        entropies_fit (dict): Fitted entropy data.
-        heat_capacities_fit (dict): Fitted heat capacity data.
+        helmholtz_energies_fit (np.ndarray): Fitted Helmholtz free energies (n_temperatures, n_volumes_fit).
+        entropies_fit (np.ndarray): Fitted entropies (n_temperatures, n_volumes_fit).
+        heat_capacities_fit (np.ndarray): Fitted heat capacity data (n_temperatures, n_volumes_fit).
         helmholtz_energies_poly_coeffs (np.ndarray): Polynomial coefficients for Helmholtz energy fits.
         entropies_poly_coeffs (np.ndarray): Polynomial coefficients for entropy fits.
         heat_capacities_poly_coeffs (np.ndarray): Polynomial coefficients for heat capacity fits.
@@ -96,7 +96,7 @@ class YphonPhononData:
             list[str]: Sorted list of phonon folder names.
         """
         return natsorted([f for f in os.listdir(self.path) if f.startswith("phonon_")])
-
+    # TODO: make this similar to EvCurveData
     def get_vasp_input(self, selected_phonon_volumes: np.ndarray = None) -> None:
         """
         Load VASP files (INCAR, KPOINTS, POTCAR, CONTCAR) for each phonon folder.
@@ -104,6 +104,7 @@ class YphonPhononData:
         Args:
             selected_phonon_volumes (np.ndarray, optional): If provided, only load structures with these phonon volumes.
         """
+        
         phonon_folders = self._get_phonon_folders()
         incar_keys = ["1relax", "2phonons"]
         kpoints_keys = ["1relax", "2phonons"]
@@ -168,7 +169,7 @@ class YphonPhononData:
         selected_volumes: np.ndarray = None,
     ) -> None:
         """
-        Load, scale, and process YPHON phonon DOS data and compute thermodynamic properties.
+        Load, scale, and process YPHON phonon DOS data to compute thermodynamic properties.
 
         Args:
             number_of_atoms (int): Number of atoms to scale the phonon DOS to.
