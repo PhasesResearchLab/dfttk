@@ -1,13 +1,16 @@
 """
-ThermalElectronic: A class for reading or setting electron DOS data, calculating thermal electronic properties, and generating plots.
+ThermalElectronic
+-----------------
+A class for reading or setting electron DOS data, calculating thermal electronic properties, and generating plots.
 
 Typical usage:
-1. Use `read_total_electron_dos()` to load electron DOS data from VASP calculations for multiple volumes,
-   or `set_total_electron_dos()` to provide DOS data directly.
-2. Call `process()` and `fit()` to compute thermal electronic contributions (Helmholtz free energy, internal energy, entropy, heat capacity).
-3. Use plotting methods to visualize results.
+    1. Load electron DOS data from VASP calculations for multiple volumes using `read_total_electron_dos()`,
+       or provide DOS data directly with `set_total_electron_dos()`.
+    2. Compute thermal electronic contributions (Helmholtz free energy, internal energy, entropy, heat capacity)
+       using `process()` and `fit()`.
+    3. Visualize results with the provided plotting methods.
 
-Intermediate methods are also provided for calculating chemical potential, fitting DOS, computing Fermi-Dirac distribution, etc.
+Additional intermediate methods are available for calculating chemical potential, fitting DOS, computing the Fermi-Dirac distribution, etc.
 """
 
 # Standard Library Imports
@@ -36,9 +39,36 @@ BOLTZMANN_CONSTANT = (
 )  # The Boltzmann constant in eV/K
 
 
+# TODO: Update methods in other modules to reflect all updates made here!
 class ThermalElectronic:
+    """
+    Class for reading or setting electron DOS data, calculating thermal electronic properties, and generating plots.
+
+    Attributes:
+    path (str): path to the directory containing electronic DOS data.
+    number_of_atoms (int): number of atoms corresponding to the structures used in the electron DOS calculations.
+    nelect (int): number of electrons corresponding to the electron DOS data.
+    volumes (np.ndarray): array of volumes for each structure (n_volumes,).
+    energies_list (list[np.ndarray]): list of arrays of energy minus Fermi energy values for each volume.
+    dos_list (list[np.ndarray]): list of arrays of DOS values for each volume.
+    temperatures (np.ndarray): array of temperatures in K (n_temperatures,).
+    helmholtz_energies (np.ndarray): Helmholtz free energies (eV) (n_temperatures, n_volumes).
+    internal_energies (np.ndarray): internal energies (eV) (n_temperatures, n_volumes).
+    entropies (np.ndarray): entropies (eV/K) (n_temperatures, n_volumes).
+    heat_capacities (np.ndarray): heat capacities (eV/K) (n_temperatures, n_volumes).
+    volumes_fit (np.ndarray): volumes used for polynomial fits (n_volumes_fit,).
+    helmholtz_energies_fit (np.ndarray): fitted Helmholtz free energies (n_temperatures, n_volumes_fit).
+    entropies_fit (np.ndarray): fitted entropies (n_temperatures, n_volumes_fit).
+    heat_capacities_fit (np.ndarray): fitted heat capacities (n_temperatures, n_volumes_fit).
+    helmholtz_energies_poly_coeffs (np.ndarray): polynomial coefficients for Helmholtz energy fits (n_temperatures, order + 1).
+    entropies_poly_coeffs (np.ndarray): polynomial coefficients for entropy fits (n_temperatures, order + 1).
+    heat_capacities_poly_coeffs (np.ndarray): polynomial coefficients for heat capacity fits (n_temperatures, order + 1).
+    """
 
     def __init__(self):
+        """
+        Initializes the ThermalElectronic class with default attributes set to None.
+        """
 
         self.path = None
         self.number_of_atoms = None
@@ -76,7 +106,7 @@ class ThermalElectronic:
 
     def read_total_electron_dos(
         self,
-        path: str,  # TODO: Update methods in other modules that depend on these arguments!
+        path: str,
         folder_prefix: str = "elec",
         vasprun_name: str = "vasprun.xml.elec_dos",
         selected_volumes: np.ndarray = None,
@@ -100,8 +130,11 @@ class ThermalElectronic:
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
+
             # Get the electronic folders
-            elec_folders = self._get_elec_folders(path=path, folder_prefix=folder_prefix)
+            elec_folders = self._get_elec_folders(
+                path=path, folder_prefix=folder_prefix
+            )
 
             # Initialize lists to store data
             volumes_list = []
@@ -248,7 +281,6 @@ class ThermalElectronic:
             )
 
         # Initialize lists to store data
-        chemical_potentials_list = []
         internal_energies_list = []
         entropies_list = []
         heat_capacities_list = []
@@ -260,13 +292,6 @@ class ThermalElectronic:
             dos = self.dos_list[i]
 
             # For each volume, compute the thermal electronic properties at each temperature
-            for temperature in temperatures:
-                chemical_potential = self.calculate_chemical_potential(
-                    energies, dos, temperature
-                )
-                chemical_potentials_list.append(chemical_potential)
-            chemical_potential_array = np.array(chemical_potentials_list)
-
             internal_energies = self.calculate_internal_energies(
                 energies, dos, temperatures
             )
@@ -557,6 +582,7 @@ class ThermalElectronic:
         Returns:
             float: chemical potential at a given electronic DOS, temperature, and volume.
         """
+
         if temperature < 0:
             raise ValueError("Temperature cannot be less than 0 K")
         temperature = float(temperature)
@@ -780,6 +806,7 @@ class ThermalElectronic:
         Returns:
             np.ndarray: internal energy values.
         """
+
         # If there are negative temperatures, raise an error
         if np.any(temperatures < 0):
             raise ValueError("Temperatures cannot be less than 0 K")
@@ -948,6 +975,7 @@ class ThermalElectronic:
         Returns:
             np.ndarray: entropy values.
         """
+
         # If there are negative temperatures, raise an error
         if np.any(temperatures < 0):
             raise ValueError("Temperatures cannot be less than 0 K")
