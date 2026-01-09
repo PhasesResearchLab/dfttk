@@ -45,24 +45,24 @@ class ThermalElectronic:
     Class for reading or setting electron DOS data, calculating thermal electronic properties, and generating plots.
 
     Attributes:
-    path (str): path to the directory containing electronic DOS data.
-    number_of_atoms (int): number of atoms corresponding to the structures used in the electron DOS calculations.
-    nelect (int): number of electrons corresponding to the electron DOS data.
-    volumes (np.ndarray): array of volumes for each structure (n_volumes,).
-    energies_list (list[np.ndarray]): list of arrays of energy minus Fermi energy values for each volume.
-    dos_list (list[np.ndarray]): list of arrays of DOS values for each volume.
-    temperatures (np.ndarray): array of temperatures in K (n_temperatures,).
-    helmholtz_energies (np.ndarray): Helmholtz free energies (eV) (n_temperatures, n_volumes).
-    internal_energies (np.ndarray): internal energies (eV) (n_temperatures, n_volumes).
-    entropies (np.ndarray): entropies (eV/K) (n_temperatures, n_volumes).
-    heat_capacities (np.ndarray): heat capacities (eV/K) (n_temperatures, n_volumes).
-    volumes_fit (np.ndarray): volumes used for polynomial fits (n_volumes_fit,).
-    helmholtz_energies_fit (np.ndarray): fitted Helmholtz free energies (n_temperatures, n_volumes_fit).
-    entropies_fit (np.ndarray): fitted entropies (n_temperatures, n_volumes_fit).
-    heat_capacities_fit (np.ndarray): fitted heat capacities (n_temperatures, n_volumes_fit).
-    helmholtz_energies_poly_coeffs (np.ndarray): polynomial coefficients for Helmholtz energy fits (n_temperatures, order + 1).
-    entropies_poly_coeffs (np.ndarray): polynomial coefficients for entropy fits (n_temperatures, order + 1).
-    heat_capacities_poly_coeffs (np.ndarray): polynomial coefficients for heat capacity fits (n_temperatures, order + 1).
+        path (str): path to the directory containing electronic DOS data.
+        number_of_atoms (int): number of atoms corresponding to the structures used in the electron DOS calculations.
+        nelect (int): number of electrons corresponding to the electron DOS data.
+        volumes (np.ndarray): array of volumes for each structure (n_volumes,).
+        energies_list (list[np.ndarray]): list of arrays of energy minus Fermi energy values for each volume.
+        dos_list (list[np.ndarray]): list of arrays of DOS values for each volume.
+        temperatures (np.ndarray): array of temperatures in K (n_temperatures,).
+        helmholtz_energies (np.ndarray): Helmholtz free energies (eV) (n_temperatures, n_volumes).
+        internal_energies (np.ndarray): internal energies (eV) (n_temperatures, n_volumes).
+        entropies (np.ndarray): entropies (eV/K) (n_temperatures, n_volumes).
+        heat_capacities (np.ndarray): heat capacities (eV/K) (n_temperatures, n_volumes).
+        volumes_fit (np.ndarray): volumes used for polynomial fits (n_volumes_fit,).
+        helmholtz_energies_fit (np.ndarray): fitted Helmholtz free energies (n_temperatures, n_volumes_fit).
+        entropies_fit (np.ndarray): fitted entropies (n_temperatures, n_volumes_fit).
+        heat_capacities_fit (np.ndarray): fitted heat capacities (n_temperatures, n_volumes_fit).
+        helmholtz_energies_poly_coeffs (np.ndarray): polynomial coefficients for Helmholtz energy fits (n_temperatures, order + 1).
+        entropies_poly_coeffs (np.ndarray): polynomial coefficients for entropy fits (n_temperatures, order + 1).
+        heat_capacities_poly_coeffs (np.ndarray): polynomial coefficients for heat capacity fits (n_temperatures, order + 1).
     """
 
     def __init__(self):
