@@ -38,7 +38,7 @@ class ThermalElectronic:
     
     Additional intermediate methods are available for calculating chemical potential, fitting DOS, computing the Fermi-Dirac distribution, etc.
 
-    Attributes:
+    **Attributes**
         path (str): path to the directory containing electronic DOS data.
         number_of_atoms (int): number of atoms corresponding to the structures used in the electron DOS calculations.
         nelect (int): number of electrons corresponding to the electron DOS data.
