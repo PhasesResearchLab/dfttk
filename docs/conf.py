@@ -30,6 +30,9 @@ extensions = ['sphinx.ext.linkcode',
               ]
 autosummary_generate = True
 
+# Make autodoc list members in the order they appear in the source code
+autodoc_member_order = 'bysource'
+
 # Jupyter Notebook configuration
 nb_execution_mode = "off"
 nb_execution_cache_path = "../temp/jupyter_cache"
