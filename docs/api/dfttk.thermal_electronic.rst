@@ -5,16 +5,16 @@ dfttk.thermal_electronic
    :undoc-members:
    :show-inheritance:
 
-ThermalElectronic Class
-----------------------
+ThermalElectronic
+-----------------
 
 .. autoclass:: dfttk.thermal_electronic.thermal_electronic.ThermalElectronic
    :members:
    :undoc-members:
    :show-inheritance:
 
-ThermalElectronicClass
-------------------------------
+ThermalElectronicData
+---------------------
 
 .. autoclass:: dfttk.thermal_electronic.thermal_electronic_data.ThermalElectronicData
    :undoc-members:
