@@ -6,10 +6,10 @@ dfttk.thermal_electronic
    :undoc-members:
    :show-inheritance:
 
-functions
----------
+thermal_electronic
+------------------
 
-.. automodule:: dfttk.thermal_electronic.functions
+.. automodule:: dfttk.thermal_electronic.thermal_electronic
    :members:
    :undoc-members:
    :show-inheritance:
