@@ -1072,9 +1072,9 @@ class ThermalElectronic:
 
         .. math::
 
-            S_\mathrm{el}(T, V) = - k_B \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, 
-                                \bigl[ f(E, \mu, T) \ln f(E, \mu, T) 
-                                + (1 - f(E, \mu, T)) \ln (1 - f(E, \mu, T)) \bigr] \, dE
+            S_\mathrm{el}(T, V) = - k_B \int_{-\infty}^{\infty} \mathrm{DOS}(E) \,
+                \bigl[ f(E, \mu, T) \ln f(E, \mu, T)
+                + (1 - f(E, \mu, T)) \ln (1 - f(E, \mu, T)) \bigr] \, dE
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
@@ -1222,13 +1222,15 @@ class ThermalElectronic:
         resolution: float = 0.0001,
         plot=False,
         plot_temperature: float = None,
-    ) -> np.array:
+    ) -> np.ndarray:
+
         """
         Calculates the thermal electronic contribution to the heat capacity for a given volume using the formula:
 
         .. math::
 
-            C_{V,\mathrm{el}}(T, V) = \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, f(E, \mu, T) \, \bigl[ 1 - f(E, \mu, T) \bigr] \frac{(E - \mu)^2}{k_B T^2} \, dE
+            C_{V,\mathrm{el}}(T, V) = \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, f(E, \mu, T) \,
+                \bigl[ 1 - f(E, \mu, T) \bigr] \frac{(E - \mu)^2}{k_B T^2} \, dE
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
