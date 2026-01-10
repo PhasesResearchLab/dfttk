@@ -31,14 +31,13 @@ class ThermalElectronic:
     calculating thermal electronic properties, and generating plots.
 
     Typical usage:
+    
         1. Load electronic DOS data from VASP calculations for multiple volumes
         using `read_total_electron_dos()`, or provide DOS data directly with
         `set_total_electron_dos()`.
-        
         2. Compute thermal electronic contributions (Helmholtz free energy,
         internal energy, entropy, and heat capacity) using `process()` and
         `fit()`.
-        
         3. Visualize results with the provided plotting methods.
 
     Additional intermediate methods are available for calculating the chemical
@@ -46,19 +45,15 @@ class ThermalElectronic:
     related quantities.
 
     Attributes:
-        path (str):
-            Path to the directory containing electronic DOS data.
-        number_of_atoms (int):
-            Number of atoms corresponding to the structures used in the
-            electronic DOS calculations.
-        nelect (int):
-            Total number of electrons corresponding to the electronic DOS data.
+        path (str): Path to the directory containing electronic DOS data.
+        number_of_atoms (int): Number of atoms used in the DOS calculations.
+        nelect (int): Total number of electrons in the DOS data.
 
         volumes (np.ndarray):
             Array of volumes for each structure, shape (n_volumes,), in Å³.
         energies_list (list[np.ndarray]):
             List of arrays of electronic energies referenced to the Fermi level
-            (E - E_F) for each volume, in eV.
+            (:math:`E - E_F`) for each volume, in eV.
         dos_list (list[np.ndarray]):
             List of arrays of electronic DOS values for each volume, in states/eV.
 
@@ -78,31 +73,26 @@ class ThermalElectronic:
             shape (n_temperatures, n_volumes), in eV/K.
 
         volumes_fit (np.ndarray):
-            Volumes used for polynomial fits,
-            shape (n_volumes_fit,), in Å³.
+            Volumes used for polynomial fits, shape (n_volumes_fit,), in Å³.
         helmholtz_energies_fit (np.ndarray):
             Polynomial-fitted Helmholtz free energies as a function of
-            temperature and fitted volume,
-            shape (n_temperatures, n_volumes_fit), in eV.
+            temperature and fitted volume, shape (n_temperatures, n_volumes_fit), in eV.
         entropies_fit (np.ndarray):
             Polynomial-fitted entropies as a function of temperature and
-            fitted volume,
-            shape (n_temperatures, n_volumes_fit), in eV/K.
+            fitted volume, shape (n_temperatures, n_volumes_fit), in eV/K.
         heat_capacities_fit (np.ndarray):
-            Polynomial-fitted heat capacities as a function of temperature
-            and fitted volume,
-            shape (n_temperatures, n_volumes_fit), in eV/K.
+            Polynomial-fitted heat capacities as a function of temperature and
+            fitted volume, shape (n_temperatures, n_volumes_fit), in eV/K.
+
         helmholtz_energies_poly_coeffs (np.ndarray):
-            Polynomial coefficients for Helmholtz free energy fits as a
-            function of volume,
-            shape (n_temperatures, order + 1).
+            Polynomial coefficients for Helmholtz free energy fits as a function
+            of volume, shape (n_temperatures, order + 1).
         entropies_poly_coeffs (np.ndarray):
             Polynomial coefficients for entropy fits as a function of volume,
             shape (n_temperatures, order + 1).
         heat_capacities_poly_coeffs (np.ndarray):
             Polynomial coefficients for heat capacity fits as a function of
-            volume,
-            shape (n_temperatures, order + 1).
+            volume, shape (n_temperatures, order + 1).
     """
 
     def __init__(self):
@@ -129,14 +119,17 @@ class ThermalElectronic:
 
     def _get_elec_folders(self, path: str, folder_prefix: str = "elec") -> list[str]:
         """
-        Get the list of folders with prefix in the specified path, sorted in natural order.
+        Get the list of folders with the specified prefix in the given path,
+        sorted in natural order.
 
         Args:
-            path (str): path to the directory containing the folders.
-            folder_prefix (str, optional): prefix of the folders to search for. Defaults to "elec".
+            path (str): Path to the directory containing the folders.
+            folder_prefix (str, optional): Prefix of the folders to search for.
+                Defaults to ``"elec"``.
 
         Returns:
-            list[str]: list of folder names with prefix sorted in natural order.
+            list[str]: List of folder names with the given prefix, sorted in
+                natural order.
         """
         return natsorted([f for f in os.listdir(path) if f.startswith(folder_prefix)])
 
