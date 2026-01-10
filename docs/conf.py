@@ -18,8 +18,6 @@ language = 'en'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = ['sphinx.ext.linkcode',
-              'sphinx.ext.duration',
-              'sphinx.ext.coverage',
               'sphinx.ext.napoleon',
               "sphinx.ext.autodoc",
               "sphinx.ext.autosummary",
@@ -29,8 +27,6 @@ extensions = ['sphinx.ext.linkcode',
               'sphinx_rtd_size'
               ]
 autosummary_generate = True
-
-# Make autodoc list members in the order they appear in the source code
 autodoc_member_order = 'bysource'
 
 # Jupyter Notebook configuration
