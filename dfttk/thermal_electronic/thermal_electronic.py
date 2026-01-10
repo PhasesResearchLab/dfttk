@@ -898,7 +898,7 @@ class ThermalElectronic:
 
             U_\mathrm{el}(T, V) =
             \int \mathrm{DOS}(E) \, f(E, \mu, T) \, E \, dE
-            - \int_{0}^{\mu} \mathrm{DOS}(E) \, E \, dE
+            - \int^{\mu} \mathrm{DOS}(E) \, E \, dE
 
         Args:
             energies (np.ndarray): Energy values from the electron DOS, in eV.
