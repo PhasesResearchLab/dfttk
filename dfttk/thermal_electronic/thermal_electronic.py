@@ -30,14 +30,12 @@ class ThermalElectronic:
     A class for reading or setting electronic density-of-states (DOS) data,
     calculating thermal electronic properties, and generating plots.
 
-    Typical usage:
-
-        1. Load electronic DOS data from VASP calculations for multiple volumes
-        using `read_total_electron_dos()`, or provide DOS data directly with
-        `set_total_electron_dos()`.\n
-        2. Compute thermal electronic contributions (Helmholtz free energy,
-        internal energy, entropy, and heat capacity) using `process()` and `fit()`.\n
-        3. Visualize results with the provided plotting methods.
+    Typical usage: (1) Load electronic DOS data from VASP calculations for 
+    multiple volumes using `read_total_electron_dos()`, or provide DOS data 
+    directly with `set_total_electron_dos()`; (2) Compute thermal electronic 
+    contributions (Helmholtz free energy, internal energy, entropy, and heat 
+    capacity) using `process()` and `fit()`; (3) Visualize results with the 
+    provided plotting methods.
 
     Additional intermediate methods are available for calculating the chemical
     potential, fitting the DOS, computing the Fermi-Dirac distribution, and
