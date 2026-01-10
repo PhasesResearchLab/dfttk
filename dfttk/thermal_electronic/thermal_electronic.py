@@ -310,13 +310,8 @@ class ThermalElectronic:
         internal energy, entropy, and heat capacity.
 
         Args:
-            volumes_fit (np.ndarray):
-                1D array of volumes used for fitting the properties, shape
-                (n_volumes_fit,), in Å³.
             temperatures (np.ndarray):
                 1D array of temperatures in K, shape (n_temperatures,).
-            order (int):
-                Order of the polynomial fit. Defaults to 1 (linear fit).
 
         Raises:
             ValueError:
