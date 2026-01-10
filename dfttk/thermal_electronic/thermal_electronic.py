@@ -1067,14 +1067,13 @@ class ThermalElectronic:
         plot: bool = False,
         plot_temperature: float = None,
     ) -> np.ndarray:
-
+        #S_\mathrm{el}(T, V) = - k_B \int_{-\infty}^{\infty} \mathrm{DOS}(E) [f \ln f + (1 - f) \ln (1 - f)] dE
         """
         Calculates the thermal electronic contribution to the entropy for a given volume using the formula:
 
         .. math::
 
-            S_\mathrm{el}(T, V) = - k_B \int_{-\infty}^{\infty} \mathrm{DOS}(E)
-                [f \ln f + (1 - f) \ln (1 - f)] dE
+            S_\mathrm{el}(T, V) 
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
