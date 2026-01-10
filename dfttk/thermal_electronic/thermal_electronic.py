@@ -760,9 +760,8 @@ class ThermalElectronic:
         plot: bool = False,
     )-> np.ndarray | tuple[np.ndarray, go.Figure]:
         """
-        Calculates the Fermi-Dirac distribution function
-
-        f(E, mu, T) given by :math:`f(E, \mu, T) = \frac{1}{1 + \exp\left(\frac{E - \mu}{k_B T}\right)}`.
+        Calculates the Fermi-Dirac distribution function f(E, mu, T) 
+        given by :math:`f(E, \mu, T) = \frac{1}{1 + \exp\left(\frac{E - \mu}{k_B T}\right)}`.
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
