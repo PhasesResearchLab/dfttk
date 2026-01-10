@@ -146,8 +146,6 @@ class ThermalElectronic:
                 CONTCAR and vasprun.xml files.
             folder_prefix (str, optional):
                 Prefix of the electronic folders. Defaults to ``"elec"``.
-            contcar_name (str, optional):
-                Name of the CONTCAR file. Defaults to ``"CONTCAR.elec_dos"``.
             vasprun_name (str, optional):
                 Name of the vasprun.xml file. Defaults to ``"vasprun.xml.elec_dos"``.
             selected_volumes (np.ndarray, optional):
