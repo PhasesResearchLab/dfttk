@@ -662,9 +662,8 @@ class ThermalElectronic:
             ValueError: If the chemical potential cannot be found within the specified
                 range.
 
-        Returns: 
-            float: 
-                Chemical potential at the given electronic DOS, temperature, and volume.
+        Returns:
+            float: Chemical potential at the given electronic DOS, temperature, and volume.
         """
 
         if temperature < 0:
