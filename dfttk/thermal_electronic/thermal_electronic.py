@@ -623,7 +623,7 @@ class ThermalElectronic:
             dos (np.ndarray): Electron DOS values.
             temperature (float): Temperature in K.
             chemical_potential_range (np.ndarray, optional): Range to search for the
-                chemical potential. Defaults to None.
+                chemical potential. Defaults to np.array([-0.1, 0.1]).
             electron_tol (float, optional): Tolerance for electron number matching.
                 Defaults to 0.5.
 
