@@ -780,7 +780,7 @@ class ThermalElectronic:
         temperature and chemical potential.
 
         Args:
-            energy (np.ndarray): Energy values for the electron DOS, in eV.
+            energies (np.ndarray): Energy values for the electron DOS, in eV.
             fermi_dist (np.ndarray): Fermi-Dirac distribution function values.
             chemical_potential (float): Chemical potential for a given volume and
                 temperature, in eV.
