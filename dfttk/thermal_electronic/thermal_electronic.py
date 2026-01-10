@@ -771,7 +771,7 @@ class ThermalElectronic:
             ValueError: If `temperature < 0 K`.
 
         Returns:
-            np.ndarray or tuple[np.ndarray, go.Figure]:
+            np.ndarray | tuple[np.ndarray, go.Figure]:
                 Fermi-Dirac distribution function values, and optionally the Plotly figure if `plot=True`.
         """
 
@@ -897,7 +897,7 @@ class ThermalElectronic:
             ValueError: If `plot_temperature` is not in `temperatures` when `plot=True`.
 
         Returns:
-            np.ndarray or tuple[np.ndarray, go.Figure, go.Figure]: Internal energy values, in eV and 
+            np.ndarray | tuple[np.ndarray, go.Figure, go.Figure]: Internal energy values, in eV and 
             optionally the Plotly figures if `plot=True`.
         """
 
