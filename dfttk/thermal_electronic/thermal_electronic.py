@@ -771,7 +771,7 @@ class ThermalElectronic:
             ValueError: If `temperature < 0 K`.
 
         Returns:
-            np.ndarray or (np.ndarray, go.Figure):
+            np.ndarray or tuple[np.ndarray, go.Figure]:
                 Fermi-Dirac distribution function values, and optionally the Plotly figure if `plot=True`.
         """
 
@@ -878,7 +878,7 @@ class ThermalElectronic:
         resolution: float = 0.001,
         plot: bool = False,
         plot_temperature: float = None,
-    ) -> np.ndarray:
+    ) -> np.ndarray | tuple[np.ndarray, go.Figure, go.Figure]:
         """
         Calculates the thermal electronic contribution to the internal energy for a given volume.
 
@@ -897,7 +897,8 @@ class ThermalElectronic:
             ValueError: If `plot_temperature` is not in `temperatures` when `plot=True`.
 
         Returns:
-            np.ndarray: Internal energy values, in eV.
+            np.ndarray or tuple[np.ndarray, go.Figure, go.Figure]: Internal energy values, in eV and 
+            optionally the Plotly figures if `plot=True`.
         """
 
         # If there are negative temperatures, raise an error
@@ -994,7 +995,7 @@ class ThermalElectronic:
         filtered_energies: np.ndarray,
         integrand_2: np.ndarray,
         plot_temperature: float,
-    ) -> go.Figure:
+    ) -> tuple[go.Figure, go.Figure]:
         """
         Plots the integrands versus energy of the internal energy equation.
 
@@ -1006,7 +1007,7 @@ class ThermalElectronic:
             plot_temperature (float): Temperature at which the integrand is plotted, in K.
 
         Returns:
-            go.Figure: Plotly figure object containing the integrand curves.
+            tuple[go.Figure, go.Figure]: Plotly figure objects containing the integrand curves.
         """
 
         plot_temperature = float(plot_temperature)
@@ -1048,7 +1049,7 @@ class ThermalElectronic:
         resolution: float = 0.0001,
         plot: bool = False,
         plot_temperature: float = None,
-    ) -> np.ndarray:
+    ) -> np.ndarray | tuple[np.ndarray, go.Figure]:
         """
         Calculates the thermal electronic contribution to the entropy for a given volume.
 
@@ -1067,7 +1068,8 @@ class ThermalElectronic:
             ValueError: If plot_temperature is not in `temperatures` when `plot=True`.
 
         Returns:
-            np.ndarray: Entropy values as a function of temperature, in eV/K.
+            np.ndarray | tuple[np.ndarray, go.Figure]: Entropy values as a function of temperature, in eV/K 
+            and optionally the Plotly figure if `plot=True`.
         """
 
         # If there are negative temperatures, raise an error
@@ -1198,7 +1200,7 @@ class ThermalElectronic:
         resolution: float = 0.0001,
         plot=False,
         plot_temperature: float = None,
-    ) -> np.ndarray:
+    ) -> np.ndarray | tuple[np.ndarray, go.Figure]:
         """
         Calculates the thermal electronic contribution to the heat capacity for a given volume.
 
@@ -1217,7 +1219,8 @@ class ThermalElectronic:
             ValueError: If plot_temperature is not in `temperatures` when `plot=True`.
 
         Returns:
-            np.ndarray: Heat capacity values in eV/K.
+            np.ndarray | tuple[np.ndarray, go.Figure]: Heat capacity values in eV/K 
+            and optionally the Plotly figure if `plot=True`.
         """
 
         # If there are negative temperatures, raise an error
