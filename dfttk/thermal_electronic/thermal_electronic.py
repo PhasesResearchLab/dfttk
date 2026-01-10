@@ -1067,13 +1067,14 @@ class ThermalElectronic:
         plot: bool = False,
         plot_temperature: float = None,
     ) -> np.ndarray:
-        #S_\mathrm{el}(T, V) = - k_B \int_{-\infty}^{\infty} \mathrm{DOS}(E) [f \ln f + (1 - f) \ln (1 - f)] dE
+        #TODO: fix the formula for readthedocs:
+        #S_\mathrm{el}(T, V) = - k_B \int_{-\infty}^{\infty} \mathrm{DOS}(E) \left[ f \ln f + (1 - f) \ln (1 - f) \right] \, dE
         """
-        Calculates the thermal electronic contribution to the entropy for a given volume using the formula:
+        Calculates the thermal electronic contribution to the entropy for a given volume using the formula
 
         .. math::
 
-            S_\mathrm{el}(T, V) = - k_B \int_{-\infty}^{\infty} \mathrm{DOS}(E)\, dE
+            S_\mathrm{el}(T, V) = - k_B \int_{-\infty}^{\infty} \mathrm{DOS}(E)\, dE.
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
@@ -1222,14 +1223,14 @@ class ThermalElectronic:
         plot=False,
         plot_temperature: float = None,
     ) -> np.ndarray:
-
+        #TODO: fix the formula for readthedocs:
         """
-        Calculates the thermal electronic contribution to the heat capacity for a given volume using the formula:
+        Calculates the thermal electronic contribution to the heat capacity for a given volume using the formula
 
         .. math::
 
             C_{V,\mathrm{el}}(T, V) = \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, f \,
-                \bigl[ 1 - f \bigr] \frac{(E - \mu)^2}{k_B T^2} \, dE
+                \bigl[ 1 - f \bigr] \frac{(E - \mu)^2}{k_B T^2} \, dE.
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
@@ -1373,7 +1374,7 @@ class ThermalElectronic:
 
         .. math::
 
-            F_\mathrm{el}(T, V) = U_\mathrm{el}(T, V) - T \, S_\mathrm{el}(T, V)
+            F_\mathrm{el}(T, V) = U_\mathrm{el}(T, V) - T \, S_\mathrm{el}(T, V).
 
         Args:
             internal_energies (np.ndarray): Internal energy values, in eV.
