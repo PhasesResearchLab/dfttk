@@ -331,7 +331,7 @@ class ThermalElectronic:
         if self.dos_list is None:
             raise ValueError(
                 "DOS data not found. Please read or set the total electron DOS first "
-                "using `read_total_electron_dos()` or `set_total_electron_dos()`."
+                "using read_total_electron_dos() or set_total_electron_dos()."
             )
 
         # Initialize lists to store data
@@ -1228,8 +1228,7 @@ class ThermalElectronic:
 
         .. math::
 
-            C_{V,el}(T, V) = \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, f(E, \mu, T) \,
-                            \bigl[ 1 - f(E, \mu, T) \bigr] \frac{(E - \mu)^2}{k_B T^2} 
+            C_{V,\mathrm{el}}(T, V) = \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, f(E, \mu, T) \, \bigl[ 1 - f(E, \mu, T) \bigr] \frac{(E - \mu)^2}{k_B T^2} \, dE
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
