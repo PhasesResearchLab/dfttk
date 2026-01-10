@@ -762,12 +762,6 @@ class ThermalElectronic:
         """
         Calculates the Fermi-Dirac distribution function.
 
-        The function is given by:
-
-        .. math::
-
-            f(E, \\mu, T) = \\frac{1}{1 + \\exp\\left(\\frac{E - \\mu}{k_B T}\\right)}
-
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
             chemical_potential (float): Chemical potential for a given volume and temperature, in eV.
@@ -851,10 +845,6 @@ class ThermalElectronic:
         Calculates the number of electrons for a given electronic DOS, chemical potential,
         and temperature.
 
-        .. math::
-
-            N = \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, f(E, \mu, T) \, dE
-
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
             dos (np.ndarray): Electron DOS values, in states/eV.
@@ -893,12 +883,6 @@ class ThermalElectronic:
     ) -> np.ndarray:
         """
         Calculates the thermal electronic contribution to the internal energy for a given volume.
-
-        .. math::
-
-            U_\mathrm{el}(T, V) =
-            \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, f(E, \mu, T) \, E \, dE
-            - \int_{-\infty}^{E_F} \mathrm{DOS}(E) \, E \, dE
 
         Args:
             energies (np.ndarray): Energy values from the electron DOS, in eV.
@@ -1067,17 +1051,8 @@ class ThermalElectronic:
         plot: bool = False,
         plot_temperature: float = None,
     ) -> np.ndarray:
-        #TODO: fix the formula for readthedocs
         """
-        Calculates the thermal electronic contribution to the entropy for a given volume using the formula
-
-        .. math::
-        
-           S_\mathrm{el}(T, V) =
-           - k_B \int_{-\infty}^{\infty} \mathrm{DOS}(E)
-           \left[
-              f \ln f + (1 - f) \ln (1 - f)
-           \right]\, dE.
+        Calculates the thermal electronic contribution to the entropy for a given volume.
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
@@ -1226,16 +1201,8 @@ class ThermalElectronic:
         plot=False,
         plot_temperature: float = None,
     ) -> np.ndarray:
-        #TODO: fix the formula for readthedocs
         """
-        Calculates the thermal electronic contribution to the heat capacity for a given volume using the formula
-
-        .. math::
-        
-           C_{v,\mathrm{el}}(T, V) =
-           \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, f \,
-           \left( 1 - f \right)
-           \frac{(E - \mu)^2}{k_B T^2} \, dE.
+        Calculates the thermal electronic contribution to the heat capacity for a given volume.
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
@@ -1375,11 +1342,7 @@ class ThermalElectronic:
         temperatures: np.ndarray,
     ) -> np.ndarray:
         """
-        Calculates the thermal electronic contribution to the Helmholtz free energy for a given volume using the formula
-
-        .. math::
-
-            F_\mathrm{el}(T, V) = U_\mathrm{el}(T, V) - T \, S_\mathrm{el}(T, V).
+        Calculates the thermal electronic contribution to the Helmholtz free energy for a given volume.
 
         Args:
             internal_energies (np.ndarray): Internal energy values, in eV.
