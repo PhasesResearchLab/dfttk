@@ -459,9 +459,8 @@ class ThermalElectronic:
                 using `read_total_electron_dos()` or `set_total_electron_dos()`.
 
         Returns:
-            go.Figure:
-                Plotly figure object containing the total electron DOS curves for
-                the different volumes.
+            go.Figure: Plotly figure object containing the total electron DOS curves for 
+            the different volumes.
         """
 
         # If dos_list is None, raise an error
@@ -810,14 +809,16 @@ class ThermalElectronic:
         chemical_potential: float,
         temperature: float,
     ) -> go.Figure:
-        """Plots the Fermi-Dirac distribution function vs. energy for a given temperature and
-        chemical potential.
+        """
+        Plots the Fermi-Dirac distribution function versus energy for a given
+        temperature and chemical potential.
 
         Args:
-            energy (np.ndarray): energy values for the electron DOS.
-            fermi_dist (np.ndarray):  Fermi-Dirac distribution function values.
-            chemical_potential (float): chemical potential for a given volume and temperature.
-            temperature (float): temperature in K.
+            energy (np.ndarray): Energy values for the electron DOS, in eV.
+            fermi_dist (np.ndarray): Fermi-Dirac distribution function values.
+            chemical_potential (float): Chemical potential for a given volume and
+                temperature, in eV.
+            temperature (float): Temperature in K.
         """
 
         fig = go.Figure()
