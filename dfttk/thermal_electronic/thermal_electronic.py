@@ -1073,8 +1073,8 @@ class ThermalElectronic:
 
         .. math::
 
-            S_\mathrm{el}(T, V) = - k_B \int_{-\infty}^{\infty} \mathrm{DOS}(E)
-                \left[ f \ln f + (1 - f) \ln (1 - f) \right] dE
+            S_\\mathrm{el}(T, V) = - k_B \\int_{-\\infty}^{\\infty} \\mathrm{DOS}(E)
+                \\left[ f \\ln f + (1 - f) \\ln (1 - f) \\right] dE
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
