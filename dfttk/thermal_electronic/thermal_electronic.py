@@ -817,6 +817,10 @@ class ThermalElectronic:
             chemical_potential (float): Chemical potential for a given volume and
                 temperature, in eV.
             temperature (float): Temperature in K.
+        
+        Returns:
+            go.Figure: Plotly figure object containing the Fermi-Dirac distribution
+                function curve.
         """
 
         fig = go.Figure()
