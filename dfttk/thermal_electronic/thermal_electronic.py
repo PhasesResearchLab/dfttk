@@ -1072,8 +1072,9 @@ class ThermalElectronic:
 
         .. math::
 
-            S_\mathrm{el}(T, V) = -k_B \int \mathrm{DOS}(E) \left[ f(E, \mu, T) \ln f(E, \mu, T) +
-            (1 - f(E, \mu, T)) \ln (1 - f(E, \mu, T)) \right] \, dE
+            S_\mathrm{el}(T, V) = - k_B \int_{-\infty}^{\infty} \mathrm{DOS}(E) \left[
+                f(E, \mu, T) \ln f(E, \mu, T) + (1 - f(E, \mu, T)) \ln (1 - f(E, \mu, T))
+            \right] \, dE
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
@@ -1227,7 +1228,7 @@ class ThermalElectronic:
 
         .. math::
 
-            C_{V,el}(T, V) = \int \mathrm{DOS}(E) \, f(E, \mu, T) \,
+            C_{V,el}(T, V) = \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, f(E, \mu, T) \,
                             \left[ 1 - f(E, \mu, T) \right] \frac{(E - \mu)^2}{k_B T^2} \, dE
 
         Args:
