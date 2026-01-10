@@ -1067,8 +1067,7 @@ class ThermalElectronic:
         plot: bool = False,
         plot_temperature: float = None,
     ) -> np.ndarray:
-        #TODO: fix the formula for readthedocs:
-        #S_\mathrm{el}(T, V) = - k_B \int_{-\infty}^{\infty} \mathrm{DOS}(E) \left[ f \ln f + (1 - f) \ln (1 - f) \right] \, dE
+        #TODO: fix the formula for readthedocs
         """
         Calculates the thermal electronic contribution to the entropy for a given volume using the formula
 
@@ -1227,7 +1226,7 @@ class ThermalElectronic:
         plot=False,
         plot_temperature: float = None,
     ) -> np.ndarray:
-        #TODO: fix the formula for readthedocs:
+        #TODO: fix the formula for readthedocs
         """
         Calculates the thermal electronic contribution to the heat capacity for a given volume using the formula
 
