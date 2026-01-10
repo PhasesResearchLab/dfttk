@@ -143,26 +143,18 @@ class ThermalElectronic:
         Reads the total electron DOS data from VASP calculations for different volumes.
 
         Args:
-            path (str):
-                Path to the directory containing the specific folders with
+            path (str): Path to the directory containing the specific folders with
                 CONTCAR and vasprun.xml files.
-            folder_prefix (str, optional):
-                Prefix of the electronic folders. Defaults to ``"elec"``.
-            contcar_name (str, optional):
-                Name of the CONTCAR file. Defaults to ``"CONTCAR.elec_dos"``.
-            vasprun_name (str, optional):
-                Name of the vasprun.xml file. Defaults to ``"vasprun.xml.elec_dos"``.
-            selected_volumes (np.ndarray, optional):
-                List of selected volumes to keep the electron DOS data. Defaults
+            folder_prefix (str, optional): Prefix of the electronic folders. Defaults to ``"elec"``.
+            contcar_name (str, optional): Name of the CONTCAR file. Defaults to ``"CONTCAR.elec_dos"``.
+            vasprun_name (str, optional): Name of the vasprun.xml file. Defaults to ``"vasprun.xml.elec_dos"``.
+            selected_volumes (np.ndarray, optional): List of selected volumes to keep the electron DOS data. Defaults
                 to None.
 
         Raises:
-            ValueError:
-                If selected volumes are not found.
-            ValueError:
-                If the number of atoms is not the same for all volumes.
-            ValueError:
-                If the number of electrons is not the same for all volumes.
+            ValueError: If selected volumes are not found.
+            ValueError: If the number of atoms is not the same for all volumes.
+            ValueError: If the number of electrons is not the same for all volumes.
         """
 
         self.path = path
