@@ -2,22 +2,21 @@ dfttk.thermal_electronic
 ========================
 
 .. automodule:: dfttk.thermal_electronic
+   :undoc-members:
+   :show-inheritance:
+
+ThermalElectronic
+-----------------
+
+.. autoclass:: dfttk.thermal_electronic.thermal_electronic.ThermalElectronic
    :members:
    :undoc-members:
    :show-inheritance:
 
-functions
----------
+ThermalElectronicData
+---------------------
 
-.. automodule:: dfttk.thermal_electronic.functions
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-thermal_electronic_data
------------------------
-
-.. automodule:: dfttk.thermal_electronic.thermal_electronic_data
+.. autoclass:: dfttk.thermal_electronic.thermal_electronic_data.ThermalElectronicData
    :members:
    :undoc-members:
    :show-inheritance:
