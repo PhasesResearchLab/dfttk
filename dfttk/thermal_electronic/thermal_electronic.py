@@ -1073,7 +1073,7 @@ class ThermalElectronic:
 
         .. math::
 
-            S_\mathrm{el}(T, V) 
+            S_\mathrm{el}(T, V) = - k_B \int_{-\infty}^{\infty} \mathrm{DOS}(E)\, dE
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
