@@ -1229,8 +1229,7 @@ class ThermalElectronic:
 
         .. math::
 
-            C_{V,\mathrm{el}}(T, V) = \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, f \,
-                \bigl[ 1 - f \bigr] \frac{(E - \mu)^2}{k_B T^2} \, dE.
+            C_{v,\mathrm{el}}(T, V) = \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, f \, \left(1 - f \right) \frac{(E - \mu)^2}{k_B T^2} \, dE.
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
