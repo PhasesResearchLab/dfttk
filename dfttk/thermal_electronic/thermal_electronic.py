@@ -760,22 +760,27 @@ class ThermalElectronic:
         plot: bool = False,
     )-> np.ndarray | tuple[np.ndarray, go.Figure]:
         """
-        Calculates the Fermi-Dirac distribution function f(E, mu, T) 
-        given by :math:`f(E, \mu, T) = \frac{1}{1 + \exp\left(\frac{E - \mu}{k_B T}\right)}`.
+        Calculates the Fermi-Dirac distribution function.
+
+        The function is given by:
+
+        .. math::
+
+            f(E, \\mu, T) = \\frac{1}{1 + \\exp\\left(\\frac{E - \\mu}{k_B T}\\right)}
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
             chemical_potential (float): Chemical potential for a given volume and temperature, in eV.
             temperature (float): Temperature in K.
-            plot (bool, optional): If True, plots the Fermi-Dirac distribution function vs. energy
-                for the given temperature and chemical potential. Defaults to False.
+            plot (bool, optional): If True, plots the Fermi-Dirac distribution function
+                vs. energy for the given temperature and chemical potential. Defaults to False.
 
         Raises:
             ValueError: If `temperature < 0 K`.
 
         Returns:
-            np.ndarray or (np.ndarray, go.Figure): Fermi-Dirac distribution function values, and
-                optionally the Plotly figure if `plot=True`.
+            np.ndarray or (np.ndarray, go.Figure): Fermi-Dirac distribution function values,
+                and optionally the Plotly figure if `plot=True`.
         """
 
         chemical_potential = float(chemical_potential)
