@@ -469,7 +469,7 @@ class ThermalElectronic:
         if self.dos_list is None:
             raise ValueError(
                 "DOS data not found. Please read or set the total electron DOS first "
-                "using `read_total_electron_dos()` or `set_total_electron_dos()`."
+                "using read_total_electron_dos() or set_total_electron_dos()."
             )
 
         fig = go.Figure()
@@ -521,7 +521,7 @@ class ThermalElectronic:
         if self.helmholtz_energies is None:
             raise ValueError(
                 "Thermodynamic properties not yet calculated. "
-                "Please call `process()` first."
+                "Please call process() first."
             )
 
         type_map = {
@@ -554,9 +554,9 @@ class ThermalElectronic:
         if type not in type_map:
             raise ValueError(
                 "type must be one of "
-                "`'helmholtz_energy_vs_temperature'`, `'entropy_vs_temperature'`, "
-                "`'heat_capacity_vs_temperature'`, `'helmholtz_energy_vs_volume'`, "
-                "`'entropy_vs_volume'`, or `'heat_capacity_vs_volume'`."
+                "'helmholtz_energy_vs_temperature', 'entropy_vs_temperature', "
+                "'heat_capacity_vs_temperature', 'helmholtz_energy_vs_volume', "
+                "'entropy_vs_volume', or 'heat_capacity_vs_volume'."
             )
 
         if "vs_temperature" in type:
