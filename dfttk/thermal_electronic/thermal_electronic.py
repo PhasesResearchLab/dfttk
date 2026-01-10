@@ -1193,7 +1193,7 @@ class ThermalElectronic:
         temperatures: np.ndarray,
         energies_fit_range: np.ndarray = np.array([-2, 2]),
         resolution: float = 0.0001,
-        plot=False,
+        plot: bool = False,
         plot_temperature: float = None,
     ) -> np.ndarray | tuple[np.ndarray, go.Figure]:
         """
