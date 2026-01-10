@@ -1369,7 +1369,9 @@ class ThermalElectronic:
         """
         Calculates the thermal electronic contribution to the Helmholtz free energy for a given volume using the formula
 
-            :math:`F_\mathrm{el}(T, V) = U_\mathrm{el}(T, V) - T \, S_\mathrm{el}(T, V)`
+        .. math::
+
+            F_\mathrm{el}(T, V) = U_\mathrm{el}(T, V) - T \, S_\mathrm{el}(T, V)
 
         Args:
             internal_energies (np.ndarray): Internal energy values, in eV.
