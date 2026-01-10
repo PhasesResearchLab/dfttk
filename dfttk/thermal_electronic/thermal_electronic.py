@@ -459,7 +459,8 @@ class ThermalElectronic:
                 using `read_total_electron_dos()` or `set_total_electron_dos()`.
 
         Returns:
-            go.Figure: Plotly figure object containing the total electron DOS curves for 
+            go.Figure:
+                Plotly figure object containing the total electron DOS curves for
                 the different volumes.
         """
 
