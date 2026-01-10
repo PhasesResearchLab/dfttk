@@ -27,47 +27,83 @@ BOLTZMANN_CONSTANT = (
 # TODO: Update methods in other modules to reflect all updates made here!
 class ThermalElectronic:
     """
-    A class for reading or setting electron DOS data, calculating thermal electronic properties, and generating plots.
+    A class for reading or setting electronic density-of-states (DOS) data,
+    calculating thermal electronic properties, and generating plots.
 
     Typical usage:
-        1. Load electron DOS data from VASP calculations for multiple volumes using `read_total_electron_dos()`,
-           or provide DOS data directly with `set_total_electron_dos()`.
-        2. Compute thermal electronic contributions (Helmholtz free energy, internal energy, entropy, heat capacity)
-           using `process()` and `fit()`.
+        1. Load electronic DOS data from VASP calculations for multiple volumes
+        using `read_total_electron_dos()`, or provide DOS data directly with
+        `set_total_electron_dos()`.
+        2. Compute thermal electronic contributions (Helmholtz free energy,
+        internal energy, entropy, and heat capacity) using `process()` and
+        `fit()`.
         3. Visualize results with the provided plotting methods.
-    
-    Additional intermediate methods are available for calculating chemical potential, fitting DOS, computing the Fermi-Dirac distribution, etc.
 
-    Attributes
-    ----------
-        path (str): path to the directory containing electronic DOS data.
-        number_of_atoms (int): number of atoms corresponding to the structures used in the electron DOS calculations.
-        nelect (int): number of electrons corresponding to the electron DOS data.
-        
-        volumes (np.ndarray): array of volumes for each structure (n_volumes,).
-        energies_list (list[np.ndarray]): list of arrays of energy minus Fermi energy values for each volume.
-        dos_list (list[np.ndarray]): list of arrays of DOS values for each volume.
-        
-        temperatures (np.ndarray): array of temperatures in K (n_temperatures,).
-        helmholtz_energies (np.ndarray): Helmholtz free energies (eV) (n_temperatures, n_volumes).
-        internal_energies (np.ndarray): internal energies (eV) (n_temperatures, n_volumes).
-        entropies (np.ndarray): entropies (eV/K) (n_temperatures, n_volumes).
-        heat_capacities (np.ndarray): heat capacities (eV/K) (n_temperatures, n_volumes).
-        
-        volumes_fit (np.ndarray): volumes used for polynomial fits (n_volumes_fit,).
-        helmholtz_energies_fit (np.ndarray): fitted Helmholtz free energies (n_temperatures, n_volumes_fit).
-        entropies_fit (np.ndarray): fitted entropies (n_temperatures, n_volumes_fit).
-        heat_capacities_fit (np.ndarray): fitted heat capacities (n_temperatures, n_volumes_fit).
-        helmholtz_energies_poly_coeffs (np.ndarray): polynomial coefficients for Helmholtz energy fits (n_temperatures, order + 1).
-        entropies_poly_coeffs (np.ndarray): polynomial coefficients for entropy fits (n_temperatures, order + 1).
-        heat_capacities_poly_coeffs (np.ndarray): polynomial coefficients for heat capacity fits (n_temperatures, order + 1).
+    Additional intermediate methods are available for calculating the chemical
+    potential, fitting the DOS, computing the Fermi-Dirac distribution, and
+    related quantities.
+
+    Attributes:
+        path (str):
+            Path to the directory containing electronic DOS data.
+        number_of_atoms (int):
+            Number of atoms corresponding to the structures used in the
+            electronic DOS calculations.
+        nelect (int):
+            Total number of electrons corresponding to the electronic DOS data.
+
+        volumes (np.ndarray):
+            Array of volumes for each structure, shape (n_volumes,), in Å³.
+        energies_list (list[np.ndarray]):
+            List of arrays of electronic energies referenced to the Fermi level
+            (E - E_F) for each volume, in eV.
+        dos_list (list[np.ndarray]):
+            List of arrays of electronic DOS values for each volume, in states/eV.
+
+        temperatures (np.ndarray):
+            Array of temperatures, shape (n_temperatures,), in K.
+        helmholtz_energies (np.ndarray):
+            Helmholtz free energy as a function of temperature and volume,
+            shape (n_temperatures, n_volumes), in eV.
+        internal_energies (np.ndarray):
+            Internal energy as a function of temperature and volume,
+            shape (n_temperatures, n_volumes), in eV.
+        entropies (np.ndarray):
+            Entropy as a function of temperature and volume,
+            shape (n_temperatures, n_volumes), in eV/K.
+        heat_capacities (np.ndarray):
+            Heat capacity as a function of temperature and volume,
+            shape (n_temperatures, n_volumes), in eV/K.
+
+        volumes_fit (np.ndarray):
+            Volumes used for polynomial fits,
+            shape (n_volumes_fit,), in Å³.
+        helmholtz_energies_fit (np.ndarray):
+            Polynomial-fitted Helmholtz free energies as a function of
+            temperature and fitted volume,
+            shape (n_temperatures, n_volumes_fit), in eV.
+        entropies_fit (np.ndarray):
+            Polynomial-fitted entropies as a function of temperature and
+            fitted volume,
+            shape (n_temperatures, n_volumes_fit), in eV/K.
+        heat_capacities_fit (np.ndarray):
+            Polynomial-fitted heat capacities as a function of temperature
+            and fitted volume,
+            shape (n_temperatures, n_volumes_fit), in eV/K.
+        helmholtz_energies_poly_coeffs (np.ndarray):
+            Polynomial coefficients for Helmholtz free energy fits as a
+            function of volume,
+            shape (n_temperatures, order + 1).
+        entropies_poly_coeffs (np.ndarray):
+            Polynomial coefficients for entropy fits as a function of volume,
+            shape (n_temperatures, order + 1).
+        heat_capacities_poly_coeffs (np.ndarray):
+            Polynomial coefficients for heat capacity fits as a function of
+            volume,
+            shape (n_temperatures, order + 1).
     """
 
     def __init__(self):
-        """
-        Initializes the ThermalElectronic class with default attributes set to None.
-        """
-
         self.path = None
         self.number_of_atoms = None
         self.nelect = None
