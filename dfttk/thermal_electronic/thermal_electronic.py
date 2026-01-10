@@ -459,8 +459,9 @@ class ThermalElectronic:
                 using `read_total_electron_dos()` or `set_total_electron_dos()`.
 
         Returns:
-            go.Figure: Plotly figure object containing the total electron DOS curves for 
-            the different volumes.
+            go.Figure:
+                Plotly figure object containing the total electron DOS curves for
+                the different volumes.
         """
 
         # If dos_list is None, raise an error
@@ -662,8 +663,7 @@ class ThermalElectronic:
                 range.
 
         Returns:
-            float: Chemical potential at the given electronic DOS, temperature, and
-                volume.
+            float: Chemical potential at the given electronic DOS, temperature, and volume.
         """
 
         if temperature < 0:
