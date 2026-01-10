@@ -103,7 +103,8 @@ def test_process(cached_dos_data):
     thermal_electronic = ThermalElectronic()
 
     # Process without setting the DOS (should raise an error)
-    with pytest.raises(ValueError, match=re.escape("DOS data not found. Please read or set the total electron DOS first using read_total_electron_dos() or set_total_electron_dos().")):
+    with pytest.raises(ValueError, match=re.escape("DOS data not found. Please read or set the total electron DOS first "
+                "using read_total_electron_dos() or set_total_electron_dos().")):
         thermal_electronic.process(temperatures=temperatures)
 
     # Now set the DOS and process
