@@ -853,7 +853,7 @@ class ThermalElectronic:
 
         .. math::
 
-            N = \\int \\mathrm{DOS}(E) \\, f(E, \\mu, T) \\, dE
+            N = \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, f(E, \mu, T) \, dE
 
         Args:
             energies (np.ndarray): Energy values for the electron DOS, in eV.
@@ -897,8 +897,8 @@ class ThermalElectronic:
         .. math::
 
             U_\mathrm{el}(T, V) =
-            \int \mathrm{DOS}(E) \, f(E, \mu, T) \, E \, dE
-            - \int^{\mu} \mathrm{DOS}(E) \, E \, dE
+            \int_{-\infty}^{\infty} \mathrm{DOS}(E) \, f(E, \mu, T) \, E \, dE
+            - \int_{-\infty}^{E_F} \mathrm{DOS}(E) \, E \, dE
 
         Args:
             energies (np.ndarray): Energy values from the electron DOS, in eV.
@@ -953,8 +953,8 @@ class ThermalElectronic:
             integrand_1_list.append(integrand_1)
             integral_1 = np.trapz(integrand_1, energies_fit)
 
-            # Evaluate the second integral from -infinity to the chemical potential
-            mask = energies_fit < chemical_potential
+            # Evaluate the second integral from -infinity to the Fermi energy (shifted to 0 eV)
+            mask = energies_fit < 0
             filtered_energies = energies_fit[mask]
             filtered_energies_list.append(filtered_energies)
             filtered_dos = dos_fit[mask]
