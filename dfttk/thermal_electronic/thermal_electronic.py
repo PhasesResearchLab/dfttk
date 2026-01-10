@@ -32,13 +32,13 @@ class ThermalElectronic:
 
     Typical usage:
 
-#. Load electronic DOS data from VASP calculations for multiple volumes
-using `read_total_electron_dos()`, or provide DOS data directly with
-`set_total_electron_dos()`.
-#. Compute thermal electronic contributions (Helmholtz free energy,
-internal energy, entropy, and heat capacity) using `process()` and
-`fit()`.
-#. Visualize results with the provided plotting methods.
+        * Load electronic DOS data from VASP calculations for multiple volumes
+        using `read_total_electron_dos()`, or provide DOS data directly with
+        `set_total_electron_dos()`.
+        * Compute thermal electronic contributions (Helmholtz free energy,
+        internal energy, entropy, and heat capacity) using `process()` and
+        `fit()`.
+        * Visualize results with the provided plotting methods.
 
     Additional intermediate methods are available for calculating the chemical
     potential, fitting the DOS, computing the Fermi-Dirac distribution, and
