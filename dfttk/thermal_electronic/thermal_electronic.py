@@ -449,7 +449,7 @@ class ThermalElectronic:
         self.entropies_poly_coeffs = np.array(entropies_poly_coeffs)
         self.heat_capacities_poly_coeffs = np.array(heat_capacities_poly_coeffs)
 
-    def plot_total_dos(self)-> go.Figure:
+    def plot_total_dos(self) -> go.Figure:
         """
         Plots the total electron DOS for different volumes.
 
@@ -496,7 +496,7 @@ class ThermalElectronic:
 
         Args:
             type (str):
-                Must be one of the following values: 
+                Must be one of the following values:
                 ``'helmholtz_energy_vs_temperature'``, ``'entropy_vs_temperature'``,
                 ``'heat_capacity_vs_temperature'``, ``'helmholtz_energy_vs_volume'``,
                 ``'entropy_vs_volume'``, or ``'heat_capacity_vs_volume'``.
@@ -676,7 +676,7 @@ class ThermalElectronic:
 
         if self.nelect is not None:
             if abs(num_electrons_0K - self.nelect) > electron_tol:
-                warnings.warn(  
+                warnings.warn(
                     f"Warning: The number of electrons at 0 K ({num_electrons_0K}) does not match the expected number of "
                     f"electrons ({self.nelect}) within the specified tolerance."
                     " Consider increasing NEDOS.",
@@ -758,7 +758,7 @@ class ThermalElectronic:
         chemical_potential: float,
         temperature: float,
         plot: bool = False,
-    )-> np.ndarray | tuple[np.ndarray, go.Figure]:
+    ) -> np.ndarray | tuple[np.ndarray, go.Figure]:
         """
         Calculates the Fermi-Dirac distribution function.
 
@@ -779,8 +779,8 @@ class ThermalElectronic:
             ValueError: If `temperature < 0 K`.
 
         Returns:
-            np.ndarray or (np.ndarray, go.Figure): Fermi-Dirac distribution function values,
-                and optionally the Plotly figure if `plot=True`.
+            np.ndarray or (np.ndarray, go.Figure):
+                Fermi-Dirac distribution function values, and optionally the Plotly figure if `plot=True`.
         """
 
         chemical_potential = float(chemical_potential)
@@ -821,10 +821,10 @@ class ThermalElectronic:
             chemical_potential (float): Chemical potential for a given volume and
                 temperature, in eV.
             temperature (float): Temperature in K.
-        
+
         Returns:
-            go.Figure: Plotly figure object containing the Fermi-Dirac distribution
-                function curve.
+            go.Figure:
+                Plotly figure object containing the Fermi-Dirac distribution function curve.
         """
 
         fig = go.Figure()
@@ -847,20 +847,25 @@ class ThermalElectronic:
         chemical_potential: float,
         temperature: float,
     ) -> float:
-        """Calculates the number of electrons for a given electronic DOS, chemical potential, and temperature using the formula:
-            N = ∫ DOS(E) * f(E, mu, T) dE
+        """
+        Calculates the number of electrons for a given electronic DOS, chemical potential,
+        and temperature.
+
+        .. math::
+
+            N = \\int \\mathrm{DOS}(E) \\, f(E, \\mu, T) \\, dE
 
         Args:
-            energies (np.ndarray): energy values for the electron DOS.
-            dos (np.ndarray): electron DOS values.
-            chemical_potential (float): chemical potential for a given volume and temperature.
-            temperature (float): temperature in K.
+            energies (np.ndarray): Energy values for the electron DOS, in eV.
+            dos (np.ndarray): Electron DOS values, in states/eV.
+            chemical_potential (float): Chemical potential for a given volume and temperature, in eV.
+            temperature (float): Temperature in K.
 
         Raises:
-            ValueError: Temperature cannot be less than 0 K.
+            ValueError: If `temperature < 0 K`.
 
         Returns:
-            float: number of electrons.
+            float: Number of electrons.
         """
 
         chemical_potential = float(chemical_potential)
@@ -886,24 +891,30 @@ class ThermalElectronic:
         plot: bool = False,
         plot_temperature: float = None,
     ) -> np.ndarray:
-        """Calculates the thermal electronic contribution to the internal energy for a given volume using the formula:
-            U_el(T, V) = ∫ DOS(E) * f(E, mu, T) * E dE - ∫_(E<mu) DOS(E) * E dE
+        """
+        Calculates the thermal electronic contribution to the internal energy for a given volume.
+
+        .. math::
+
+            U_{el}(T, V) = \\int \\mathrm{DOS}(E) \\, f(E, \\mu, T) \\, E \\, dE
+            - \\int_{E<\\mu} \\mathrm{DOS}(E) \\, E \\, dE
 
         Args:
-            energies (np.ndarray): energy values from the electron DOS.
-            dos (np.ndarray): electron DOS values.
-            temperatures (np.ndarray): temperatures in K.
-            resolution (float, optional): energy resolution for the spline. Defaults to 0.001.
-            plot (bool, optional): plots the integrand vs energy of the internal energy equation. Defaults to False.
-            plot_temperature (float, optional): temperature to plot the integrand vs energy of the internal energy equation. Defaults to None.
+            energies (np.ndarray): Energy values from the electron DOS, in eV.
+            dos (np.ndarray): Electron DOS values, in states/eV.
+            temperatures (np.ndarray): Temperatures in K.
+            resolution (float, optional): Energy resolution for the spline, in eV. Defaults to 0.001.
+            plot (bool, optional): If True, plots the integrand vs. energy. Defaults to False.
+            plot_temperature (float, optional): Temperature to plot the integrand, in K.
+                Required if `plot=True`. Defaults to None.
 
         Raises:
-            ValueError: If there are negative temperatures.
-            ValueError: If plot_temperature is provided when plot=False or not provided when plot=True.
-            ValueError: If plot_temperature is not in temperatures when plot=True.
+            ValueError: If any temperature is negative.
+            ValueError: If `plot_temperature` is provided when `plot=False` or missing when `plot=True`.
+            ValueError: If `plot_temperature` is not in `temperatures` when `plot=True`.
 
         Returns:
-            np.ndarray: internal energy values.
+            np.ndarray: Internal energy values, in eV.
         """
 
         # If there are negative temperatures, raise an error
@@ -1001,17 +1012,18 @@ class ThermalElectronic:
         integrand_2: np.ndarray,
         plot_temperature: float,
     ) -> go.Figure:
-        """Plots the integrands vs energy of the internal energy equation.
+        """
+        Plots the integrands versus energy of the internal energy equation.
 
         Args:
-            energies (np.ndarray): energy values for the electron DOS.
-            integrand_1 (np.ndarray): integrand 1 from the internal energy equation.
-            filtered_energies (np.ndarray): filtered energy values for the electron DOS (where E < mu).
-            integrand_2 (np.ndarray): integrand 2 from the internal energy equation.
-            plot_temperature (float): temperature in K.
+            energies (np.ndarray): Energy values for the electron DOS, in eV.
+            integrand_1 (np.ndarray): First integrand from the internal energy equation.
+            filtered_energies (np.ndarray): Filtered energy values where E < mu, in eV.
+            integrand_2 (np.ndarray): Second integrand from the internal energy equation.
+            plot_temperature (float): Temperature at which the integrand is plotted, in K.
 
         Returns:
-            go.Figure: Plotly figure object.
+            go.Figure: Plotly figure object containing the integrand curves.
         """
 
         plot_temperature = float(plot_temperature)
@@ -1054,25 +1066,30 @@ class ThermalElectronic:
         plot: bool = False,
         plot_temperature: float = None,
     ) -> np.ndarray:
-        """Calculates the thermal electronic contribution to the entropy for a given volume using the formula:
-            S_el(T, V) = -k_B ∫ DOS(E) * [f(E, mu, T) * ln(f(E, mu, T)) + (1 - f(E, mu, T)) * ln(1 - f(E, mu, T))] dE
+        """
+        Calculates the thermal electronic contribution to the entropy for a given volume using the formula:
+
+        .. math::
+
+            S_\mathrm{el}(T, V) = -k_B \int \mathrm{DOS}(E) \left[ f(E, \mu, T) \ln f(E, \mu, T) +
+            (1 - f(E, \mu, T)) \ln (1 - f(E, \mu, T)) \right] \, dE
 
         Args:
-            energies (np.ndarray): energy values for the electron DOS.
-            dos (np.ndarray): electron DOS values.
-            temperatures (np.ndarray): temperatures in K.
-            energies_fit_range (np.ndarray, optional): energy range to fit the electron DOS. Defaults to np.array([-2, 2]).
-            resolution (float, optional): energy resolution for the spline. Defaults to 0.0001.
-            plot (bool, optional): plots the integrand vs energy of the entropy equation. Defaults to False.
-            plot_temperature (float, optional): temperature to plot the integrand vs energy of the entropy equation. Defaults to None.
+            energies (np.ndarray): Energy values for the electron DOS, in eV.
+            dos (np.ndarray): Electron DOS values, in states/eV.
+            temperatures (np.ndarray): Temperatures in K.
+            energies_fit_range (np.ndarray, optional): Energy range to fit the electron DOS, in eV. Defaults to np.array([-2, 2]).
+            resolution (float, optional): Energy resolution for the spline, in eV. Defaults to 0.0001.
+            plot (bool, optional): If True, plots the integrand vs. energy of the entropy equation. Defaults to False.
+            plot_temperature (float, optional): Temperature to plot the integrand vs. energy. Defaults to None.
 
         Raises:
             ValueError: If there are negative temperatures.
-            ValueError: If plot_temperature is provided when plot=False or not provided when plot=True.
-            ValueError: If plot_temperature is not in temperatures when plot=True.
+            ValueError: If plot_temperature is provided when `plot=False` or not provided when `plot=True`.
+            ValueError: If plot_temperature is not in `temperatures` when `plot=True`.
 
         Returns:
-            np.ndarray: entropy values.
+            np.ndarray: Entropy values as a function of temperature, in eV/K.
         """
 
         # If there are negative temperatures, raise an error
@@ -1163,15 +1180,16 @@ class ThermalElectronic:
     def plot_entropy_integral(
         energies: np.ndarray, integrand: np.ndarray, plot_temperature: float
     ) -> go.Figure:
-        """Plots the integrand vs energy of the entropy equation.
+        """
+        Plots the integrand vs. energy of the entropy equation.
 
         Args:
-            energies (np.ndarray): energy values for the electron DOS.
-            integrand (np.ndarray): integrand from the entropy equation.
-            plot_temperature (float): temperature in K.
+            energies (np.ndarray): Energy values for the electron DOS, in eV.
+            integrand (np.ndarray): Integrand from the entropy equation.
+            plot_temperature (float): Temperature in K.
 
         Returns:
-            go.Figure: Plotly figure object.
+            go.Figure: Plotly figure object showing the integrand as a function of energy.
         """
 
         plot_temperature = float(plot_temperature)
@@ -1203,26 +1221,32 @@ class ThermalElectronic:
         plot=False,
         plot_temperature: float = None,
     ) -> np.array:
-        """Calculates the thermal electronic contribution to the heat capacity for a given volume using the formula:
-        Cv_el(T, V) = ∫ DOS(E) * f(E, mu, T) * (1 - f(E, mu, T)) * (E - mu)**2 / (k_B T**2) dE
+        """
+        Calculates the thermal electronic contribution to the heat capacity for a given volume using the formula:
+
+        .. math::
+
+            C_{V,el}(T, V) = \int \mathrm{DOS}(E) \, f(E, \mu, T) \,
+                            \left[ 1 - f(E, \mu, T) \right] \frac{(E - \mu)^2}{k_B T^2} \, dE
 
         Args:
-            energies (np.ndarray): energy values for the electron DOS.
-            dos (np.ndarray): electron DOS values.
-            temperatures (np.ndarray): temperatures in K.
-            energies_fit_range (np.ndarray, optional): energy range to fit the electron DOS. Defaults to np.array([-2, 2]).
-            resolution (float, optional): energy resolution for the spline. Defaults to 0.0001.
-            plot (bool, optional): plots the integrand vs energy of the heat capacity equation. Defaults to False.
-            plot_temperature (float, optional): temperature to plot the integrand vs energy of the heat capacity equation. Defaults to None.
+            energies (np.ndarray): Energy values for the electron DOS, in eV.
+            dos (np.ndarray): Electron DOS values, in states/eV.
+            temperatures (np.ndarray): Temperatures in K.
+            energies_fit_range (np.ndarray, optional): Energy range to fit the electron DOS. Defaults to np.array([-2, 2]) eV.
+            resolution (float, optional): Energy resolution for the spline. Defaults to 0.0001 eV.
+            plot (bool, optional): If True, plots the integrand vs. energy of the heat capacity equation. Defaults to False.
+            plot_temperature (float, optional): Temperature to plot the integrand. Defaults to None.
 
         Raises:
             ValueError: If there are negative temperatures.
-            ValueError: If plot_temperature is provided when plot=False or not provided when plot=True.
-            ValueError: If plot_temperature is not in temperatures when plot=True.
+            ValueError: If plot_temperature is provided when `plot=False` or not provided when `plot=True`.
+            ValueError: If plot_temperature is not in `temperatures` when `plot=True`.
 
         Returns:
-            np.array: heat capacity values.
+            np.ndarray: Heat capacity values in eV/K.
         """
+
         # If there are negative temperatures, raise an error
         if np.any(temperatures < 0):
             raise ValueError("Temperatures cannot be less than 0 K")
@@ -1307,15 +1331,16 @@ class ThermalElectronic:
     def plot_heat_capacity_integral(
         energies: np.ndarray, integrand: np.ndarray, plot_temperature: float
     ) -> go.Figure:
-        """Plots the integrand vs energy of the heat capacity equation.
+        """
+        Plots the integrand vs. energy of the heat capacity equation.
 
         Args:
-            energies (np.ndarray): energy values for the electron DOS.
-            integrand (np.ndarray): integrand from the heat capacity equation.
-            plot_temperature (float): temperature in K.
+            energies (np.ndarray): Energy values for the electron DOS, in eV.
+            integrand (np.ndarray): Integrand from the heat capacity equation.
+            plot_temperature (float): Temperature in K.
 
         Returns:
-            go.Figure: Plotly figure object.
+            go.Figure: Plotly figure object containing the integrand vs. energy curve for the specified temperature.
         """
 
         plot_temperature = float(plot_temperature)
@@ -1341,16 +1366,18 @@ class ThermalElectronic:
         entropies: np.ndarray,
         temperatures: np.ndarray,
     ) -> np.ndarray:
-        """Calculates the thermal electronic contribution to the Helmholtz free energy for a given volume using the formula:
-            F_el(T, V) = U_el(T, V) - T * S_el(T, V)
+        """
+        Calculates the thermal electronic contribution to the Helmholtz free energy for a given volume using the formula
+
+            :math:`F_\mathrm{el}(T, V) = U_\mathrm{el}(T, V) - T \, S_\mathrm{el}(T, V)`
 
         Args:
-            internal_energies (np.ndarray): internal energy values.
-            entropies (np.ndarray): entropy values.
-            temperatures (np.ndarray): temperatures in K.
+            internal_energies (np.ndarray): Internal energy values, in eV.
+            entropies (np.ndarray): Entropy values, in eV/K.
+            temperatures (np.ndarray): Temperatures in K.
 
         Returns:
-            np.ndarray: Helmholtz free energy values.
+            np.ndarray: Helmholtz free energy values, in eV.
         """
 
         helmholtz_energies = internal_energies - temperatures * entropies
