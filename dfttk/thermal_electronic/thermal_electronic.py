@@ -30,8 +30,8 @@ class ThermalElectronic:
     A class for reading or setting electronic density-of-states (DOS) data,
     calculating thermal electronic properties, and generating plots.
 
-    Typical usage:
-    
+    Typical usage::
+
         1. Load electronic DOS data from VASP calculations for multiple volumes
         using `read_total_electron_dos()`, or provide DOS data directly with
         `set_total_electron_dos()`.
@@ -140,19 +140,30 @@ class ThermalElectronic:
         vasprun_name: str = "vasprun.xml.elec_dos",
         selected_volumes: np.ndarray = None,
     ) -> None:
-        """Reads the total electron DOS data from the VASP calculations for different volumes.
+        """
+        Reads the total electron DOS data from VASP calculations for different volumes.
 
         Args:
-            path (str): path to the directory containing the specific folders containing the CONTCAR and vasprun.xml files.
-            folder_prefix (str, optional): prefix of the electronic folders. Defaults to "elec".
-            contcar_name (str, optional): name of the CONTCAR file. Defaults to "CONTCAR.elec_dos".
-            vasprun_name (str, optional): name of the vasprun.xml file. Defaults to "vasprun.xml.elec_dos".
-            selected_volumes (np.ndarray, optional): list of selected volumes to keep the electron DOS data. Defaults to None.
+            path (str):
+                Path to the directory containing the specific folders with
+                CONTCAR and vasprun.xml files.
+            folder_prefix (str, optional):
+                Prefix of the electronic folders. Defaults to ``"elec"``.
+            contcar_name (str, optional):
+                Name of the CONTCAR file. Defaults to ``"CONTCAR.elec_dos"``.
+            vasprun_name (str, optional):
+                Name of the vasprun.xml file. Defaults to ``"vasprun.xml.elec_dos"``.
+            selected_volumes (np.ndarray, optional):
+                List of selected volumes to keep the electron DOS data. Defaults
+                to None.
 
         Raises:
-            ValueError: If selected volumes are not found.
-            ValueError: If the number of atoms is not the same for all volumes.
-            ValueError: If the number of electrons is not the same for all volumes.
+            ValueError:
+                If selected volumes are not found.
+            ValueError:
+                If the number of atoms is not the same for all volumes.
+            ValueError:
+                If the number of electrons is not the same for all volumes.
         """
 
         self.path = path
@@ -262,16 +273,23 @@ class ThermalElectronic:
         energies_list: list[np.ndarray],
         dos_list: list[np.ndarray],
     ) -> None:
-        """Set the total electron DOS directly.
+        """
+        Set the total electron DOS directly.
 
         Args:
-            number_of_atoms (int): number of atoms corresponding to the DOS data.
-            volumes (np.ndarray): 1D array of volumes.
-            energies_list (list[np.ndarray]): list of 1D arrays of energy minus Fermi energy values for each volume.
-            dos_list (list[np.ndarray]): list of 1D arrays of DOS values for each volume.
+            number_of_atoms (int):
+                Number of atoms corresponding to the DOS data.
+            volumes (np.ndarray):
+                1D array of volumes, shape (n_volumes,), in Å³.
+            energies_list (list[np.ndarray]):
+                List of 1D arrays of energies referenced to the Fermi level
+                (:math:`E - E_F`) for each volume, in eV.
+            dos_list (list[np.ndarray]):
+                List of 1D arrays of DOS values for each volume, in states/eV.
 
         Raises:
-            ValueError: lengths of volumes, energies_list, and dos_list must be the same.
+            ValueError:
+                Lengths of volumes, energies_list, and dos_list must be the same.
         """
 
         self.number_of_atoms = number_of_atoms
@@ -290,15 +308,22 @@ class ThermalElectronic:
         self,
         temperatures: np.ndarray,
     ) -> None:
-        """Calculates the thermal electronic contributions to Helmholtz free energy, internal energy, entropy, and heat capacity.
+        """
+        Calculates the thermal electronic contributions to Helmholtz free energy,
+        internal energy, entropy, and heat capacity.
 
         Args:
-            volumes_fit (np.ndarray): 1D array of volumes to fit the properties to.
-            temperatures (np.ndarray): 1D array of temperatures in K.
-            order (int): order of the polynomial fit. Defaults to 1 (linear fit).
+            volumes_fit (np.ndarray):
+                1D array of volumes used for fitting the properties, shape
+                (n_volumes_fit,), in Å³.
+            temperatures (np.ndarray):
+                1D array of temperatures in K, shape (n_temperatures,).
+            order (int):
+                Order of the polynomial fit. Defaults to 1 (linear fit).
 
         Raises:
-            ValueError: If DOS data is not found.
+            ValueError:
+                If DOS data is not found.
         """
 
         self.temperatures = temperatures
@@ -306,7 +331,8 @@ class ThermalElectronic:
         # If dos_list is None, raise an error
         if self.dos_list is None:
             raise ValueError(
-                "DOS data not found. Please read or set the total electron DOS first using read_total_electron_dos() or set_total_electron_dos()."
+                "DOS data not found. Please read or set the total electron DOS first "
+                "using `read_total_electron_dos()` or `set_total_electron_dos()`."
             )
 
         # Initialize lists to store data
@@ -348,14 +374,20 @@ class ThermalElectronic:
         volumes_fit: np.ndarray,
         order: int = 1,
     ) -> None:
-        """Fits the Helmholtz free energy, entropy, and heat capacity vs. volume for various fixed temperatures.
+        """
+        Fits the Helmholtz free energy, entropy, and heat capacity as a function
+        of volume for various fixed temperatures.
 
         Args:
-            volumes_fit (np.ndarray): 1D array of volumes to fit the properties to.
-            order (int): order of the polynomial fit. Defaults to 1 (linear fit).
+            volumes_fit (np.ndarray):
+                1D array of volumes used for fitting the properties, shape
+                (n_volumes_fit,), in Å³.
+            order (int):
+                Order of the polynomial fit. Defaults to 1 (linear fit).
 
         Raises:
-            ValueError: If thermodynamic properties have not been calculated.
+            ValueError:
+                Thermodynamic properties have not been calculated.
         """
 
         # If helmholtz_energies is None, raise an error
@@ -419,19 +451,25 @@ class ThermalElectronic:
         self.heat_capacities_poly_coeffs = np.array(heat_capacities_poly_coeffs)
 
     def plot_total_dos(self):
-        """Plots the total electron DOS for different volumes.
+        """
+        Plots the total electron DOS for different volumes.
 
         Raises:
-            ValueError: If DOS data is not found.
+            ValueError:
+                DOS data not found. Please read or set the total electron DOS first
+                using `read_total_electron_dos()` or `set_total_electron_dos()`.
 
         Returns:
-            go.Figure: Plotly figure object.
+            go.Figure:
+                Plotly figure object containing the total electron DOS curves for
+                the different volumes.
         """
 
         # If dos_list is None, raise an error
         if self.dos_list is None:
             raise ValueError(
-                "DOS data not found. Please read or set the total electron DOS first using read_total_electron_dos() or set_total_electron_dos()."
+                "DOS data not found. Please read or set the total electron DOS first "
+                "using `read_total_electron_dos()` or `set_total_electron_dos()`."
             )
 
         fig = go.Figure()
@@ -454,25 +492,36 @@ class ThermalElectronic:
         return fig
 
     def plot_vt(self, type: str, selected_temperatures: np.ndarray = None) -> go.Figure:
-        """Plots thermal electronic properties vs. temperature or volume.
+        """
+        Plots thermal electronic properties as a function of temperature or volume.
 
         Args:
-            type (str): Must be one of 'helmholtz_energy_vs_temperature', 'entropy_vs_temperature', 'heat_capacity_vs_temperature',
-                'helmholtz_energy_vs_volume', 'entropy_vs_volume', or 'heat_capacity_vs_volume'.
-            selected_temperatures (np.ndarray, optional): Selected temperatures for volume plots. Defaults to None.
+            type (str):
+                Must be one of the following values: 
+                ``'helmholtz_energy_vs_temperature'``, ``'entropy_vs_temperature'``,
+                ``'heat_capacity_vs_temperature'``, ``'helmholtz_energy_vs_volume'``,
+                ``'entropy_vs_volume'``, or ``'heat_capacity_vs_volume'``.
+            selected_temperatures (np.ndarray, optional):
+                Selected temperatures to use for volume plots, shape
+                (n_selected_temperatures,). Defaults to None.
 
         Raises:
-            ValueError: If thermodynamic properties have not been calculated.
-            ValueError: If the type argument is not one of the allowed values.
+            ValueError:
+                Thermodynamic properties have not been calculated.
+            ValueError:
+                The `type` argument is not one of the allowed values.
 
         Returns:
-            go.Figure: Plotly figure object.
+            go.Figure:
+                Plotly figure object containing the requested thermal electronic
+                property curves.
         """
 
         # If helmholtz_energies is None, raise an error
         if self.helmholtz_energies is None:
             raise ValueError(
-                "Thermodynamic properties not yet calculated. Please call process() first."
+                "Thermodynamic properties not yet calculated. "
+                "Please call `process()` first."
             )
 
         type_map = {
@@ -504,8 +553,10 @@ class ThermalElectronic:
 
         if type not in type_map:
             raise ValueError(
-                "type must be one of 'helmholtz_energy_vs_temperature', 'entropy_vs_temperature', 'heat_capacity_vs_temperature', "
-                "'helmholtz_energy_vs_volume', 'entropy_vs_volume', or 'heat_capacity_vs_volume'"
+                "type must be one of "
+                "`'helmholtz_energy_vs_temperature'`, `'entropy_vs_temperature'`, "
+                "`'heat_capacity_vs_temperature'`, `'helmholtz_energy_vs_volume'`, "
+                "`'entropy_vs_volume'`, or `'heat_capacity_vs_volume'`."
             )
 
         if "vs_temperature" in type:
