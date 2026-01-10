@@ -32,13 +32,12 @@ class ThermalElectronic:
 
     Typical usage:
 
-        * Load electronic DOS data from VASP calculations for multiple volumes
+        1. Load electronic DOS data from VASP calculations for multiple volumes
         using `read_total_electron_dos()`, or provide DOS data directly with
-        `set_total_electron_dos()`.
-        * Compute thermal electronic contributions (Helmholtz free energy,
-        internal energy, entropy, and heat capacity) using `process()` and
-        `fit()`.
-        * Visualize results with the provided plotting methods.
+        `set_total_electron_dos()`.\n
+        2. Compute thermal electronic contributions (Helmholtz free energy,
+        internal energy, entropy, and heat capacity) using `process()` and `fit()`.\n
+        3. Visualize results with the provided plotting methods.
 
     Additional intermediate methods are available for calculating the chemical
     potential, fitting the DOS, computing the Fermi-Dirac distribution, and
@@ -644,23 +643,28 @@ class ThermalElectronic:
         electron_tol: float = 0.5,
     ) -> float:
         """
-        Calculates the chemical potential at a given electronic DOS, temperature, and volume
-        such that the number of electrons is equal to that at 0 K (within a specified tolerance).
-        Note that at the moment this method assumes that the energies are given with respect to the Fermi energy.
+        Calculates the chemical potential at a given electronic DOS, temperature, and
+        volume such that the number of electrons matches that at 0 K (within a
+        specified tolerance). Note that this method currently assumes that the
+        energies are given with respect to the Fermi energy.
 
         Args:
-            energies (np.ndarray): energy values for the electron DOS.
-            dos (np.ndarray): electron DOS values.
-            temperature (float): temperature in K.
-            chemical_potential_range (np.ndarray, optional): range to search for the chemical potential.
-            electron_tol (float, optional): tolerance for electron number matching. Defaults to 0.5.
+            energies (np.ndarray): Energy values for the electron DOS.
+            dos (np.ndarray): Electron DOS values.
+            temperature (float): Temperature in K.
+            chemical_potential_range (np.ndarray, optional): Range to search for the
+                chemical potential. Defaults to None.
+            electron_tol (float, optional): Tolerance for electron number matching.
+                Defaults to 0.5.
 
         Raises:
-            ValueError: If temperature < 0 K.
-            ValueError: If the chemical potential cannot be found within the specified range.
+            ValueError: If `temperature < 0 K`.
+            ValueError: If the chemical potential cannot be found within the specified
+                range.
 
         Returns:
-            float: chemical potential at a given electronic DOS, temperature, and volume.
+            float: Chemical potential at the given electronic DOS, temperature, and
+                volume.
         """
 
         if temperature < 0:
@@ -673,8 +677,9 @@ class ThermalElectronic:
 
         if self.nelect is not None:
             if abs(num_electrons_0K - self.nelect) > electron_tol:
-                warnings.warn(
-                    f"Warning: The number of electrons at 0 K ({num_electrons_0K}) does not match the expected number of electrons ({self.nelect}) within the specified tolerance."
+                warnings.warn(  
+                    f"Warning: The number of electrons at 0 K ({num_electrons_0K}) does not match the expected number of "
+                    f"electrons ({self.nelect}) within the specified tolerance."
                     " Consider increasing NEDOS.",
                     UserWarning,
                 )
@@ -706,7 +711,8 @@ class ThermalElectronic:
             )
         except ValueError as e:
             print(
-                f"Warning: The chemical potential could not be found within the range {chemical_potential_range[0]} to {chemical_potential_range[1]} eV."
+                f"Warning: The chemical potential could not be found within the range "
+                f"{chemical_potential_range[0]} to {chemical_potential_range[1]} eV."
                 " Consider increasing the chemical_potential_range."
             )
             chemical_potential = chemical_potential_range[1]
