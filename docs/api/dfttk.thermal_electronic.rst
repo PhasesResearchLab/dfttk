@@ -17,5 +17,6 @@ ThermalElectronicData
 ---------------------
 
 .. autoclass:: dfttk.thermal_electronic.thermal_electronic_data.ThermalElectronicData
+   :members:
    :undoc-members:
    :show-inheritance:
