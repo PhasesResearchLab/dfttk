@@ -449,7 +449,7 @@ class ThermalElectronic:
         self.entropies_poly_coeffs = np.array(entropies_poly_coeffs)
         self.heat_capacities_poly_coeffs = np.array(heat_capacities_poly_coeffs)
 
-    def plot_total_dos(self):
+    def plot_total_dos(self)-> go.Figure:
         """
         Plots the total electron DOS for different volumes.
 
@@ -726,16 +726,17 @@ class ThermalElectronic:
         energy_range: np.ndarray,
         resolution: float,
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Fits the electron DOS with a spline.
+        """
+        Fits the electron DOS with a spline.
 
         Args:
-            energies (np.ndarray): energy values for the electron DOS.
-            dos (np.ndarray): electron DOS values.
-            energy_range (np.ndarray): energy range to fit the electron DOS.
-            resolution (float): energy resolution for the spline.
+            energies (np.ndarray): Energy values for the electron DOS, in eV.
+            dos (np.ndarray): Electron DOS values, in states/eV.
+            energy_range (np.ndarray): Energy range to fit the electron DOS, in eV.
+            resolution (float): Energy resolution for the spline, in eV.
 
         Returns:
-            tuple[np.ndarray, np.ndarray]: fitted energy and DOS values.
+            tuple[np.ndarray, np.ndarray]: Fitted energy and DOS values.
         """
 
         # Filter the energy and dos values within the energy range
@@ -758,22 +759,27 @@ class ThermalElectronic:
         chemical_potential: float,
         temperature: float,
         plot: bool = False,
-    ):
-        """Calculates the Fermi-Dirac distribution function given by the formula:
-            f(E, mu, T) = 1 / (1 + exp((E - mu) / (k_B T)))
+    )-> np.ndarray | tuple[np.ndarray, go.Figure]:
+        """
+        Calculates the Fermi-Dirac distribution function
+
+        .. math::
+
+            f(E, \mu, T) = \frac{1}{1 + \exp\left(\frac{E - \mu}{k_B T}\right)}
 
         Args:
-            energies (np.ndarray): energy values for the electron DOS.
-            chemical_potential (float): chemical potential for a given volume and temperature.
-            temperature (float): temperature in K.
-            plot (bool, optional): plots the Fermi-Dirac distribution function vs. energy for a
-            given temperature and chemical potential. Defaults to False.
+            energies (np.ndarray): Energy values for the electron DOS, in eV.
+            chemical_potential (float): Chemical potential for a given volume and temperature, in eV.
+            temperature (float): Temperature in K.
+            plot (bool, optional): If True, plots the Fermi-Dirac distribution function vs. energy
+                for the given temperature and chemical potential. Defaults to False.
 
         Raises:
-            ValueError: Temperature cannot be less than 0 K.
+            ValueError: If `temperature < 0 K`.
 
         Returns:
-            np.ndarray or (np.ndarray, go.Figure): Fermi-Dirac distribution function values, and optionally the plotly figure if plot=True.
+            np.ndarray or (np.ndarray, go.Figure): Fermi-Dirac distribution function values, and
+                optionally the Plotly figure if `plot=True`.
         """
 
         chemical_potential = float(chemical_potential)
