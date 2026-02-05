@@ -1333,8 +1333,8 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
                 document["metadata"]["created"] = datetime.utcnow()
                 self.collection.insert_one(document)
 
-            # Close the MongoDB connection
-            self.cluster.close()
+        # Close the MongoDB connection
+        self.cluster.close()
 
         return document
 
