@@ -603,8 +603,8 @@ class ThermalElectronic:
         energies: np.ndarray,
         dos: np.ndarray,
         temperature: float,
-        chemical_potential_range: np.ndarray = np.array([-0.1, 0.1]),
-        electron_tol: float = 0.5,
+        chemical_potential_range: np.ndarray = None,
+        electron_tol: float = 0.05,
     ) -> float:
         """
         Calculates the chemical potential at a given electronic DOS, temperature, and
@@ -616,9 +616,10 @@ class ThermalElectronic:
             energies: Energy values for the electron DOS.
             dos: Electron DOS values.
             temperature: Temperature in K.
-            chemical_potential_range: Range to search for the chemical potential. Defaults to np.array([-0.1, 0.1]).
+            chemical_potential_range: Optional range to search for the chemical potential in eV. 
+                Defaults to None, which uses [-0.1, 0.1] eV.
             electron_tol: Tolerance for electron number matching.
-                Defaults to 0.5.
+                Defaults to 0.05.
 
         Raises:
             ValueError: If `temperature < 0 K`.
@@ -628,14 +629,22 @@ class ThermalElectronic:
         Returns: Chemical potential at the given electronic DOS, temperature, and volume.
         """
 
+        # If temperature is negative, raise an error
         if temperature < 0:
             raise ValueError("Temperature cannot be less than 0 K")
         temperature = float(temperature)
+        
+        # If chemical_potential_range is None, set it to [-0.1, 0.1] eV
+        if chemical_potential_range is None:
+            chemical_potential_range = np.array([-0.1, 0.1])
 
+        # Calculate the number of electrons at 0 K using the provided energies and DOS
         num_electrons_0K = ThermalElectronic.calculate_num_electrons(
             energies=energies, dos=dos, chemical_potential=0, temperature=0
         )
 
+        # If the number of electrons at 0 K does not match the expected number of electrons 
+        # from VASP within the specified tolerance, issue a warning
         if self.nelect is not None:
             if abs(num_electrons_0K - self.nelect) > electron_tol:
                 warnings.warn(
@@ -645,6 +654,8 @@ class ThermalElectronic:
                     UserWarning,
                 )
 
+        # Try to find the chemical potential such that the number of electrons at the 
+        # given temperature matches that at 0 K within the specified tolerance
         num_electrons_guess = ThermalElectronic.calculate_num_electrons(
             energies=energies,
             dos=dos,
@@ -655,6 +666,8 @@ class ThermalElectronic:
         if abs(num_electrons_guess - num_electrons_0K) < electron_tol:
             return 0
 
+        # If the above guess is not within the tolerance, use the bisection method to 
+        # find the chemical potential
         def electron_difference(chemical_potential):
             num_electrons = ThermalElectronic.calculate_num_electrons(
                 energies=energies,
@@ -671,12 +684,11 @@ class ThermalElectronic:
                 chemical_potential_range[1],
             )
         except ValueError as e:
-            print(
-                f"Warning: The chemical potential could not be found within the range "
-                f"{chemical_potential_range[0]} to {chemical_potential_range[1]} eV."
-                " Consider increasing the chemical_potential_range."
-            )
-            chemical_potential = chemical_potential_range[1]
+            raise ValueError(
+                f"Chemical potential could not be found in range "
+                f"{chemical_potential_range[0]} to {chemical_potential_range[1]} eV. "
+                "Increase chemical_potential_range."
+            ) from e
 
         return chemical_potential
 
@@ -739,9 +751,12 @@ class ThermalElectronic:
         chemical_potential = float(chemical_potential)
         temperature = float(temperature)
 
+        # If temperature is negative, raise an error
         if temperature < 0:
             raise ValueError("Temperature cannot be less than 0 K")
 
+        # Calculate the Fermi-Dirac distribution function at the given temperature and 
+        # chemical potential.
         if temperature == 0:
             fermi_dist = np.where(energies <= chemical_potential, 1, 0)
         else:
@@ -750,6 +765,8 @@ class ThermalElectronic:
                 -(energies - chemical_potential) / (BOLTZMANN_CONSTANT * temperature)
             )
 
+        # If plot is True, plot the Fermi-Dirac distribution function vs. energy for the 
+        # given temperature and chemical potential
         if plot:
             fig = ThermalElectronic.plot_fermi_dirac_distribution(
                 energies, fermi_dist, chemical_potential, temperature
@@ -817,12 +834,17 @@ class ThermalElectronic:
         chemical_potential = float(chemical_potential)
         temperature = float(temperature)
 
+        # If temperature is negative, raise an error
         if temperature < 0:
             raise ValueError("Temperature cannot be less than 0 K")
 
+        # Calculate the Fermi-Dirac distribution function at the given temperature and 
+        # chemical potential.
         fermi_dist = ThermalElectronic.fermi_dirac_distribution(
             energies, chemical_potential, temperature
         )
+        
+        # Calculate the number of electrons by integration.
         integrand = dos * fermi_dist
         num_electrons = np.trapz(integrand, energies)
 
@@ -921,6 +943,7 @@ class ThermalElectronic:
                 "plot_temperature must be provided if and only if plot is True."
             )
 
+        # If plot is True, plot the integrands vs. energy for the specified plot_temperature
         if plot and plot_temperature is not None:
             if plot_temperature not in temperatures:
                 raise ValueError(
@@ -1236,6 +1259,7 @@ class ThermalElectronic:
                 "plot_temperature must be provided if and only if plot is True."
             )
 
+        # If plot is True, plot the integrand vs. energy for the specified plot_temperature
         if plot and plot_temperature is not None:
             if plot_temperature not in temperatures:
                 raise ValueError(
