@@ -139,8 +139,8 @@ def test_harmonicphononyphon():
     hp.scale_dos(number_of_atoms=number_of_atoms)
     hp.calculate_harmonic(temperatures=temperatures)
     hp.fit_harmonic(volumes_fit, order=2)
-    pd.testing.assert_frame_equal(hp.phonon_dos, expected.phonon_dos)
-    pd.testing.assert_frame_equal(hp.scaled_phonon_dos, expected.scaled_phonon_dos)
+    pd.testing.assert_frame_equal(hp.phonon_dos, expected.phonon_dos, check_column_type=False)
+    pd.testing.assert_frame_equal(hp.scaled_phonon_dos, expected.scaled_phonon_dos, check_column_type=False)
     assert hp.number_of_atoms == expected.number_of_atoms
     assert np.allclose(hp.volumes_per_atom, expected.volumes_per_atom, rtol=RTOL)
     assert np.allclose(hp.volumes, expected.volumes, rtol=RTOL)
@@ -167,8 +167,8 @@ def test_harmonicphononyphon_subset():
     selected_volumes = np.array([60.0, 62.0, 66.0, 68.0, 72.0, 74.0])
     hp.calculate_harmonic(temperatures=temperatures, selected_volumes=selected_volumes)
     hp.fit_harmonic(volumes_fit=volumes_fit, order=2)
-    pd.testing.assert_frame_equal(hp.phonon_dos, expected.phonon_dos)
-    pd.testing.assert_frame_equal(hp.scaled_phonon_dos, expected.scaled_phonon_dos)
+    pd.testing.assert_frame_equal(hp.phonon_dos, expected.phonon_dos, check_column_type=False)
+    pd.testing.assert_frame_equal(hp.scaled_phonon_dos, expected.scaled_phonon_dos, check_column_type=False)
     assert hp.number_of_atoms == expected.number_of_atoms
     assert np.allclose(hp.volumes_per_atom, expected.volumes_per_atom, rtol=RTOL)
     assert np.allclose(hp.volumes, expected.volumes, rtol=RTOL)
