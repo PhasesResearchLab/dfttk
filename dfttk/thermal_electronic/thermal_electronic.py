@@ -24,7 +24,6 @@ BOLTZMANN_CONSTANT = (
 )  # The Boltzmann constant in eV/K
 
 
-# TODO: Update methods in other modules to reflect all updates made here!
 class ThermalElectronic:
     """
     A class for reading or setting electronic density-of-states (DOS) data,
