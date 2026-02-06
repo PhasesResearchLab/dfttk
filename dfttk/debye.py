@@ -1,7 +1,3 @@
-"""
-DebyeGruneisen class to calculate the vibrational contribution to the Helmholtz energy, entropy, and heat capacity using the Debye-Grüneisen model.
-"""
-
 # Standard library imports
 import numpy as np
 
@@ -19,7 +15,10 @@ HBAR = constants.physical_constants["Planck constant over 2 pi in eV s"][0]
 
 
 class DebyeGruneisen:
-    """Class to calculate the vibrational contribution to the Helmholtz energy, entropy, and heat capacity using the Debye-Grüneisen model."""
+    """
+    A class for computing vibrational contributions to the Helmholtz free energy, entropy, 
+    and heat capacity using the Debye-Grüneisen model, with built-in plotting utilities.
+    """
 
     def __init__(self):
         self.number_of_atoms: int = None
@@ -36,21 +35,19 @@ class DebyeGruneisen:
         self.heat_capacities: np.ndarray = None
 
     def calculate_gruneisen_parameter(self) -> float:
-        """Calculates the Gruneisen parameter (gamma).
+        """Calculates the Grüneisen parameter (gamma).
 
-        Returns:
-            float: Gruneisen parameter (gamma).
+        Returns: Grüneisen parameter (gamma).
         """
         return (1 + self.BP) / 2 - self.gruneisen_x
 
     def calculate_debye_temperatures(self, gruneisen_parameter: float) -> np.ndarray:
-        """Calculates the Debye temperatures in Kelvin for each volume.
+        """Compute the Debye temperature for each volume.
 
         Args:
-            gruneisen_parameter (float): Gruneisen parameter.
+            gruneisen_parameter: Grüneisen parameter (gamma).
 
-        Returns:
-            np.ndarray: Debye temperatures in Kelvin for each volume in the input array.
+        Returns: Debye temperatures for each volume in K.
         """
 
         # Compute prefactor using physical constants
@@ -67,17 +64,21 @@ class DebyeGruneisen:
         return debye_temperatures
 
     def calculate_debye_integral_n3(self, x_array: np.ndarray) -> np.ndarray:
-        """Calculate the Debye integral of order 3 for an array of upper limits, x_array.
+        """Calculate the Debye integral of order 3 for an array of upper limits.
 
-        For each x in x_array, computes:
-            D(x) = (3 / x^3) * ∫₀ˣ (t^3 / (exp(t) - 1)) dt.
+        For each value ``x`` in ``x_array``, this computes:
+
+        .. math::
+
+            D(x) = \\frac{3}{x^3} \\int_0^x \\frac{t^3}{e^t - 1} \\, dt
 
         Args:
-            x_array (np.ndarray): Array of upper integration limits, where each x is debye_temperature / temperature.
-            The debye_temperature is fixed at a single volume and the temperature is varied.
+            x_array: Array of upper integration limits, where each value is the Debye temperature
+                divided by the temperature. The Debye temperature is fixed for a given volume,
+                and the temperature is varied.
 
         Returns:
-            np.ndarray: Array of calculated Debye integrals of order 3 for each upper limit in x_array.
+            Array of Debye integrals of order 3 corresponding to each value in x_array.
         """
 
         debye_integrals = np.zeros_like(x_array, dtype=float)
@@ -88,13 +89,12 @@ class DebyeGruneisen:
         return debye_integrals
 
     def calculate_entropies(self, debye_temperature: float) -> np.ndarray:
-        """Calculate the vibrational entropy using the Debye model.
+        """Calculate the vibrational entropy.
 
         Args:
-            debye_temperature (float): Debye temperature in Kelvin for a given volume.
+            debye_temperature: Debye temperature in K for a given volume.
 
-        Returns:
-            np.ndarray: Array of vibrational entropy values in eV/K/number_of_atoms for each temperature.
+        Returns: Array of vibrational entropy values in eV/K for each temperature.
         """
 
         # Masks for zero and nonzero temperatures
@@ -117,13 +117,12 @@ class DebyeGruneisen:
         return entropies
 
     def calculate_helmholtz_energies(self, debye_temperature: float) -> np.ndarray:
-        """Calculates the vibrational Helmholtz energy using the Debye model.
+        """Calculates the vibrational Helmholtz energy.
 
         Args:
-            debye_temperature: Debye temperature in Kelvin for a given volume.
+            debye_temperature: Debye temperature in K for a given volume.
 
-        Returns:
-            np.ndarray: Array of vibrational Helmholtz energy values in eV/number_of_atoms for each temperature.
+        Returns: Array of vibrational Helmholtz energy values in eV for each temperature.
         """
 
         zero_temp_mask = self.temperatures == 0
@@ -143,16 +142,18 @@ class DebyeGruneisen:
         return helmholtz_energies
 
     def calculate_heat_capacities(self, debye_temperature: float) -> np.ndarray:
-        """Calculates the vibrational heat capacity using the Debye model.
+        """Calculates the vibrational heat capacity.
 
         The integral evaluated is:
-        (3/x³) * ∫₀ˣ [(t⁴ * exp(t)) / (exp(t) - 1)²] dt.
+        
+        .. math::
+
+        \frac{3}{x^3} \\int_0^x \\frac{t^4 e^t}{(e^t - 1)^2} \\, dt
 
         Args:
-            debye_temperature (float): Debye temperature in Kelvin for a given volume.
+            debye_temperature: Debye temperature in K for a given volume.
 
-        Returns:
-            np.ndarray: Array of vibrational heat capacity values in eV/K/number_of_atoms for each temperature.
+        Returns: Array of vibrational heat capacity values in eV/K for each temperature.
         """
 
         non_zero_temp_mask = self.temperatures > 0
@@ -184,30 +185,22 @@ class DebyeGruneisen:
         scaling_factor: float = 0.617,
         gruneisen_x: float = 2 / 3,
     ) -> None:
-        """
-        Calculate and store the Helmholtz energy, entropy, and heat capacity using the Debye-Grüneisen model.
-
-        This method computes the vibrational Helmholtz energy, entropy, and heat capacity for each combination
-        of volume and temperature, and stores the results as attributes of the class instance.
+        """This method computes the vibrational Helmholtz energy, entropy, and heat capacity 
+        for each combination of volume and temperature, and stores the results as attributes.
 
         Args:
-            number_of_atoms (int): Number of atoms in the supercell.
-            volumes (np.ndarray): Array of input volumes in Å³.
-            temperatures (np.ndarray): Array of input temperatures in Kelvin.
-            atomic_mass (float): Atomic mass in atomic mass units (u).
-            V0 (float): Equilibrium volume in Å³.
-            B (float): Bulk modulus in GPa.
-            BP (float): First derivative of the bulk modulus with respect to pressure.
-            scaling_factor (float, optional): The scaling factor defaults to 0.617, as determined by Moruzzi et al. from their study on
-            nonmagnetic cubic metals (https://doi.org/10.1103/PhysRevB.37.790).
-            gruneisen_x (float, optional): x parameter for the Grüneisen parameter calculation. Defaults to 2/3.
-
-        Returns:
-            None. Results are stored in the instance attributes:
-                2D arrays with shape (temperatures, volumes):
-                - self.helmholtz_energies (np.ndarray) Helmholtz energies in eV/number_of_atoms.
-                - self.entropies (np.ndarray) entropies in eV/K/number_of_atoms.
-                - self.heat_capacity (np.ndarray) heat capacities in eV/K/number_of_atoms.
+            number_of_atoms: Number of atoms in the supercell.
+            volumes: Array of input volumes in Å³.
+            temperatures: Array of input temperatures in K.
+            atomic_mass: Atomic mass in atomic mass units (u).
+            V0: Equilibrium volume in Å³.
+            B: Bulk modulus in GPa.
+            BP: First derivative of the bulk modulus with respect to pressure.
+            scaling_factor (float, optional): The scaling factor defaults to 0.617, 
+                as determined by Moruzzi et al. from their study on
+                nonmagnetic cubic metals (https://doi.org/10.1103/PhysRevB.37.790).
+            gruneisen_x (float, optional): x parameter for the Grüneisen parameter calculation. 
+                Defaults to 2/3.
         """
 
         self.number_of_atoms = number_of_atoms
@@ -247,19 +240,19 @@ class DebyeGruneisen:
         selected_temperatures: np.ndarray = None,
         selected_volumes: np.ndarray = None,
     ) -> tuple[go.Figure, go.Figure]:
-        """Plot the Helmholtz energy, entropy, or heat capacity as a function of temperature and volume.
+        """Plots the vibrational Helmholtz energy, entropy, or heat capacity as a function 
+        of temperature or volume.
 
         Args:
-            property (str): Property to plot. Must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
-            selected_temperatures (np.ndarray, optional): Array of selected temperatures for plotting. Defaults to None.
-            selected_volumes (np.ndarray, optional): Array of selected volumes for plotting. Defaults to None.
+            property: Property to plot. Must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
+            selected_temperatures: Array of selected temperatures for plotting. Defaults to None.
+            selected_volumes: Array of selected volumes for plotting. Defaults to None.
 
         Raises:
             ValueError: If the property is not one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
             RuntimeError: If process() has not been called before plot().
 
-        Returns:
-            tuple[go.Figure, go.Figure]: Plotly figures as a function of temperature and volume.
+        Returns: Plotly figures as a function of temperature or volume.
         """
 
         # Check that process() has been called
