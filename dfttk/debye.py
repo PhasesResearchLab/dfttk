@@ -13,7 +13,7 @@ from dfttk.plotly_format import plot_format
 BOLTZMANN_CONSTANT = constants.physical_constants["Boltzmann constant in eV/K"][0]
 HBAR = constants.physical_constants["Planck constant over 2 pi in eV s"][0]
 
-
+#TODO: fix docstrings
 class DebyeGruneisen:
     """
     A class for computing vibrational contributions to the Helmholtz free energy, entropy, 
@@ -75,8 +75,8 @@ class DebyeGruneisen:
         self.gruneisen_x = gruneisen_x
 
         # Calculate Debye model properties
-        gruneisen_parameter = self.calculate_gruneisen_parameter()
-        debye_temperature = self.calculate_debye_temperatures(gruneisen_parameter)
+        gruneisen_parameter = DebyeGruneisen.calculate_gruneisen_parameter(self.BP, self.gruneisen_x)
+        debye_temperature = DebyeGruneisen.calculate_debye_temperatures(self.volumes, self.atomic_mass, self.V0, self.B, self.scaling_factor, gruneisen_parameter)
 
         n_vol = len(volumes)
         n_temp = len(temperatures)
@@ -97,7 +97,7 @@ class DebyeGruneisen:
 
     def plot(
         self,
-        property: str,
+        type: str,
         selected_temperatures: np.ndarray = None,
         selected_volumes: np.ndarray = None,
     ) -> tuple[go.Figure, go.Figure]:
@@ -116,7 +116,7 @@ class DebyeGruneisen:
         Returns: Plotly figures as a function of temperature or volume.
         """
 
-        # Check that process() has been called
+        # Raise an error if process has not been called yet
         if self.helmholtz_energies is None or self.entropies is None or self.heat_capacities is None:
             raise RuntimeError("DebyeGruneisen.process() must be called before plot().")
 
@@ -128,10 +128,10 @@ class DebyeGruneisen:
             "heat_capacity": (self.heat_capacities.T, f"C<sub>v,vib</sub> (eV/K/{unit})"),
         }
 
-        if property not in properties:
+        if type not in properties:
             raise ValueError("property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'")
 
-        y, y_label = properties[property]
+        y, y_label = properties[type]
 
         # Plot property vs. temperature for selected volumes
         fig_debye_t = go.Figure()
@@ -191,17 +191,27 @@ class DebyeGruneisen:
 
         return fig_debye_t, fig_debye_v
     
-    def calculate_gruneisen_parameter(self) -> float:
+    @staticmethod
+    def calculate_gruneisen_parameter(BP: float, gruneisen_x: float) -> float:
         """Calculates the Grüneisen parameter (gamma).
-
+        Args:
+            BP: First derivative of the bulk modulus with respect to pressure.
+            gruneisen_x: x parameter for the Grüneisen parameter calculation.
+            
         Returns: Grüneisen parameter (gamma).
         """
-        return (1 + self.BP) / 2 - self.gruneisen_x
+        return (1 + BP) / 2 - gruneisen_x
 
-    def calculate_debye_temperatures(self, gruneisen_parameter: float) -> np.ndarray:
+    @staticmethod
+    def calculate_debye_temperatures(volumes: np.ndarray, atomic_mass: float, V0: float, B: float, scaling_factor: float, gruneisen_parameter: float) -> np.ndarray:
         """Compute the Debye temperature for each volume.
 
         Args:
+            volumes: Array of input volumes in Å^3.
+            atomic_mass: Atomic mass in atomic mass units (u).
+            V0: Equilibrium volume in Å^3.
+            B: Bulk modulus in GPa.
+            scaling_factor: Scaling factor.
             gruneisen_parameter: Grüneisen parameter (gamma).
 
         Returns: Debye temperatures for each volume in K.
@@ -210,17 +220,18 @@ class DebyeGruneisen:
         # Compute prefactor using physical constants
         A = (6 * np.pi**2) ** (1 / 3) * HBAR / BOLTZMANN_CONSTANT
 
-        # Convert units for bulk modulus, volume, and atomic mass
-        B = self.B * 1e12  # GPa to g/(ms^2)
-        V0 = self.V0 * 1e-30  # Å^3 to m^3
-        volumes = self.volumes * 1e-30  # Å^3 to m^3
-        atomic_mass = self.atomic_mass * 1.66054e-24  # u to g
+        # Convert units for volume, bulk modulus, and atomic mass
+        V0 = V0 * 1e-30  # Å^3 to m^3
+        B = B * 1e12  # GPa to g/(ms^2)
+        volumes = volumes * 1e-30  # Å^3 to m^3
+        atomic_mass = atomic_mass * 1.66054e-24  # u to g
 
         # Debye temperature formula from the Debye-Grüneisen model
-        debye_temperatures = self.scaling_factor * A * V0 ** (1 / 6) * (B / atomic_mass) ** 0.5 * (V0 / volumes) ** gruneisen_parameter
+        debye_temperatures = scaling_factor * A * V0 ** (1 / 6) * (B / atomic_mass) ** 0.5 * (V0 / volumes) ** gruneisen_parameter
         return debye_temperatures
 
-    def calculate_debye_integral_n3(self, x_array: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def calculate_debye_integral_n3(x_array: np.ndarray) -> np.ndarray:
         """Calculate the Debye integral of order 3 for an array of upper limits.
 
         For each value ``x`` in ``x_array``, this computes:
@@ -264,7 +275,7 @@ class DebyeGruneisen:
         # Zero point energy at T = 0 K
         helmholtz_energies[zero_temp_mask] = self.number_of_atoms * (9 / 8 * BOLTZMANN_CONSTANT * debye_temperature)
         x_array[non_zero_temp_mask] = debye_temperature / self.temperatures[non_zero_temp_mask]
-        debye_integrals[non_zero_temp_mask] = self.calculate_debye_integral_n3(x_array[non_zero_temp_mask])
+        debye_integrals[non_zero_temp_mask] = DebyeGruneisen.calculate_debye_integral_n3(x_array[non_zero_temp_mask])
 
         # Debye Helmholtz energy formula
         helmholtz_energies[non_zero_temp_mask] = self.number_of_atoms * (9 / 8 * BOLTZMANN_CONSTANT * debye_temperature + BOLTZMANN_CONSTANT * self.temperatures[non_zero_temp_mask] * (3 * np.log(1 - np.exp(-x_array[non_zero_temp_mask])) - debye_integrals[non_zero_temp_mask]))
@@ -292,7 +303,7 @@ class DebyeGruneisen:
 
         # Calculate x = theta_D / T for nonzero T
         x_array[non_zero_temp_mask] = debye_temperature / self.temperatures[non_zero_temp_mask]
-        debye_integrals[non_zero_temp_mask] = self.calculate_debye_integral_n3(x_array[non_zero_temp_mask])
+        debye_integrals[non_zero_temp_mask] = DebyeGruneisen.calculate_debye_integral_n3(x_array[non_zero_temp_mask])
 
         # Debye entropy formula
         entropies[non_zero_temp_mask] = 3 * self.number_of_atoms * BOLTZMANN_CONSTANT * (4 / 3 * debye_integrals[non_zero_temp_mask] - np.log(1 - np.exp(-x_array[non_zero_temp_mask])))
