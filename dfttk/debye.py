@@ -14,7 +14,6 @@ BOLTZMANN_CONSTANT = constants.physical_constants["Boltzmann constant in eV/K"][
 HBAR = constants.physical_constants["Planck constant over 2 pi in eV s"][0]
 
 
-# TODO: fix docstrings
 class DebyeGruneisen:
     """
     A class for computing vibrational contributions to the Helmholtz free energy, entropy,
