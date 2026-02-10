@@ -404,7 +404,7 @@ class DebyeGruneisen:
 
         .. math::
 
-        \frac{3}{x^3} \\int_0^x \\frac{t^4 e^t}{(e^t - 1)^2} \\, dt
+        \\frac{3}{x^3} \\int_0^x \\frac{t^4 e^t}{(e^t - 1)^2} \\, dt
 
         Args:
             debye_temperature: Debye temperature in K for a given volume.
