@@ -13,10 +13,11 @@ from dfttk.plotly_format import plot_format
 BOLTZMANN_CONSTANT = constants.physical_constants["Boltzmann constant in eV/K"][0]
 HBAR = constants.physical_constants["Planck constant over 2 pi in eV s"][0]
 
-#TODO: fix docstrings
+
+# TODO: fix docstrings
 class DebyeGruneisen:
     """
-    A class for computing vibrational contributions to the Helmholtz free energy, entropy, 
+    A class for computing vibrational contributions to the Helmholtz free energy, entropy,
     and heat capacity using the Debye-Grüneisen model, with built-in plotting utilities.
     """
 
@@ -46,7 +47,7 @@ class DebyeGruneisen:
         scaling_factor: float = 0.617,
         gruneisen_x: float = 2 / 3,
     ) -> None:
-        """This method computes the vibrational Helmholtz energy, entropy, and heat capacity 
+        """This method computes the vibrational Helmholtz energy, entropy, and heat capacity
         for each combination of volume and temperature, and stores the results as attributes.
 
         Args:
@@ -57,10 +58,10 @@ class DebyeGruneisen:
             V0: Equilibrium volume in Å³.
             B: Bulk modulus in GPa.
             BP: First derivative of the bulk modulus with respect to pressure.
-            scaling_factor (float, optional): The scaling factor defaults to 0.617, 
+            scaling_factor (float, optional): The scaling factor defaults to 0.617,
                 as determined by Moruzzi et al. from their study on
                 nonmagnetic cubic metals (https://doi.org/10.1103/PhysRevB.37.790).
-            gruneisen_x (float, optional): x parameter for the Grüneisen parameter calculation. 
+            gruneisen_x (float, optional): x parameter for the Grüneisen parameter calculation.
                 Defaults to 2/3.
         """
 
@@ -75,8 +76,17 @@ class DebyeGruneisen:
         self.gruneisen_x = gruneisen_x
 
         # Calculate Debye model properties
-        gruneisen_parameter = DebyeGruneisen.calculate_gruneisen_parameter(self.BP, self.gruneisen_x)
-        debye_temperature = DebyeGruneisen.calculate_debye_temperatures(self.volumes, self.atomic_mass, self.V0, self.B, self.scaling_factor, gruneisen_parameter)
+        gruneisen_parameter = DebyeGruneisen.calculate_gruneisen_parameter(
+            self.BP, self.gruneisen_x
+        )
+        debye_temperature = DebyeGruneisen.calculate_debye_temperatures(
+            self.volumes,
+            self.atomic_mass,
+            self.V0,
+            self.B,
+            self.scaling_factor,
+            gruneisen_parameter,
+        )
 
         n_vol = len(volumes)
         n_temp = len(temperatures)
@@ -86,124 +96,170 @@ class DebyeGruneisen:
 
         # Loop over volumes, calculate properties for all temperatures at each volume
         for i in range(n_vol):
-            helmholtz_energies_v_t[i, :] = self.calculate_helmholtz_energies(debye_temperature[i])
+            helmholtz_energies_v_t[i, :] = self.calculate_helmholtz_energies(
+                debye_temperature[i]
+            )
             entropies_v_t[i, :] = self.calculate_entropies(debye_temperature[i])
-            heat_capacities_v_t[i, :] = self.calculate_heat_capacities(debye_temperature[i])
+            heat_capacities_v_t[i, :] = self.calculate_heat_capacities(
+                debye_temperature[i]
+            )
 
         # Store results as (temperature, volume) arrays
         self.helmholtz_energies = helmholtz_energies_v_t.T
         self.entropies = entropies_v_t.T
         self.heat_capacities = heat_capacities_v_t.T
 
-    def plot(
+    def plot_vt(
         self,
         type: str,
         selected_temperatures: np.ndarray = None,
         selected_volumes: np.ndarray = None,
     ) -> tuple[go.Figure, go.Figure]:
-        """Plots the vibrational Helmholtz energy, entropy, or heat capacity as a function 
+        """Plots the vibrational Helmholtz energy, entropy, or heat capacity as a function
         of temperature or volume.
 
         Args:
-            property: Property to plot. Must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
-            selected_temperatures: Array of selected temperatures for plotting. Defaults to None.
-            selected_volumes: Array of selected volumes for plotting. Defaults to None.
+            type:
+                Must be one of the following values:
+                ``'helmholtz_energy_vs_temperature'``, ``'entropy_vs_temperature'``,
+                ``'heat_capacity_vs_temperature'``, ``'helmholtz_energy_vs_volume'``,
+                ``'entropy_vs_volume'``, or ``'heat_capacity_vs_volume'``.
+            selected_temperatures:
+                Selected temperatures to use for volume plots, shape
+                (n_selected_temperatures,). Defaults to None.
+            selected_volumes:
+                Selected volumes to use for temperature plots, shape
+                (n_selected_volumes,). Defaults to None.
 
         Raises:
-            ValueError: If the property is not one of 'helmholtz_energy', 'entropy', or 'heat_capacity'.
             RuntimeError: If process() has not been called before plot().
+            ValueError: The `type` argument is not one of the allowed values.
 
         Returns: Plotly figures as a function of temperature or volume.
         """
 
+        def _nearest_indices(values: np.ndarray, selected: np.ndarray) -> list[int]:
+            indices: list[int] = []
+            for target in selected:
+                matches = np.where(values == target)[0]
+                if matches.size:
+                    indices.append(int(matches[0]))
+                else:
+                    nearest_index = int(np.argmin(np.abs(values - target)))
+                    indices.append(nearest_index)
+            return indices
+
         # Raise an error if process has not been called yet
-        if self.helmholtz_energies is None or self.entropies is None or self.heat_capacities is None:
+        if (
+            self.helmholtz_energies is None
+            or self.entropies is None
+            or self.heat_capacities is None
+        ):
             raise RuntimeError("DebyeGruneisen.process() must be called before plot().")
 
-        # Map property names to data arrays and y-axis labels
-        unit = "atom" if self.number_of_atoms == 1 else f"{self.number_of_atoms} atoms"
-        properties = {
-            "helmholtz_energy": (self.helmholtz_energies.T, f"F<sub>vib</sub> (eV/{unit})"),
-            "entropy": (self.entropies.T, f"S<sub>vib</sub> (eV/K/{unit})"),
-            "heat_capacity": (self.heat_capacities.T, f"C<sub>v,vib</sub> (eV/K/{unit})"),
+        type_map = {
+            "helmholtz_energy_vs_temperature": (
+                self.helmholtz_energies,
+                "F<sub>vib</sub> (eV)",
+            ),
+            "entropy_vs_temperature": (self.entropies, "S<sub>vib</sub> (eV/K)"),
+            "heat_capacity_vs_temperature": (
+                self.heat_capacities,
+                "C<sub>v,vib</sub> (eV/K)",
+            ),
+            "helmholtz_energy_vs_volume": (
+                self.helmholtz_energies,
+                "F<sub>vib</sub> (eV)",
+            ),
+            "entropy_vs_volume": (
+                self.entropies,
+                "S<sub>vib</sub> (eV/K)",
+            ),
+            "heat_capacity_vs_volume": (
+                self.heat_capacities,
+                "C<sub>v,vib</sub> (eV/K)",
+            ),
         }
 
-        if type not in properties:
-            raise ValueError("property must be one of 'helmholtz_energy', 'entropy', or 'heat_capacity'")
+        if type not in type_map:
+            raise ValueError(
+                "type must be one of "
+                "'helmholtz_energy_vs_temperature', 'entropy_vs_temperature', "
+                "'heat_capacity_vs_temperature', 'helmholtz_energy_vs_volume', "
+                "'entropy_vs_volume', or 'heat_capacity_vs_volume'."
+            )
 
-        y, y_label = properties[type]
+        property_values, y_title = type_map[type]
 
-        # Plot property vs. temperature for selected volumes
-        fig_debye_t = go.Figure()
-        if selected_volumes is None:
-            # Default: plot for 5 evenly spaced volumes
-            indices = np.linspace(0, len(self.volumes) - 1, 5, dtype=int)
-        else:
-            # Find indices for selected volumes (use nearest if not exact)
-            indices = []
-            for v in selected_volumes:
-                try:
-                    indices.append(np.where(self.volumes == v)[0][0])
-                except IndexError:
-                    nearest_volume = self.volumes[np.argmin(np.abs(self.volumes - v))]
-                    indices.append(np.where(self.volumes == nearest_volume)[0][0])
+        if "vs_temperature" in type:
+            # Plot property vs. temperature for selected volumes
+            fig = go.Figure()
+            if selected_volumes is None:
+                # Default: plot for 5 evenly spaced volumes
+                indices = np.linspace(0, len(self.volumes) - 1, 5, dtype=int)
+            else:
+                # Find indices for selected volumes (use nearest if not exact)
+                indices = _nearest_indices(self.volumes, selected_volumes)
 
-        for i, volume in enumerate(self.volumes):
-            if i in indices:
-                fig_debye_t.add_trace(
+            for i in indices:
+                volume = float(self.volumes[i])
+                fig.add_trace(
                     go.Scatter(
                         x=self.temperatures,
-                        y=y[i],
+                        y=property_values[:, i],
                         mode="lines",
                         name=f"{volume:.2f} \u212B<sup>3</sup>",
                     )
                 )
-        plot_format(fig_debye_t, "Temperature (K)", y_label)
+            plot_format(fig, "Temperature (K)", y_title)
 
-        # Plot property vs. volume for selected temperatures
-        fig_debye_v = go.Figure()
-        if selected_temperatures is None:
-            # Default: plot for 5 evenly spaced temperatures
-            indices = np.linspace(0, len(self.temperatures) - 1, 5, dtype=int)
-            selected_temperatures = np.array([self.temperatures[j] for j in indices])
-        else:
-            # Find indices for selected temperatures (use nearest if not exact)
-            indices = []
-            for t in selected_temperatures:
-                try:
-                    indices.append(np.where(self.temperatures == t)[0][0])
-                except IndexError:
-                    nearest_temperature = self.temperatures[np.argmin(np.abs(self.temperatures - t))]
-                    indices.append(np.where(self.temperatures == nearest_temperature)[0][0])
-        for i in indices:
-            fig_debye_v.add_trace(
-                go.Scatter(
-                    x=self.volumes,
-                    y=y[:, i],
-                    mode="lines",
-                    name=f"{self.temperatures[i]} K",
+        elif "vs_volume" in type:
+            # Plot property vs. volume for selected temperatures
+            fig = go.Figure()
+            if selected_temperatures is None:
+                # Default: plot for 5 evenly spaced temperatures
+                indices = np.linspace(0, len(self.temperatures) - 1, 5, dtype=int)
+            else:
+                # Find indices for selected temperatures (use nearest if not exact)
+                indices = _nearest_indices(self.temperatures, selected_temperatures)
+            for i in indices:
+                temperature = float(self.temperatures[i])
+                if np.isclose(temperature % 1, 0):
+                    temperature_label = f"{int(round(temperature))} K"
+                else:
+                    temperature_label = f"{temperature} K"
+                fig.add_trace(
+                    go.Scatter(
+                        x=self.volumes,
+                        y=property_values[i],
+                        mode="lines",
+                        name=temperature_label,
+                    )
                 )
-            )
-        if self.number_of_atoms == 1:
-            plot_format(fig_debye_v, f"Volume (\u212B<sup>3</sup>/atom)", y_label)
-        else:
-            plot_format(fig_debye_v, f"Volume (\u212B<sup>3</sup>/{self.number_of_atoms} atoms)", y_label)
+            plot_format(fig, f"Volume (\u212B<sup>3</sup>)", y_title)
 
-        return fig_debye_t, fig_debye_v
-    
+        return fig
+
     @staticmethod
     def calculate_gruneisen_parameter(BP: float, gruneisen_x: float) -> float:
         """Calculates the Grüneisen parameter (gamma).
         Args:
             BP: First derivative of the bulk modulus with respect to pressure.
             gruneisen_x: x parameter for the Grüneisen parameter calculation.
-            
+
         Returns: Grüneisen parameter (gamma).
         """
         return (1 + BP) / 2 - gruneisen_x
 
     @staticmethod
-    def calculate_debye_temperatures(volumes: np.ndarray, atomic_mass: float, V0: float, B: float, scaling_factor: float, gruneisen_parameter: float) -> np.ndarray:
+    def calculate_debye_temperatures(
+        volumes: np.ndarray,
+        atomic_mass: float,
+        V0: float,
+        B: float,
+        scaling_factor: float,
+        gruneisen_parameter: float,
+    ) -> np.ndarray:
         """Compute the Debye temperature for each volume.
 
         Args:
@@ -227,7 +283,13 @@ class DebyeGruneisen:
         atomic_mass = atomic_mass * 1.66054e-24  # u to g
 
         # Debye temperature formula from the Debye-Grüneisen model
-        debye_temperatures = scaling_factor * A * V0 ** (1 / 6) * (B / atomic_mass) ** 0.5 * (V0 / volumes) ** gruneisen_parameter
+        debye_temperatures = (
+            scaling_factor
+            * A
+            * V0 ** (1 / 6)
+            * (B / atomic_mass) ** 0.5
+            * (V0 / volumes) ** gruneisen_parameter
+        )
         return debye_temperatures
 
     @staticmethod
@@ -273,14 +335,28 @@ class DebyeGruneisen:
         debye_integrals = np.zeros_like(self.temperatures)
 
         # Zero point energy at T = 0 K
-        helmholtz_energies[zero_temp_mask] = self.number_of_atoms * (9 / 8 * BOLTZMANN_CONSTANT * debye_temperature)
-        x_array[non_zero_temp_mask] = debye_temperature / self.temperatures[non_zero_temp_mask]
-        debye_integrals[non_zero_temp_mask] = DebyeGruneisen.calculate_debye_integral_n3(x_array[non_zero_temp_mask])
+        helmholtz_energies[zero_temp_mask] = self.number_of_atoms * (
+            9 / 8 * BOLTZMANN_CONSTANT * debye_temperature
+        )
+        x_array[non_zero_temp_mask] = (
+            debye_temperature / self.temperatures[non_zero_temp_mask]
+        )
+        debye_integrals[non_zero_temp_mask] = (
+            DebyeGruneisen.calculate_debye_integral_n3(x_array[non_zero_temp_mask])
+        )
 
         # Debye Helmholtz energy formula
-        helmholtz_energies[non_zero_temp_mask] = self.number_of_atoms * (9 / 8 * BOLTZMANN_CONSTANT * debye_temperature + BOLTZMANN_CONSTANT * self.temperatures[non_zero_temp_mask] * (3 * np.log(1 - np.exp(-x_array[non_zero_temp_mask])) - debye_integrals[non_zero_temp_mask]))
+        helmholtz_energies[non_zero_temp_mask] = self.number_of_atoms * (
+            9 / 8 * BOLTZMANN_CONSTANT * debye_temperature
+            + BOLTZMANN_CONSTANT
+            * self.temperatures[non_zero_temp_mask]
+            * (
+                3 * np.log(1 - np.exp(-x_array[non_zero_temp_mask]))
+                - debye_integrals[non_zero_temp_mask]
+            )
+        )
         return helmholtz_energies
-    
+
     def calculate_entropies(self, debye_temperature: float) -> np.ndarray:
         """Calculate the vibrational entropy.
 
@@ -302,18 +378,30 @@ class DebyeGruneisen:
         entropies[zero_temp_mask] = 0
 
         # Calculate x = theta_D / T for nonzero T
-        x_array[non_zero_temp_mask] = debye_temperature / self.temperatures[non_zero_temp_mask]
-        debye_integrals[non_zero_temp_mask] = DebyeGruneisen.calculate_debye_integral_n3(x_array[non_zero_temp_mask])
+        x_array[non_zero_temp_mask] = (
+            debye_temperature / self.temperatures[non_zero_temp_mask]
+        )
+        debye_integrals[non_zero_temp_mask] = (
+            DebyeGruneisen.calculate_debye_integral_n3(x_array[non_zero_temp_mask])
+        )
 
         # Debye entropy formula
-        entropies[non_zero_temp_mask] = 3 * self.number_of_atoms * BOLTZMANN_CONSTANT * (4 / 3 * debye_integrals[non_zero_temp_mask] - np.log(1 - np.exp(-x_array[non_zero_temp_mask])))
+        entropies[non_zero_temp_mask] = (
+            3
+            * self.number_of_atoms
+            * BOLTZMANN_CONSTANT
+            * (
+                4 / 3 * debye_integrals[non_zero_temp_mask]
+                - np.log(1 - np.exp(-x_array[non_zero_temp_mask]))
+            )
+        )
         return entropies
 
     def calculate_heat_capacities(self, debye_temperature: float) -> np.ndarray:
         """Calculates the vibrational heat capacity.
 
         The integral evaluated is:
-        
+
         .. math::
 
         \frac{3}{x^3} \\int_0^x \\frac{t^4 e^t}{(e^t - 1)^2} \\, dt
@@ -329,14 +417,20 @@ class DebyeGruneisen:
         debye_integrals = np.zeros_like(x_array, dtype=float)
         heat_capacities = np.zeros_like(self.temperatures, dtype=float)
 
-        x_array[non_zero_temp_mask] = debye_temperature / self.temperatures[non_zero_temp_mask]
+        x_array[non_zero_temp_mask] = (
+            debye_temperature / self.temperatures[non_zero_temp_mask]
+        )
         for i, x in enumerate(x_array):
             if x == 0:
                 debye_integrals[i] = 0
                 heat_capacities[i] = 0  # Cv at T = 0 K
             else:
                 factor = 3.0 / x**3
-                integral, _ = quad(lambda t: (t**4 * np.exp(t)) / (np.exp(t) - 1.0) ** 2, 0, x)
+                integral, _ = quad(
+                    lambda t: (t**4 * np.exp(t)) / (np.exp(t) - 1.0) ** 2, 0, x
+                )
                 debye_integrals[i] = integral * factor
-                heat_capacities[i] = 3 * self.number_of_atoms * BOLTZMANN_CONSTANT * debye_integrals[i]
+                heat_capacities[i] = (
+                    3 * self.number_of_atoms * BOLTZMANN_CONSTANT * debye_integrals[i]
+                )
         return heat_capacities

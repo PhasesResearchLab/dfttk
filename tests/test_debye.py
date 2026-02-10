@@ -93,10 +93,12 @@ def test_process():
 
 def test_plot():
     debye = DebyeGruneisen()
-    
-    # Should raise an error if plot is called before process
-    with pytest.raises(RuntimeError, match="process\\(\\) must be called before plot\\(\\)"):
-        debye.plot("helmholtz_energy")
+
+    types = ["helmholtz_energy_vs_temperature", "entropy_vs_temperature", "heat_capacity_vs_temperature", "helmholtz_energy_vs_volume", "entropy_vs_volume", "heat_capacity_vs_volume"]
+    for type in types:
+        # Should raise an error if plot is called before process
+        with pytest.raises(RuntimeError, match="process\\(\\) must be called before plot\\(\\)"):
+            debye.plot_vt(type)
 
     debye.process(
         number_of_atoms,
@@ -110,29 +112,33 @@ def test_plot():
         gruneisen_x,
     )
     # Should run fine after process
-    fig_t, fig_v = debye.plot("helmholtz_energy")
-    assert fig_t is not None
-    assert fig_v is not None
+    for type in types:
+        fig = debye.plot_vt(type)
+        assert fig is not None
 
     # Should raise an error for invalid type
-    with pytest.raises(ValueError, match="property must be one of"):
-        debye.plot("invalid_property")
-        
+    with pytest.raises(ValueError, match="type must be one of"):
+        debye.plot_vt("invalid_property")
+
     # Test plot with selected volumes
     # Pick a subset of volumes to plot
     selected_volumes = np.array([74, 72, 70, 68, 66, 64, 62, 60])
-    fig_t, fig_v = debye.plot("helmholtz_energy", selected_volumes=selected_volumes)
-    # Check that the correct number of traces are present
-    assert len(fig_t.data) == len(selected_volumes)
-    assert fig_t is not None and fig_v is not None
-    
+    types = ["helmholtz_energy_vs_temperature", "entropy_vs_temperature", "heat_capacity_vs_temperature"]
+    for type in types:
+        fig = debye.plot_vt(type, selected_volumes=selected_volumes)
+        # Check that the correct number of traces are present
+        assert len(fig.data) == len(selected_volumes)
+        assert fig is not None
+
     # Test plot with selected temperatures
     # Pick a subset of temperatures to plot
     selected_temperatures = np.arange(0, 1010, 100)
-    fig_t, fig_v = debye.plot("helmholtz_energy", selected_temperatures=selected_temperatures)
-    # Check that the correct number of traces are present
-    assert len(fig_v.data) == len(selected_temperatures)
-    assert fig_t is not None and fig_v is not None
+    types = ["helmholtz_energy_vs_volume", "entropy_vs_volume", "heat_capacity_vs_volume"]
+    for type in types:
+        fig = debye.plot_vt(type, selected_temperatures=selected_temperatures)
+        # Check that the correct number of traces are present
+        assert len(fig.data) == len(selected_temperatures)
+        assert fig is not None
 
 
 def test_calculate_gruneisen_parameter():
