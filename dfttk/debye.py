@@ -154,9 +154,7 @@ class DebyeGruneisen:
             or self.entropies is None
             or self.heat_capacities is None
         ):
-            raise RuntimeError(
-                "DebyeGruneisen.process() must be called before plot_vt()."
-            )
+            raise RuntimeError("process() must be called before plot().")
 
         type_map = {
             "helmholtz_energy_vs_temperature": (
