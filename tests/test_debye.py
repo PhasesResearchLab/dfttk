@@ -1,5 +1,5 @@
 """
-Tests for the dfttk.debye module.
+Tests for the DebyeGruneisen class in dfttk.debye.
 """
 
 # Related third party imports
@@ -72,7 +72,7 @@ expected_heat_capacities = np.array(
 )
 
 
-def test_DebyeGruneisen():
+def test_process():
     debye = DebyeGruneisen()
     debye.process(
         number_of_atoms,
@@ -85,30 +85,21 @@ def test_DebyeGruneisen():
         scaling_factor,
         gruneisen_x,
     )
-
-    gruneisen_parameter = debye.calculate_gruneisen_parameter()
-    assert np.isclose(gruneisen_parameter, expected_gruneisen_parameter, rtol=1e-5)
-
-    debye_temperatures = debye.calculate_debye_temperatures(gruneisen_parameter)
-    assert np.allclose(debye_temperatures, expected_debye_temperatures, rtol=1e-5)
-
-    x_array = debye_temperatures[0] / temperatures[temperatures > 0]
-    debye_integral = debye.calculate_debye_integral_n3(x_array)
-    assert np.allclose(debye_integral, expected_debye_integral, rtol=1e-5)
 
     assert np.allclose(debye.helmholtz_energies, expected_helmholtz_energies, rtol=1e-5)
     assert np.allclose(debye.entropies, expected_entropies, rtol=1e-5)
     assert np.allclose(debye.heat_capacities, expected_heat_capacities, rtol=1e-5)
 
 
-def test_plot_requires_process():
+def test_plot():
     debye = DebyeGruneisen()
-    with pytest.raises(RuntimeError, match="process\\(\\) must be called before plot\\(\\)"):
-        debye.plot("helmholtz_energy")
 
+    types = ["helmholtz_energy_vs_temperature", "entropy_vs_temperature", "heat_capacity_vs_temperature", "helmholtz_energy_vs_volume", "entropy_vs_volume", "heat_capacity_vs_volume"]
+    for type in types:
+        # Should raise an error if plot is called before process
+        with pytest.raises(RuntimeError, match="process\\(\\) must be called before plot\\(\\)"):
+            debye.plot_vt(type)
 
-def test_plot_runs_after_process():
-    debye = DebyeGruneisen()
     debye.process(
         number_of_atoms,
         volumes,
@@ -120,66 +111,55 @@ def test_plot_runs_after_process():
         scaling_factor,
         gruneisen_x,
     )
-    # Should not raise
-    fig_t, fig_v = debye.plot("helmholtz_energy")
-    assert fig_t is not None
-    assert fig_v is not None
+    # Should run fine after process
+    for type in types:
+        fig = debye.plot_vt(type)
+        assert fig is not None
 
+    # Should raise an error for invalid type
+    with pytest.raises(ValueError, match="type must be one of"):
+        debye.plot_vt("invalid_property")
 
-def test_plot_invalid_property():
-    debye = DebyeGruneisen()
-    debye.process(
-        number_of_atoms,
-        volumes,
-        temperatures,
-        atomic_mass,
-        V0,
-        B,
-        BP,
-        scaling_factor,
-        gruneisen_x,
-    )
-    with pytest.raises(ValueError, match="property must be one of"):
-        debye.plot("invalid_property")
-
-
-def test_plot_selected_volumes():
-    debye = DebyeGruneisen()
-    debye.process(
-        number_of_atoms,
-        volumes,
-        temperatures,
-        atomic_mass,
-        V0,
-        B,
-        BP,
-        scaling_factor,
-        gruneisen_x,
-    )
+    # Test plot with selected volumes
     # Pick a subset of volumes to plot
     selected_volumes = np.array([74, 72, 70, 68, 66, 64, 62, 60])
-    fig_t, fig_v = debye.plot("helmholtz_energy", selected_volumes=selected_volumes)
-    # Check that the correct number of traces are present
-    assert len(fig_t.data) == len(selected_volumes)
-    assert fig_t is not None and fig_v is not None
+    types = ["helmholtz_energy_vs_temperature", "entropy_vs_temperature", "heat_capacity_vs_temperature"]
+    for type in types:
+        fig = debye.plot_vt(type, selected_volumes=selected_volumes)
+        # Check that the correct number of traces are present
+        assert len(fig.data) == len(selected_volumes)
+        assert fig is not None
 
-
-def test_plot_selected_temperatures():
-    debye = DebyeGruneisen()
-    debye.process(
-        number_of_atoms,
-        volumes,
-        temperatures,
-        atomic_mass,
-        V0,
-        B,
-        BP,
-        scaling_factor,
-        gruneisen_x,
-    )
+    # Test plot with selected temperatures
     # Pick a subset of temperatures to plot
     selected_temperatures = np.arange(0, 1010, 100)
-    fig_t, fig_v = debye.plot("helmholtz_energy", selected_temperatures=selected_temperatures)
-    # Check that the correct number of traces are present
-    assert len(fig_v.data) == len(selected_temperatures)
-    assert fig_t is not None and fig_v is not None
+    types = ["helmholtz_energy_vs_volume", "entropy_vs_volume", "heat_capacity_vs_volume"]
+    for type in types:
+        fig = debye.plot_vt(type, selected_temperatures=selected_temperatures)
+        # Check that the correct number of traces are present
+        assert len(fig.data) == len(selected_temperatures)
+        assert fig is not None
+
+
+def test_calculate_gruneisen_parameter():
+    gruneisen_parameter = DebyeGruneisen.calculate_gruneisen_parameter(BP, gruneisen_x)
+    assert np.isclose(gruneisen_parameter, expected_gruneisen_parameter, rtol=1e-5)
+
+
+def test_calculate_debye_temperatures():
+    gruneisen_parameter = DebyeGruneisen.calculate_gruneisen_parameter(BP, gruneisen_x)
+    debye_temperatures = DebyeGruneisen.calculate_debye_temperatures(volumes, atomic_mass, V0, B, scaling_factor, gruneisen_parameter)
+    assert np.allclose(debye_temperatures, expected_debye_temperatures, rtol=1e-5)
+
+
+def test_calculate_debye_integral_n3():
+    gruneisen_parameter = DebyeGruneisen.calculate_gruneisen_parameter(BP, gruneisen_x)
+    debye_temperatures = DebyeGruneisen.calculate_debye_temperatures(volumes, atomic_mass, V0, B, scaling_factor, gruneisen_parameter)
+    x_array = debye_temperatures[0] / temperatures[temperatures > 0]
+    debye_integral = DebyeGruneisen.calculate_debye_integral_n3(x_array)
+    assert np.allclose(debye_integral, expected_debye_integral, rtol=1e-5)
+
+    # Should raise an error if x_array contains any zero values
+    x_array_with_zero = np.array([0, 1, 2])
+    with pytest.raises(ValueError, match="x_array must not contain any zero values"):
+        DebyeGruneisen.calculate_debye_integral_n3(x_array_with_zero)
