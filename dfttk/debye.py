@@ -113,7 +113,7 @@ class DebyeGruneisen:
         type: str,
         selected_temperatures: np.ndarray = None,
         selected_volumes: np.ndarray = None,
-    ) -> tuple[go.Figure, go.Figure]:
+    ) -> go.Figure:
         """Plots the vibrational Helmholtz energy, entropy, or heat capacity as a function
         of temperature or volume.
 
@@ -131,7 +131,7 @@ class DebyeGruneisen:
                 (n_selected_volumes,). Defaults to None.
 
         Raises:
-            RuntimeError: If process() has not been called before plot().
+            RuntimeError: If process() has not been called before plot_vt().
             ValueError: The `type` argument is not one of the allowed values.
 
         Returns: Plotly figures as a function of temperature or volume.
@@ -154,7 +154,9 @@ class DebyeGruneisen:
             or self.entropies is None
             or self.heat_capacities is None
         ):
-            raise RuntimeError("DebyeGruneisen.process() must be called before plot().")
+            raise RuntimeError(
+                "DebyeGruneisen.process() must be called before plot_vt()."
+            )
 
         type_map = {
             "helmholtz_energy_vs_temperature": (
@@ -306,9 +308,18 @@ class DebyeGruneisen:
                 divided by the temperature. The Debye temperature is fixed for a given volume,
                 and the temperature is varied.
 
+        ValueError: If any value in x_array is zero, since this would lead to division by
+            zero in the formula.
+
         Returns:
             Array of Debye integrals of order 3 corresponding to each value in x_array.
         """
+
+        # Raise an error in any elements of x_array has any 0
+        if np.any(x_array == 0):
+            raise ValueError(
+                "x_array must not contain any zero values to avoid division by zero."
+            )
 
         debye_integrals = np.zeros_like(x_array, dtype=float)
         for i, x in enumerate(x_array):
