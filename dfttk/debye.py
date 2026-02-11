@@ -134,7 +134,7 @@ class DebyeGruneisen:
             RuntimeError: If process() has not been called before plot_vt().
             ValueError: The `type` argument is not one of the allowed values.
 
-        Returns: Plotly figures as a function of temperature or volume.
+        Returns: Plotly figure as a function of temperature or volume.
         """
 
         def _nearest_indices(values: np.ndarray, selected: np.ndarray) -> list[int]:
