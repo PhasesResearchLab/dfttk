@@ -7,7 +7,7 @@
 [![Documentation Status](https://readthedocs.org/projects/dfttk/badge/?version=main)](https://www.dfttk.org/en/main/?badge=main)
 
 ## Overview
-Over the years, many tools have been developed to help set up and/or automate DFT calculations with VASP, as well as provide various post-processing features, such as [atomate2](https://github.com/materialsproject/atomate2), [quacc](https://github.com/Quantum-Accelerators/quacc), [AFLOW](https://www.aflowlib.org/), [AiiDA](https://www.aiida.net/), [pyiron](https://pyiron.org/), and [VASPkit](https://vaspkit.com/). The **Density Functional Theory ToolKit (DFTTK)** is another addition to this space, with a philosophy of keeping the interface between the user and VASP as minimal as possible and making the automation and post-processing steps easy to see and understand.
+Over the years, many tools have been developed to help set up and/or automate DFT calculations with VASP, as well as provide various post-processing features, such as [atomate2](https://github.com/materialsproject/atomate2), [quacc](https://github.com/Quantum-Accelerators/quacc), [AFLOW](https://www.aflowlib.org/), [AiiDA](https://www.aiida.net/), [pyiron](https://pyiron.org/), and [VASPKIT](https://vaspkit.com/). The **Density Functional Theory ToolKit (DFTTK)** is another addition to this space, with a philosophy of keeping the interface between the user and VASP as minimal as possible and making the automation and post-processing steps easy to see and understand.
 
 DFTTK workflows use [Custodian](https://github.com/materialsproject/custodian) for job management. The usefulness of Custodian is that it allows many VASP jobs to be chained together and includes various self-correction strategies for handling VASP errors. 
 
