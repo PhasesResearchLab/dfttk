@@ -27,8 +27,12 @@ Current key features are listed below.
   - $F_{k,\text{vib}}$ — Phonons (post-processed with YPHON)
   - $F_{k,\text{el}}$ — From the electronic DOS
 
-### MongoDB Storage
-- Stores and retrieves VASP input data and post-processed results in MongoDB.
+### Post-processing
+- $E_k$ — Fit energy–volume curves using an EOS
+- $F_{k,\text{vib}}$:
+  - Debye–Grüneisen model
+  - Phonons (via YPHON)
+- $F_{k,\text{el}}$ — From the electronic DOS
 
 ## Installation
 It is recommended first to set up a virtual environment using Conda:
