@@ -16,16 +16,19 @@ Current key features are listed below.
 ## Key Features
 
 ### Enumeration of Configurations
-- Enumerates **unique collinear magnetic configurations** for a given structure.
+- Enumerates unique collinear magnetic configurations for a given structure.
 
 ### VASP Workflows
-- Performs **convergence tests** for:
+- Performs convergence tests for:
   - Cutoff energy (`ENCUT`)
   - k-points grid density (`kppa`)
-- Computes **free energy** using the **quasiharmonic approximation**.
+- Computes contributions to the Helmholtz energy, $F_k = E_k + F_{k,\text{vib}} + F_{k,\text{el}}$:
+  - $E_k$ — Energy–volume curves
+  - $F_{k,\text{vib}}$ — Phonons (post-processed with YPHON)
+  - $F_{k,\text{el}}$ — From the electronic DOS
 
 ### MongoDB Storage
-- Stores and retrieves VASP **input data** and **post-processed results** in MongoDB.
+- Stores and retrieves VASP input data and post-processed results in MongoDB.
 
 ## Installation
 It is recommended first to set up a virtual environment using Conda:
