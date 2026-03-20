@@ -66,7 +66,7 @@ Then, browse the `examples` folder to explore and run the example notebooks:
 
 | Notebooks    | Description |
 |--------------|-------------|
-| DebyeGruneisen | Compute and plot vibrational contributions to the Helmholtz energy using the Debye–Gruneisen model for Al |
+| DebyeGruneisen | Compute and plot vibrational contributions to the Helmholtz energy using the Debye–Grüneisen model for Al |
 | ThermalElectronic | Compute and plot thermal electronic contributions to the Helmholtz energy for Al using Fermi–Dirac statistics and the electronic DOS|
 | Configuration | Orchestrate VASP workflows to compute all contributions to $F_k$, with post-processing, plotting, and MongoDB storage for Al and Fe<sub>3</sub>Pt|
 
