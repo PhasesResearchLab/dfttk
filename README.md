@@ -71,7 +71,7 @@ Then, browse the `examples` folder to explore and run the example notebooks:
 | Configuration | Orchestrate VASP workflows to compute all contributions to $F_k$, with post-processing, plotting, and MongoDB storage for Al and Fe<sub>3</sub>Pt|
 
 ## Documentation
-For a comprehensive description of **DFTTK** and its capabilities, please refer to the [Official Documentation](https://vasp-job-automation.readthedocs.io/en/latest/index.html).
+For a comprehensive description of **DFTTK** and its capabilities, please refer to the [Official Documentation](https://www.dfttk.org/en/main/).
 
 > **Note:** The documentation is currently under construction. Some sections may be incomplete or subject to change.
 
