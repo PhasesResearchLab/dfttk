@@ -34,7 +34,7 @@ Current key features are listed below.
   - Phonons (via YPHON)
 - $F_{k,\text{el}}$ — From the electronic DOS
 
-### Configuration class
+### Configuration Class
 The Configuration class orchestrates VASP workflows to compute contributions to $F_k$, along with post-processing and storing results in MongoDB.
 
 ## Installation
@@ -58,14 +58,24 @@ Or clone a specific branch:
 
 > **Note:** A PyPI release is currently under development.
 
-## Documentation
+## Example Notebooks
+Click the badge below to open the project in GitHub Codespaces.  
+Then, browse the `examples` folder to explore and run the example notebooks:
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/PhasesResearchLab/dfttk?quickstart=1)
+
+| Notebooks    | Description |
+|--------------|-------------|
+| DebyeGruneisen | Compute and plot vibrational contributions to the Helmholtz energy using the Debye–Gruneisen model for Al |
+| ThermalElectronic | Compute and plot thermal electronic contributions to the Helmholtz energy for Al using Fermi–Dirac statistics and the electronic DOS|
+| Configuration | Orchestrate VASP workflows to compute all contributions to $F_k$, with post-processing, plotting, and MongoDB storage for Al and Fe<sub>3</sub>Pt|
+
+## Documentation
 For a comprehensive description of **DFTTK** and its capabilities, please refer to the [Official Documentation](https://vasp-job-automation.readthedocs.io/en/latest/index.html).
 
 > **Note:** The documentation is currently under construction. Some sections may be incomplete or subject to change.
 
 ## Citing DFTTK
-
 If you use **DFTTK** in your work, please cite the following publication:
 
 > **N. Hew et al.**,  
