@@ -34,6 +34,9 @@ Current key features are listed below.
   - Phonons (via YPHON)
 - $F_{k,\text{el}}$ — From the electronic DOS
 
+### Configuration class
+The Configuration class orchestrates VASP workflows to compute contributions to $F_k$, along with post-processing and storing results in MongoDB.
+
 ## Installation
 It is recommended first to set up a virtual environment using Conda:
 
