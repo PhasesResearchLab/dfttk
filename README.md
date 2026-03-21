@@ -64,6 +64,8 @@ Then, browse the `examples` folder to explore and run the example notebooks:
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/PhasesResearchLab/dfttk?quickstart=1)
 
+The Configuration examples involves running VASP workflows. These require a system with VASP installed (typically an HPC environment) and cannot be executed in GitHub Codespaces.
+
 | Notebooks    | Description |
 |--------------|-------------|
 | DebyeGruneisen | Compute and plot vibrational contributions to the Helmholtz energy using the Debye–Grüneisen model for Al |
