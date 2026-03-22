@@ -64,6 +64,8 @@ Then, browse the `examples` folder to explore and run the example notebooks:
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/PhasesResearchLab/dfttk?quickstart=1)
 
+The Configuration examples involve running VASP workflows. These require a system with VASP installed (typically an HPC environment) and cannot be executed in GitHub Codespaces.
+
 | Notebooks    | Description |
 |--------------|-------------|
 | DebyeGruneisen | Compute and plot vibrational contributions to the Helmholtz energy using the Debye–Grüneisen model for Al |
@@ -71,7 +73,7 @@ Then, browse the `examples` folder to explore and run the example notebooks:
 | Configuration | Orchestrate VASP workflows to compute all contributions to $F_k$, with post-processing, plotting, and MongoDB storage for Al and Fe<sub>3</sub>Pt|
 
 ## Documentation
-For a comprehensive description of **DFTTK** and its capabilities, please refer to the [Official Documentation](https://www.dfttk.org/en/main/).
+For a more comprehensive description of DFTTK and its capabilities, please refer to the [Official Documentation](https://www.dfttk.org/en/main/).
 
 > **Note:** The documentation is currently under construction. Some sections may be incomplete or subject to change.
 
