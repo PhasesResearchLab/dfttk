@@ -202,9 +202,6 @@ class Configuration:
         )
         workflow.write_run_dfttk()
 
-        # Submit the job using SLURM
-        subprocess.run(["sbatch", "job.sh"], cwd=self.path)
-
     # TODO: add a way to select the custodian handlers
     def run_conv_test(
         self,
@@ -284,9 +281,6 @@ class Configuration:
             file.write(
                 f"workflows.kpoints_conv_test(os.getcwd(), vasp_cmd, handlers, kppa_list={kppa_list}, force_gamma={force_gamma}, backup={backup}, max_errors={max_errors})\n"
             )
-
-        # Run the job
-        subprocess.run(["sbatch", "job.sh"], cwd=self.path)
 
     def analyze_encut_conv(self, plot: bool = True) -> tuple[pd.DataFrame, go.Figure]:
         """
@@ -431,9 +425,6 @@ workflows.NELM_reached(os.getcwd())
 
         with open(os.path.join(self.path, "run_dfttk.py"), "w") as file:
             file.write(run_dfttk_script)
-
-        # Run the job
-        subprocess.run(["sbatch", "job.sh"], cwd=self.path)
 
     def process_ev_curve(
         self,
