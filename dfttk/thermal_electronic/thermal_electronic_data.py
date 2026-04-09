@@ -91,8 +91,10 @@ class ThermalElectronicData:
 
         self.number_of_atoms: int = None
         self.volumes: np.ndarray = None
+        self.energies_list: list = None
+        self.dos_list: list = None
+        
         self.temperatures: np.ndarray = None
-
         self.helmholtz_energies: np.ndarray = None
         self.internal_energies: np.ndarray = None
         self.entropies: np.ndarray = None
@@ -131,7 +133,8 @@ class ThermalElectronicData:
         kpoints_keys: list[str] = ["elec_dos"],
         kpoints_names: list[str] = ["KPOINTS.elec_dos"],
         contcar_name: str = "CONTCAR.elec_dos",
-        selected_volumes: list[float] = None,
+        selected_volumes: np.ndarray | None = None,
+        selected_folders: list[str] | None = None,
         folder_prefix: str = "elec",
     ) -> None:
         """
@@ -146,12 +149,23 @@ class ThermalElectronicData:
             contcar_name: Name of the CONTCAR file to read. Defaults to "CONTCAR.elec_dos".
             selected_volumes: List of selected volumes to keep the electron DOS data.
                 Defaults to None.
+            selected_folders: List of selected folders to keep the electron DOS data. Defaults to None.
             folder_prefix: Prefix of the electronic folders. Defaults to ``"elec"``.
+        
+        Raises:
+            ValueError: If both `selected_volumes` and `selected_folders` are provided, 
+                as they are mutually exclusive.
         """
 
         # Get the list of electronic DOS folders
         elec_folders = self._get_elec_folders(folder_prefix=folder_prefix)
 
+        if selected_volumes is not None and selected_folders is not None:
+            raise ValueError(
+                "selected_volumes and selected_folders are mutually exclusive. "
+                "Provide only one of them."
+            )
+            
         # Filter electronic DOS folders based on selected volumes if provided
         if selected_volumes is not None:
             volumes_set = {round(volume, 2) for volume in selected_volumes}
@@ -168,8 +182,13 @@ class ThermalElectronicData:
                 in volumes_set
             ]
 
+        # Iterate over the requested folders; if none are provided, use all detected elec folders
+        folders_to_process = natsorted(
+            elec_folders if selected_folders is None else selected_folders
+        )
+        
         # Read the INCAR, KPOINTS, and structures for each electronic DOS folder
-        for elec_folder in elec_folders:
+        for elec_folder in folders_to_process:
             incar_data = {}
             for key, name in zip(incar_keys, incar_names):
                 incar_data[key] = Incar.from_file(
@@ -202,7 +221,8 @@ class ThermalElectronicData:
         order: int = 1,
         folder_prefix: str = "elec",
         vasprun_name: str = "vasprun.xml.elec_dos",
-        selected_volumes: np.ndarray = None,
+        selected_volumes: np.ndarray | None = None,
+        selected_folders: list[str] | None = None,
     ):
         """
         Calls the ThermalElectronic class to read the total electron DOS data, compute
@@ -214,7 +234,8 @@ class ThermalElectronicData:
             order: Order of the polynomial fit. Defaults to 1 (linear fit).
             folder_prefix: Prefix of the electronic folders. Defaults to ``"elec"``.
             vasprun_name: Name of the vasprun.xml file. Defaults to ``"vasprun.xml.elec_dos"``.
-            selected_volumes: List of selected volumes to keep the electron DOS data. Defaults to None.
+            selected_volumes: Array of volumes to process. Defaults to None.
+            selected_folders: List of selected folders to keep the electron DOS data. Defaults to None.
         """
 
         # Initialize ThermalElectronic object
@@ -226,6 +247,7 @@ class ThermalElectronicData:
             folder_prefix=folder_prefix,
             vasprun_name=vasprun_name,
             selected_volumes=selected_volumes,
+            selected_folders=selected_folders,
         )
         self.number_of_atoms = self.te.number_of_atoms
         self.volumes = self.te.volumes

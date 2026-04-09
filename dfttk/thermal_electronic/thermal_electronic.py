@@ -133,7 +133,8 @@ class ThermalElectronic:
         path: str,
         folder_prefix: str = "elec",
         vasprun_name: str = "vasprun.xml.elec_dos",
-        selected_volumes: np.ndarray = None,
+        selected_volumes: np.ndarray | None = None,
+        selected_folders: list[str] | None = None,
     ) -> None:
         """
         Reads the total electron DOS data from VASP calculations for different volumes.
@@ -143,9 +144,12 @@ class ThermalElectronic:
                 vasprun.xml files.
             folder_prefix: Prefix of the electronic folders. Defaults to ``"elec"``.
             vasprun_name: Name of the vasprun.xml file. Defaults to ``"vasprun.xml.elec_dos"``.
-            selected_volumes: List of selected volumes to keep the electron DOS data. Defaults to None.
+            selected_volumes: Array of volumes to process. Defaults to None.
+            selected_folders: List of selected folders to keep the electron DOS data. Defaults to None.
             
         Raises:
+            ValueError: If both `selected_volumes` and `selected_folders` are provided, 
+                as they are mutually exclusive.
             ValueError: If selected volumes are not found.
             ValueError: If the number of atoms is not the same for all volumes.
             ValueError: If the number of electrons is not the same for all volumes.
@@ -153,6 +157,12 @@ class ThermalElectronic:
 
         self.path = path
 
+        if selected_volumes is not None and selected_folders is not None:
+            raise ValueError(
+                "selected_volumes and selected_folders are mutually exclusive. "
+                "Provide only one of them."
+            )
+            
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
 
@@ -168,13 +178,20 @@ class ThermalElectronic:
             energies_list = []
             dos_list = []
 
-            # Iterate over electronic folders to get the relevant electronic DOS data
-            for elec_folder in elec_folders:
+            # Iterate over the requested folders; if none are provided, use all detected elec folders
+            folders_to_process = natsorted(
+                elec_folders if selected_folders is None else selected_folders
+            )
+            for elec_folder in folders_to_process:
 
                 # Get the volumes, number of atoms, and number of electrons from vasprun.xml
                 vasprun_path = os.path.join(path, elec_folder, vasprun_name)
                 vasprun = Vasprun(vasprun_path)
-                volume = round(vasprun.final_structure.volume, 6)
+                volume = round(vasprun.final_structure.volume, 2)
+                
+                if selected_volumes is not None and volume not in selected_volumes:
+                    continue
+                
                 volumes_list.append(volume)
                 number_of_atoms = vasprun.final_structure.num_sites
                 num_atoms_list.append(number_of_atoms)
@@ -197,6 +214,13 @@ class ThermalElectronic:
                     vasprun_dos = vasprun.complete_dos.densities[Spin.up]
                 dos_list.append(vasprun_dos)
 
+            # Raise an error if at least one of the selected volumes is not found
+            if selected_volumes is not None:
+                missing = [v for v in selected_volumes if v not in volumes_list]
+                if missing:
+                    raise ValueError(
+                        f"The following selected volumes were not found: {missing}"
+                    )
             # Get the sorted indices based on volumes_list
             sorted_indices = np.argsort(volumes_list)
 
@@ -206,35 +230,7 @@ class ThermalElectronic:
             nelect_list = [nelect_list[i] for i in sorted_indices]
             energies_list = [energies_list[i] for i in sorted_indices]
             dos_list = [dos_list[i] for i in sorted_indices]
-
-            # Filter values to only include selected volumes
-            if selected_volumes is not None:
-                # Check for missing volumes
-                missing = [v for v in selected_volumes if v not in volumes_list]
-                if missing:
-                    raise ValueError(
-                        f"The following selected volumes were not found: {missing}"
-                    )
-
-                filtered_volume_list = []
-                filtered_num_atoms_list = []
-                filtered_nelect_list = []
-                filtered_vasprun_energies_list = []
-                filtered_vasprun_dos_list = []
-
-                for i in range(len(volumes_list)):
-                    if volumes_list[i] in selected_volumes:
-                        filtered_volume_list.append(volumes_list[i])
-                        filtered_num_atoms_list.append(num_atoms_list[i])
-                        filtered_nelect_list.append(nelect_list[i])
-                        filtered_vasprun_energies_list.append(energies_list[i])
-                        filtered_vasprun_dos_list.append(dos_list[i])
-
-                volumes_list = filtered_volume_list
-                num_atoms_list = filtered_num_atoms_list
-                energies_list = filtered_vasprun_energies_list
-                dos_list = filtered_vasprun_dos_list
-
+            
             self.number_of_atoms = np.unique(num_atoms_list)
             # If the number of atoms is not the same for all volumes, raise an error
             if len(self.number_of_atoms) > 1:
@@ -458,7 +454,7 @@ class ThermalElectronic:
 
         return fig
 
-    def plot_vt(self, type: str, selected_temperatures: np.ndarray = None) -> go.Figure:
+    def plot_vt(self, type: str, selected_temperatures: np.ndarray | None = None) -> go.Figure:
         """
         Plots thermal electronic properties as a function of temperature or volume.
 
@@ -603,7 +599,7 @@ class ThermalElectronic:
         energies: np.ndarray,
         dos: np.ndarray,
         temperature: float,
-        chemical_potential_range: np.ndarray = None,
+        chemical_potential_range: np.ndarray | None = None,
         electron_tol: float = 0.05,
     ) -> float:
         """
@@ -899,7 +895,7 @@ class ThermalElectronic:
         internal_energies_list = []
 
         # Calculate the internal energy for each temperature
-        for i, temperature in enumerate(temperatures):
+        for temperature in temperatures:
 
             # Calculate the Fermi-Dirac distribution function at the given temperature and chemical potential
             chemical_potential = self.calculate_chemical_potential(
@@ -1026,7 +1022,7 @@ class ThermalElectronic:
         energies_fit_range: np.ndarray = np.array([-2, 2]),
         resolution: float = 0.0001,
         plot: bool = False,
-        plot_temperature: float = None,
+        plot_temperature: float | None = None,
     ) -> np.ndarray | tuple[np.ndarray, go.Figure]:
         """
         Calculates the thermal electronic contribution to the entropy for a given volume.
@@ -1175,7 +1171,7 @@ class ThermalElectronic:
         energies_fit_range: np.ndarray = np.array([-2, 2]),
         resolution: float = 0.0001,
         plot: bool = False,
-        plot_temperature: float = None,
+        plot_temperature: float | None = None,
     ) -> np.ndarray | tuple[np.ndarray, go.Figure]:
         """
         Calculates the thermal electronic contribution to the heat capacity for a given volume.
@@ -1215,7 +1211,7 @@ class ThermalElectronic:
         heat_capacities_list = []
 
         # Calculate the heat capacity for each temperature
-        for i, temperature in enumerate(temperatures):
+        for temperature in temperatures:
             # Calculate the chemical potential
             chemical_potential = self.calculate_chemical_potential(
                 energies, dos, temperature

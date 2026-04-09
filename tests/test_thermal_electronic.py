@@ -40,7 +40,6 @@ def cached_dos_data():
 
 def test_read_total_electron_dos():
     # Test all volumes
-    # This test is specifically for the read_total_electron_dos method, so keep the direct call
     thermal_electronic = ThermalElectronic()
     thermal_electronic.read_total_electron_dos(path=config_Al_path)
 
@@ -48,7 +47,6 @@ def test_read_total_electron_dos():
     assert thermal_electronic.number_of_atoms == 4
     assert np.all(thermal_electronic.volumes == np.array([60.0, 62.0, 64.0, 66.0, 68.0, 70.0, 72.0, 74.0]))
 
-    # Check that the energies_list and dos_list match expected values
     for i, (energies_list, dos_list) in enumerate(zip(thermal_electronic.energies_list, thermal_electronic.dos_list)):
         np.testing.assert_allclose(energies_list, expected_energies_list[i])
         np.testing.assert_allclose(dos_list, expected_dos_list[i])
@@ -61,7 +59,6 @@ def test_read_total_electron_dos():
     assert thermal_electronic.number_of_atoms == 4
     assert np.all(thermal_electronic.volumes == np.array([60.0, 66.0]))
 
-    # Check that the energies_list and dos_list match expected values
     for i, (energies_list, dos_list) in enumerate(zip(thermal_electronic.energies_list, thermal_electronic.dos_list)):
         np.testing.assert_allclose(energies_list, expected_energies_list[i * 3])  # 0 and 3 indices
         np.testing.assert_allclose(dos_list, expected_dos_list[i * 3])  # 0 and 3 indices
@@ -71,9 +68,25 @@ def test_read_total_electron_dos():
     with pytest.raises(ValueError, match="The following selected volumes were not found:"):
         thermal_electronic.read_total_electron_dos(path=config_Al_path, selected_volumes=invalid_volumes)
 
+    # Test selected folders
+    selected_folders = ["elec_4", "elec_7"]
+    thermal_electronic.read_total_electron_dos(path=config_Al_path, selected_folders=selected_folders)
+
+    assert thermal_electronic.path == config_Al_path
+    assert thermal_electronic.number_of_atoms == 4
+    assert np.all(thermal_electronic.volumes == np.array([60.0, 66.0]))
+
+    for i, (energies_list, dos_list) in enumerate(zip(thermal_electronic.energies_list, thermal_electronic.dos_list)):
+        np.testing.assert_allclose(energies_list, expected_energies_list[i * 3])  # 0 and 3 indices
+        np.testing.assert_allclose(dos_list, expected_dos_list[i * 3])  # 0 and 3 indices
+    
+    # If selected_volumes and selected_folders are both provided, raise an error
+    with pytest.raises(ValueError, match="selected_volumes and selected_folders are mutually exclusive. Provide only one of them."):
+        thermal_electronic.read_total_electron_dos(path=config_Al_path, selected_volumes=selected_volumes, selected_folders=selected_folders)
+        
     # TODO: Test inconsistent number of atoms
     # TODO: Test inconsistent number of electrons
-
+    
 
 def test_set_total_electron_dos(cached_dos_data):
     thermal_electronic = ThermalElectronic()
