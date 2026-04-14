@@ -147,13 +147,14 @@ class ThermalElectronicData:
             kpoints_keys: List of KPOINTS keys for dictionary keys. Defaults to ["elec_dos"].
             kpoints_names: List of KPOINTS files to read. Defaults to ["KPOINTS.elec_dos"].
             contcar_name: Name of the CONTCAR file to read. Defaults to "CONTCAR.elec_dos".
-            selected_volumes: List of selected volumes to keep the electron DOS data.
-                Defaults to None.
-            selected_folders: List of selected folders to keep the electron DOS data. Defaults to None.
+            selected_volumes: NumPy array of selected volumes to keep the electron
+                DOS data, or None to keep all volumes. Defaults to None.
+            selected_folders: List of selected folders to keep the electron DOS
+                data. Defaults to None.
             folder_prefix: Prefix of the electronic folders. Defaults to ``"elec"``.
-        
+
         Raises:
-            ValueError: If both `selected_volumes` and `selected_folders` are provided, 
+            ValueError: If both `selected_volumes` and `selected_folders` are provided,
                 as they are mutually exclusive.
         """
 
