@@ -751,7 +751,9 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
         kpoints_keys: list[str] = ["elec_dos"],
         kpoints_names: list[str] = ["KPOINTS.elec_dos"],
         contcar_name: str = "CONTCAR.elec_dos",
-        selected_volumes: list[float] = None,
+        vasprun_name: str = "vasprun.xml.elec_dos",
+        selected_volumes: np.ndarray | None = None,
+        selected_folders: list[str] | None = None,
         folder_prefix: str = "elec",
         order: int = 1,
     ):
@@ -769,7 +771,9 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             kpoints_keys (list[str], optional): List of KPOINTS keys for dictionary keys. Defaults to ["elec_dos"].
             kpoints_names (list[str], optional): List of KPOINTS names to read. Defaults to ["KPOINTS.elec_dos"].
             contcar_name (str, optional): Name of the CONTCAR file. Defaults to "CONTCAR.elec_dos".
-            selected_volumes (list[float], optional): List of volumes to process. Defaults to None.
+            vasprun_name (str, optional): Name of the vasprun.xml file. Defaults to ``"vasprun.xml.elec_dos"``.
+            selected_volumes (np.ndarray | None, optional): Array of volumes to process. Defaults to None.
+            selected_folders (list[str] | None, optional): List of selected folders to keep the electron DOS data. Defaults to None.
             folder_prefix (str, optional): Prefix for the folders containing electronic DOS data. Defaults to "elec".
             order (int, optional): Order of polynomial fitting. Defaults to 1.
         """
@@ -781,14 +785,17 @@ workflows.elec_dos_parallel(os.getcwd(), volumes, kppa, 'job.sh', scaling_matrix
             kpoints_names=kpoints_names,
             contcar_name=contcar_name,
             selected_volumes=selected_volumes,
+            selected_folders=selected_folders,
             folder_prefix=folder_prefix,
         )
         self.thermal_electronic.get_thermal_electronic_data(
             volumes_fit=volumes_fit,
             temperatures=temperatures,
             order=order,
-            selected_volumes=selected_volumes,
             folder_prefix=folder_prefix,
+            vasprun_name=vasprun_name,
+            selected_volumes=selected_volumes,
+            selected_folders=selected_folders,
         )
 
     def process_qha(
